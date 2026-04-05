@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(ls \"C:/Users/Özi''''/Desktop/Berat''''/AsansörTakip Pro v6.001/react-app/node_modules/.bin/vite\"*)",
+      "mcp__Claude_Preview__preview_start",
+      "Read(//c/Program Files/nodejs/**)",
+      "Read(//c/Program Files/nodejs//**)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}

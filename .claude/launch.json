@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "AsansörTakip Pro (Vite Dev)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["../AsansörTakip Pro v6.001/react-app/node_modules/vite/bin/vite.js", "../AsansörTakip Pro v6.001/react-app"],
+      "port": 5173,
+      "cwd": "."
+    },
+    {
+      "name": "AsansörTakip Pro (Vite Preview)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "preview"],
+      "port": 4173,
+      "cwd": "../AsansörTakip Pro v6.001/react-app"
+    }
+  ]
+}
