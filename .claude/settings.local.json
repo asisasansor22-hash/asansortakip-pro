@@ -6,7 +6,8 @@
       "mcp__Claude_Preview__preview_start",
       "Read(//c/Program Files/nodejs/**)",
       "Read(//c/Program Files/nodejs//**)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }

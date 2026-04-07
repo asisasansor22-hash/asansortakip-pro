@@ -1375,14 +1375,18 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
 // ═══════════════════════════════════════════════════════════
 //  BAKIM MAKBUZ - Termal makbuz yazdırma (58mm)
 // ═══════════════════════════════════════════════════════════
-function makbuzBakimYazdir(maint, elev) {
-  var simdi = new Date();
-  var gun = simdi.getDate().toString().padStart(2,"0");
-  var ay = (simdi.getMonth()+1).toString().padStart(2,"0");
-  var yil = simdi.getFullYear();
-  var saat = simdi.getHours().toString().padStart(2,"0")+":"+simdi.getMinutes().toString().padStart(2,"0");
+function makbuzBakimYazdir(maint, elev, seqNo) {
+  // Bakımın kendi tarih/saatini kullan — bastırma zamanını değil
+  var yapildiStr = maint.yapildiSaat ? String(maint.yapildiSaat) : "";
+  var datePart = yapildiStr.split(" ")[0] || ""; // "YYYY-MM-DD"
+  var timePart = yapildiStr.split(" ")[1] || ""; // "HH:MM"
+  var dateObj = datePart ? new Date(datePart + "T00:00:00") : new Date();
+  var gun = dateObj.getDate().toString().padStart(2,"0");
+  var ay = (dateObj.getMonth()+1).toString().padStart(2,"0");
+  var yil = dateObj.getFullYear();
+  var saat = timePart ? timePart.substring(0,5) : "";
   var tarihStr = gun+"."+ay+"."+yil;
-  var makbuzNo = String(yil)+ay+gun+simdi.getHours().toString().padStart(2,"0")+simdi.getMinutes().toString().padStart(2,"0");
+  var makbuzNo = gun+ay+String(yil)+"-"+(seqNo||1);
   var adres = elev ? ((elev.semt ? elev.semt+" Mah., " : "")+(elev.adres||"")) : "";
   var ilce = elev ? (elev.ilce||"") : "";
   var aylikUcret = (elev ? (elev.aylikUcret||0) : (maint.tutar||0)).toLocaleString("tr-TR");
@@ -1898,7 +1902,6 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||""}]);});
     // NOT: bakiyeDevir burada değiştirilmez — ay kapanışında yeniDevir → bakiyeDevir geçer
-    setMakbuzSonBakim({m:odemeSorModal.m,elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
     setOdemeMiktar("");
   };
@@ -2075,7 +2078,12 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                         React.createElement('span',{style:{fontWeight:700,color:"#e0e6f0"}},"Devir Bakiye"),React.createElement('span',{style:{fontWeight:900,fontSize:13,color:devir>0?"#ef4444":devir===0?"#10b981":"#f59e0b"}},devir.toLocaleString("tr-TR")+" ₺"))
                     )
                     , React.createElement('button',{
-                        onClick:function(){makbuzBakimYazdir(m,elev);},
+                        onClick:function(){
+                          var _gun=m.yapildiSaat?String(m.yapildiSaat).split(" ")[0]:"";
+                          var _ayni=tamamlananBakimlarTum.filter(function(x){return String(x.yapildiSaat||"").split(" ")[0]===_gun;}).sort(function(a,b){return String(a.yapildiSaat||"").localeCompare(String(b.yapildiSaat||""));});
+                          var _sira=_ayni.findIndex(function(x){return x.id===m.id;})+1;
+                          makbuzBakimYazdir(m,elev,_sira||1);
+                        },
                         style:{width:"100%",marginTop:8,padding:"8px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:8,color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}
                       },"\uD83D\uDDA8\uFE0F Bakım Makbuzu Yazdır")
                   )
@@ -2126,29 +2134,6 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
           )
       )
 
-      /* BAKIM SONRASI MAKBUZ MODALI */
-      , makbuzSonBakim&&(
-        React.createElement('div',{style:{position:"fixed",inset:0,background:"#000000cc",zIndex:2100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
-          ,React.createElement('div',{style:{background:"var(--bg-panel)",borderRadius:20,border:"1px solid var(--border)",width:"100%",maxWidth:380,overflow:"hidden"}}
-            ,React.createElement('div',{style:{padding:"16px 18px",borderBottom:"0.5px solid var(--border-soft)",textAlign:"center"}}
-              ,React.createElement('div',{style:{fontSize:32,marginBottom:4}},"🖨️")
-              ,React.createElement('div',{style:{fontWeight:800,fontSize:16,color:"var(--text)"}}, "Makbuz Yazdır")
-              ,React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",marginTop:4}},
-                (makbuzSonBakim.elev?makbuzSonBakim.elev.ad:"")+" · "+(makbuzSonBakim.tutar||0).toLocaleString("tr-TR")+" ₺")
-            )
-            ,React.createElement('div',{style:{padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}
-              ,React.createElement('button',{
-                onClick:function(){makbuzBakimYazdir(makbuzSonBakim.m,makbuzSonBakim.elev);setMakbuzSonBakim(null);},
-                style:{padding:"14px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
-              },"🖨️ Bakım Makbuzunu Yazdır")
-              ,React.createElement('button',{
-                onClick:function(){setMakbuzSonBakim(null);},
-                style:{padding:"12px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
-              },"Atla")
-            )
-          )
-        )
-      )
 
       /* BAKIM SONRASI ÖDEME SOR MODALI */
       , odemeSorModal&&(
