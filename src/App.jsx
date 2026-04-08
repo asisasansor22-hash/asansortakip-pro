@@ -8,6 +8,7 @@ import {
   S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal
 } from './utils/constants.js'
 import LoginScreen from './components/LoginScreen.jsx'
+import InstallBanner from './components/InstallBanner.jsx'
 import KontrolListesi from './components/KontrolListesi.jsx'
 import BakimAtamaPaneli from './components/BakimAtamaPaneli.jsx'
 import EkstraIsEkrani from './components/EkstraIsEkrani.jsx'
@@ -2385,6 +2386,9 @@ function App(){
           )
         )
       )
+
+      /* Ana Ekrana Ekle Banner */
+      , React.createElement(InstallBanner, null)
     )
   );
 }

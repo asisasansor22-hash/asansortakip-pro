@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#0f1117"/>
+  <!-- Asansör kabini -->
+  <rect x="136" y="100" width="240" height="280" rx="16" fill="none" stroke="#6366f1" stroke-width="16"/>
+  <!-- Sol ray -->
+  <rect x="116" y="80" width="12" height="320" rx="6" fill="#6366f1" opacity="0.5"/>
+  <!-- Sağ ray -->
+  <rect x="384" y="80" width="12" height="320" rx="6" fill="#6366f1" opacity="0.5"/>
+  <!-- Kapı çizgisi -->
+  <line x1="256" y1="116" x2="256" y2="364" stroke="#6366f1" stroke-width="8" stroke-dasharray="0"/>
+  <!-- A harfi -->
+  <text x="256" y="285" font-family="Arial, sans-serif" font-size="130" font-weight="900" fill="#6366f1" text-anchor="middle" dominant-baseline="middle">A</text>
+  <!-- Makine dairesi -->
+  <rect x="196" y="56" width="120" height="44" rx="8" fill="#6366f1" opacity="0.3"/>
+  <rect x="236" y="64" width="40" height="28" rx="6" fill="#6366f1"/>
+  <!-- Alt panel -->
+  <rect x="136" y="380" width="240" height="40" rx="8" fill="#6366f1" opacity="0.15"/>
+  <!-- Katta gösteri ışıkları -->
+  <circle cx="200" cy="400" r="8" fill="#6366f1" opacity="0.6"/>
+  <circle cx="232" cy="400" r="8" fill="#6366f1"/>
+  <circle cx="264" cy="400" r="8" fill="#6366f1" opacity="0.6"/>
+  <circle cx="296" cy="400" r="8" fill="#6366f1" opacity="0.3"/>
+  <circle cx="328" cy="400" r="8" fill="#6366f1" opacity="0.3"/>
+</svg>
