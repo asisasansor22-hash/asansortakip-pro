@@ -32,10 +32,10 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
               , React.createElement('div', { style: {display:"flex",alignItems:"flex-start",gap:12},}
                 , React.createElement('div', { style: {width:10,height:10,borderRadius:"50%",background:onRenk,flexShrink:0,marginTop:4},})
                 , React.createElement('div', { style: {flex:1,minWidth:0},}
-                  , React.createElement('div', { style: {fontWeight:700,fontSize:15,marginBottom:4,color:"var(--text)"},}, f.aciklama)
+                  , React.createElement('div', { style: {fontWeight:700,fontSize:15,marginBottom:4,color:"var(--text)"},}, f.aciklama||"—")
                   , React.createElement('div', { style: {display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:8},}
                     , elev&&React.createElement(IlceBadge, { ilce: elev.ilce,})
-                    , React.createElement('span', { style: {fontSize:12,color:"var(--text-muted)"},}, eName(f.asansorId), " · "  , f.tarih)
+                    , React.createElement('span', { style: {fontSize:12,color:"var(--text-muted)"},}, eName(f.asansorId), " · "  , f.tarih||"")
                     , React.createElement('span', { style: {fontSize:12,padding:"3px 9px",borderRadius:20,background:onRenk+"20",color:onRenk,fontWeight:600},}, f.oncelik)
                     , f.durum==="Çözüldü"&&f.cozumTarih&&React.createElement('span', { style: {fontSize:12,color:"var(--ios-green)"},}, "✅ " , f.cozumTarih)
                   )
