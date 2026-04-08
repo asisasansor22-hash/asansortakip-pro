@@ -303,13 +303,16 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
                             tel=tel.replace(/^\+/,"");
                             var tarihStr=m.yapildiSaat?m.yapildiSaat.split(" ")[0]:"";
-                            var alinan=m.alinanTutar||m.tutar||0;
+                            var alinan=m.alinanTutar||0;
                             var mesaj=
                               "Sayın "+elev.ad+" Yönetimi,\n\n"+
                               "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
                               "Binanızda bulunan asansörünüzün aylık periyodik bakımı"+(tarihStr?" "+tarihStr+" tarihinde":"")+
                               " teknik ekibimiz tarafından eksiksiz olarak gerçekleştirilmiştir."+
-                              (alinan>0?" Bakım bedeli olarak "+alinan.toLocaleString("tr-TR")+" ₺ tarafınızdan alınmıştır.":"")+"\n\n"+
+                              (alinan>0
+                                ?" Bakım bedeli olarak "+alinan.toLocaleString("tr-TR")+" ₺ tarafınızdan alınmıştır."
+                                :" Toplam bakım borcunuz *"+devir.toLocaleString("tr-TR")+" ₺* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz."
+                              )+"\n\n"+
                               "Asansörünüz bakımlı ve güvenli şekilde kullanıma hazırdır.\n\n"+
                               "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
                               "Saygılarımızla,\n"+
