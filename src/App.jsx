@@ -935,7 +935,8 @@ function App(){
                       onClick:function(ev){
                         ev.stopPropagation();
                         var nd=yeniDevir(e.id);
-                        var tutar=nd!==null?(nd>0?"+":"")+nd.toLocaleString("tr-TR")+" ₺":"belirtilmemiş";
+                        var borc=nd!==null?nd:(e.bakiyeDevir||0)+(e.aylikUcret||0);
+                        var tutar=borc.toLocaleString("tr-TR")+" ₺";
                         var tel=(e.tel||"").replace(/[\s\-\(\)]/g,"");
                         if(tel.startsWith("0")) tel="90"+tel.slice(1);
                         else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
