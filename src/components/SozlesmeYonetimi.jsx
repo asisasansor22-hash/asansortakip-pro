@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { Modal } from '../utils/constants'
 
 function gunKaldi(tarihStr){
   if(!tarihStr) return null;
@@ -221,106 +222,90 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
 
       {/* Modal */}
       {modal&&(
-        <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div className="ios-modal-sheet" style={{maxWidth:560,minHeight:"70vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <div className="ios-modal-handle" style={{flexShrink:0}}/>
-            <div className="ios-modal-header" style={{flexShrink:0}}>
-              <div className="ios-modal-title">{edit?"Sözleşme Düzenle":"Yeni Sözleşme"}</div>
-              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}}>✕</button>
+        <Modal title={edit?"Sözleşme Düzenle":"Yeni Sözleşme"} onClose={close} onSave={save}>
+
+          {/* Asansör / Bina seçimi */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Asansör / Bina *</label>
+            <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
+              style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:14,outline:"none",cursor:"pointer"}}>
+              <option value="">— Bina seçin —</option>
+              {ilceler.map(il=>(
+                <optgroup key={il} label={il}>
+                  {elevs.filter(e=>e.ilce===il).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* Başlangıç + Bitiş yan yana */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div>
+              <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Başlangıç *</label>
+              <input type="text" value={form.baslangic||""} onChange={e=>F("baslangic",e.target.value)}
+                placeholder="YYYY-AA-GG" maxLength={10}
+                style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
             </div>
-            <div className="ios-modal-body" style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
-
-              {/* Asansör / Bina seçimi */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
-                <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  <option value="">— Bina seçin —</option>
-                  {ilceler.map(ilce=>(
-                    <optgroup key={ilce} label={ilce}>
-                      {elevs.filter(e=>e.ilce===ilce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-
-              {/* Başlangıç + Bitiş yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Başlangıç *</label>
-                  <input type="text" value={form.baslangic||""} onChange={e=>F("baslangic",e.target.value)}
-                    placeholder="YYYY-AA-GG" maxLength={10}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+            <div>
+              <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Bitiş *</label>
+              <input type="text" value={form.bitis||""} onChange={e=>F("bitis",e.target.value)}
+                placeholder="YYYY-AA-GG" maxLength={10}
+                style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+              {form.bitis&&gunKaldi(form.bitis)!==null&&(
+                <div style={{fontSize:11,marginTop:4,color:durumRenk(gunKaldi(form.bitis)),fontWeight:600}}>
+                  {durumMetin(gunKaldi(form.bitis))||"Geçerli tarih"}
                 </div>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Bitiş *</label>
-                  <input type="text" value={form.bitis||""} onChange={e=>F("bitis",e.target.value)}
-                    placeholder="YYYY-AA-GG" maxLength={10}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
-                  {form.bitis&&gunKaldi(form.bitis)!==null&&(
-                    <div style={{fontSize:11,marginTop:3,color:durumRenk(gunKaldi(form.bitis)),fontWeight:600}}>
-                      {durumMetin(gunKaldi(form.bitis))||"Geçerli tarih"}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Aylık Ücret */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Aylık Ücret (₺)</label>
-                <input type="number" value={form.ucret||""} onChange={e=>F("ucret",e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-              </div>
-
-              {/* Notlar */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
-                <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={2}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
-              </div>
-
-              {/* Fotoğraflar */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>📷 Fotoğraflar</label>
-                <input type="file" accept="image/*" multiple
-                  onChange={e=>{
-                    const files=Array.from(e.target.files);
-                    files.forEach(file=>{
-                      const reader=new FileReader();
-                      reader.onload=ev=>{
-                        F("fotograflar",[...(form.fotograflar||[]),ev.target.result]);
-                      };
-                      reader.readAsDataURL(file);
-                    });
-                    e.target.value="";
-                  }}
-                  style={{display:"none"}} id="sozlesme-foto-input"/>
-                <label htmlFor="sozlesme-foto-input"
-                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",background:"var(--bg-elevated)",border:"1px dashed var(--border)",borderRadius:8,cursor:"pointer",fontSize:12,color:"var(--text-muted)",fontWeight:600}}>
-                  + Fotoğraf Ekle
-                </label>
-                {form.fotograflar&&form.fotograflar.length>0&&(
-                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                    {form.fotograflar.map((f,i)=>(
-                      <div key={i} style={{position:"relative"}}>
-                        <img src={f} alt={"foto"+i}
-                          style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
-                        <button onClick={()=>F("fotograflar",form.fotograflar.filter((_,j)=>j!==i))}
-                          style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div style={{padding:"8px 18px 10px",display:"flex",gap:10,flexShrink:0}}>
-              <button onClick={close} style={{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}>İptal</button>
-              <button onClick={save} style={{flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}>Kaydet</button>
+              )}
             </div>
           </div>
-        </div>
+
+          {/* Aylık Ücret */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Aylık Ücret (₺)</label>
+            <input type="number" value={form.ucret||""} onChange={e=>F("ucret",e.target.value)}
+              style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+          </div>
+
+          {/* Notlar */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Notlar</label>
+            <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={3}
+              style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:14,outline:"none",resize:"none",boxSizing:"border-box"}}/>
+          </div>
+
+          {/* Fotoğraflar */}
+          <div>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>📷 Fotoğraflar</label>
+            <input type="file" accept="image/*" multiple
+              onChange={e=>{
+                const files=Array.from(e.target.files);
+                files.forEach(file=>{
+                  const reader=new FileReader();
+                  reader.onload=ev=>{ F("fotograflar",[...(form.fotograflar||[]),ev.target.result]); };
+                  reader.readAsDataURL(file);
+                });
+                e.target.value="";
+              }}
+              style={{display:"none"}} id="sozlesme-foto-input"/>
+            <label htmlFor="sozlesme-foto-input"
+              style={{display:"inline-flex",alignItems:"center",gap:6,padding:"9px 14px",background:"var(--bg-elevated)",border:"1px dashed var(--border)",borderRadius:10,cursor:"pointer",fontSize:13,color:"var(--text-muted)",fontWeight:600}}>
+              + Fotoğraf Ekle
+            </label>
+            {form.fotograflar&&form.fotograflar.length>0&&(
+              <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                {form.fotograflar.map((f,i)=>(
+                  <div key={i} style={{position:"relative"}}>
+                    <img src={f} alt={"foto"+i}
+                      style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                    <button onClick={()=>F("fotograflar",form.fotograflar.filter((_,j)=>j!==i))}
+                      style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </Modal>
       )}
     </div>
   );

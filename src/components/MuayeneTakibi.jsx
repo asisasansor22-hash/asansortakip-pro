@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { Modal } from '../utils/constants'
 
 const KURUM_LISTESI = ["TSE","TÜRKAK","Belediye","Özel Akredite Kuruluş","Diğer"];
 const AY_ADLARI = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
@@ -238,58 +239,46 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
 
       {/* Modal */}
       {modal&&(
-        <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div className="ios-modal-sheet" style={{maxWidth:520,minHeight:"70vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            <div className="ios-modal-handle" style={{flexShrink:0}}/>
-            <div className="ios-modal-header" style={{flexShrink:0}}>
-              <div className="ios-modal-title">{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
-              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}}>✕</button>
+        <Modal title={edit?"Muayene Düzenle":"Yeni Muayene Kaydı"} onClose={close} onSave={save}>
+
+          {/* Asansör / Bina seçimi */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Asansör / Bina *</label>
+            <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
+              style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:14,outline:"none",cursor:"pointer"}}>
+              <option value="">— Bina seçin —</option>
+              {ilceler.map(il=>(
+                <optgroup key={il} label={il}>
+                  {elevs.filter(e=>e.ilce===il).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
+          {/* Muayene tarihi + Sonraki önizleme yan yana */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            <div>
+              <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Muayene Tarihi *</label>
+              <input type="date" value={form.tarih||""} onChange={e=>F("tarih",e.target.value)}
+                style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
             </div>
-            <div className="ios-modal-body" style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
-
-              {/* Asansör / Bina seçimi */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
-                <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  <option value="">— Bina seçin —</option>
-                  {ilceler.map(ilce=>(
-                    <optgroup key={ilce} label={ilce}>
-                      {elevs.filter(e=>e.ilce===ilce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
+            <div>
+              <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Sonraki (otomatik)</label>
+              <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"11px 12px",fontSize:14,fontWeight:800,color:"#3b82f6",minHeight:42,display:"flex",alignItems:"center"}}>
+                {onizlemeSonraki||"—"}
               </div>
-
-              {/* Muayene tarihi + Sonraki önizleme yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Muayene Tarihi *</label>
-                  <input type="date" value={form.tarih||""} onChange={e=>F("tarih",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
-                </div>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sonraki (otomatik)</label>
-                  <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,padding:"10px 12px",fontSize:13,fontWeight:800,color:"#3b82f6",minHeight:40,display:"flex",alignItems:"center"}}>
-                    {onizlemeSonraki||"—"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Notlar */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
-                <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={2}
-                  placeholder="Opsiyonel"
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
-              </div>
-            </div>
-            <div style={{padding:"8px 18px 10px",display:"flex",gap:10,flexShrink:0}}>
-              <button onClick={close} style={{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}>İptal</button>
-              <button onClick={save} style={{flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}>Kaydet</button>
             </div>
           </div>
-        </div>
+
+          {/* Notlar */}
+          <div>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>Notlar</label>
+            <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={3}
+              placeholder="Opsiyonel"
+              style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"11px 12px",color:"var(--text)",fontSize:14,outline:"none",resize:"none",boxSizing:"border-box"}}/>
+          </div>
+
+        </Modal>
       )}
     </div>
   );
