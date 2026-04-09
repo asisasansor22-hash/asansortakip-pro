@@ -222,7 +222,7 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
       {/* Modal */}
       {modal&&(
         <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div className="ios-modal-sheet" style={{maxWidth:560}}>
+          <div className="ios-modal-sheet" style={{maxWidth:560,minHeight:"60vh"}}>
             <div className="ios-modal-handle"/>
             <div className="ios-modal-header">
               <div className="ios-modal-title">{edit?"Sözleşme Düzenle":"Yeni Sözleşme"}</div>
