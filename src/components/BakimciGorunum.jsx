@@ -373,7 +373,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                           var mesaj=
                             "Sayın "+elev.ad+" Yönetimi,\n\n"+
                             "Şirketimize duyduğunuz güven ve anlayışınız için teşekkür ederiz.\n\n"+
-                            "Binanızda tespit edilen asansör arızası ("+f.aciklama+") teknik ekibimiz tarafından başarıyla giderilmiş olup asansörünüz güvenli bir şekilde kullanıma hazır hale getirilmiştir.\n\n"+
+                            "Binanızda tespit edilen asansör arızası teknik ekibimiz tarafından başarıyla giderilmiş olup asansörünüz güvenli bir şekilde kullanıma hazır hale getirilmiştir.\n\n"+
                             "Herhangi bir sorunuz veya farklı bir arıza durumunda bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
                             "Saygılarımızla,\n"+
                             "Asis Asansör Bakım ve Servis Hizmetleri";
