@@ -265,20 +265,11 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
                 </div>
               </div>
 
-              {/* Ücret + Tür yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Aylık Ücret (₺)</label>
-                  <input type="number" value={form.ucret||""} onChange={e=>F("ucret",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Tür</label>
-                  <select value={form.tur||"Bakım"} onChange={e=>F("tur",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                    {["Bakım","Komple Bakım","Onarım","Modernizasyon","Diğer"].map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
+              {/* Aylık Ücret */}
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Aylık Ücret (₺)</label>
+                <input type="number" value={form.ucret||""} onChange={e=>F("ucret",e.target.value)}
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
               </div>
 
               {/* Notlar */}

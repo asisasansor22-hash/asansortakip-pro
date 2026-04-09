@@ -1984,29 +1984,6 @@ function App(){
           , React.createElement(FF, { label: edit?"Telefon":"Telefon *", value: form.tel||"", onChange: v=>F("tel",v),})
           , React.createElement(FF, { label: edit?"Yönetici Dairesi":"Yönetici Dairesi *", value: form.yoneticiDaire||"", onChange: v=>F("yoneticiDaire",v),})
           , React.createElement(FF, { label: edit?"Bakım Günü":"Bakım Günü (Ayın kaçı?) *", type: "number", value: form.bakimGunu||"", onChange: v=>F("bakimGunu",v),})
-          /* ── TEKNİK KART ── */
-          , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:12,padding:"12px 14px",marginBottom:8}}
-            , React.createElement('div', {style:{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px"}}, "🔩 Teknik Bilgiler (opsiyonel)")
-            , React.createElement('div', {style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}
-              , React.createElement(FF, {label:"Marka",value:form.marka||"",onChange:v=>F("marka",v)})
-              , React.createElement(FF, {label:"Model",value:form.model||"",onChange:v=>F("model",v)})
-              , React.createElement(FF, {label:"Seri No",value:form.seriNo||"",onChange:v=>F("seriNo",v)})
-              , React.createElement(FF, {label:"İmalat Yılı",type:"number",value:form.imalatYili||"",onChange:v=>F("imalatYili",v)})
-              , React.createElement(FF, {label:"Kapasite (kg)",type:"number",value:form.kapasite||"",onChange:v=>F("kapasite",v)})
-              , React.createElement(FF, {label:"Hız (m/s)",type:"number",value:form.hiz||"",onChange:v=>F("hiz",v)})
-            )
-            , React.createElement('div', {style:{marginTop:8}}
-              , React.createElement('label', {style:{display:"block",fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4}}, "Asansör Tipi")
-              , React.createElement('select', {
-                  value:form.tip||"",
-                  onChange:function(e){F("tip",e.target.value);},
-                  style:{width:"100%",background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"9px 12px",color:"#e0e6f0",fontSize:13,outline:"none",cursor:"pointer",boxSizing:"border-box"}
-                }
-                , React.createElement('option',{value:""},"— Tip seçin —")
-                , ["Elektrikli (Traksiyonlu)","Hidrolik","Makine dairesiz (MRL)","Pnömatik","Diğer"].map(function(t){return React.createElement('option',{key:t,value:t},t);})
-              )
-            )
-          )
           , React.createElement(FF, { label: "Aylık Bakım Ücreti (₺) *", type: "number", value: form.aylikUcret||"", onChange: v=>F("aylikUcret",v),})
           /* Eski Devir + Yeni Devir alanları */
           , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10,marginBottom:8}}

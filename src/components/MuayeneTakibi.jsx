@@ -276,23 +276,6 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
                 </div>
               </div>
 
-              {/* Kurum + Sertifika No yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Kurum</label>
-                  <select value={form.kurum||"TSE"} onChange={e=>F("kurum",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                    {KURUM_LISTESI.map(k=><option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sertifika No</label>
-                  <input type="text" value={form.sertifikaNo||""} onChange={e=>F("sertifikaNo",e.target.value)}
-                    placeholder="Opsiyonel"
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-                </div>
-              </div>
-
               {/* Notlar */}
               <div>
                 <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
