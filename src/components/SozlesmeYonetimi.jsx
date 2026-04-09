@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Modal } from '../utils/constants'
 
 function gunKaldi(tarihStr){
@@ -221,7 +222,7 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
       ))}
 
       {/* Modal */}
-      {modal&&(
+      {modal&&createPortal(
         <Modal title={edit?"Sözleşme Düzenle":"Yeni Sözleşme"} onClose={close} onSave={save}>
 
           {/* Asansör / Bina seçimi */}
@@ -306,7 +307,7 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
           </div>
 
         </Modal>
-      )}
+      , document.body)}
     </div>
   );
 }

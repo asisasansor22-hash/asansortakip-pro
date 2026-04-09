@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Modal } from '../utils/constants'
 
 const KURUM_LISTESI = ["TSE","TÜRKAK","Belediye","Özel Akredite Kuruluş","Diğer"];
@@ -238,7 +239,7 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
       ))}
 
       {/* Modal */}
-      {modal&&(
+      {modal&&createPortal(
         <Modal title={edit?"Muayene Düzenle":"Yeni Muayene Kaydı"} onClose={close} onSave={save}>
 
           {/* Asansör / Bina seçimi */}
@@ -279,7 +280,7 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
           </div>
 
         </Modal>
-      )}
+      , document.body)}
     </div>
   );
 }
