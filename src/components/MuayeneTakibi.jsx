@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 
 const KURUM_LISTESI = ["TSE","TÜRKAK","Belediye","Özel Akredite Kuruluş","Diğer"];
-const SONUC_LISTESI = ["Geçti","Kaldı","Koşullu Geçti","Askıya Alındı"];
+const AY_ADLARI = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
 function gunKaldi(tarihStr){
   if(!tarihStr) return null;
@@ -13,204 +13,234 @@ function gunKaldi(tarihStr){
 
 function durumRenk(gk){
   if(gk===null) return "#64748b";
-  if(gk < 0) return "#ef4444";
-  if(gk <= 30) return "#f59e0b";
-  if(gk <= 60) return "#3b82f6";
+  if(gk < 0)   return "#ef4444";
+  if(gk <= 30)  return "#f59e0b";
+  if(gk <= 90)  return "#3b82f6";
   return "#34c759";
 }
 
 function durumMetin(gk){
   if(gk===null) return "Tarih yok";
-  if(gk < 0) return `${Math.abs(gk)} gün gecikti`;
-  if(gk === 0) return "Bugün!";
+  if(gk < 0)   return `${Math.abs(gk)} gün gecikti`;
+  if(gk === 0)  return "Bugün!";
   return `${gk} gün kaldı`;
 }
 
+// Muayene tarihinden +1 yıl hesapla
+function sonrakiHesapla(tarihStr){
+  if(!tarihStr) return "";
+  const d = new Date(tarihStr);
+  if(isNaN(d)) return "";
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().split("T")[0];
+}
+
+// "YYYY-MM" döndür, gruplama için
+function ayAnahtar(tarihStr){
+  if(!tarihStr) return "9999-99";
+  const d = new Date(tarihStr);
+  if(isNaN(d)) return "9999-99";
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+}
+
+function ayBaslik(anahtarStr){
+  if(anahtarStr === "9999-99") return "Tarih Belirtilmemiş";
+  const [yil, ay] = anahtarStr.split("-");
+  return AY_ADLARI[parseInt(ay)-1] + " " + yil;
+}
+
 function MuayeneKart({m, elev, onEdit, onDel}){
-  const gk = gunKaldi(m.sonrakiTarih);
+  const sonraki = m.sonrakiTarih || sonrakiHesapla(m.tarih);
+  const gk = gunKaldi(sonraki);
   const renk = durumRenk(gk);
-  const durum = durumMetin(gk);
-  const ikon = gk===null?"⚪":gk<0?"🔴":gk<=30?"🟡":gk<=60?"🔵":"🟢";
+  const ikon = gk===null?"⚪":gk<0?"🔴":gk<=30?"🟡":gk<=90?"🔵":"🟢";
+
   return (
-    <div style={{background:"var(--bg-panel)",borderRadius:14,padding:"12px 14px",marginBottom:8,
-      border:`1px solid ${renk}44`,borderLeft:`4px solid ${renk}`}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-        <div>
-          <div style={{fontWeight:700,fontSize:13,color:"var(--text)"}}>{elev?.ad || "?"}</div>
-          <div style={{fontSize:11,color:"var(--text-muted)"}}>{elev?.ilce}{elev?.semt ? " · "+elev.semt : ""}</div>
+    <div style={{background:"var(--bg-panel)",borderRadius:12,padding:"11px 14px",marginBottom:6,
+      border:`1px solid ${renk}33`,borderLeft:`4px solid ${renk}`,
+      display:"flex",alignItems:"center",gap:12}}>
+      {/* Sol: bina bilgisi */}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:13,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+          {elev?.ad||"?"}
         </div>
-        <div style={{display:"flex",gap:4}}>
-          <button onClick={()=>onEdit(m)} style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}>✏️</button>
-          <button onClick={()=>onDel(m.id)} style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}>🗑️</button>
+        <div style={{fontSize:11,color:"var(--text-muted)"}}>
+          {elev?.ilce}{elev?.semt?" · "+elev.semt:""}
         </div>
+        {m.tarih&&(
+          <div style={{fontSize:10,color:"var(--text-dim)",marginTop:2}}>
+            Son muayene: {m.tarih}
+          </div>
+        )}
+        {(m.sertifikaNo||m.kurum)&&(
+          <div style={{fontSize:10,color:"var(--text-dim)"}}>
+            {m.kurum&&<span>{m.kurum}</span>}
+            {m.kurum&&m.sertifikaNo&&<span> · </span>}
+            {m.sertifikaNo&&<span>No: {m.sertifikaNo}</span>}
+          </div>
+        )}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,fontSize:11}}>
-        <div><span style={{color:"var(--text-muted)"}}>Muayene Tarihi: </span><span style={{fontWeight:600}}>{m.tarih||"—"}</span></div>
-        <div><span style={{color:"var(--text-muted)"}}>Sonraki: </span><span style={{color:renk,fontWeight:700}}>{m.sonrakiTarih||"—"}</span></div>
-        <div><span style={{color:"var(--text-muted)"}}>Kurum: </span><span style={{fontWeight:600}}>{m.kurum||"—"}</span></div>
-        <div><span style={{color:"var(--text-muted)"}}>Sertifika: </span><span style={{fontWeight:600}}>{m.sertifikaNo||"—"}</span></div>
-        <div><span style={{color:"var(--text-muted)"}}>Sonuç: </span>
-          <span style={{fontWeight:700,color:m.sonuc==="Geçti"?"#34c759":m.sonuc==="Kaldı"?"#ef4444":"#f59e0b"}}>{m.sonuc||"—"}</span>
-        </div>
-        <div style={{color:renk,fontWeight:700}}>{ikon} {durum}</div>
+
+      {/* Orta: sonraki tarih + gün bilgisi */}
+      <div style={{textAlign:"center",flexShrink:0}}>
+        <div style={{fontSize:13,fontWeight:800,color:renk}}>{sonraki||"—"}</div>
+        <div style={{fontSize:11,fontWeight:600,color:renk}}>{ikon} {durumMetin(gk)}</div>
       </div>
-      {m.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:6,padding:"6px 8px",background:"var(--bg-elevated)",borderRadius:8}}>📝 {m.notlar}</div>}
+
+      {/* Sağ: butonlar */}
+      <div style={{display:"flex",gap:4,flexShrink:0}}>
+        <button onClick={()=>onEdit(m)}
+          style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}>✏️</button>
+        <button onClick={()=>onDel(m.id)}
+          style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}>🗑️</button>
+      </div>
     </div>
   );
 }
 
 export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
   const today = new Date().toISOString().split("T")[0];
-  const [filtre, setFiltre] = useState("tumu");
   const [ilce, setIlce] = useState("Tümü");
   const [modal, setModal] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState({});
-  const [seciliIlce, setSeciliIlce] = useState("");
   const F = (k,v) => setForm(p=>({...p,[k]:v}));
 
   const ilceler = useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
 
+  // Sonraki muayene tarihini her kayıt için normalize et
+  const normalized = useMemo(()=>muayeneler.map(m=>({
+    ...m,
+    sonrakiTarih: m.sonrakiTarih || sonrakiHesapla(m.tarih)
+  })),[muayeneler]);
+
   // Sayaçlar
-  const gecikti  = useMemo(()=>muayeneler.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g<0; }).length,[muayeneler]);
-  const yakin30  = useMemo(()=>muayeneler.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g>=0&&g<=30; }).length,[muayeneler]);
-  const yakin60  = useMemo(()=>muayeneler.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g>30&&g<=60; }).length,[muayeneler]);
+  const gecikti = useMemo(()=>normalized.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g<0; }).length,[normalized]);
+  const buAy    = useMemo(()=>{ const anahtar=ayAnahtar(today); return normalized.filter(m=>ayAnahtar(m.sonrakiTarih)===anahtar&&gunKaldi(m.sonrakiTarih)>=0).length; },[normalized,today]);
+  const sonraki30 = useMemo(()=>normalized.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g>0&&g<=30; }).length,[normalized]);
 
-  // Yaklaşan denetimler (sonraki 90 gün) — sıralı
-  const yaklaşanlar = useMemo(()=>
-    muayeneler
-      .filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g>=0&&g<=90; })
-      .sort((a,b)=>gunKaldi(a.sonrakiTarih)-gunKaldi(b.sonrakiTarih))
-  ,[muayeneler]);
+  // Filtrele ve sırala
+  const grouped = useMemo(()=>{
+    let list = [...normalized];
+    if(ilce!=="Tümü") list = list.filter(m=>(elevs.find(e=>e.id===m.asansorId)?.ilce||"")===ilce);
 
-  const filtered = useMemo(()=>{
-    let list = [...muayeneler];
-    if(ilce!=="Tümü") list = list.filter(m=>(elevs.find(x=>x.id===m.asansorId)?.ilce||"")===ilce);
-    if(filtre==="gecikti") list = list.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g<0; });
-    if(filtre==="yakin")   list = list.filter(m=>{ const g=gunKaldi(m.sonrakiTarih); return g!==null&&g>=0&&g<=60; });
-    if(filtre==="tamam")   list = list.filter(m=>m.sonuc==="Geçti"&&gunKaldi(m.sonrakiTarih)>=0);
-    // Yaklaşan tarih önce, gecikmiş en sona, tarihi olmayanlar en sona
+    // Sıralama: gecikmiş önce (en çok geciken önce), sonra yaklaşandan uzağa
     list.sort((a,b)=>{
       const ga = gunKaldi(a.sonrakiTarih);
       const gb = gunKaldi(b.sonrakiTarih);
       if(ga===null&&gb===null) return 0;
       if(ga===null) return 1;
       if(gb===null) return -1;
-      if(ga>=0&&gb>=0) return ga-gb; // yaklaşan: en yakın önce
-      if(ga<0&&gb<0) return gb-ga;   // gecikmiş: en çok geciken önce
-      if(ga>=0) return -1;           // yaklaşan gecikenden önce
-      return 1;
+      // Her ikisi de gecikmiş → en çok geciken önce (en küçük negatif = en eski)
+      if(ga<0&&gb<0) return ga-gb;
+      // Gecikmiş, diğeri değil → gecikmiş önce
+      if(ga<0) return -1;
+      if(gb<0) return 1;
+      // Her ikisi de gelecekte → en yakın önce
+      return ga-gb;
     });
-    return list;
-  },[muayeneler,filtre,ilce,elevs]);
+
+    // Aylara göre grupla
+    const aylar = {};
+    list.forEach(m=>{
+      const gk = gunKaldi(m.sonrakiTarih);
+      // Gecikmiş olanlar "Geçmiş" grubuna
+      const anahtar = gk!==null&&gk<0 ? "0000-00" : ayAnahtar(m.sonrakiTarih);
+      if(!aylar[anahtar]) aylar[anahtar]=[];
+      aylar[anahtar].push(m);
+    });
+
+    // Sıralı gruplar
+    return Object.keys(aylar).sort().map(k=>({
+      anahtar: k,
+      baslik: k==="0000-00"?"⚠️ Süresi Geçmiş":ayBaslik(k),
+      renk: k==="0000-00"?"#ef4444":"#3b82f6",
+      kayitlar: aylar[k]
+    }));
+  },[normalized,ilce,elevs]);
 
   const oEdit = (m) => {
     setEdit(m);
     setForm({...m});
-    setSeciliIlce(elevs.find(e=>e.id===m.asansorId)?.ilce||"");
     setModal(true);
   };
   const oAdd = () => {
     setEdit(null);
-    setForm({tarih:today,sonrakiTarih:"",asansorId:"",kurum:"TSE",sonuc:"Geçti",sertifikaNo:"",notlar:""});
-    setSeciliIlce("");
+    setForm({tarih:today,asansorId:"",kurum:"TSE",sertifikaNo:"",notlar:""});
     setModal(true);
   };
-  const close = () => { setModal(false); setEdit(null); setForm({}); setSeciliIlce(""); };
+  const close = () => { setModal(false); setEdit(null); setForm({}); };
   const save = () => {
     if(!form.asansorId){alert("Asansör seçiniz!");return;}
-    const d = {...form, asansorId:+form.asansorId||form.asansorId};
+    // Sonraki tarihi otomatik hesapla
+    const sonrakiTarih = sonrakiHesapla(form.tarih);
+    const d = {...form, asansorId:+form.asansorId||form.asansorId, sonrakiTarih};
     if(edit) setMuayeneler(p=>p.map(x=>x.id===edit.id?{...x,...d}:x));
     else setMuayeneler(p=>[...p,{...d,id:Date.now()}]);
     close();
   };
   const onDel = (id) => { if(window.confirm("Bu muayene kaydı silinsin mi?")) setMuayeneler(p=>p.filter(x=>x.id!==id)); };
 
-  const formIlce = seciliIlce || (edit ? elevs.find(e=>e.id===form.asansorId)?.ilce||"" : "");
+  const onizlemeSonraki = sonrakiHesapla(form.tarih);
 
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
-        <h2 style={{fontSize:18,fontWeight:900,margin:0}}>🔍 Periyodik Muayene Takibi</h2>
+        <h2 style={{fontSize:18,fontWeight:900,margin:0}}>📋 Yıllık Muayene Takibi</h2>
         <button onClick={oAdd} style={{background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Muayene Ekle</button>
       </div>
 
-      {/* Uyarı sayaçları */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
+      {/* Sayaçlar */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
         {[
-          {label:"Gecikmiş",count:gecikti,renk:"#ef4444",icon:"🔴",k:"gecikti"},
-          {label:"30 Gün İçinde",count:yakin30,renk:"#f59e0b",icon:"🟡",k:"yakin"},
-          {label:"30–60 Gün",count:yakin60,renk:"#3b82f6",icon:"🔵",k:"tumu"},
+          {label:"Süresi Geçmiş",count:gecikti,renk:"#ef4444",ikon:"🔴"},
+          {label:"Bu Ay",count:buAy,renk:"#f59e0b",ikon:"🟡"},
+          {label:"30 Gün İçinde",count:sonraki30,renk:"#3b82f6",ikon:"🔵"},
         ].map(x=>(
-          <button key={x.k} onClick={()=>setFiltre(filtre===x.k?"tumu":x.k)}
-            style={{background:filtre===x.k?`${x.renk}22`:"var(--bg-panel)",border:`2px solid ${filtre===x.k?x.renk:x.renk+"44"}`,
-              borderRadius:12,padding:"10px 8px",cursor:"pointer",textAlign:"center"}}>
-            <div style={{fontSize:20,fontWeight:900,color:x.renk}}>{x.count}</div>
-            <div style={{fontSize:10,color:filtre===x.k?x.renk:"var(--text-muted)",fontWeight:600,marginTop:2}}>{x.icon} {x.label}</div>
-          </button>
+          <div key={x.label} style={{background:"var(--bg-panel)",border:`1px solid ${x.renk}44`,
+            borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:900,color:x.renk}}>{x.count}</div>
+            <div style={{fontSize:10,color:"var(--text-muted)",fontWeight:600,marginTop:2}}>{x.ikon} {x.label}</div>
+          </div>
         ))}
       </div>
 
-      {/* Yaklaşan Denetimler — özet şerit */}
-      {yaklaşanlar.length>0&&filtre==="tumu"&&ilce==="Tümü"&&(
-        <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#3b82f6",marginBottom:8}}>📅 Yaklaşan Denetimler ({yaklaşanlar.length})</div>
-          {yaklaşanlar.slice(0,5).map(m=>{
-            const elev = elevs.find(e=>e.id===m.asansorId);
-            const gk = gunKaldi(m.sonrakiTarih);
-            const renk = durumRenk(gk);
-            return (
-              <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",
-                padding:"5px 0",borderBottom:"0.5px solid rgba(59,130,246,0.15)"}}>
-                <div>
-                  <span style={{fontSize:12,fontWeight:600,color:"var(--text)"}}>{elev?.ad||"?"}</span>
-                  <span style={{fontSize:11,color:"var(--text-muted)",marginLeft:6}}>{elev?.ilce}</span>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:renk}}>{m.sonrakiTarih}</div>
-                  <div style={{fontSize:10,color:renk}}>{gk===0?"Bugün!":gk+" gün kaldı"}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Filtre çubuğu */}
-      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+      {/* İlçe filtresi */}
+      <div style={{marginBottom:12}}>
         <select value={ilce} onChange={e=>setIlce(e.target.value)}
           style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"7px 10px",color:"var(--text)",fontSize:12,outline:"none",cursor:"pointer"}}>
           <option value="Tümü">Tüm İlçeler</option>
           {ilceler.map(i=><option key={i} value={i}>{i}</option>)}
         </select>
-        {[
-          {k:"tumu",label:"Tümü"},
-          {k:"gecikti",label:"Gecikmiş"},
-          {k:"yakin",label:"Yaklaşan"},
-          {k:"tamam",label:"Güncel"},
-        ].map(x=>(
-          <button key={x.k} onClick={()=>setFiltre(x.k)}
-            style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${filtre===x.k?"var(--accent)":"var(--border)"}`,
-              background:filtre===x.k?"var(--accent)":"var(--bg-elevated)",color:filtre===x.k?"#fff":"var(--text-muted)",fontSize:11,cursor:"pointer",fontWeight:600}}>
-            {x.label}
-          </button>
-        ))}
       </div>
 
-      {filtered.length===0&&(
+      {/* Gruplu liste */}
+      {grouped.length===0&&(
         <div style={{textAlign:"center",padding:32,color:"var(--text-dim)",fontSize:14}}>
           {muayeneler.length===0?"Henüz muayene kaydı yok. '+ Muayene Ekle' ile başlayın.":"Filtre sonucu boş."}
         </div>
       )}
-      {filtered.map(m=>(
-        <MuayeneKart key={m.id} m={m} elev={elevs.find(e=>e.id===m.asansorId)} onEdit={oEdit} onDel={onDel}/>
+      {grouped.map(grup=>(
+        <div key={grup.anahtar} style={{marginBottom:16}}>
+          {/* Ay başlığı */}
+          <div style={{fontSize:12,fontWeight:800,color:grup.renk,marginBottom:8,
+            padding:"5px 10px",background:`${grup.renk}11`,borderRadius:8,
+            display:"inline-flex",alignItems:"center",gap:6}}>
+            📅 {grup.baslik}
+            <span style={{background:grup.renk,color:"#fff",borderRadius:20,
+              fontSize:10,padding:"1px 7px",fontWeight:900}}>{grup.kayitlar.length}</span>
+          </div>
+          {grup.kayitlar.map(m=>(
+            <MuayeneKart key={m.id} m={m} elev={elevs.find(e=>e.id===m.asansorId)} onEdit={oEdit} onDel={onDel}/>
+          ))}
+        </div>
       ))}
 
       {/* Modal */}
       {modal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}
           onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:560,maxHeight:"90vh",overflow:"auto"}}>
+          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto"}}>
             <div style={{width:36,height:4,background:"var(--border)",borderRadius:10,margin:"10px auto 0"}}/>
             <div style={{padding:"14px 18px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
               <div style={{fontWeight:800,fontSize:16}}>{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
@@ -218,56 +248,35 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
             </div>
             <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:10}}>
 
-              {/* İlçe seçimi */}
+              {/* Asansör / Bina seçimi — ilçeye göre gruplu */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>İlçe</label>
-                <select value={formIlce} onChange={e=>{setSeciliIlce(e.target.value);F("asansorId","");}}
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
+                <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
                   style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  <option value="">— İlçe seçin —</option>
-                  {ilceler.map(i=><option key={i} value={i}>{i}</option>)}
+                  <option value="">— Bina seçin —</option>
+                  {ilceler.map(ilce=>(
+                    <optgroup key={ilce} label={ilce}>
+                      {elevs.filter(e=>e.ilce===ilce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
 
-              {/* Asansör seçimi */}
-              {formIlce&&(
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
-                  <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                    <option value="">— Bina seçin —</option>
-                    {elevs.filter(e=>e.ilce===formIlce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
-                  </select>
+              {/* Muayene tarihi */}
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Muayene Tarihi *</label>
+                <input type="date" value={form.tarih||""} onChange={e=>F("tarih",e.target.value)}
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
+              </div>
+
+              {/* Sonraki tarih önizleme (otomatik) */}
+              {onizlemeSonraki&&(
+                <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",
+                  borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:12,color:"var(--text-muted)",fontWeight:600}}>🔄 Sonraki Muayene (otomatik)</span>
+                  <span style={{fontSize:14,fontWeight:800,color:"#3b82f6"}}>{onizlemeSonraki}</span>
                 </div>
               )}
-
-              {/* Tarih alanları — metin girişi */}
-              {[
-                {label:"Muayene Tarihi *",key:"tarih",hint:"YYYY-AA-GG"},
-                {label:"Sonraki Muayene Tarihi *",key:"sonrakiTarih",hint:"YYYY-AA-GG"},
-              ].map(f=>(
-                <div key={f.key}>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>{f.label}</label>
-                  <input
-                    type="text"
-                    value={form[f.key]||""}
-                    onChange={e=>F(f.key,e.target.value)}
-                    placeholder={f.hint}
-                    maxLength={10}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
-                  {form[f.key]&&gunKaldi(form[f.key])!==null&&(
-                    <div style={{fontSize:11,marginTop:3,color:durumRenk(gunKaldi(form[f.key])),fontWeight:600}}>
-                      {durumMetin(gunKaldi(form[f.key]))}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Sertifika No */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sertifika / Belge No</label>
-                <input type="text" value={form.sertifikaNo||""} onChange={e=>F("sertifikaNo",e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
-              </div>
 
               {/* Kurum */}
               <div>
@@ -278,19 +287,19 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
                 </select>
               </div>
 
-              {/* Sonuç */}
+              {/* Sertifika No */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sonuç</label>
-                <select value={form.sonuc||"Geçti"} onChange={e=>F("sonuc",e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  {SONUC_LISTESI.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sertifika / Belge No</label>
+                <input type="text" value={form.sertifikaNo||""} onChange={e=>F("sertifikaNo",e.target.value)}
+                  placeholder="Opsiyonel"
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
               </div>
 
               {/* Notlar */}
               <div>
                 <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
-                <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={3}
+                <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={2}
+                  placeholder="Opsiyonel"
                   style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
               </div>
             </div>

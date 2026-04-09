@@ -76,7 +76,6 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
   const [modal, setModal] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState({});
-  const [seciliIlce, setSeciliIlce] = useState("");
   const F = (k,v) => setForm(p=>({...p,[k]:v}));
 
   const ilceler = useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -115,16 +114,14 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
   const oEdit = (s) => {
     setEdit(s);
     setForm({...s});
-    setSeciliIlce(elevs.find(e=>e.id===s.asansorId)?.ilce||"");
     setModal(true);
   };
   const oAdd = () => {
     setEdit(null);
     setForm({baslangic:today,bitis:"",ucret:"",tur:"Bakım",notlar:""});
-    setSeciliIlce("");
     setModal(true);
   };
-  const close = () => { setModal(false); setEdit(null); setForm({}); setSeciliIlce(""); };
+  const close = () => { setModal(false); setEdit(null); setForm({}); };
   const save = () => {
     if(!form.asansorId){alert("Asansör seçiniz!");return;}
     const d = {...form, asansorId:+form.asansorId||form.asansorId, ucret:+form.ucret||0};
@@ -133,8 +130,6 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
     close();
   };
   const onDel = (id) => { if(window.confirm("Bu sözleşme silinsin mi?")) setSozlesmeler(p=>p.filter(x=>x.id!==id)); };
-
-  const formIlce = seciliIlce || (edit ? elevs.find(e=>e.id===form.asansorId)?.ilce||"" : "");
 
   return (
     <div>
@@ -236,27 +231,19 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
             </div>
             <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:10}}>
 
-              {/* İlçe seçimi */}
+              {/* Asansör / Bina seçimi — ilçeye göre gruplu */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>İlçe</label>
-                <select value={formIlce} onChange={e=>{setSeciliIlce(e.target.value);F("asansorId","");}}
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
+                <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
                   style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  <option value="">— İlçe seçin —</option>
-                  {ilceler.map(i=><option key={i} value={i}>{i}</option>)}
+                  <option value="">— Bina seçin —</option>
+                  {ilceler.map(ilce=>(
+                    <optgroup key={ilce} label={ilce}>
+                      {elevs.filter(e=>e.ilce===ilce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
-
-              {/* Asansör seçimi */}
-              {formIlce&&(
-                <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
-                  <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                    <option value="">— Bina seçin —</option>
-                    {elevs.filter(e=>e.ilce===formIlce).map(e=><option key={e.id} value={e.id}>{e.ad}</option>)}
-                  </select>
-                </div>
-              )}
 
               {/* Tarih alanları — manuel metin girişi */}
               {[
