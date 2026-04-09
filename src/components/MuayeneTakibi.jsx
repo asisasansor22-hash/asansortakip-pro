@@ -239,7 +239,7 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
       {/* Modal */}
       {modal&&(
         <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div className="ios-modal-sheet" style={{maxWidth:520,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <div className="ios-modal-sheet" style={{maxWidth:520,minHeight:"70vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
             <div className="ios-modal-handle" style={{flexShrink:0}}/>
             <div className="ios-modal-header" style={{flexShrink:0}}>
               <div className="ios-modal-title">{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
