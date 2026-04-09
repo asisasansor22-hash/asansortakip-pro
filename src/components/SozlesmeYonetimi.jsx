@@ -221,20 +221,20 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
 
       {/* Modal */}
       {modal&&(
-        <div style={{position:"fixed",top:0,right:0,bottom:0,left:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}
-          onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:560}}>
-            <div style={{padding:"12px 16px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
-              <div style={{fontWeight:800,fontSize:15}}>{edit?"Sözleşme Düzenle":"Yeni Sözleşme"}</div>
-              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
+          <div className="ios-modal-sheet" style={{maxWidth:560}}>
+            <div className="ios-modal-handle"/>
+            <div className="ios-modal-header">
+              <div className="ios-modal-title">{edit?"Sözleşme Düzenle":"Yeni Sözleşme"}</div>
+              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}}>✕</button>
             </div>
-            <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
+            <div className="ios-modal-body" style={{display:"flex",flexDirection:"column",gap:12}}>
 
               {/* Asansör / Bina seçimi */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Asansör / Bina *</label>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
                 <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
                   <option value="">— Bina seçin —</option>
                   {ilceler.map(ilce=>(
                     <optgroup key={ilce} label={ilce}>
@@ -245,20 +245,20 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
               </div>
 
               {/* Başlangıç + Bitiş yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Başlangıç *</label>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Başlangıç *</label>
                   <input type="text" value={form.baslangic||""} onChange={e=>F("baslangic",e.target.value)}
                     placeholder="YYYY-AA-GG" maxLength={10}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
                 </div>
                 <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Bitiş *</label>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Bitiş *</label>
                   <input type="text" value={form.bitis||""} onChange={e=>F("bitis",e.target.value)}
                     placeholder="YYYY-AA-GG" maxLength={10}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
                   {form.bitis&&gunKaldi(form.bitis)!==null&&(
-                    <div style={{fontSize:10,marginTop:2,color:durumRenk(gunKaldi(form.bitis)),fontWeight:600}}>
+                    <div style={{fontSize:11,marginTop:3,color:durumRenk(gunKaldi(form.bitis)),fontWeight:600}}>
                       {durumMetin(gunKaldi(form.bitis))||"Geçerli tarih"}
                     </div>
                   )}
@@ -266,16 +266,16 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
               </div>
 
               {/* Ücret + Tür yan yana */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Aylık Ücret (₺)</label>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Aylık Ücret (₺)</label>
                   <input type="number" value={form.ucret||""} onChange={e=>F("ucret",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div>
-                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Tür</label>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Tür</label>
                   <select value={form.tur||"Bakım"} onChange={e=>F("tur",e.target.value)}
-                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
                     {["Bakım","Komple Bakım","Onarım","Modernizasyon","Diğer"].map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -283,14 +283,14 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
 
               {/* Notlar */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Notlar</label>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
                 <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={2}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
               </div>
 
               {/* Fotoğraflar */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>📷 Fotoğraflar</label>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>📷 Fotoğraflar</label>
                 <input type="file" accept="image/*" multiple
                   onChange={e=>{
                     const files=Array.from(e.target.files);
@@ -305,17 +305,17 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
                   }}
                   style={{display:"none"}} id="sozlesme-foto-input"/>
                 <label htmlFor="sozlesme-foto-input"
-                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",background:"var(--bg-elevated)",border:"1px dashed var(--border)",borderRadius:8,cursor:"pointer",fontSize:12,color:"var(--text-muted)",fontWeight:600}}>
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",background:"var(--bg-elevated)",border:"1px dashed var(--border)",borderRadius:8,cursor:"pointer",fontSize:12,color:"var(--text-muted)",fontWeight:600}}>
                   + Fotoğraf Ekle
                 </label>
                 {form.fotograflar&&form.fotograflar.length>0&&(
-                  <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
                     {form.fotograflar.map((f,i)=>(
                       <div key={i} style={{position:"relative"}}>
                         <img src={f} alt={"foto"+i}
-                          style={{width:56,height:56,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                          style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
                         <button onClick={()=>F("fotograflar",form.fotograflar.filter((_,j)=>j!==i))}
-                          style={{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>
+                          style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>
                           ×
                         </button>
                       </div>
@@ -324,9 +324,9 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
                 )}
               </div>
             </div>
-            <div style={{padding:"6px 16px 16px",display:"flex",gap:10}}>
-              <button onClick={close} style={{flex:1,padding:"11px",background:"var(--bg-elevated)",border:"none",borderRadius:12,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}}>İptal</button>
-              <button onClick={save} style={{flex:1,padding:"11px",background:"var(--accent)",border:"none",borderRadius:12,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:14}}>Kaydet</button>
+            <div style={{padding:"8px 18px 10px",display:"flex",gap:10}}>
+              <button onClick={close} style={{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}>İptal</button>
+              <button onClick={save} style={{flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}>Kaydet</button>
             </div>
           </div>
         </div>
