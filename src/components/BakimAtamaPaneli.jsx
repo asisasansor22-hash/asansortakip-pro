@@ -403,39 +403,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
         )
       )
 
-      /* İlçe seçilmemişse genel özet */
-      , !seciliIlce&&(
-        React.createElement('div', { style: {background:"#141824",borderRadius:12,border:"1px solid #2a3050",padding:"16px"},}
-          , React.createElement('div', { style: {fontSize:12,color:"#64748b",marginBottom:10,fontWeight:600},}
-            , gorunum==="bekleyen"?"Atanmayı bekleyen binaları görmek için ilçeye tıklayın:"
-             :gorunum==="atandi"?"Bakımcıya atanan binaları görmek için ilçeye tıklayın:"
-             :"Tamamlanan bakımları görmek için ilçeye tıklayın:"
-          )
-          , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:6},}
-            , ilceler.map(ilce=>{
-              const c=getIlceRenk(ilce);
-              const bek=ilceBekleyen(ilce);
-              const ata=ilceAtanan(ilce);
-              const tam=ilceTamam(ilce);
-              const toplam=(elevByIlce[ilce]||[]).length;
-              const pct=toplam>0?Math.round(tam/toplam*100):0;
-              return(
-                React.createElement('div', { key: ilce, style: {background:"#0d1321",borderRadius:9,padding:"10px 12px",border:"1px solid #1e2640",borderLeft:"3px solid "+c},}
-                  , React.createElement('div', { style: {fontWeight:700,fontSize:12,color:c,marginBottom:5},}, ilce)
-                  , React.createElement('div', { style: {display:"flex",gap:8,fontSize:10},}
-                    , React.createElement('span', { style: {color:"#f59e0b"},}, "⏳ " , bek)
-                    , React.createElement('span', { style: {color:"#8b5cf6"},}, "🔧 " , ata)
-                    , React.createElement('span', { style: {color:"#10b981"},}, "✅ " , tam)
-                  )
-                  , React.createElement('div', { style: {marginTop:6,height:3,background:"#1e2640",borderRadius:10},}
-                    , React.createElement('div', { style: {height:"100%",background:pct===100?"#10b981":c,borderRadius:10,width:pct+"%"},})
-                  )
-                )
-              );
-            })
-          )
-        )
-      )
+      /* İlçe seçilmemişse genel özet - kaldırıldı */
     )
   );
 }
