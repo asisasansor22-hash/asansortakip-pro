@@ -239,13 +239,13 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
       {/* Modal */}
       {modal&&(
         <div className="ios-modal-overlay" style={{zIndex:3000}} onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div className="ios-modal-sheet" style={{maxWidth:520,minHeight:"60vh"}}>
-            <div className="ios-modal-handle"/>
-            <div className="ios-modal-header">
+          <div className="ios-modal-sheet" style={{maxWidth:520,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div className="ios-modal-handle" style={{flexShrink:0}}/>
+            <div className="ios-modal-header" style={{flexShrink:0}}>
               <div className="ios-modal-title">{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
               <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600}}>✕</button>
             </div>
-            <div className="ios-modal-body" style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="ios-modal-body" style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
 
               {/* Asansör / Bina seçimi */}
               <div>
@@ -284,7 +284,7 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
                   style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
               </div>
             </div>
-            <div style={{padding:"8px 18px 10px",display:"flex",gap:10}}>
+            <div style={{padding:"8px 18px 10px",display:"flex",gap:10,flexShrink:0}}>
               <button onClick={close} style={{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}>İptal</button>
               <button onClick={save} style={{flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}>Kaydet</button>
             </div>
