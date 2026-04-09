@@ -56,6 +56,15 @@ function SozlesmeKart({s, elev, onEdit, onDel}){
         </div>
       )}
       {s.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:6,padding:"6px 8px",background:"var(--bg-elevated)",borderRadius:8}}>📝 {s.notlar}</div>}
+  {s.fotograflar&&s.fotograflar.length>0&&(
+    <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
+      {s.fotograflar.map((f,i)=>(
+        <img key={i} src={f} alt={"Fotoğraf "+(i+1)}
+          style={{width:64,height:64,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)",cursor:"pointer"}}
+          onClick={()=>window.open(f,"_blank")}/>
+      ))}
+    </div>
+  )}
     </div>
   );
 }
@@ -217,9 +226,9 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
 
       {/* Modal */}
       {modal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}
           onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div style={{background:"var(--bg-panel)",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,maxHeight:"90vh",overflow:"auto"}}>
+          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:560,maxHeight:"90vh",overflow:"auto"}}>
             <div style={{width:36,height:4,background:"var(--border)",borderRadius:10,margin:"10px auto 0"}}/>
             <div style={{padding:"14px 18px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
               <div style={{fontWeight:800,fontSize:16}}>{edit?"Sözleşme Düzenle":"Yeni Sözleşme"}</div>
@@ -292,6 +301,42 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
                 <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
                 <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={3}
                   style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+              </div>
+
+              {/* Fotoğraflar */}
+              <div>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>📷 Fotoğraflar</label>
+                <input type="file" accept="image/*" multiple
+                  onChange={e=>{
+                    const files=Array.from(e.target.files);
+                    files.forEach(file=>{
+                      const reader=new FileReader();
+                      reader.onload=ev=>{
+                        F("fotograflar",[...(form.fotograflar||[]),ev.target.result]);
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                    e.target.value="";
+                  }}
+                  style={{display:"none"}} id="sozlesme-foto-input"/>
+                <label htmlFor="sozlesme-foto-input"
+                  style={{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",background:"var(--bg-elevated)",border:"1px dashed var(--border)",borderRadius:8,cursor:"pointer",fontSize:12,color:"var(--text-muted)",fontWeight:600}}>
+                  + Fotoğraf Ekle
+                </label>
+                {form.fotograflar&&form.fotograflar.length>0&&(
+                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                    {form.fotograflar.map((f,i)=>(
+                      <div key={i} style={{position:"relative"}}>
+                        <img src={f} alt={"foto"+i}
+                          style={{width:72,height:72,objectFit:"cover",borderRadius:8,border:"1px solid var(--border)"}}/>
+                        <button onClick={()=>F("fotograflar",form.fotograflar.filter((_,j)=>j!==i))}
+                          style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div style={{padding:"8px 18px 20px",display:"flex",gap:10}}>

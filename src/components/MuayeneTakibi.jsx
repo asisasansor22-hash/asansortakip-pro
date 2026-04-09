@@ -208,9 +208,9 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
 
       {/* Modal */}
       {modal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}
           onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div style={{background:"var(--bg-panel)",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:560,maxHeight:"90vh",overflow:"auto"}}>
+          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:560,maxHeight:"90vh",overflow:"auto"}}>
             <div style={{width:36,height:4,background:"var(--border)",borderRadius:10,margin:"10px auto 0"}}/>
             <div style={{padding:"14px 18px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
               <div style={{fontWeight:800,fontSize:16}}>{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
