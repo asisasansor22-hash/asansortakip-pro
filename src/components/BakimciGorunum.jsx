@@ -85,8 +85,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     var hh=now.getHours().toString().padStart(2,"0");
     var mi=now.getMinutes().toString().padStart(2,"0");
     var simdi=yyyy+"-"+mm+"-"+dd+" "+hh+":"+mi;
-    setMaints(p=>p.map(x=>x.id===m.id?{...x,yapildi:true,yapildiSaat:simdi}:x));
-    // Ödeme alındı mı diye sor
+    // yapildi:true kaydı modal onaylanınca yapılacak (X ile iptal edilebilsin)
     setOdemeSorModal({m:m,elev:elev,yapildiSaat:simdi});
     setOdemeMiktar("");
   };
@@ -99,8 +98,8 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     var m=odemeSorModal.m;
     var elev=odemeSorModal.elev;
     var yapildiSaat=odemeSorModal.yapildiSaat;
-    // Bakım kaydına ödeme bilgisi ekle
-    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{alinanTutar:tutar,odendi:true}):x;});});
+    // Bakım kaydına tamamlandı + ödeme bilgisi ekle
+    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:true}):x;});});
     // Son ödemeler listesine ekle
     var parts=yapildiSaat.split(" ");
     var tarih=parts[0]||"";
@@ -452,7 +451,11 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                     , React.createElement('div', {style:{fontSize:13,color:"var(--text-muted)",textAlign:"center",fontWeight:600}}, "Ödeme alındı mı?")
                     , React.createElement('div', {style:{display:"flex",gap:10}}
                       , React.createElement('button', {
-                          onClick:function(){setOdemeSorModal(null);setOdemeMiktar("");},
+                          onClick:function(){
+                            var o=odemeSorModal;
+                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat}):x;});});
+                            setOdemeSorModal(null);setOdemeMiktar("");
+                          },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
                         }, "❌ Hayır")
                       , React.createElement('button', {
