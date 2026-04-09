@@ -240,19 +240,18 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
       {modal&&(
         <div style={{position:"fixed",top:0,right:0,bottom:0,left:0,background:"rgba(0,0,0,0.7)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}
           onClick={e=>{if(e.target===e.currentTarget)close();}}>
-          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:500,maxHeight:"calc(100vh - 32px)",overflowY:"auto"}}>
-            <div style={{width:36,height:4,background:"var(--border)",borderRadius:10,margin:"10px auto 0"}}/>
-            <div style={{padding:"14px 18px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
-              <div style={{fontWeight:800,fontSize:16}}>{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
-              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <div style={{background:"var(--bg-panel)",borderRadius:20,width:"100%",maxWidth:500}}>
+            <div style={{padding:"12px 16px 8px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"0.5px solid var(--border)"}}>
+              <div style={{fontWeight:800,fontSize:15}}>{edit?"Muayene Düzenle":"Yeni Muayene Kaydı"}</div>
+              <button onClick={close} style={{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:15,cursor:"pointer",borderRadius:20,width:28,height:28,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
             </div>
-            <div style={{padding:"14px 18px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
 
-              {/* Asansör / Bina seçimi — ilçeye göre gruplu */}
+              {/* Asansör / Bina seçimi */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Asansör / Bina *</label>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Asansör / Bina *</label>
                 <select value={form.asansorId||""} onChange={e=>F("asansorId",+e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
                   <option value="">— Bina seçin —</option>
                   {ilceler.map(ilce=>(
                     <optgroup key={ilce} label={ilce}>
@@ -262,50 +261,49 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
                 </select>
               </div>
 
-              {/* Muayene tarihi */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Muayene Tarihi *</label>
-                <input type="date" value={form.tarih||""} onChange={e=>F("tarih",e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
-              </div>
-
-              {/* Sonraki tarih önizleme (otomatik) */}
-              {onizlemeSonraki&&(
-                <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.25)",
-                  borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:12,color:"var(--text-muted)",fontWeight:600}}>🔄 Sonraki Muayene (otomatik)</span>
-                  <span style={{fontSize:14,fontWeight:800,color:"#3b82f6"}}>{onizlemeSonraki}</span>
+              {/* Muayene tarihi + Sonraki önizleme yan yana */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Muayene Tarihi *</label>
+                  <input type="date" value={form.tarih||""} onChange={e=>F("tarih",e.target.value)}
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:12,outline:"none",boxSizing:"border-box",cursor:"pointer"}}/>
                 </div>
-              )}
-
-              {/* Kurum */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Muayene Kurumu</label>
-                <select value={form.kurum||"TSE"} onChange={e=>F("kurum",e.target.value)}
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
-                  {KURUM_LISTESI.map(k=><option key={k} value={k}>{k}</option>)}
-                </select>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Sonraki (otomatik)</label>
+                  <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:8,padding:"8px 10px",fontSize:13,fontWeight:800,color:"#3b82f6",minHeight:36,display:"flex",alignItems:"center"}}>
+                    {onizlemeSonraki||"—"}
+                  </div>
+                </div>
               </div>
 
-              {/* Sertifika No */}
-              <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Sertifika / Belge No</label>
-                <input type="text" value={form.sertifikaNo||""} onChange={e=>F("sertifikaNo",e.target.value)}
-                  placeholder="Opsiyonel"
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+              {/* Kurum + Sertifika No yan yana */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Kurum</label>
+                  <select value={form.kurum||"TSE"} onChange={e=>F("kurum",e.target.value)}
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",cursor:"pointer"}}>
+                    {KURUM_LISTESI.map(k=><option key={k} value={k}>{k}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Sertifika No</label>
+                  <input type="text" value={form.sertifikaNo||""} onChange={e=>F("sertifikaNo",e.target.value)}
+                    placeholder="Opsiyonel"
+                    style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+                </div>
               </div>
 
               {/* Notlar */}
               <div>
-                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}}>Notlar</label>
+                <label style={{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:3}}>Notlar</label>
                 <textarea value={form.notlar||""} onChange={e=>F("notlar",e.target.value)} rows={2}
                   placeholder="Opsiyonel"
-                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+                  style={{width:"100%",background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"8px 10px",color:"var(--text)",fontSize:13,outline:"none",resize:"none",boxSizing:"border-box"}}/>
               </div>
             </div>
-            <div style={{padding:"8px 18px 20px",display:"flex",gap:10}}>
-              <button onClick={close} style={{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}>İptal</button>
-              <button onClick={save} style={{flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}>Kaydet</button>
+            <div style={{padding:"6px 16px 16px",display:"flex",gap:10}}>
+              <button onClick={close} style={{flex:1,padding:"11px",background:"var(--bg-elevated)",border:"none",borderRadius:12,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}}>İptal</button>
+              <button onClick={save} style={{flex:1,padding:"11px",background:"var(--accent)",border:"none",borderRadius:12,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:14}}>Kaydet</button>
             </div>
           </div>
         </div>
