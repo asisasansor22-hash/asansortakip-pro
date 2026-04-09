@@ -1,24 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="80" fill="#0f1117"/>
-  <!-- Asansör kabini -->
-  <rect x="136" y="100" width="240" height="280" rx="16" fill="none" stroke="#6366f1" stroke-width="16"/>
-  <!-- Sol ray -->
-  <rect x="116" y="80" width="12" height="320" rx="6" fill="#6366f1" opacity="0.5"/>
-  <!-- Sağ ray -->
-  <rect x="384" y="80" width="12" height="320" rx="6" fill="#6366f1" opacity="0.5"/>
-  <!-- Kapı çizgisi -->
-  <line x1="256" y1="116" x2="256" y2="364" stroke="#6366f1" stroke-width="8" stroke-dasharray="0"/>
-  <!-- A harfi -->
-  <text x="256" y="285" font-family="Arial, sans-serif" font-size="130" font-weight="900" fill="#6366f1" text-anchor="middle" dominant-baseline="middle">A</text>
+  <!-- Arka plan -->
+  <rect width="512" height="512" rx="80" fill="#0057B8"/>
+
+  <!-- Sol mavi yukarı ok -->
+  <polygon points="90,290 130,290 130,400 170,400 170,290 210,290 150,170" fill="#FFFFFF"/>
+
+  <!-- Asansör kabini (sağ taraf) -->
+  <rect x="240" y="130" width="200" height="260" rx="14" fill="#FFFFFF"/>
+  <!-- Kapı çizgisi ortası -->
+  <line x1="340" y1="148" x2="340" y2="372" stroke="#0057B8" stroke-width="8"/>
+  <!-- Üst ray -->
+  <rect x="248" y="130" width="184" height="16" rx="4" fill="#CCE0FF"/>
+  <!-- Sol kapı kol -->
+  <rect x="312" y="230" width="10" height="40" rx="5" fill="#0057B8" opacity="0.5"/>
+  <!-- Sağ kapı kol -->
+  <rect x="358" y="230" width="10" height="40" rx="5" fill="#0057B8" opacity="0.5"/>
   <!-- Makine dairesi -->
-  <rect x="196" y="56" width="120" height="44" rx="8" fill="#6366f1" opacity="0.3"/>
-  <rect x="236" y="64" width="40" height="28" rx="6" fill="#6366f1"/>
-  <!-- Alt panel -->
-  <rect x="136" y="380" width="240" height="40" rx="8" fill="#6366f1" opacity="0.15"/>
-  <!-- Katta gösteri ışıkları -->
-  <circle cx="200" cy="400" r="8" fill="#6366f1" opacity="0.6"/>
-  <circle cx="232" cy="400" r="8" fill="#6366f1"/>
-  <circle cx="264" cy="400" r="8" fill="#6366f1" opacity="0.6"/>
-  <circle cx="296" cy="400" r="8" fill="#6366f1" opacity="0.3"/>
-  <circle cx="328" cy="400" r="8" fill="#6366f1" opacity="0.3"/>
+  <rect x="270" y="92" width="140" height="38" rx="8" fill="#FFFFFF" opacity="0.25"/>
+  <rect x="312" y="100" width="56" height="22" rx="6" fill="#FFFFFF" opacity="0.7"/>
+  <!-- Alt zemin çizgisi -->
+  <rect x="240" y="375" width="200" height="15" rx="4" fill="#CCE0FF"/>
 </svg>
