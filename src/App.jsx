@@ -24,6 +24,81 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
 function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
 
+function routeAddressKey(e){
+  return [e.ad||"", e.semt||"", e.adres||"", e.ilce||""].join(" | ");
+}
+
+function routeAddressLabel(e){
+  return (e.semt?e.semt+" Mahallesi, ":"") + (e.adres||"") + (e.ilce?", "+e.ilce+", İstanbul":"");
+}
+
+function deg2rad(v){ return v*(Math.PI/180); }
+function haversineKm(a,b){
+  if(!a||!b) return Infinity;
+  var R=6371;
+  var dLat=deg2rad((b.lat||0)-(a.lat||0));
+  var dLon=deg2rad((b.lng||0)-(a.lng||0));
+  var lat1=deg2rad(a.lat||0);
+  var lat2=deg2rad(b.lat||0);
+  var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  var c=2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+  return R*c;
+}
+
+function optimizeRoute(points,startPoint){
+  if(points.length<=1) return points.slice();
+  var remaining=points.slice();
+  var ordered=[];
+  var current=startPoint||remaining[0].coords;
+  while(remaining.length){
+    var bestIdx=0;
+    var bestScore=Infinity;
+    remaining.forEach(function(p,i){
+      var score=current?haversineKm(current,p.coords):i;
+      if(score<bestScore){bestScore=score;bestIdx=i;}
+    });
+    var next=remaining.splice(bestIdx,1)[0];
+    ordered.push(next);
+    current=next.coords;
+  }
+  if(ordered.length<4) return ordered;
+  var improved=true;
+  while(improved){
+    improved=false;
+    for(var i=0;i<ordered.length-2;i++){
+      for(var j=i+1;j<ordered.length-1;j++){
+        var a=(i===0?startPoint:ordered[i-1].coords)||ordered[i].coords;
+        var b=ordered[i].coords;
+        var c=ordered[j].coords;
+        var d=ordered[j+1].coords;
+        var mevcut=haversineKm(a,b)+haversineKm(c,d);
+        var alternatif=haversineKm(a,c)+haversineKm(b,d);
+        if(alternatif+0.05<mevcut){
+          ordered=ordered.slice(0,i).concat(ordered.slice(i,j+1).reverse(),ordered.slice(j+1));
+          improved=true;
+        }
+      }
+    }
+  }
+  return ordered;
+}
+
+function ProgressRing(_ref){
+  var value=_ref.value, color=_ref.color, label=_ref.label, sublabel=_ref.sublabel;
+  var safe=Math.max(0,Math.min(100,Number(value)||0));
+  return React.createElement('div',{style:{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",borderRadius:18,boxShadow:"var(--shadow-sm)",border:"1px solid var(--border-soft)"}},
+    React.createElement('div',{style:{position:"relative",width:78,height:78,flexShrink:0}},
+      React.createElement('div',{style:{position:"absolute",inset:0,borderRadius:"50%",background:"conic-gradient("+color+" "+safe+"%, var(--bg-elevated) 0)"}}),
+      React.createElement('div',{style:{position:"absolute",inset:8,borderRadius:"50%",background:"var(--bg-panel)"}}),
+      React.createElement('div',{style:{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:800,color:color}}, safe+"%")
+    ),
+    React.createElement('div',{style:{minWidth:0,flex:1}},
+      React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)"}},label),
+      React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:4,lineHeight:1.45}},sublabel)
+    )
+  );
+}
+
 
 function App(){
   const [rol,setRol]=useState(null);
@@ -71,6 +146,11 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
+  const [rotaGeoCache,setRotaGeoCache]=useState(function(){return lsGet("at_geo_cache")||{};});
+  const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
+  const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
+  const [rotaOptHata,setRotaOptHata]=useState("");
+  const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
   // Tema uygula
@@ -466,6 +546,103 @@ function App(){
     }
   },[tab]);
 
+  useEffect(function(){
+    lsSet("at_geo_cache",rotaGeoCache);
+  },[rotaGeoCache]);
+
+  useEffect(function(){
+    if(tab!==5){return;}
+    var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
+    if(seciliElevs.length===0){
+      setRotaOtomatikIds([]);
+      setRotaTahminiKm(null);
+      setRotaOptHata("");
+      setRotaHesaplaniyor(false);
+      return;
+    }
+    var iptal=false;
+    async function geocodeAddress(text){
+      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{
+        headers:{Accept:"application/json","Accept-Language":"tr"}
+      });
+      if(!res.ok) throw new Error("Geocode başarısız");
+      var data=await res.json();
+      if(!Array.isArray(data)||!data[0]) return null;
+      return {lat:Number(data[0].lat),lng:Number(data[0].lon),label:data[0].display_name||text};
+    }
+    async function hesapla(){
+      setRotaHesaplaniyor(true);
+      setRotaOptHata("");
+      var cacheGuncel=Object.assign({},rotaGeoCache);
+      var routePoints=[];
+      for(var i=0;i<seciliElevs.length;i++){
+        var elev=seciliElevs[i];
+        var key=routeAddressKey(elev);
+        var cached=cacheGuncel[key];
+        if(!cached && elev.adres){
+          try{
+            var geo=await geocodeAddress(routeAddressLabel(elev));
+            if(geo){
+              cached={lat:geo.lat,lng:geo.lng,label:geo.label};
+              cacheGuncel[key]=cached;
+            }
+          }catch(e){}
+        }
+        routePoints.push({elev:elev,coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,manualIndex:rotaSec.indexOf(elev.id)});
+      }
+      var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
+      if(!startPoint && rotaStart.trim()){
+        var startKey="__start__:"+rotaStart.trim().toLowerCase();
+        var startCached=cacheGuncel[startKey];
+        if(!startCached){
+          try{
+            var startGeo=await geocodeAddress(rotaStart.trim()+", İstanbul");
+            if(startGeo){
+              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label};
+              cacheGuncel[startKey]=startCached;
+            }
+          }catch(e){}
+        }
+        if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
+      }
+      if(iptal) return;
+      if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)){
+        setRotaGeoCache(cacheGuncel);
+      }
+      var coordsOlan=routePoints.filter(function(p){return p.coords;});
+      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
+      var optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
+      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
+      var toplamKm=0;
+      var onceki=startPoint;
+      finalPoints.forEach(function(p){
+        if(onceki&&p.coords){
+          toplamKm+=haversineKm(onceki,p.coords);
+        }
+        onceki=p.coords||onceki;
+      });
+      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
+      setRotaTahminiKm(toplamKm>0?toplamKm:null);
+      if(coordsOlmayan.length>0){
+        setRotaOptHata(coordsOlmayan.length+" adres tam eşleşmedi. Bu duraklar listenin sonunda bırakıldı.");
+      }else if(!startPoint&&rotaStart.trim()){
+        setRotaOptHata("Başlangıç adresi haritada çözülemedi. Duraklar kendi aralarında optimize edildi.");
+      }else{
+        setRotaOptHata("");
+      }
+      setRotaHesaplaniyor(false);
+    }
+    hesapla().catch(function(){
+      if(!iptal){
+        setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
+        setRotaTahminiKm(null);
+        setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor.");
+        setRotaHesaplaniyor(false);
+      }
+    });
+    return function(){ iptal=true; };
+  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rotaGeoCache]);
+
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
   const elevByIlce=useMemo(()=>elevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},{}),[elevs]);
@@ -564,16 +741,21 @@ function App(){
   const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},[]),[filteredElevs]);
 
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
-  const rotaElevs=elevs.filter(e=>rotaSec.includes(e.id));
+  const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
+  const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
   const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
+  const rotaEslesmeyenSayi=(function(){
+    var eslesme=(rotaOptHata||"").match(/(\d+)/);
+    return eslesme?Number(eslesme[1]):0;
+  })();
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrl=(function(){
     if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return (e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");});
+    var addrs=rotaElevs.map(function(e){return routeAddressLabel(e);});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1) base+="&waypoints=optimize:true|"+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
+    if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
     base+="&travelmode=driving";
     return base;
   })();
@@ -664,6 +846,26 @@ function App(){
 , tab===0&&(
   React.createElement('div', { className:"ios-animate"}
     , React.createElement('div', { style: {fontSize:28,fontWeight:800,letterSpacing:-1,marginBottom:16,marginTop:4}}, "Genel Bakış" )
+    , (function(){
+        var yapilanSayisi=mMonth.filter(function(m){return m.yapildi;}).length;
+        var toplamBakim=elevs.length||1;
+        var bakimPct=Math.round((yapilanSayisi/toplamBakim)*100);
+        var kritikAriza=openFaults.filter(function(f){return f.oncelik==="YÃ¼ksek";}).length;
+        var gecikenMuayene=muayeneler.filter(function(m){var g=new Date(m.sonrakiTarih||"");var b=new Date();b.setHours(0,0,0,0);return m.sonrakiTarih&&g<b;}).length;
+        return React.createElement('div',{style:{background:"linear-gradient(135deg,rgba(0,122,255,0.22),rgba(90,200,250,0.10) 48%,rgba(52,199,89,0.12))",border:"1px solid rgba(90,200,250,0.18)",borderRadius:24,padding:"18px",marginBottom:12,boxShadow:"var(--shadow-sm)"}},
+          React.createElement('div',{style:{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}},
+            React.createElement('div',{style:{minWidth:220,flex:"1 1 260px"}},
+              React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--ios-teal)",letterSpacing:0.4,textTransform:"uppercase",marginBottom:8}},"CanlÄ± Operasyon Ã–zeti"),
+              React.createElement('div',{style:{fontSize:24,fontWeight:800,color:"var(--text)",letterSpacing:-0.8,lineHeight:1.15,marginBottom:6}}, yapilanSayisi+" bakÄ±m tamamlandÄ±, "+(toplamBakim-yapilanSayisi)+" durak sÄ±rada"),
+              React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",lineHeight:1.5}},"BakÄ±m, arÄ±za ve muayene yÃ¼kÃ¼ tek bakÄ±ÅŸta gÃ¶rÃ¼nÃ¼r. Rota ekranÄ± seÃ§ili duraklarÄ± artÄ±k otomatik sÄ±raya koyar.")
+            ),
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,flex:"1 1 420px",width:"100%"}},
+              React.createElement(ProgressRing,{value:bakimPct,color:"var(--ios-green)",label:"AylÄ±k bakÄ±m tamamlama",sublabel:yapilanSayisi+" / "+toplamBakim+" asansÃ¶r bakÄ±mÄ± tamamlandÄ±"}),
+              React.createElement(ProgressRing,{value:openFaults.length?Math.min(100,Math.round((kritikAriza/openFaults.length)*100)):0,color:"var(--ios-red)",label:"Kritik arÄ±za oranÄ±",sublabel:kritikAriza+" kritik arÄ±za, "+gecikenMuayene+" geciken muayene kaydÄ±"})
+            )
+          )
+        );
+      })()
     /* BENTO GRID - Ana istatistikler */
     , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10},}
       , React.createElement(Stat, { icon: "🛗", label: "Toplam Asansör", value: elevs.length, color: "var(--accent)",})
@@ -687,28 +889,39 @@ function App(){
         var buAyToplam=elevs.reduce(function(s,e){return s+e.aylikUcret;},0);
         var bekleyen=buAyToplam-buAyAlinan;
         var pct=buAyToplam>0?Math.round(buAyAlinan/buAyToplam*100):0;
-        return React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,padding:"18px",marginBottom:10,boxShadow:"var(--shadow-sm)"},}
-          , React.createElement('div', { style: {fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:12}}, "💰 Bu Ay Finansal Özet")
-          , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}},
-            React.createElement('div', {style:{textAlign:"center"}},
-              React.createElement('div', {style:{fontSize:18,fontWeight:700,color:"var(--ios-green)"}}, buAyAlinan.toLocaleString("tr-TR")+"₺"),
-              React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginTop:2}}, "Tahsil")
-            ),
-            React.createElement('div', {style:{textAlign:"center"}},
-              React.createElement('div', {style:{fontSize:18,fontWeight:700,color:"var(--accent)"}}, buAyToplam.toLocaleString("tr-TR")+"₺"),
-              React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginTop:2}}, "Hedef")
-            ),
-            React.createElement('div', {style:{textAlign:"center"}},
-              React.createElement('div', {style:{fontSize:18,fontWeight:700,color:bekleyen>0?"var(--ios-orange)":"var(--ios-green)"}}, bekleyen.toLocaleString("tr-TR")+"₺"),
-              React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginTop:2}}, "Bekleyen")
+        return React.createElement('div', { style: {display:"grid",gridTemplateColumns:"minmax(260px,320px) 1fr",gap:10,marginBottom:10}},
+          React.createElement(ProgressRing, {
+            value: pct,
+            color: "var(--ios-green)",
+            label: "Bu Ay Tahsilat Oranı",
+            sublabel: buAyAlinan.toLocaleString("tr-TR")+" ₺ tahsil edildi. Hedef: "+buAyToplam.toLocaleString("tr-TR")+" ₺"
+          }),
+          React.createElement('div', { style: {background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",borderRadius:20,padding:"18px",boxShadow:"var(--shadow-sm)",border:"1px solid var(--border-soft)"},}
+            , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
+              React.createElement('div', { style: {fontSize:13,fontWeight:700,color:"var(--text)"}}, "💰 Bu Ay Finansal Özet"),
+              React.createElement('div', { style: {fontSize:11,color:"var(--text-muted)"}}, "Canlı tahsilat görünümü")
             )
-          )
-          , React.createElement('div', { style: {height:8,background:"var(--bg-elevated)",borderRadius:10,overflow:"hidden"}},
-            React.createElement('div', { style: {height:"100%",width:pct+"%",background:"linear-gradient(90deg,var(--ios-green),var(--accent))",borderRadius:10,transition:"width 0.8s cubic-bezier(.34,1.32,.64,1)"}})
-          )
-          , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",marginTop:6}},
-            React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)"}}, "Tahsilat oranı"),
-            React.createElement('span', {style:{fontSize:12,fontWeight:700,color:"var(--accent)"}}, pct+"%")
+            , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}},
+              React.createElement('div', {style:{padding:"12px 10px",borderRadius:16,background:"rgba(52,199,89,0.10)",border:"1px solid rgba(52,199,89,0.16)"},},
+                React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginBottom:4}}, "Tahsil"),
+                React.createElement('div', {style:{fontSize:20,fontWeight:800,color:"var(--ios-green)"}}, buAyAlinan.toLocaleString("tr-TR")+"₺")
+              ),
+              React.createElement('div', {style:{padding:"12px 10px",borderRadius:16,background:"rgba(0,122,255,0.10)",border:"1px solid rgba(0,122,255,0.16)"},},
+                React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginBottom:4}}, "Hedef"),
+                React.createElement('div', {style:{fontSize:20,fontWeight:800,color:"var(--accent)"}}, buAyToplam.toLocaleString("tr-TR")+"₺")
+              ),
+              React.createElement('div', {style:{padding:"12px 10px",borderRadius:16,background:"rgba(255,149,0,0.10)",border:"1px solid rgba(255,149,0,0.16)"},},
+                React.createElement('div', {style:{fontSize:11,color:"var(--text-muted)",marginBottom:4}}, "Bekleyen"),
+                React.createElement('div', {style:{fontSize:20,fontWeight:800,color:bekleyen>0?"var(--ios-orange)":"var(--ios-green)"}}, bekleyen.toLocaleString("tr-TR")+"₺")
+              )
+            )
+            , React.createElement('div', { style: {height:10,background:"var(--bg-elevated)",borderRadius:999,overflow:"hidden",marginBottom:8}},
+              React.createElement('div', { style: {height:"100%",width:pct+"%",background:"linear-gradient(90deg,var(--ios-green),var(--accent))",borderRadius:999,transition:"width 0.8s cubic-bezier(.34,1.32,.64,1)"}})
+            )
+            , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}},
+              React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)"}}, "Tahsilat oranı ve hedefe kalan fark tek bakışta görünür."),
+              React.createElement('span', {style:{fontSize:13,fontWeight:800,color:"var(--accent)"}}, pct+"%")
+            )
           )
         );
       })()
@@ -746,19 +959,28 @@ function App(){
         ))
     )
     /* İlçe durumu */
-    , React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)"}},
-      React.createElement('div', { style: {fontSize:14,fontWeight:700,marginBottom:12}}, "🗺️ İlçe Durumu"),
+    , React.createElement('div', { style: {background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)",border:"1px solid var(--border-soft)"}},
+      React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
+        React.createElement('div', { style: {fontSize:14,fontWeight:700}}, "🗺️ İlçe Operasyon Yoğunluğu"),
+        React.createElement('div', { style: {fontSize:11,color:"var(--text-muted)"}}, "En yoğun 6 bölge")
+      ),
       React.createElement('div', { style: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
         Object.entries(elevByIlce).sort((a,b)=>b[1].length-a[1].length).slice(0,6).map(([ilce,es])=>{
           const c=getIlceRenk(ilce);
           const tamam=mMonth.filter(m=>es.some(e=>e.id===m.asansorId)&&m.yapildi).length;
           const pct=es.length>0?Math.round(tamam/es.length*100):0;
           return(
-            React.createElement('div', { key: ilce, style: {background:"var(--bg-elevated)",borderRadius:14,padding:"10px 12px",borderLeft:"3px solid "+c},}
-              , React.createElement('div', { style: {fontWeight:700,fontSize:13,color:c,marginBottom:3}}, ilce)
-              , React.createElement('div', { style: {fontSize:12,color:"var(--text-muted)",marginBottom:5}}, es.length+" asansör")
-              , React.createElement('div', { style: {height:4,background:"var(--border)",borderRadius:10}},
-                React.createElement('div', { style: {height:"100%",width:pct+"%",background:c,borderRadius:10}})
+            React.createElement('div', { key: ilce, style: {background:"var(--bg-elevated)",borderRadius:16,padding:"12px",border:"1px solid "+c+"22",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.03)"},}
+              , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,gap:8}},
+                React.createElement('div', { style: {fontWeight:800,fontSize:13,color:c}}, ilce),
+                React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"var(--text-muted)"}}, es.length+" asansör")
+              )
+              , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--text-muted)",marginBottom:6}},
+                React.createElement('span', null, tamam+" tamam"),
+                React.createElement('span', null, pct+"%")
+              )
+              , React.createElement('div', { style: {height:6,background:"var(--border)",borderRadius:10,overflow:"hidden"}},
+                React.createElement('div', { style: {height:"100%",width:pct+"%",background:"linear-gradient(90deg,"+c+", color-mix(in srgb, "+c+" 42%, white))",borderRadius:10}})
               )
             )
           );
@@ -773,24 +995,18 @@ function App(){
           var d=new Date(simdi.getFullYear(),simdi.getMonth()-i,1);
           aylar.push({yil:d.getFullYear(),ay:d.getMonth(),etiket:MONTHS[d.getMonth()].slice(0,3)});
         }
-        var maxSayi=Math.max(1,...aylar.map(function(a){return faults.filter(function(f){var fd=new Date(f.tarih||"");return fd.getFullYear()===a.yil&&fd.getMonth()===a.ay;}).length;}));
-        return React.createElement('div', {style:{background:"var(--bg-panel)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)"}}
-          , React.createElement('div', {style:{fontSize:14,fontWeight:700,marginBottom:12}}, "📈 Arıza Trendi (Son 6 Ay)")
-          , React.createElement('div', {style:{display:"flex",alignItems:"flex-end",gap:6,height:80}}
-            , aylar.map(function(a){
-                var sayi=faults.filter(function(f){var fd=new Date(f.tarih||"");return fd.getFullYear()===a.yil&&fd.getMonth()===a.ay;}).length;
-                var pct=maxSayi>0?sayi/maxSayi*100:0;
-                var isSimdi=a.yil===simdi.getFullYear()&&a.ay===simdi.getMonth();
-                return React.createElement('div', {key:a.etiket,style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}
-                  , React.createElement('div', {style:{fontSize:10,fontWeight:700,color:isSimdi?"var(--accent)":"var(--text-muted)"}}, sayi||"")
-                  , React.createElement('div', {style:{width:"100%",background:"var(--bg-elevated)",borderRadius:6,height:60,display:"flex",alignItems:"flex-end"}}
-                    , React.createElement('div', {style:{width:"100%",height:Math.max(4,pct)+"%",background:isSimdi?"var(--accent)":sayi>0?"var(--ios-red)":"var(--border)",borderRadius:6,transition:"height 0.5s"}})
-                  )
-                  , React.createElement('div', {style:{fontSize:9,color:isSimdi?"var(--accent)":"var(--text-dim)",fontWeight:isSimdi?700:400}}, a.etiket)
-                );
-              })
-          )
-        );
+        return React.createElement(MiniTrendChart, {
+          title: "📈 Arıza Trendi",
+          subtitle: "Son 6 ay içindeki kayıt yoğunluğu",
+          color: "var(--ios-red)",
+          activeIndex: aylar.length-1,
+          items: aylar.map(function(a){
+            return {
+              label: a.etiket,
+              value: faults.filter(function(f){var fd=new Date(f.tarih||"");return fd.getFullYear()===a.yil&&fd.getMonth()===a.ay;}).length
+            };
+          })
+        });
       })()
     /* Teknisyen Performans Özeti */
     , (function(){
@@ -948,7 +1164,7 @@ function App(){
                           "Asis Asansör Bakım ve Servis Hizmetleri";
                         window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                       },
-                      style:{padding:"5px 8px",borderRadius:8,background:"#fff",border:"1px solid #25d36644",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1,fontWeight:700}
+                      style:{padding:"5px 8px",borderRadius:8,background:"#fff",border:"1.5px solid #222",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1,fontWeight:700}
                     }, "WhatsApp"
                   )
                 )
@@ -1058,6 +1274,20 @@ function App(){
 
     /* Konum hatası */
     , konumHata&&React.createElement('div',{style:{fontSize:11,color:"#ef4444",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:7,padding:"8px 12px",marginBottom:10}},"⚠️ "+konumHata)
+    , (rotaHesaplaniyor||rotaOptHata||rotaTahminiKm!==null)&&React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginBottom:12}},
+        React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:rotaHesaplaniyor?"rgba(59,130,246,0.12)":"var(--bg-card)",border:"1px solid "+(rotaHesaplaniyor?"#3b82f655":"var(--border)")}},
+          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:rotaHesaplaniyor?"#60a5fa":"var(--text-muted)",marginBottom:4}},"AKILLI ROTA"),
+          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)"}}, rotaHesaplaniyor?"Adresler analiz ediliyor...":"Rota sırası hazır")
+        ),
+        rotaTahminiKm!==null&&React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:"rgba(16,185,129,0.10)",border:"1px solid #10b98133"}},
+          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:"#10b981",marginBottom:4}},"TAHMİNİ MESAFE"),
+          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#a7f3d0"}}, rotaTahminiKm.toFixed(1)+" km")
+        ),
+        rotaOptHata&&React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)"}},
+          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:"var(--ios-orange)",marginBottom:4}},"NOT"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:600,color:"var(--text)"}}, rotaOptHata)
+        )
+      )
 
     /* Konum bilgisi veya manuel adres */
     , rotaKonum
@@ -1151,7 +1381,7 @@ function App(){
           ? React.createElement('div',{style:{padding:"20px",textAlign:"center",color:"var(--text-muted)",fontSize:12}},"Asansör bulunamadı")
           : rotaPool.map(function(e){
             var sec=rotaSec.includes(e.id);
-            var sira=rotaSec.indexOf(e.id)+1;
+            var sira=rotaOrder.indexOf(e.id)+1;
             var c=getIlceRenk(e.ilce);
             var bekliyor=bekleyenRotaIds.includes(e.id);
             var maint=mMonth.find(function(m){return m.asansorId===e.id;});
@@ -1185,6 +1415,43 @@ function App(){
     /* Rota özeti + butonlar */
     , rotaElevs.length>0
       ? React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+          React.createElement('div',{style:{
+            background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",
+            border:"1px solid var(--border-soft)",
+            borderRadius:14,
+            padding:"12px 14px",
+            boxShadow:"var(--shadow-sm)"
+          }},
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"var(--text)"}}, "Akıllı Rota Özeti"),
+                React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
+                  rotaHesaplaniyor
+                    ? "Adresler çözülüyor, en mantıklı sıra hazırlanıyor..."
+                    : "Seçilen duraklar uygulama içinde yakınlık bazlı sıralandı."
+                )
+              ),
+              React.createElement('div',{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+                React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak"),
+                rotaTahminiKm!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(16,185,129,0.14)",color:"#34d399"}}, "~ "+rotaTahminiKm.toFixed(1)+" km")
+              )
+            ),
+            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8}},
+              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
+                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Başlangıç"),
+                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, rotaKonum?"Mevcut konum":(rotaStart.trim()||"Google Maps soracak"))
+              ),
+              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
+                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Optimizasyon"),
+                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:rotaHesaplaniyor?"var(--ios-orange)":"var(--ios-green)"}}, rotaHesaplaniyor?"Hesaplanıyor":"Hazır")
+              ),
+              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
+                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Eşleşen adres"),
+                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, (rotaElevs.length-rotaEslesmeyenSayi)+"/"+rotaElevs.length)
+              )
+            ),
+            rotaOptHata&&React.createElement('div',{style:{marginTop:8,fontSize:11,color:"var(--ios-orange)",background:"rgba(255,149,0,0.10)",border:"1px solid rgba(255,149,0,0.18)",borderRadius:10,padding:"8px 10px"}}, "⚠️ "+rotaOptHata)
+          ),
           /* Başlangıç noktası özeti */
           rotaStartStr
             ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(16,185,129,0.1)",borderRadius:9,border:"1px solid #10b98133"}},
@@ -1209,7 +1476,8 @@ function App(){
                 React.createElement('div',{style:{flex:1,minWidth:0}},
                   React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)",display:"flex",alignItems:"center",gap:6}},
                     e.ad,
-                    bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor")
+                    bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor"),
+                    rotaOtomatikIds.length===rotaSec.length&&React.createElement('span',{style:{fontSize:9,color:"#60a5fa",background:"rgba(59,130,246,0.16)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"Akıllı sıra")
                   ),
                   React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(e.semt?e.semt+" Mah., ":"")+e.adres)
                 ),
