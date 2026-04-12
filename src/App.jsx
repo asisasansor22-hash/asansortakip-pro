@@ -83,6 +83,19 @@ function optimizeRoute(points,startPoint){
   return ordered;
 }
 
+function getElevAddedDate(e){
+  if(e&&e.eklenmeTarihi){
+    var d1=new Date(e.eklenmeTarihi);
+    if(!isNaN(d1)) return d1;
+  }
+  var ts=Number(e&&e.id);
+  if(Number.isFinite(ts)&&ts>1000000000000){
+    var d2=new Date(ts);
+    if(!isNaN(d2)) return d2;
+  }
+  return null;
+}
+
 function ProgressRing(_ref){
   var value=_ref.value, color=_ref.color, label=_ref.label, sublabel=_ref.sublabel;
   var safe=Math.max(0,Math.min(100,Number(value)||0));
@@ -99,6 +112,36 @@ function ProgressRing(_ref){
   );
 }
 
+
+function MiniTrendChart(_ref2){
+  var title=_ref2.title, subtitle=_ref2.subtitle, color=_ref2.color, items=_ref2.items, activeIndex=_ref2.activeIndex;
+  var safeItems=items||[];
+  var values=safeItems.map(function(item){return Number(item.value)||0;});
+  var max=Math.max.apply(Math,[1].concat(values));
+  return React.createElement('div',{style:{background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)",border:"1px solid var(--border-soft)"}},
+    React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap"}},
+      React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:14,fontWeight:700,color:"var(--text)"}},title),
+        subtitle&&React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},subtitle)
+      ),
+      React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"var(--text-muted)"}},Math.max.apply(Math,values)+" kayıt")
+    ),
+    React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat("+Math.max(safeItems.length,1)+", minmax(0,1fr))",alignItems:"end",gap:8,height:148}},
+      safeItems.map(function(item,index){
+        var value=Number(item.value)||0;
+        var height=Math.max(16,Math.round((value/max)*88)+16);
+        var active=index===activeIndex;
+        return React.createElement('div',{key:item.label||index,style:{display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"stretch",gap:6,minWidth:0}},
+          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:active?color:"var(--text-muted)",textAlign:"center"}},value),
+          React.createElement('div',{style:{height:height,borderRadius:14,background:active?"linear-gradient(180deg,"+color+", color-mix(in srgb, "+color+" 58%, white))":"var(--bg-elevated)",border:active?"1px solid "+color+"55":"1px solid var(--border)",boxShadow:active?"0 10px 24px color-mix(in srgb, "+color+" 20%, transparent)":"none",transition:"all .25s ease"}}),
+          React.createElement('div',{style:{fontSize:10,fontWeight:700,color:active?"var(--text)":"var(--text-muted)",textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},item.label)
+        );
+      })
+    )
+  );
+}
+
+const AYLIK_YENI_MUSTERI_HEDEFI = 10;
 
 function App(){
   const [rol,setRol]=useState(null);
@@ -699,7 +742,9 @@ function App(){
     const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:+form.bakiyeDevir||0,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:yeniDevirManuelDeger};
     delete d._yeniDevirOverride;
     delete d._devirKilidAcik;
-    edit?setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e)):setElevs(p=>[...p,{...d,id:Date.now()}]);
+    edit
+      ? setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e))
+      : setElevs(p=>[...p,{...d,id:Date.now(),eklenmeTarihi:today}]);
     close();
   };
   const saveM=()=>{const d={...form,asansorId:+form.asansorId,tutar:+form.tutar||0,yapildi:form.yapildi===true||form.yapildi==="true",odendi:form.odendi===true||form.odendi==="true",kl:form.kl||{}};edit?setMaints(p=>p.map(m=>m.id===edit.id?{...m,...d}:m)):setMaints(p=>[...p,{...d,id:Date.now()}]);close();};
@@ -707,7 +752,7 @@ function App(){
     if(!edit&&form._yeniAdres===true){
       if(!(form._yeniIlce&&form._yeniBinaAd&&form._yeniAdresStr)){alert("İlçe, Bina Adı ve Adres zorunlu!");return;}
       var newId=Date.now();
-      var newElevF={id:newId,ad:(form._yeniBinaAd||"").trim(),ilce:form._yeniIlce,semt:(form._yeniSemt||"").trim(),adres:(form._yeniAdresStr||"").trim(),yonetici:(form._yeniYon||"").trim(),tel:(form._yeniTel||"").trim(),bakimGunu:"0",aylikUcret:0,bakiyeDevir:0,tip:"Elektrikli",kat:0,kapasite:0};
+      var newElevF={id:newId,ad:(form._yeniBinaAd||"").trim(),ilce:form._yeniIlce,semt:(form._yeniSemt||"").trim(),adres:(form._yeniAdresStr||"").trim(),yonetici:(form._yeniYon||"").trim(),tel:(form._yeniTel||"").trim(),bakimGunu:"0",aylikUcret:0,bakiyeDevir:0,tip:"Elektrikli",kat:0,kapasite:0,eklenmeTarihi:today};
       setElevs(function(p){return p.concat([newElevF]);});
       const d={...form,asansorId:newId};
       setFaults(function(p){return p.concat([{...d,id:Date.now()+1}]);});
@@ -763,7 +808,7 @@ function App(){
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){return m.planlanmis&&!m.yapildi&&elevs.some(function(e){return e.id===m.asansorId;});}).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
-  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portalı","👥 Bakımcılar"];
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
   const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13];
@@ -850,18 +895,41 @@ function App(){
         var yapilanSayisi=mMonth.filter(function(m){return m.yapildi;}).length;
         var toplamBakim=elevs.length||1;
         var bakimPct=Math.round((yapilanSayisi/toplamBakim)*100);
-        var kritikAriza=openFaults.filter(function(f){return f.oncelik==="YÃ¼ksek";}).length;
         var gecikenMuayene=muayeneler.filter(function(m){var g=new Date(m.sonrakiTarih||"");var b=new Date();b.setHours(0,0,0,0);return m.sonrakiTarih&&g<b;}).length;
+        var simdiHedef=new Date();
+        var yeniMusteriBuAy=elevs.filter(function(e){
+          var d=getElevAddedDate(e);
+          return !isNaN(d) && d.getFullYear()===simdiHedef.getFullYear() && d.getMonth()===simdiHedef.getMonth();
+        }).length;
+        var yeniMusteriKalan=Math.max(0,AYLIK_YENI_MUSTERI_HEDEFI-yeniMusteriBuAy);
+        var yeniMusteriPct=Math.min(100,Math.round((yeniMusteriBuAy/AYLIK_YENI_MUSTERI_HEDEFI)*100));
         return React.createElement('div',{style:{background:"linear-gradient(135deg,rgba(0,122,255,0.22),rgba(90,200,250,0.10) 48%,rgba(52,199,89,0.12))",border:"1px solid rgba(90,200,250,0.18)",borderRadius:24,padding:"18px",marginBottom:12,boxShadow:"var(--shadow-sm)"}},
           React.createElement('div',{style:{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}},
             React.createElement('div',{style:{minWidth:220,flex:"1 1 260px"}},
-              React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--ios-teal)",letterSpacing:0.4,textTransform:"uppercase",marginBottom:8}},"CanlÄ± Operasyon Ã–zeti"),
-              React.createElement('div',{style:{fontSize:24,fontWeight:800,color:"var(--text)",letterSpacing:-0.8,lineHeight:1.15,marginBottom:6}}, yapilanSayisi+" bakÄ±m tamamlandÄ±, "+(toplamBakim-yapilanSayisi)+" durak sÄ±rada"),
-              React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",lineHeight:1.5}},"BakÄ±m, arÄ±za ve muayene yÃ¼kÃ¼ tek bakÄ±ÅŸta gÃ¶rÃ¼nÃ¼r. Rota ekranÄ± seÃ§ili duraklarÄ± artÄ±k otomatik sÄ±raya koyar.")
+              React.createElement('div',{style:{fontSize:11,fontWeight:600,color:"var(--ios-teal)",letterSpacing:0.55,textTransform:"uppercase",marginBottom:10,opacity:0.92}},"Canlı Operasyon Özeti"),
+              React.createElement('div',{style:{fontSize:22,fontWeight:700,color:"var(--text)",letterSpacing:-0.45,lineHeight:1.22,marginBottom:8,maxWidth:520,textWrap:"balance"}}, yapilanSayisi+" bakım tamamlandı, "+(toplamBakim-yapilanSayisi)+" durak sırada"),
+              React.createElement('div',{style:{fontSize:13,color:"var(--text-muted)",lineHeight:1.62,maxWidth:540,fontWeight:500}},"Bakım, arıza ve muayene yükü tek bakışta görünür. Rota ekranı seçili durakları artık otomatik sıraya koyar.")
             ),
             React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,flex:"1 1 420px",width:"100%"}},
-              React.createElement(ProgressRing,{value:bakimPct,color:"var(--ios-green)",label:"AylÄ±k bakÄ±m tamamlama",sublabel:yapilanSayisi+" / "+toplamBakim+" asansÃ¶r bakÄ±mÄ± tamamlandÄ±"}),
-              React.createElement(ProgressRing,{value:openFaults.length?Math.min(100,Math.round((kritikAriza/openFaults.length)*100)):0,color:"var(--ios-red)",label:"Kritik arÄ±za oranÄ±",sublabel:kritikAriza+" kritik arÄ±za, "+gecikenMuayene+" geciken muayene kaydÄ±"})
+              React.createElement(ProgressRing,{value:bakimPct,color:"var(--ios-green)",label:"Aylık bakım tamamlama",sublabel:yapilanSayisi+" / "+toplamBakim+" asansör bakımı tamamlandı"}),
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",background:"linear-gradient(180deg,var(--bg-panel),var(--bg-card))",borderRadius:18,boxShadow:"var(--shadow-sm)",border:"1px solid var(--border-soft)"}} ,
+                React.createElement('div',{style:{width:78,height:78,borderRadius:24,background:"linear-gradient(135deg,rgba(59,130,246,0.14),rgba(16,185,129,0.12))",border:"1px solid rgba(59,130,246,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+                  React.createElement('div',{style:{textAlign:"center"}},
+                    React.createElement('div',{style:{fontSize:28,fontWeight:800,color:"var(--accent)",lineHeight:1}},yeniMusteriKalan),
+                    React.createElement('div',{style:{fontSize:10,fontWeight:600,color:"var(--text-muted)",marginTop:4}},"kaldı")
+                  )
+                ),
+                React.createElement('div',{style:{minWidth:0,flex:1}},
+                  React.createElement('div',{style:{fontSize:13,fontWeight:650,color:"var(--text)",letterSpacing:-0.15,lineHeight:1.3}},"Hedeflenen yeni müşteri sayısına ulaşmak"),
+                  React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:5,lineHeight:1.5,fontWeight:500}}, "Bu ay "+yeniMusteriBuAy+" yeni bina eklendi. Hedef: "+AYLIK_YENI_MUSTERI_HEDEFI+" • Kalan: "+yeniMusteriKalan),
+                  React.createElement('div',{style:{height:8,background:"var(--bg-elevated)",borderRadius:999,overflow:"hidden",marginTop:10}},
+                    React.createElement('div',{style:{height:"100%",width:yeniMusteriPct+"%",background:"linear-gradient(90deg,var(--accent),var(--ios-green))",borderRadius:999,transition:"width 0.8s cubic-bezier(.34,1.32,.64,1)"}})
+                  ),
+                  React.createElement('div',{style:{fontSize:11,color:gecikenMuayene>0?"var(--ios-orange)":"var(--text-muted)",marginTop:8,fontWeight:500}},
+                    gecikenMuayene>0 ? (gecikenMuayene+" geciken muayene kaydı var") : "Bu ayki büyüme hedefi takip ediliyor"
+                  )
+                )
+              )
             )
           )
         );
