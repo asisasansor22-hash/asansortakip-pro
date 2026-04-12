@@ -68,7 +68,7 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                             "Asis Asansör Bakım ve Servis Hizmetleri";
                           window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                         },
-                        style:{padding:"6px 10px",borderRadius:8,background:"#0d2518",border:"1px solid #25d36644",color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
+                        style:{padding:"6px 10px",borderRadius:8,background:"rgba(37,211,102,0.12)",border:"1px solid rgba(37,211,102,0.30)",color:"#128c7e",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
                       }, "WhatsApp Bildir"
                     )
                     , React.createElement(IBtn, { onClick: ()=>oEdit("f",f), icon: "✏️",})

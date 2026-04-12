@@ -70,11 +70,11 @@ export const MahallePicker=({ilce, value, onChange})=>{
   const mahalleler=(ILCE_MAHALLELER[ilce]||[]).slice().sort();
   if(!mahalleler.length) return null;
   return React.createElement("div",{style:{marginBottom:10}},
-    React.createElement("label",{style:{display:"block",fontSize:11,fontWeight:600,color:"#94a3b8",marginBottom:4}},"Mahalle *"),
+    React.createElement("label",{style:{display:"block",fontSize:11,fontWeight:600,color:"var(--text-muted)",marginBottom:4}},"Mahalle *"),
     React.createElement("select",{
       value:value||"",
       onChange:function(e){onChange(e.target.value);},
-      style:{width:"100%",background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"9px 12px",color:value?"#e0e6f0":"#64748b",fontSize:13,outline:"none",cursor:"pointer",boxSizing:"border-box"}
+      style:{width:"100%",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,padding:"9px 12px",color:value?"var(--text)":"var(--text-muted)",fontSize:13,outline:"none",cursor:"pointer",boxSizing:"border-box"}
     },
       React.createElement("option",{value:""},"— Mahalle seçin —"),
       mahalleler.map(function(m){return React.createElement("option",{key:m,value:m},m);})
@@ -137,12 +137,12 @@ export const AdresFF=({label,value,onChange})=>(
         placeholder:"\u00d6rn: Zafer Mah. \u00c7imen Sok. No:20, Bah\u00e7elievler, \u0130stanbul",
         style:Object.assign({},S.inp,{border:"1px solid var(--accent-glow)"})
       })
-    , React.createElement("div", { style: {marginTop:4,padding:"6px 10px",background:"#0d1a2e",border:"1px solid #3b82f633",borderRadius:6,fontSize:10,color:"#64748b",lineHeight:"1.5"}},
+    , React.createElement("div", { style: {marginTop:4,padding:"6px 10px",background:"color-mix(in srgb, var(--accent) 10%, var(--bg-panel))",border:"1px solid color-mix(in srgb, var(--accent) 22%, transparent)",borderRadius:6,fontSize:10,color:"var(--text-muted)",lineHeight:"1.5"}},
         "\ud83d\uddfa\ufe0f ",
         React.createElement("span",{style:{color:"#3b82f6",fontWeight:700}},"Google Maps Format\u0131: "),
         "Mahalle \u2192 Sokak + No \u2192 \u0130l\u00e7e \u2192 \u0130stanbul",
         React.createElement("br",null),
-        React.createElement("span",{style:{color:"#475569"}},"Tam adres girilirse Google Maps'te do\u011fru pin at\u0131l\u0131r.")
+        React.createElement("span",{style:{color:"var(--text-dim)"}},"Tam adres girilirse Google Maps'te do\u011fru pin at\u0131l\u0131r.")
       )
   )
 );

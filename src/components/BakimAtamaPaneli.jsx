@@ -170,18 +170,18 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
       , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14},}
         , GORUNUM_TABS.map(t=>(
           React.createElement('button', { key: t.k, onClick: ()=>{setGorunum(t.k);setSeciliIlce(null);setSecili({});},
-            style: {padding:"11px 8px",borderRadius:12,background:gorunum===t.k?t.c+"22":"#1a1f2e",border:"2px solid "+(gorunum===t.k?t.c+"66":"#2a3050"),cursor:"pointer",textAlign:"center"},}
+            style: {padding:"11px 8px",borderRadius:12,background:gorunum===t.k?t.c+"18":"var(--bg-elevated)",border:"2px solid "+(gorunum===t.k?t.c+"55":"var(--border)"),cursor:"pointer",textAlign:"center",color:"var(--text)"},}
             , React.createElement('div', { style: {fontSize:22,fontWeight:900,color:t.c},}, t.count)
-            , React.createElement('div', { style: {fontSize:11,color:gorunum===t.k?t.c:"#64748b",fontWeight:gorunum===t.k?700:400},}, t.l)
+            , React.createElement('div', { style: {fontSize:11,color:gorunum===t.k?t.c:"var(--text-muted)",fontWeight:gorunum===t.k?700:500},}, t.l)
           )
         ))
       )
 
       /* İlçe grid */
       , React.createElement('div', { style: {marginBottom:seciliIlce?0:0},}
-        , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"},}
+        , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"var(--text-muted)",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"},}
           , React.createElement('span', null, "İlçe Seçin" )
-          , seciliIlce&&React.createElement('button', { onClick: ()=>{setSeciliIlce(null);setSecili({});}, style: {background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:11,fontWeight:600},}, "✕ Kapat" )
+          , seciliIlce&&React.createElement('button', { onClick: ()=>{setSeciliIlce(null);setSecili({});}, style: {background:"none",border:"none",color:"var(--text-muted)",cursor:"pointer",fontSize:11,fontWeight:700},}, "✕ Kapat" )
         )
         , React.createElement('div', { style: {display:"flex",flexWrap:"wrap",gap:6,marginBottom:14},}
           , ilceler.map(ilce=>{
@@ -197,9 +197,9 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                 style: {
                   display:"flex",alignItems:"center",gap:6,
                   padding:"7px 12px",borderRadius:20,
-                  background:acik?c+"33":"#1a1f2e",
+                  background:acik?c+"22":"var(--bg-elevated)",
                   border:"2px solid "+(acik?c:c+"44"),
-                  color:acik?"#fff":c,
+                  color:acik?c:"var(--text)",
                   fontSize:12,fontWeight:700,cursor:"pointer",
                   transition:"all .15s",
                   boxShadow:acik?"0 0 0 3px "+c+"22":"none"
@@ -207,7 +207,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                 , React.createElement('span', null, ilce)
                 , React.createElement('span', { style: {
                   background:acik?c:c+"33",
-                  color:acik?"#000":c,
+                  color:acik?"#102a1a":c,
                   borderRadius:20,fontSize:10,
                   padding:"1px 7px",fontWeight:900
                 },}, aktifSayi)
@@ -219,36 +219,36 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
 
       /* Seçili ilçe panel */
       , seciliIlce&&(
-        React.createElement('div', { style: {background:"#141824",borderRadius:14,border:"2px solid "+getIlceRenk(seciliIlce)+"44",overflow:"hidden",marginBottom:14},}
+        React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:14,border:"2px solid "+getIlceRenk(seciliIlce)+"44",overflow:"hidden",marginBottom:14},}
           /* Panel başlık */
           , React.createElement('div', { style: {
             padding:"12px 16px",
-            background:"linear-gradient(135deg,"+getIlceRenk(seciliIlce)+"22,#141824)",
+            background:"linear-gradient(135deg,"+getIlceRenk(seciliIlce)+"18,var(--bg-panel))",
             borderBottom:"1px solid "+getIlceRenk(seciliIlce)+"33",
             display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"
           },}
             , React.createElement('div', { style: {width:4,height:24,borderRadius:2,background:getIlceRenk(seciliIlce),flexShrink:0},})
             , React.createElement('div', { style: {flex:1},}
               , React.createElement('div', { style: {fontWeight:900,fontSize:15,color:getIlceRenk(seciliIlce)},}, seciliIlce)
-              , React.createElement('div', { style: {fontSize:11,color:"#64748b"},}, MONTHS[fMonth], " · "  , listSrcIlce.filter(e=>e.ilce===seciliIlce).length, " bina" )
+              , React.createElement('div', { style: {fontSize:11,color:"var(--text-muted)"},}, MONTHS[fMonth], " · "  , listSrcIlce.filter(e=>e.ilce===seciliIlce).length, " bina" )
             )
 
             /* Toplu seçim butonları */
             , React.createElement('div', { style: {display:"flex",gap:6,flexWrap:"wrap"},}
               , React.createElement('button', { onClick: togIlceTum,
-                style: {padding:"5px 12px",borderRadius:8,background:"#1e2640",border:"1px solid #3b82f644",color:"#3b82f6",fontSize:11,fontWeight:700,cursor:"pointer"},}
+                style: {padding:"5px 12px",borderRadius:8,background:"rgba(59,130,246,0.12)",border:"1px solid rgba(59,130,246,0.28)",color:"#2563eb",fontSize:11,fontWeight:700,cursor:"pointer"},}
                 , Object.keys(grupluIlce).length>0&&Object.values(grupluIlce).every(s=>Object.values(s).every(eles=>eles.every(e=>secili[e.id])))
                   ?"☑ Tümünü Kaldır":"☐ Tümünü Seç"
               )
               , seciliSayi>0&&gorunum==="bekleyen"&&(
                 React.createElement('button', { onClick: ataSecililer,
-                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#000",fontWeight:800,fontSize:11,cursor:"pointer"},}, "📤 "
+                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"},}, "📤 "
                    , seciliSayi, " Binayı Bakımcıya At"
                 )
               )
               , seciliSayi>0&&gorunum==="atandi"&&(
                 React.createElement('button', { onClick: ()=>{Object.keys(secili).filter(id=>secili[id]).forEach(id=>geriAl(parseInt(id)));setSecili({});},
-                  style: {padding:"5px 14px",borderRadius:8,background:"#1a1f2e",border:"1px solid #ef444444",color:"#ef4444",fontWeight:700,fontSize:11,cursor:"pointer"},}, "↩ "
+                  style: {padding:"5px 14px",borderRadius:8,background:"rgba(239,68,68,0.10)",border:"1px solid rgba(239,68,68,0.28)",color:"#dc2626",fontWeight:700,fontSize:11,cursor:"pointer"},}, "↩ "
                    , seciliSayi, " Binayı Geri Al"
                 )
               )
@@ -258,7 +258,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
           /* Tarih grupları */
           , React.createElement('div', { style: {padding:"10px 14px"},}
             , Object.keys(grupluIlce).length===0&&(
-              React.createElement('div', { style: {textAlign:"center",padding:"24px",color:"#475569",fontSize:13},}, "— Bu kategoride bina yok —"     )
+              React.createElement('div', { style: {textAlign:"center",padding:"24px",color:"var(--text-dim)",fontSize:13},}, "— Bu kategoride bina yok —"     )
             )
             , Object.entries(grupluIlce).sort((a,b)=>+a[0]-+b[0]).map(([gun,semtler])=>(
               React.createElement('div', { key: gun, style: {marginBottom:14},}
@@ -266,13 +266,13 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                 , React.createElement('div', { style: {
                   display:"flex",alignItems:"center",gap:8,
                   marginBottom:8,padding:"6px 10px",
-                  background:"#0d1321",borderRadius:8,
+                  background:"var(--bg-elevated)",borderRadius:8,
                   borderLeft:"3px solid "+getIlceRenk(seciliIlce)
                 },}
                   , React.createElement('span', { style: {fontSize:14,fontWeight:900,color:getIlceRenk(seciliIlce)},}
                     , gun==="0"?"Gün Belirtilmemiş":"Ayın "+gun+"'i"
                   )
-                  , React.createElement('span', { style: {fontSize:10,color:"#64748b"},}, "· "
+                  , React.createElement('span', { style: {fontSize:10,color:"var(--text-muted)"},}, "· "
                      , Object.values(semtler).reduce((s,a)=>s+a.length,0), " bina · "
                      , Object.keys(semtler).length, " semt"
                   )
@@ -289,15 +289,15 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                           style: {
                             width:16,height:16,borderRadius:4,
                             background:hepsiSec?"#3b82f6":"transparent",
-                            border:"2px solid "+(hepsiSec?"#3b82f6":"#475569"),
+                            border:"2px solid "+(hepsiSec?"#3b82f6":"var(--border-strong)"),
                             display:"flex",alignItems:"center",justifyContent:"center",
                             cursor:"pointer",flexShrink:0,fontSize:9,color:"#fff",fontWeight:900
                           },}, hepsiSec?"✓":"")
-                        , React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"#94a3b8"},}, "📍 " , semt)
-                        , React.createElement('span', { style: {fontSize:10,color:"#475569"},}, "(", eles.length, " bina)" )
+                        , React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"var(--text-muted)"},}, "📍 " , semt)
+                        , React.createElement('span', { style: {fontSize:10,color:"var(--text-dim)"},}, "(", eles.length, " bina)" )
                         , gorunum==="bekleyen"&&(
                           React.createElement('button', { onClick: ()=>togSemtTum(eles),
-                            style: {marginLeft:"auto",fontSize:10,padding:"2px 8px",borderRadius:5,background:"#1e2640",border:"1px solid #3b82f644",color:"#3b82f6",cursor:"pointer",fontWeight:600},}
+                            style: {marginLeft:"auto",fontSize:10,padding:"2px 8px",borderRadius:5,background:"rgba(59,130,246,0.12)",border:"1px solid rgba(59,130,246,0.28)",color:"#2563eb",cursor:"pointer",fontWeight:600},}
                             , hepsiSec?"Kaldır":"Hepsini Seç"
                           )
                         )
@@ -312,8 +312,8 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                             React.createElement('div', { key: e.id, style: {
                               display:"flex",alignItems:"center",gap:8,
                               padding:"9px 11px",borderRadius:9,
-                              background:isSec?"#1e2a4a":"#0d1321",
-                              border:"1px solid "+(isSec?"#3b82f6":(m&&m.yapildi)?"#1e3a2e":(m&&m.planlanmis)?"#2a1e40":"#1e2640"),
+                              background:isSec?"rgba(59,130,246,0.10)":"var(--bg-elevated)",
+                              border:"1px solid "+(isSec?"#3b82f6":(m&&m.yapildi)?"rgba(16,185,129,0.28)":(m&&m.planlanmis)?"rgba(139,92,246,0.28)":"var(--border)"),
                               cursor:gorunum!=="tamam"?"pointer":"default",
                               transition:"all .1s"
                             },
@@ -324,7 +324,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                 React.createElement('div', { style: {
                                   width:16,height:16,borderRadius:4,
                                   background:isSec?"#3b82f6":"transparent",
-                                  border:"2px solid "+(isSec?"#3b82f6":"#475569"),
+                                  border:"2px solid "+(isSec?"#3b82f6":"var(--border-strong)"),
                                   display:"flex",alignItems:"center",justifyContent:"center",
                                   flexShrink:0,fontSize:9,color:"#fff",fontWeight:900
                                 },}, isSec?"✓":"")
@@ -337,7 +337,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
                                 },}, e.ad)
                                 , e.yonetici&&(
-                                  React.createElement('div', { style: {fontSize:10,color:"#64748b"},}, "👤 "
+                                  React.createElement('div', { style: {fontSize:10,color:"var(--text-muted)"},}, "👤 "
                                      , e.yonetici
                                     , e.tel&&React.createElement('span', null, " · "  , React.createElement('a', { href: "tel:"+e.tel.replace(/\s/g,""), onClick: ev=>ev.stopPropagation(), style: {color:"#3b82f6",textDecoration:"none"},}, "📞 " , e.tel))
                                   )
@@ -357,13 +357,13 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                 , React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"#10b981"},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺")
                                 , gorunum==="atandi"&&(
                                   React.createElement('button', { onClick: ()=>geriAl(e.id),
-                                    style: {padding:"3px 8px",borderRadius:6,background:"#1a1f2e",border:"1px solid #ef444433",color:"#ef4444",fontSize:10,cursor:"pointer",fontWeight:600},}, "↩ Geri Al"
+                                    style: {padding:"3px 8px",borderRadius:6,background:"rgba(239,68,68,0.10)",border:"1px solid rgba(239,68,68,0.24)",color:"#dc2626",fontSize:10,cursor:"pointer",fontWeight:600},}, "↩ Geri Al"
 
                                   )
                                 )
                                 , gorunum==="tamam"&&(
                                   React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end"},}
-                                    , React.createElement('span', { style: {fontSize:10,background:(e.bakiyeDevir||0)>0?"#3a1e1e":"#1e3a2e",color:(e.bakiyeDevir||0)>0?"#ef4444":"#10b981",padding:"3px 8px",borderRadius:6,fontWeight:700}}, "Devir: "+((e.bakiyeDevir||0)).toLocaleString("tr-TR")+" ₺")
+                                    , React.createElement('span', { style: {fontSize:10,background:(e.bakiyeDevir||0)>0?"rgba(239,68,68,0.10)":"rgba(16,185,129,0.10)",color:(e.bakiyeDevir||0)>0?"#dc2626":"#059669",padding:"3px 8px",borderRadius:6,fontWeight:700}}, "Devir: "+((e.bakiyeDevir||0)).toLocaleString("tr-TR")+" ₺")
                                     , (function(){
                                         /* Yeni devir hesabı */
                                         var bk=mMonth.find(function(bx){return bx.asansorId===e.id&&bx.yapildi;});
@@ -373,19 +373,19 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                         var alinan=bk.odendi?(bk.alinanTutar||bk.tutar||0):0;
                                         var nd=eskiD+ayUcret-alinan;
                                         var ndColor=nd>0?"#f97316":nd===0?"#94a3b8":"#34d399";
-                                        var ndBg=nd>0?"#4a2000":nd===0?"#1a1f2e":"#0a2a1a";
+                                        var ndBg=nd>0?"rgba(249,115,22,0.12)":nd===0?"var(--bg-elevated)":"rgba(52,211,153,0.12)";
                                         return React.createElement('span', {style:{fontSize:9,background:ndBg,color:ndColor,padding:"3px 8px",borderRadius:6,fontWeight:800,border:"1px solid "+ndColor+"44"}},
                                           "Yeni: "+(nd>0?"+":"")+nd.toLocaleString("tr-TR")+" ₺"
                                         );
                                       })()
                                     , React.createElement('button', { onClick: (ev)=>{ev.stopPropagation();bakimYapilmadi(e.id);},
-                                        style: {padding:"3px 7px",borderRadius:5,background:"#3a1e1e",border:"1px solid #ef444455",color:"#ef4444",fontSize:10,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",lineHeight:"1.4"}
+                                        style: {padding:"3px 7px",borderRadius:5,background:"rgba(239,68,68,0.10)",border:"1px solid rgba(239,68,68,0.28)",color:"#dc2626",fontSize:10,cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",lineHeight:"1.4"}
                                       }, "✗ Yapılmadı")
                                   )
                                 )
                                 , gorunum==="bekleyen"&&(
                                   React.createElement('button', { onClick: (ev)=>{ev.stopPropagation();ataEl(e.id);},
-                                    style: {padding:"3px 10px",borderRadius:6,background:"#1e3a10",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:10,cursor:"pointer",fontWeight:700},}, "📤 Ata"
+                                    style: {padding:"3px 10px",borderRadius:6,background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.30)",color:"#b45309",fontSize:10,cursor:"pointer",fontWeight:700},}, "📤 Ata"
 
                                   )
                                 )
