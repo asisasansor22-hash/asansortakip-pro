@@ -573,7 +573,7 @@ function App(){
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
+    if(addrs.length>1) base+="&waypoints=optimize:true|"+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
     base+="&travelmode=driving";
     return base;
   })();
