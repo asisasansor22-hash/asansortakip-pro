@@ -324,7 +324,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                               "Asis Asansör Bakım ve Servis Hizmetleri";
                             window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                           },
-                          style:{padding:"8px 12px",background:"#0d2518",border:"1px solid #25d36644",borderRadius:8,color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
+                          style:{padding:"8px 12px",background:"rgba(37,211,102,0.12)",border:"1px solid rgba(37,211,102,0.30)",borderRadius:8,color:"#128c7e",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
                         },"WhatsApp Bildir")
                     )
                   )
@@ -383,7 +383,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             "Asis Asansör Bakım ve Servis Hizmetleri";
                           window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                         },
-                        style:{padding:"6px 10px",borderRadius:7,background:"#0d2518",border:"1px solid #25d36644",color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
+                        style:{padding:"6px 10px",borderRadius:7,background:"rgba(37,211,102,0.12)",border:"1px solid rgba(37,211,102,0.30)",color:"#128c7e",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
                       }, "WhatsApp Bildir"
                     )
                   )

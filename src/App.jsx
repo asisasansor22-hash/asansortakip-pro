@@ -1144,7 +1144,7 @@ function App(){
                       style:{flex:1,padding:"5px 8px",borderRadius:8,background:asansorDetay===e.id?"#1e3a5f":"#1a1f2e",border:"1px solid "+(asansorDetay===e.id?"#3b82f6":"#2a3050"),color:asansorDetay===e.id?"#3b82f6":"#64748b",fontSize:10,fontWeight:700,cursor:"pointer"}
                     }, asansorDetay===e.id?"▲ Geçmişi Gizle":"📋 Bakım Geçmişi"
                   )
-                  , e.tel&&React.createElement('button', {
+                , e.tel&&React.createElement('button', {
                       onClick:function(ev){
                         ev.stopPropagation();
                         var nd=yeniDevir(e.id);
@@ -1164,7 +1164,7 @@ function App(){
                           "Asis Asansör Bakım ve Servis Hizmetleri";
                         window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                       },
-                      style:{padding:"5px 8px",borderRadius:8,background:"#fff",border:"1.5px solid #222",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1,fontWeight:700}
+                      style:{padding:"5px 8px",borderRadius:8,background:"rgba(37,211,102,0.12)",border:"1px solid rgba(37,211,102,0.30)",color:"#128c7e",fontSize:14,cursor:"pointer",lineHeight:1,fontWeight:700}
                     }, "WhatsApp"
                   )
                 )
@@ -1291,11 +1291,11 @@ function App(){
 
     /* Konum bilgisi veya manuel adres */
     , rotaKonum
-      ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",border:"1px solid #10b98133",borderRadius:10,marginBottom:12}},
+      ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"var(--bg-card)",border:"1px solid #10b98133",borderRadius:10,marginBottom:12}},
           React.createElement('div',{style:{width:28,height:28,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}},"📍"),
           React.createElement('div',{style:{flex:1}},
             React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#10b981"}},"Başlangıç: Mevcut Konumunuz"),
-            React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:1}},rotaKonum.label)
+            React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginTop:1}},rotaKonum.label)
           )
         )
       : React.createElement('div',{style:{marginBottom:12}},
@@ -1310,11 +1310,11 @@ function App(){
         )
 
     /* BAKIMCI: Bekleyen Bakımlar akıllı filtresi */
-    , rol==="bakimci"&&bekleyenRotaIds.length>0&&React.createElement('div',{style:{background:"#fff",border:"1px solid #10b98155",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+    , rol==="bakimci"&&bekleyenRotaIds.length>0&&React.createElement('div',{style:{background:"var(--bg-card)",border:"1px solid #10b98155",borderRadius:12,padding:"12px 14px",marginBottom:12}},
         React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
           React.createElement('div',null,
             React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#10b981"}},"🔧 Bekleyen Bakımlar"),
-            React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:2}},bekleyenRotaIds.length+" asansör bu ay henüz tamamlanmadı")
+            React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginTop:2}},bekleyenRotaIds.length+" asansör bu ay henüz tamamlanmadı")
           ),
           React.createElement('button',{
             onClick:function(){setRotaSec(bekleyenRotaIds);setRotaIlce("Tümü");},
@@ -1329,8 +1329,8 @@ function App(){
             return React.createElement('button',{key:aid,
               onClick:function(){setRotaSec(function(p){return sec?p.filter(function(x){return x!==e.id;}):[...p,e.id];});},
               style:{fontSize:11,padding:"5px 10px",borderRadius:7,
-                background:sec?"#10b981":"rgba(16,185,129,0.08)",
-                color:sec?"#fff":"#6ee7b7",
+                background:sec?"#10b981":"var(--bg-elevated)",
+                color:sec?"#fff":"var(--text)",
                 border:"1px solid "+(sec?"#10b981":"#10b98144"),
                 cursor:"pointer",fontWeight:600,
                 transition:"all 0.15s"
@@ -1372,6 +1372,7 @@ function App(){
           React.createElement('span',{style:{color:"#3b82f6"}},rotaSec.length," seçili")
         ),
         React.createElement('div',{style:{display:"flex",gap:6}},
+          rotaOtomatikIds.length>1&&React.createElement('button',{onClick:()=>setRotaSec(rotaOrder),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"rgba(16,185,129,0.14)",color:"#10b981",border:"none",cursor:"pointer",fontWeight:700}},"Akıllı Sırayı Uygula"),
           React.createElement('button',{onClick:()=>setRotaSec(rotaPool.map(e=>e.id)),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",border:"none",cursor:"pointer",fontWeight:700}},"Tümünü Seç"),
           React.createElement('button',{onClick:()=>setRotaSec([]),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"var(--bg-elevated)",color:"var(--text-muted)",border:"none",cursor:"pointer",fontWeight:700}},"Temizle")
         )
@@ -1398,7 +1399,10 @@ function App(){
               React.createElement('div',{style:{width:22,height:22,borderRadius:5,background:sec?"#3b82f6":"var(--bg-deep)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sec?"#fff":"var(--text-muted)",flexShrink:0}},sec?sira:"☐"),
               /* Bina bilgisi */
               React.createElement('div',{style:{flex:1,minWidth:0}},
-                React.createElement('div',{style:{fontSize:12,fontWeight:600,color:sec?"var(--text)":bekliyor?"#6ee7b7":"var(--text-muted)"}},e.ad),
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,color:sec?"var(--text)":bekliyor?"#6ee7b7":"var(--text-muted)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
+                  e.ad,
+                  rotaOtomatikIds.length===rotaSec.length&&React.createElement('span',{style:{fontSize:9,color:"#60a5fa",background:"rgba(59,130,246,0.16)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"Akıllı sıra")
+                ),
                 React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.ilce+(e.semt?", "+e.semt:""))
               ),
               /* Durum badge */
@@ -1458,7 +1462,7 @@ function App(){
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},"S"),
                 React.createElement('div',null,
                   React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#10b981"}},"Başlangıç Noktası"),
-                  React.createElement('div',{style:{fontSize:10,color:"#6ee7b7"}},rotaKonum?rotaKonum.label:rotaStart)
+                  React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},rotaKonum?rotaKonum.label:rotaStart)
                 )
               )
             : React.createElement('div',{style:{padding:"8px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:9}},
@@ -1479,10 +1483,10 @@ function App(){
                     bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor"),
                     rotaOtomatikIds.length===rotaSec.length&&React.createElement('span',{style:{fontSize:9,color:"#60a5fa",background:"rgba(59,130,246,0.16)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"Akıllı sıra")
                   ),
-                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(e.semt?e.semt+" Mah., ":"")+e.adres)
+                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},routeAddressLabel(e))
                 ),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent((e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"")),
+                  href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(e)),
                   target:"_blank",rel:"noreferrer",
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")

@@ -114,20 +114,20 @@ function EkstraIsEkrani(props) {
       ),
       /* Ödeme durumu toggle */
       React.createElement("div",{style:{marginBottom:14}},
-        React.createElement("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 12px",background:form.odendi?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.12)",border:"1px solid "+(form.odendi?"#10b98144":"#f59e0b44"),borderRadius:10}},
-          React.createElement("input",{type:"checkbox",checked:!!form.odendi,onChange:function(e){setF("odendi",e.target.checked);},style:{width:18,height:18,cursor:"pointer",accentColor:"#10b981"}}),
+        React.createElement("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 12px",background:form.odendi?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.16)",border:"1px solid "+(form.odendi?"#10b98144":"#f59e0b55"),borderRadius:10}},
+          React.createElement("input",{type:"checkbox",checked:!!form.odendi,onChange:function(e){setF("odendi",e.target.checked);},style:{width:18,height:18,cursor:"pointer",accentColor:form.odendi?"#10b981":"#f59e0b"}}),
           React.createElement("div",null,
-            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:form.odendi?"#10b981":"#f59e0b"}},form.odendi?"\u2705 Hemen \u00d6dendi":"\u23f3 \u00d6denmedi \u2014 Devire Eklenecek"),
-            React.createElement("div",{style:{fontSize:10,color:"var(--text-muted)",marginTop:2}},form.odendi?"Kaydedilecek, devir etkilenmeyecek":"Tutar devir bakiyesine eklenecek")
+            React.createElement("div",{style:{fontSize:13,fontWeight:800,color:form.odendi?"#0f9f67":"#9a5a00"}},form.odendi?"\u2705 Hemen \u00d6dendi":"\u23f3 \u00d6denmedi \u2014 Devire Eklenecek"),
+            React.createElement("div",{style:{fontSize:10,color:"var(--text)",opacity:0.72,marginTop:2}},form.odendi?"Kaydedilecek, devir etkilenmeyecek":"Tutar devir bakiyesine eklenecek")
           )
         )
       ),
-      seciliBina&&form.tutar&&React.createElement("div",{style:{background:form.odendi?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.12)",border:"1px solid "+(form.odendi?"#10b98144":"#f59e0b44"),borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:11,color:form.odendi?"#10b981":"#f59e0b"}},
+      seciliBina&&form.tutar&&React.createElement("div",{style:{background:form.odendi?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.12)",border:"1px solid "+(form.odendi?"#10b98144":"#f59e0b44"),borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:11,color:form.odendi?"#0f9f67":"#9a5a00"}},
         form.odendi
           ?React.createElement("span",null,"\u2705 ",React.createElement("strong",null,seciliBina.ad)," \u2014 ",(parseFloat(form.tutar)||0).toLocaleString("tr-TR")," \u20ba \u00f6dendi olarak kaydedilecek.")
           :React.createElement("span",null,"\u26a0\ufe0f ",React.createElement("strong",null,seciliBina.ad)," devir bakiyesine ",React.createElement("strong",null,(parseFloat(form.tutar)||0).toLocaleString("tr-TR")+" \u20ba")," eklenecek.")
       ),
-      React.createElement("button",{onClick:kaydet,style:{width:"100%",padding:"12px",background:form.odendi?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",borderRadius:10,color:form.odendi?"#fff":"#000",fontWeight:800,fontSize:14,cursor:"pointer"}},
+      React.createElement("button",{onClick:kaydet,style:{width:"100%",padding:"12px",background:form.odendi?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",borderRadius:10,color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer"}},
         form.odendi?"\uD83D\uDCBE Kaydet (\u00d6dendi)":"\uD83D\uDCBE Kaydet & Devire Ekle")
     ),
     /* Liste */
