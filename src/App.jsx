@@ -597,61 +597,56 @@ function App(){
       , React.createElement('div', { id:"app-header", className:"safe-top"},
         React.createElement('div', { className:"header-title-row"},
           /* Sol: logo + başlık */
-          React.createElement('div', { style:{display:"flex",alignItems:"center",gap:10,flex:1,minWidth:0}},
+          React.createElement('div', { style:{display:"flex",alignItems:"center",gap:8,flex:1,minWidth:0}},
             React.createElement('div', { style:{
               background: rol==="bakimci"
                 ? "linear-gradient(145deg,rgba(48,209,88,0.25),rgba(48,209,88,0.10))"
                 : "linear-gradient(145deg,rgba(79,142,247,0.28),rgba(79,142,247,0.10))",
-              borderRadius:12, width:38, height:38,
-              display:"flex", alignItems:"center", justifyContent:"center", fontSize:19, flexShrink:0,
+              borderRadius:10, width:32, height:32,
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0,
               border: rol==="bakimci" ? "1px solid rgba(48,209,88,0.25)" : "1px solid rgba(79,142,247,0.25)",
               boxShadow: rol==="bakimci" ? "0 2px 10px rgba(48,209,88,0.20)" : "0 2px 10px rgba(79,142,247,0.25)"
             }}, rol==="bakimci"?"🔧":"🛗"),
-            React.createElement('div', {style:{minWidth:0}},
-              React.createElement('div', { style:{fontWeight:800,fontSize:16,color:"var(--text)",letterSpacing:-0.5,lineHeight:1.2}}, "AsansörTakip Pro"),
-              React.createElement('div', { style:{fontSize:11,color:rol==="bakimci"?"var(--ios-green)":"rgba(255,255,255,0.40)",fontWeight:600,letterSpacing:0.2,marginTop:1}},
-                rol==="bakimci" ? ("● " + (aktifBakimci ? aktifBakimci.ad : "Bakımcı") + " · Bakımcı Modu") : "● Yönetici · "+elevs.length+" asansör"
+            React.createElement('div', {style:{minWidth:0,flex:1}},
+              React.createElement('div', { style:{fontWeight:800,fontSize:14,color:"var(--text)",letterSpacing:-0.5,lineHeight:1.2}}, "AsansörTakip Pro"),
+              React.createElement('div', { style:{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}},
+                React.createElement('span', { style:{fontSize:10,color:rol==="bakimci"?"var(--ios-green)":"rgba(255,255,255,0.40)",fontWeight:600,letterSpacing:0.2}},
+                  rol==="bakimci" ? ("● " + (aktifBakimci ? aktifBakimci.ad : "Bakımcı")) : "● Yönetici · "+elevs.length+" asansör"
+                ),
+                rol==="yonetici"&&atanmayanCount>0&&React.createElement('span', {style:{
+                  fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:20,
+                  background:"rgba(255,159,10,0.15)",color:"var(--ios-orange)",
+                  border:"1px solid rgba(255,159,10,0.25)"
+                }}, atanmayanCount+" Atanmayan"),
+                rol==="yonetici"&&openFaults.length>0&&React.createElement('span', {style:{
+                  fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:20,
+                  background:"rgba(255,69,58,0.15)",color:"var(--ios-red)",
+                  border:"1px solid rgba(255,69,58,0.25)"
+                }}, openFaults.length+" Arıza"),
+                rol==="bakimci"&&atananArizaCount>0&&React.createElement('span', {style:{
+                  fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:20,
+                  background:"rgba(255,69,58,0.15)",color:"var(--ios-red)",
+                  border:"1px solid rgba(255,69,58,0.25)"
+                }}, atananArizaCount+" Arıza")
               )
             )
           ),
-          /* Orta: badge'ler */
-          React.createElement('div', { style:{display:"flex",gap:5,alignItems:"center",flexShrink:0}},
-            rol==="yonetici"&&atanmayanCount>0&&React.createElement('div', {style:{
-              fontSize:11,fontWeight:800,padding:"4px 10px",borderRadius:20,
-              background:"rgba(255,159,10,0.15)",color:"var(--ios-orange)",
-              border:"1px solid rgba(255,159,10,0.25)",letterSpacing:0.2
-            }}, atanmayanCount+" Atanmayan"),
-            rol==="yonetici"&&openFaults.length>0&&React.createElement('div', {style:{
-              fontSize:11,fontWeight:800,padding:"4px 10px",borderRadius:20,
-              background:"rgba(255,69,58,0.15)",color:"var(--ios-red)",
-              border:"1px solid rgba(255,69,58,0.25)",letterSpacing:0.2
-            }}, openFaults.length+" Arıza"),
-            rol==="bakimci"&&atananArizaCount>0&&React.createElement('div', {style:{
-              fontSize:11,fontWeight:800,padding:"4px 10px",borderRadius:20,
-              background:"rgba(255,69,58,0.15)",color:"var(--ios-red)",
-              border:"1px solid rgba(255,69,58,0.25)"
-            }}, atananArizaCount+" Arıza")
-          ),
           /* Sağ: tema + çıkış */
-          React.createElement('div', { style:{display:"flex",gap:6,alignItems:"center",flexShrink:0,marginLeft:8}},
+          React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
             rol==="bakimci"&&React.createElement('button', {
               onClick:()=>{setSifreModal(true);setSifreInput("");setSifreHata("");},
-              style:{width:34,height:34,borderRadius:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"var(--accent)",cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}
+              style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"var(--accent)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "🔒"),
-            React.createElement('div', {style:{display:"flex",gap:2,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:10,padding:"3px"}},
-              [{k:"gece",icon:"🌙"},{k:"yesil",icon:"🔮"},{k:"turuncu",icon:"🌅"},{k:"acik",icon:"☀️"}].map(function(t){
-                return React.createElement('button',{key:t.k,onClick:function(){setTema(t.k);},style:{
-                  background:tema===t.k?"var(--accent)":"transparent",
-                  border:"none",borderRadius:7,width:28,height:28,fontSize:13,cursor:"pointer",
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  transition:"background 0.18s",
-                  boxShadow:tema===t.k?"0 1px 4px rgba(79,142,247,0.35)":"none"
-                }},t.icon);
-              })
-            ),
+            React.createElement('button',{onClick:function(){setTema(tema==="acik"?"gece":"acik");},style:{
+              width:30,height:30,borderRadius:8,
+              background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.09)",
+              fontSize:14,cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              transition:"background 0.18s"
+            }},tema==="acik"?"🌙":"☀️"),
             React.createElement('button', {
               onClick:()=>{firebaseLogout();setRol(null);setTab(0);},
-              style:{width:34,height:34,borderRadius:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.50)",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}
+              style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.50)",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "←")
           )
         ),

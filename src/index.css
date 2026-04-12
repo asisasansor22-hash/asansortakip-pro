@@ -1504,17 +1504,18 @@
       border-bottom: 1px solid rgba(0,0,0,0.06) !important;
       box-shadow: 0 1px 0 rgba(255,255,255,0.9), 0 2px 12px rgba(0,0,0,0.06) !important;
     }
-    /* Header içindeki yazılar */
+    /* Header tüm yazılar ve ikonlar */
+    [data-tema="acik"] #app-header,
     [data-tema="acik"] #app-header * {
       color: #1a1a2e;
     }
-    [data-tema="acik"] .header-title-row div[style*="fontWeight"] {
+    [data-tema="acik"] .header-title-row span,
+    [data-tema="acik"] .header-title-row div {
       color: #1a1a2e !important;
     }
-    [data-tema="acik"] .header-title-row div[style*="fontSize:11"],
-    [data-tema="acik"] .header-title-row div[style*="font-size:11"],
-    [data-tema="acik"] .header-title-row div[style*="fontSize: 11"] {
-      color: rgba(26,26,46,0.55) !important;
+    /* Alt satır muted yazılar */
+    [data-tema="acik"] .header-title-row span[style*="rgba(255"] {
+      color: rgba(26,26,46,0.50) !important;
     }
     /* Header logo ikon kutusu */
     [data-tema="acik"] .header-title-row > div:first-child > div:first-child {
@@ -1522,17 +1523,11 @@
       border-color: rgba(68,102,221,0.20) !important;
       box-shadow: 0 2px 8px rgba(68,102,221,0.10) !important;
     }
-    /* Tema butonları */
-    [data-tema="acik"] .header-title-row div[style*="gap:2"],
-    [data-tema="acik"] .header-title-row div[style*="gap: 2"] {
-      background: rgba(0,0,0,0.05) !important;
-      border-color: rgba(0,0,0,0.08) !important;
-    }
-    /* Çıkış ve kilit butonları */
-    [data-tema="acik"] .header-title-row button[style*="rgba(255"] {
-      background: rgba(0,0,0,0.05) !important;
-      border-color: rgba(0,0,0,0.08) !important;
-      color: rgba(26,26,46,0.55) !important;
+    /* Tema ve çıkış butonları */
+    [data-tema="acik"] .header-title-row button {
+      background: rgba(0,0,0,0.06) !important;
+      border-color: rgba(0,0,0,0.10) !important;
+      color: #1a1a2e !important;
     }
 
     /* Tab bar */
