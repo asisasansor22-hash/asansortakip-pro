@@ -899,7 +899,8 @@ function App(){
         var simdiHedef=new Date();
         var yeniMusteriBuAy=elevs.filter(function(e){
           var d=getElevAddedDate(e);
-          return !isNaN(d) && d.getFullYear()===simdiHedef.getFullYear() && d.getMonth()===simdiHedef.getMonth();
+          if(!d || isNaN(d.getTime())) return false;
+          return d.getFullYear()===simdiHedef.getFullYear() && d.getMonth()===simdiHedef.getMonth();
         }).length;
         var yeniMusteriKalan=Math.max(0,AYLIK_YENI_MUSTERI_HEDEFI-yeniMusteriBuAy);
         var yeniMusteriPct=Math.min(100,Math.round((yeniMusteriBuAy/AYLIK_YENI_MUSTERI_HEDEFI)*100));
