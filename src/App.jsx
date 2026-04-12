@@ -775,20 +775,43 @@ function App(){
     }catch(e){if(!sessiz)setKonumHata("Konum alınamadı. Adres girin.");}
     setKonumYukleniyor(false);
   };
-  // Rota sekmesi açılınca otomatik konum al
+  // Rota sekmesi veya bakımcı tab açılınca otomatik konum al
   useEffect(()=>{
-    if(tab===5&&!rotaKonum&&!konumYukleniyor){
+    var rotaAktif=(tab===5)||(rol==="bakimci"&&tab===2);
+    if(rotaAktif&&!rotaKonum&&!konumYukleniyor){
       konumAl(true);
     }
-  },[tab]);
+  },[tab,rol]);
 
   useEffect(function(){
     rotaGeoCacheRef.current=rotaGeoCache;
     lsSet("at_geo_cache",rotaGeoCache);
   },[rotaGeoCache]);
 
+  // Bakımcı tab 2'deyken bekleyen bakımları otomatik rotaya yükle
   useEffect(function(){
-    if(tab!==5){return;}
+    if(rol!=="bakimci"||tab!==2) return;
+    var simdi=new Date();
+    var _mMonth=maints.filter(function(m){var d=new Date(m.tarih);return d.getMonth()===fMonth&&d.getFullYear()===simdi.getFullYear();});
+    var ids=[].concat(new Set(_mMonth.filter(function(m){
+      if(!m.planlanmis||m.yapildi) return false;
+      var elev=elevs.find(function(e){return e.id===m.asansorId;});
+      if(!elev) return false;
+      if(aktifBakimci&&m.bakimciId&&m.bakimciId!==aktifBakimci.id) return false;
+      if(aktifBakimci&&aktifBakimci.ilceler&&aktifBakimci.ilceler.length>0){
+        if(!aktifBakimci.ilceler.includes(elev.ilce)) return false;
+      }
+      return true;
+    }).map(function(m){return m.asansorId;})));
+    // Sadece değiştiyse güncelle (sonsuz döngü önleme)
+    var yeniStr=JSON.stringify(ids.slice().sort());
+    var eskiStr=JSON.stringify(rotaSec.slice().sort());
+    if(yeniStr!==eskiStr) setRotaSec(ids);
+  },[rol,tab,maints,fMonth,elevs,aktifBakimci]);
+
+  useEffect(function(){
+    var bakimciTab=(rol==="bakimci"&&tab===2);
+    if(tab!==5&&!bakimciTab){return;}
     var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
     if(seciliElevs.length===0){
       setRotaOtomatikIds([]);
@@ -894,7 +917,7 @@ function App(){
       }
     });
     return function(){ iptal=true; };
-  },[tab, rotaSec, rotaKonum, rotaStart, elevs]);
+  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rol]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -1492,7 +1515,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, onRotaOlustur: function(ids){setRotaSec(ids);setTab(5);},})
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,hesaplaniyor:rotaHesaplaniyor,tahminiKm:rotaTahminiKm,optHata:rotaOptHata,eslesmeyenSayi:rotaEslesmeyenSayi,konum:rotaKonum},})
 )
 
 /* ARIZALAR - YÖNETİCİ */
