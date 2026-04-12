@@ -1696,3 +1696,87 @@
     [data-tema="acik"] div[style*="background: var(--bg-elevated)"] {
       background: #F0F2F8 !important;
     }
+
+    /* ═══ KAPSAMLI AÇIK TEMA DÜZELTMELERİ ═══ */
+
+    /* Tüm koyu hex arka planlar (#0x, #1x, #2x) → beyaz */
+    [data-tema="acik"] div[style*="background:#0"],
+    [data-tema="acik"] div[style*="background: #0"],
+    [data-tema="acik"] div[style*="background:#1"],
+    [data-tema="acik"] div[style*="background: #1"],
+    [data-tema="acik"] div[style*="background:#2"],
+    [data-tema="acik"] div[style*="background: #2"],
+    [data-tema="acik"] button[style*="background:#0"],
+    [data-tema="acik"] button[style*="background: #0"],
+    [data-tema="acik"] button[style*="background:#1"],
+    [data-tema="acik"] button[style*="background: #1"],
+    [data-tema="acik"] button[style*="background:#2"],
+    [data-tema="acik"] button[style*="background: #2"] {
+      background: #F0F2F8 !important;
+      border-color: rgba(0,0,0,0.10) !important;
+      color: #1a1a2e !important;
+    }
+
+    /* Form input'ları — koyu arka plan → açık */
+    [data-tema="acik"] input[style*="background:#0"],
+    [data-tema="acik"] input[style*="background: #0"],
+    [data-tema="acik"] input[style*="background:#1"],
+    [data-tema="acik"] input[style*="background: #1"],
+    [data-tema="acik"] input[style*="background:#2"],
+    [data-tema="acik"] input[style*="background: #2"],
+    [data-tema="acik"] textarea[style*="background:#0"],
+    [data-tema="acik"] textarea[style*="background:#1"],
+    [data-tema="acik"] textarea[style*="background:#2"],
+    [data-tema="acik"] select[style*="background:#0"],
+    [data-tema="acik"] select[style*="background:#1"],
+    [data-tema="acik"] select[style*="background:#2"] {
+      background: #FFFFFF !important;
+      border-color: rgba(0,0,0,0.12) !important;
+      color: #1a1a2e !important;
+    }
+
+    /* Koyu border'lar → açık */
+    [data-tema="acik"] div[style*="border"][style*="#2a3050"],
+    [data-tema="acik"] div[style*="border"][style*="#1e2640"],
+    [data-tema="acik"] button[style*="border"][style*="#2a3050"] {
+      border-color: rgba(0,0,0,0.08) !important;
+    }
+
+    /* Koyu gradient arka planlar → açık */
+    [data-tema="acik"] div[style*="linear-gradient"][style*="#0"],
+    [data-tema="acik"] div[style*="linear-gradient"][style*="#1"],
+    [data-tema="acik"] div[style*="linear-gradient"][style*="#2"] {
+      background: #FFFFFF !important;
+    }
+
+    /* Koyu gölgeler → açık gölge */
+    [data-tema="acik"] div[style*="boxShadow"][style*="rgba(0"] {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    }
+
+    /* Muted renkli yazılar (#64748b, #94a3b8, #475569) → daha koyu */
+    [data-tema="acik"] div[style*="color:#64748b"],
+    [data-tema="acik"] div[style*="color: #64748b"],
+    [data-tema="acik"] div[style*="color:#475569"],
+    [data-tema="acik"] div[style*="color: #475569"] {
+      color: rgba(26,26,46,0.50) !important;
+    }
+    [data-tema="acik"] div[style*="color:#94a3b8"],
+    [data-tema="acik"] div[style*="color: #94a3b8"],
+    [data-tema="acik"] button[style*="color:#94a3b8"],
+    [data-tema="acik"] button[style*="color: #94a3b8"] {
+      color: rgba(26,26,46,0.45) !important;
+    }
+
+    /* Tüm açık tema input elemanları genel kural */
+    [data-tema="acik"] input,
+    [data-tema="acik"] textarea,
+    [data-tema="acik"] select {
+      background: #FFFFFF !important;
+      color: #1a1a2e !important;
+      border-color: rgba(0,0,0,0.12) !important;
+    }
+    [data-tema="acik"] input::placeholder,
+    [data-tema="acik"] textarea::placeholder {
+      color: rgba(26,26,46,0.35) !important;
+    }
