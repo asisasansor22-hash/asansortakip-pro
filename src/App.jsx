@@ -931,16 +931,6 @@ function App(){
                   , e.tel&&React.createElement('button', {
                       onClick:function(ev){
                         ev.stopPropagation();
-                        var konu="Asansör Bakım Bildirimi - "+e.ad;
-                        var govde="Sayın "+e.yonetici+",\n\n"+e.ad+" binanızın asansörüne ait bakım bilgisi.\n\nAdres: "+(e.semt?e.semt+" Mah., ":"")+e.adres+", "+e.ilce+"\n\n-- AsansörTakip Pro --";
-                        window.location.href="mailto:?subject="+encodeURIComponent(konu)+"&body="+encodeURIComponent(govde);
-                      },
-                      style:{padding:"5px 8px",borderRadius:8,background:"#1a1f2e",border:"1px solid #2a3050",color:"#94a3b8",fontSize:11,cursor:"pointer"}
-                    }, "✉️"
-                  )
-                  , e.tel&&React.createElement('button', {
-                      onClick:function(ev){
-                        ev.stopPropagation();
                         var nd=yeniDevir(e.id);
                         var borc=nd!==null?nd:(e.bakiyeDevir||0)+(e.aylikUcret||0);
                         var tutar=borc.toLocaleString("tr-TR")+" ₺";
@@ -958,7 +948,7 @@ function App(){
                           "Asis Asansör Bakım ve Servis Hizmetleri";
                         window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                       },
-                      style:{padding:"5px 8px",borderRadius:8,background:"#0d2518",border:"1px solid #25d36633",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1}
+                      style:{padding:"5px 8px",borderRadius:8,background:"#fff",border:"1px solid #25d36644",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1,fontWeight:700}
                     }, "WhatsApp"
                   )
                 )
@@ -1071,11 +1061,11 @@ function App(){
 
     /* Konum bilgisi veya manuel adres */
     , rotaKonum
-      ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"rgba(16,185,129,0.1)",border:"1px solid #10b98133",borderRadius:10,marginBottom:12}},
+      ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fff",border:"1px solid #10b98133",borderRadius:10,marginBottom:12}},
           React.createElement('div',{style:{width:28,height:28,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}},"📍"),
           React.createElement('div',{style:{flex:1}},
             React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#10b981"}},"Başlangıç: Mevcut Konumunuz"),
-            React.createElement('div',{style:{fontSize:10,color:"#6ee7b7",marginTop:1}},rotaKonum.label)
+            React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:1}},rotaKonum.label)
           )
         )
       : React.createElement('div',{style:{marginBottom:12}},
@@ -1090,11 +1080,11 @@ function App(){
         )
 
     /* BAKIMCI: Bekleyen Bakımlar akıllı filtresi */
-    , rol==="bakimci"&&bekleyenRotaIds.length>0&&React.createElement('div',{style:{background:"linear-gradient(135deg,rgba(16,185,129,0.1),rgba(16,185,129,0.06))",border:"1px solid #10b98155",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+    , rol==="bakimci"&&bekleyenRotaIds.length>0&&React.createElement('div',{style:{background:"#fff",border:"1px solid #10b98155",borderRadius:12,padding:"12px 14px",marginBottom:12}},
         React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
           React.createElement('div',null,
             React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#10b981"}},"🔧 Bekleyen Bakımlar"),
-            React.createElement('div',{style:{fontSize:10,color:"#6ee7b7",marginTop:2}},bekleyenRotaIds.length+" asansör bu ay henüz tamamlanmadı")
+            React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:2}},bekleyenRotaIds.length+" asansör bu ay henüz tamamlanmadı")
           ),
           React.createElement('button',{
             onClick:function(){setRotaSec(bekleyenRotaIds);setRotaIlce("Tümü");},
@@ -1364,7 +1354,7 @@ function App(){
                                 setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
                                 setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                               },
-                              style:{marginTop:4,padding:"3px 8px",background:"#3a1e1e",border:"1px solid #ef444444",borderRadius:5,color:"#ef4444",fontSize:10,fontWeight:700,cursor:"pointer"}
+                              style:{marginTop:4,padding:"3px 8px",background:"rgba(239,68,68,0.12)",border:"1px solid #ef444444",borderRadius:5,color:"#ef4444",fontSize:10,fontWeight:700,cursor:"pointer"}
                             }, "↩ Geri Al")
                         )
                       )
