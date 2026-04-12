@@ -4,7 +4,7 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci}){
+function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,onRotaOlustur}){
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
   const [odemeModal,setOdemeModal]=useState(null);

@@ -381,6 +381,7 @@ function App(){
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
   const [rotaGeoCache,setRotaGeoCache]=useState(function(){return lsGet("at_geo_cache")||{};});
+  const rotaGeoCacheRef=React.useRef(rotaGeoCache);
   const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
   const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
   const [rotaOptHata,setRotaOptHata]=useState("");
@@ -782,6 +783,7 @@ function App(){
   },[tab]);
 
   useEffect(function(){
+    rotaGeoCacheRef.current=rotaGeoCache;
     lsSet("at_geo_cache",rotaGeoCache);
   },[rotaGeoCache]);
 
@@ -793,21 +795,6 @@ function App(){
       setRotaTahminiKm(null);
       setRotaOptHata("");
       setRotaEslesmeyenSayi(0);
-      setRotaHesaplaniyor(false);
-      return;
-      setRotaEslesmeyenSayi(coordsOlmayan.length);
-      var yaklasikSayi=routePoints.filter(function(p){return p.coords&&p.matchKind==="approximate";}).length;
-      var rotaMesajlari=[];
-      if(coordsOlmayan.length>0){
-        rotaMesajlari.push(coordsOlmayan.length+" adres Ã§Ã¶zÃ¼lemedi. Bu duraklar listenin sonunda bÄ±rakÄ±ldÄ±.");
-      }
-      if(yaklasikSayi>0){
-        rotaMesajlari.push(yaklasikSayi+" adres yaklaÅŸÄ±k konumla sÄ±ralandÄ±.");
-      }
-      if(!startPoint&&rotaStart.trim()){
-        rotaMesajlari.push("BaÅŸlangÄ±Ã§ adresi haritada Ã§Ã¶zÃ¼lemedi. Duraklar kendi aralarÄ±nda optimize edildi.");
-      }
-      setRotaOptHata(rotaMesajlari.join(" "));
       setRotaHesaplaniyor(false);
       return;
     }
@@ -825,9 +812,11 @@ function App(){
       setRotaHesaplaniyor(true);
       setRotaOptHata("");
       setRotaEslesmeyenSayi(0);
-      var cacheGuncel=Object.assign({},rotaGeoCache);
+      // rotaGeoCacheRef kullan — state'e bağımlı değil, double-run önler
+      var cacheGuncel=Object.assign({},rotaGeoCacheRef.current);
       var routePoints=[];
       for(var i=0;i<seciliElevs.length;i++){
+        if(iptal) return;
         var elev=seciliElevs[i];
         var key=routeAddressKey(elev);
         var cached=cacheGuncel[key];
@@ -867,7 +856,9 @@ function App(){
         if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
       }
       if(iptal) return;
-      if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)){
+      // Sadece yeni veri varsa cache güncelle
+      var cacheStr=JSON.stringify(cacheGuncel);
+      if(cacheStr!==JSON.stringify(rotaGeoCacheRef.current)){
         setRotaGeoCache(cacheGuncel);
       }
       var coordsOlan=routePoints.filter(function(p){return p.coords;});
@@ -877,18 +868,17 @@ function App(){
       var toplamKm=0;
       var onceki=startPoint;
       finalPoints.forEach(function(p){
-        if(onceki&&p.coords){
-          toplamKm+=haversineKm(onceki,p.coords);
-        }
+        if(onceki&&p.coords) toplamKm+=haversineKm(onceki,p.coords);
         onceki=p.coords||onceki;
       });
+      if(iptal) return;
       setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
       setRotaEslesmeyenSayi(coordsOlmayan.length);
       if(coordsOlmayan.length>0){
-        setRotaOptHata(coordsOlmayan.length+" adres tam eşleşmedi. Bu duraklar listenin sonunda bırakıldı.");
+        setRotaOptHata(coordsOlmayan.length+" adres tam çözülemedi. Bu duraklar sona eklendi.");
       }else if(!startPoint&&rotaStart.trim()){
-        setRotaOptHata("Başlangıç adresi haritada çözülemedi. Duraklar kendi aralarında optimize edildi.");
+        setRotaOptHata("Başlangıç adresi çözülemedi. Duraklar kendi aralarında optimize edildi.");
       }else{
         setRotaOptHata("");
       }
@@ -899,12 +889,12 @@ function App(){
         setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
         setRotaTahminiKm(null);
         setRotaEslesmeyenSayi(0);
-        setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor.");
+        setRotaOptHata("Rota hesaplanamadı. Seçim sırasına göre gösteriliyor.");
         setRotaHesaplaniyor(false);
       }
     });
     return function(){ iptal=true; };
-  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rotaGeoCache]);
+  },[tab, rotaSec, rotaKonum, rotaStart, elevs]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -1022,14 +1012,16 @@ function App(){
       exactMatch:!!coords
     };
   });
-  // Google Maps Directions API formatı: origin + waypoints + destination
+  // Google Maps Directions URL — waypoints %7C ile ayrılıyor (pipe encoding)
   const mapsUrl=(function(){
     if(rotaMapStops.length===0) return "";
     var addrs=rotaMapStops.map(function(stop){return stop.target;});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
+    if(addrs.length>1){
+      base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("%7C");
+    }
     base+="&travelmode=driving&dir_action=navigate";
     return base;
   })();
@@ -1495,12 +1487,12 @@ function App(){
 
 /* BAKIM ATAMA */
 , tab===2&&rol==="yonetici"&&(
-  React.createElement(BakimAtamaPaneli, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, fMonth: fMonth, setFMonth: setFMonth, ilceler: ilceler, elevByIlce: elevByIlce, today: today, eName: eName, bakimcilar: bakimcilar,})
+  React.createElement(BakimAtamaPaneli, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, fMonth: fMonth, setFMonth: setFMonth, ilceler: ilceler, elevByIlce: elevByIlce, today: today, eName: eName, bakimcilar: bakimcilar, onRotaOlustur: function(ids){setRotaSec(ids);setTab(5);},})
 )
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci,})
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, onRotaOlustur: function(ids){setRotaSec(ids);setTab(5);},})
 )
 
 /* ARIZALAR - YÖNETİCİ */

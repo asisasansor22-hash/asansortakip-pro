@@ -3,7 +3,7 @@ import KontrolListesi from './KontrolListesi.jsx'
 import { makbuzBakimYazdir } from '../utils/makbuz.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK } from '../utils/constants.js'
 
-function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMonth,ilceler,elevByIlce,today,eName,bakimcilar}){
+function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMonth,ilceler,elevByIlce,today,eName,bakimcilar,onRotaOlustur}){
   const [seciliIlce,setSeciliIlce]=useState(null);   // hangi ilçe açık
   const [secili,setSecili]=useState({});              // {elevId: true}
   const [gorunum,setGorunum]=useState("bekleyen");   // "bekleyen"|"atandi"|"tamam"
@@ -245,6 +245,15 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                   style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"},}, "📤 "
                    , seciliSayi, " Binayı Bakımcıya At"
                 )
+              )
+              , seciliSayi>0&&onRotaOlustur&&(
+                React.createElement('button', {
+                  onClick:()=>{
+                    var ids=Object.keys(secili).filter(function(id){return secili[id];}).map(function(id){return parseInt(id);});
+                    onRotaOlustur(ids);
+                  },
+                  style:{padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"}
+                },"🗺️ ",seciliSayi," Bina İçin Rota Oluştur")
               )
               , seciliSayi>0&&gorunum==="atandi"&&(
                 React.createElement('button', { onClick: ()=>{Object.keys(secili).filter(id=>secili[id]).forEach(id=>geriAl(parseInt(id)));setSecili({});},
