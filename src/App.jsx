@@ -25,11 +25,202 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
 
 function routeAddressKey(e){
-  return [e.ad||"", e.semt||"", e.adres||"", e.ilce||""].join(" | ");
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce)]).join(" | ");
+}
+
+function routeAddressLabelOriginal(e){
+  return (e.semt?e.semt+" Mahallesi, ":"") + (e.adres||"") + (e.ilce?", "+e.ilce+", İstanbul":"");
+}
+
+var ROUTE_GEO_CACHE_VERSION = 2;
+
+function normalizeRouteText(value){
+  return String(value||"")
+    .normalize("NFKC")
+    .replace(/\u0307/g,"")
+    .replace(/\s+/g," ")
+    .replace(/\s+,/g,",")
+    .replace(/,\s+/g,", ")
+    .trim();
+}
+
+function routeFold(value){
+  return normalizeRouteText(value)
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\u0131/g,"i");
+}
+
+function routeUniqueParts(parts){
+  return (parts||[]).reduce(function(acc,part){
+    var clean=normalizeRouteText(part);
+    var folded=routeFold(clean);
+    if(!folded) return acc;
+    var exists=acc.some(function(existing){
+      var existingFold=routeFold(existing);
+      return existingFold===folded||existingFold.includes(folded)||folded.includes(existingFold);
+    });
+    if(!exists) acc.push(clean);
+    return acc;
+  },[]);
+}
+
+function normalizeRouteAddress(value){
+  return normalizeRouteText(value)
+    .replace(/\bMAH\b\.?/gi,"Mahallesi")
+    .replace(/\bSOK\b\.?/gi,"Sokak")
+    .replace(/\bCAD\b\.?/gi,"Caddesi")
+    .replace(/\bBLV\b\.?/gi,"Bulvar\u0131")
+    .replace(/\bNO\s*:\s*$/i,"")
+    .replace(/\bD(?:A(?:I|\u0130)RE)?\s*:\s*$/i,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function stripRouteHouseNumber(value){
+  return normalizeRouteAddress(value)
+    .replace(/\bNO\s*:\s*[A-Z0-9/-]+/gi,"")
+    .replace(/\bD(?:A(?:I|\u0130)RE)?\s*:\s*[A-Z0-9/-]+/gi,"")
+    .replace(/\s+/g," ")
+    .replace(/[,:-]+\s*$/,"")
+    .trim();
+}
+
+function pushRouteQuery(list,parts){
+  var query=routeUniqueParts((parts||[]).concat(["\u0130stanbul"])).join(", ");
+  if(!query) return;
+  if(list.some(function(existing){return routeFold(existing)===routeFold(query);})){return;}
+  list.push(query);
+}
+
+function routeAddressKeyLegacy(e){
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce)]).join(" | ");
 }
 
 function routeAddressLabel(e){
-  return (e.semt?e.semt+" Mahallesi, ":"") + (e.adres||"") + (e.ilce?", "+e.ilce+", İstanbul":"");
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce), "\u0130stanbul"]).join(", ");
+}
+
+function buildRouteGeocodeQueries(e){
+  var address=normalizeRouteAddress(e&&e.adres);
+  var streetOnly=stripRouteHouseNumber(address);
+  var semt=normalizeRouteText(e&&e.semt);
+  var ilce=normalizeRouteText(e&&e.ilce);
+  var queries=[];
+  if(address){
+    pushRouteQuery(queries,[address,semt,ilce]);
+    pushRouteQuery(queries,[address,ilce]);
+  }
+  if(streetOnly&&routeFold(streetOnly)!==routeFold(address)){
+    pushRouteQuery(queries,[streetOnly,semt,ilce]);
+    pushRouteQuery(queries,[streetOnly,ilce]);
+  }
+  if(semt){
+    pushRouteQuery(queries,[semt,ilce]);
+  }else if(ilce){
+    pushRouteQuery(queries,[ilce]);
+  }
+  return queries;
+}
+
+function buildStartGeocodeQueries(text){
+  var address=normalizeRouteAddress(text);
+  var streetOnly=stripRouteHouseNumber(address);
+  var queries=[];
+  if(address) pushRouteQuery(queries,[address]);
+  if(streetOnly&&routeFold(streetOnly)!==routeFold(address)){
+    pushRouteQuery(queries,[streetOnly]);
+  }
+  return queries;
+}
+
+function scoreRouteCandidateLabel(label,context,baseScore){
+  var score=Number(baseScore)||0;
+  var haystack=routeFold(label);
+  var istKey=routeFold("\u0130stanbul");
+  if(haystack.includes(istKey)) score+=10;
+  else score-=20;
+  var ilceKey=routeFold(context&&context.ilce);
+  if(ilceKey){
+    if(haystack.includes(ilceKey)) score+=12;
+    else score-=6;
+  }
+  var semtKey=routeFold(context&&context.semt);
+  if(semtKey&&haystack.includes(semtKey)) score+=5;
+  return score;
+}
+
+async function geocodeWithArcGIS(query,context){
+  var res=await fetch("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=5&outFields=Match_addr,Addr_type,City,Region,Country&singleLine="+encodeURIComponent(query),{
+    headers:{Accept:"application/json","Accept-Language":"tr"}
+  });
+  if(!res.ok) throw new Error("ArcGIS geocode baÅŸarÄ±sÄ±z");
+  var data=await res.json();
+  var items=Array.isArray(data&&data.candidates)?data.candidates:[];
+  return items.map(function(item){
+    var location=item&&item.location;
+    var lat=location?Number(location.y):NaN;
+    var lng=location?Number(location.x):NaN;
+    var attrs=item&&item.attributes?item.attributes:{};
+    var addrType=attrs.Addr_type||"";
+    var label=item.address||attrs.Match_addr||query;
+    var rank=scoreRouteCandidateLabel(label,context,item&&item.score);
+    var precision=(addrType==="PointAddress"||addrType==="StreetAddress")?"exact":"approximate";
+    if(addrType==="PointAddress"||addrType==="StreetAddress") rank+=8;
+    else if(addrType==="StreetName") rank+=4;
+    return {lat:lat,lng:lng,label:label,precision:precision,source:"arcgis",rank:rank};
+  }).filter(function(item){
+    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
+  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
+}
+
+async function geocodeWithNominatim(query,context){
+  var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=5&q="+encodeURIComponent(query),{
+    headers:{Accept:"application/json","Accept-Language":"tr"}
+  });
+  if(!res.ok) throw new Error("Nominatim geocode baÅŸarÄ±sÄ±z");
+  var data=await res.json();
+  return (Array.isArray(data)?data:[]).map(function(item){
+    var lat=Number(item&&item.lat);
+    var lng=Number(item&&item.lon);
+    var type=item&&item.type||"";
+    var label=item&&item.display_name||query;
+    var rank=scoreRouteCandidateLabel(label,context,70+((Number(item&&item.importance)||0)*20));
+    var precision=(type==="house"||type==="building")?"exact":"approximate";
+    if(type==="house"||type==="building") rank+=8;
+    else if(type==="road"||type==="residential") rank+=4;
+    return {lat:lat,lng:lng,label:label,precision:precision,source:"nominatim",rank:rank};
+  }).filter(function(item){
+    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
+  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
+}
+
+async function geocodeRouteQueries(queries,context){
+  var best=null;
+  for(var i=0;i<queries.length;i++){
+    try{
+      var arcgis=await geocodeWithArcGIS(queries[i],context);
+      if(arcgis&&(!best||arcgis.rank>best.rank)) best=arcgis;
+      if(arcgis&&(arcgis.precision==="exact"||arcgis.rank>=88)) return arcgis;
+    }catch(e){}
+  }
+  for(var j=0;j<queries.length;j++){
+    try{
+      var nominatim=await geocodeWithNominatim(queries[j],context);
+      if(nominatim&&(!best||nominatim.rank>best.rank)) best=nominatim;
+      if(nominatim&&(nominatim.precision==="exact"||nominatim.rank>=88)) return nominatim;
+    }catch(e){}
+  }
+  return best&&best.rank>=70?best:null;
+}
+
+function routeCoordsValue(coords){
+  if(!coords) return "";
+  var lat=Number(coords.lat);
+  var lng=Number(coords.lng);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return "";
+  return lat+","+lng;
 }
 
 function deg2rad(v){ return v*(Math.PI/180); }
@@ -193,6 +384,7 @@ function App(){
   const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
   const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
   const [rotaOptHata,setRotaOptHata]=useState("");
+  const [rotaEslesmeyenSayi,setRotaEslesmeyenSayi]=useState(0);
   const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
@@ -600,6 +792,22 @@ function App(){
       setRotaOtomatikIds([]);
       setRotaTahminiKm(null);
       setRotaOptHata("");
+      setRotaEslesmeyenSayi(0);
+      setRotaHesaplaniyor(false);
+      return;
+      setRotaEslesmeyenSayi(coordsOlmayan.length);
+      var yaklasikSayi=routePoints.filter(function(p){return p.coords&&p.matchKind==="approximate";}).length;
+      var rotaMesajlari=[];
+      if(coordsOlmayan.length>0){
+        rotaMesajlari.push(coordsOlmayan.length+" adres Ã§Ã¶zÃ¼lemedi. Bu duraklar listenin sonunda bÄ±rakÄ±ldÄ±.");
+      }
+      if(yaklasikSayi>0){
+        rotaMesajlari.push(yaklasikSayi+" adres yaklaÅŸÄ±k konumla sÄ±ralandÄ±.");
+      }
+      if(!startPoint&&rotaStart.trim()){
+        rotaMesajlari.push("BaÅŸlangÄ±Ã§ adresi haritada Ã§Ã¶zÃ¼lemedi. Duraklar kendi aralarÄ±nda optimize edildi.");
+      }
+      setRotaOptHata(rotaMesajlari.join(" "));
       setRotaHesaplaniyor(false);
       return;
     }
@@ -616,6 +824,7 @@ function App(){
     async function hesapla(){
       setRotaHesaplaniyor(true);
       setRotaOptHata("");
+      setRotaEslesmeyenSayi(0);
       var cacheGuncel=Object.assign({},rotaGeoCache);
       var routePoints=[];
       for(var i=0;i<seciliElevs.length;i++){
@@ -624,24 +833,33 @@ function App(){
         var cached=cacheGuncel[key];
         if(!cached && elev.adres){
           try{
-            var geo=await geocodeAddress(routeAddressLabel(elev));
+            var geo=await geocodeRouteQueries(buildRouteGeocodeQueries(elev),{
+              semt:normalizeRouteText(elev.semt),
+              ilce:normalizeRouteText(elev.ilce)
+            });
             if(geo){
-              cached={lat:geo.lat,lng:geo.lng,label:geo.label};
+              cached={lat:geo.lat,lng:geo.lng,label:geo.label,precision:geo.precision,source:geo.source,v:ROUTE_GEO_CACHE_VERSION};
               cacheGuncel[key]=cached;
             }
           }catch(e){}
         }
-        routePoints.push({elev:elev,coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,manualIndex:rotaSec.indexOf(elev.id)});
+        routePoints.push({
+          elev:elev,
+          coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,
+          manualIndex:rotaSec.indexOf(elev.id),
+          matchKind:cached?(cached.precision||"approximate"):null
+        });
       }
       var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
       if(!startPoint && rotaStart.trim()){
-        var startKey="__start__:"+rotaStart.trim().toLowerCase();
+        var startKey="__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim());
         var startCached=cacheGuncel[startKey];
         if(!startCached){
           try{
             var startGeo=await geocodeAddress(rotaStart.trim()+", İstanbul");
+            startGeo=(await geocodeRouteQueries(buildStartGeocodeQueries(rotaStart.trim()),{}))||startGeo;
             if(startGeo){
-              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label};
+              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label,precision:startGeo.precision,source:startGeo.source,v:ROUTE_GEO_CACHE_VERSION};
               cacheGuncel[startKey]=startCached;
             }
           }catch(e){}
@@ -666,6 +884,7 @@ function App(){
       });
       setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
+      setRotaEslesmeyenSayi(coordsOlmayan.length);
       if(coordsOlmayan.length>0){
         setRotaOptHata(coordsOlmayan.length+" adres tam eşleşmedi. Bu duraklar listenin sonunda bırakıldı.");
       }else if(!startPoint&&rotaStart.trim()){
@@ -679,6 +898,7 @@ function App(){
       if(!iptal){
         setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
         setRotaTahminiKm(null);
+        setRotaEslesmeyenSayi(0);
         setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor.");
         setRotaHesaplaniyor(false);
       }
@@ -788,20 +1008,29 @@ function App(){
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
-  const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
-  const rotaEslesmeyenSayi=(function(){
-    var eslesme=(rotaOptHata||"").match(/(\d+)/);
-    return eslesme?Number(eslesme[1]):0;
-  })();
+  const rotaStartCacheKey=rotaStart.trim()?"__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim()):"";
+  const rotaStartCache=rotaStartCacheKey?rotaGeoCache[rotaStartCacheKey]:null;
+  const rotaStartCoords=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:(rotaStartCache?{lat:Number(rotaStartCache.lat),lng:Number(rotaStartCache.lng)}:null);
+  const rotaStartStr=rotaStartCoords?routeCoordsValue(rotaStartCoords):rotaStart;
+  const rotaMapStops=rotaElevs.map(function(e){
+    var cached=rotaGeoCache[routeAddressKey(e)];
+    var coords=cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null;
+    return {
+      elev:e,
+      coords:coords,
+      target:routeCoordsValue(coords)||routeAddressLabel(e),
+      exactMatch:!!coords
+    };
+  });
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrl=(function(){
-    if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return routeAddressLabel(e);});
+    if(rotaMapStops.length===0) return "";
+    var addrs=rotaMapStops.map(function(stop){return stop.target;});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
     if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
-    base+="&travelmode=driving";
+    base+="&travelmode=driving&dir_action=navigate";
     return base;
   })();
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
@@ -1555,7 +1784,7 @@ function App(){
                   React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},routeAddressLabel(e))
                 ),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(e)),
+                  href:"https://maps.google.com/?q="+encodeURIComponent((rotaGeoCache[routeAddressKey(e)]&&routeCoordsValue({lat:Number(rotaGeoCache[routeAddressKey(e)].lat),lng:Number(rotaGeoCache[routeAddressKey(e)].lng)}))||routeAddressLabel(e)),
                   target:"_blank",rel:"noreferrer",
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")
