@@ -82,6 +82,17 @@ function App(){
   const aylikKapamaRef=React.useRef([]); // aylikKapamalar'ın her zaman güncel kopyası
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
 
+  // Bakımcıları hemen yükle (public read — login ekranı için)
+  useEffect(function(){
+    async function yukBakimci(){
+      try{
+        var r=await dbGet("at_bakimcilar");
+        if(r){var d=Array.isArray(r)?r:(typeof r==='string'?JSON.parse(r):null);if(Array.isArray(d)&&d.length>0){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}
+      }catch(e){}
+    }
+    yukBakimci();
+  },[]);
+
   // Login sonrası veri yükle (auth token gerekli)
   useEffect(function(){
     if(rol===null) return; // henüz giriş yapılmadı
