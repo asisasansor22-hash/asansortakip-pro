@@ -35,10 +35,10 @@
   <g filter="url(#shadow)">
     <rect x="150" y="106" width="212" height="300" rx="58" fill="url(#glass)"/>
     <rect x="182" y="146" width="148" height="214" rx="36" fill="url(#door)"/>
-    <rect x="253" y="146" width="6" height="214" rx="3" fill="#3373E8" opacity="0.95"/>
+    <rect x="253" y="146" width="6" height="214" rx="3" fill="#296BEE" opacity="0.95"/>
     <rect x="196" y="126" width="120" height="24" rx="12" fill="#E9F3FF"/>
-    <path d="M224 150L242 124L260 150H247V156H237V150H224Z" fill="#3787FF"/>
-    <path d="M288 124L270 150L252 124H265V118H275V124H288Z" fill="#33D2A0"/>
+    <path d="M224 150L242 124L260 150H247V156H237V150H224Z" fill="#2B76FF"/>
+    <path d="M288 124L270 150L252 124H265V118H275V124H288Z" fill="#31CFA0"/>
     <rect x="214" y="210" width="18" height="84" rx="9" fill="#8CB7F7"/>
     <rect x="280" y="210" width="18" height="84" rx="9" fill="#8CB7F7"/>
     <rect x="184" y="378" width="144" height="16" rx="8" fill="#9FC1FF"/>
