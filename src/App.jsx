@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet } from './firebase.js'
+import { dbGet, dbSet, firebaseLogout, firebaseLogin } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -69,7 +69,7 @@ function App(){
   const [giderHaftaArsiv,setGiderHaftaArsiv]=useState([]);
   const [muayeneler,setMuayeneler]=useState([]);
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
-  const [bakimcilar,setBakimcilar]=useState([]);        // kayıtlı bakımcı listesi
+  const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
@@ -82,8 +82,9 @@ function App(){
   const aylikKapamaRef=React.useRef([]); // aylikKapamalar'ın her zaman güncel kopyası
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
 
-  // Uygulama anında açılır, Supabase verisi arka planda yüklenir
+  // Login sonrası veri yükle (auth token gerekli)
   useEffect(function(){
+    if(rol===null) return; // henüz giriş yapılmadı
     async function yukle(){
       try{
         // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
@@ -164,7 +165,7 @@ function App(){
       ilkYukleme.current=false;
     }
     yukle();
-  },[]);
+  },[rol]);
 
   // Veri değişince Firebase'e kaydet (ilk yüklemede tetiklenmez)
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_elevs",elevs);if(elevs.length>0)lsSet("ls_elevs",elevs);}},[elevs]);
@@ -181,7 +182,7 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_bakimcilar",bakimcilar);}},[bakimcilar]);
+  useEffect(function(){if(!ilkYukleme.current){dbSet("at_bakimcilar",bakimcilar);lsSet("ls_bakimcilar",bakimcilar);}},[bakimcilar]);
 
   // Yükleme ekranı
 
@@ -638,7 +639,7 @@ function App(){
               })
             ),
             React.createElement('button', {
-              onClick:()=>{setRol(null);setTab(0);},
+              onClick:()=>{firebaseLogout();setRol(null);setTab(0);},
               style:{width:34,height:34,borderRadius:10,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.50)",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "←")
           )
@@ -2351,14 +2352,14 @@ function App(){
             ),
             React.createElement('div', { className:"ios-modal-body"},
               React.createElement('input', { type: "password", value: sifreInput, onChange: e=>{setSifreInput(e.target.value);setSifreHata("");},
-                onKeyDown: e=>{if(e.key==="Enter"){if(sifreInput==="asis94"){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("")}}},
+                onKeyDown: e=>{if(e.key==="Enter"){if(sifreInput==="asis94"){firebaseLogin("yonetici@asistakip.app","asis94").then(()=>{setRol("yonetici");setTab(0);setSifreModal(false);});}else{setSifreHata("Hatalı şifre!");setSifreInput("")}}},
                 placeholder: "Şifre girin", autoFocus: true,
                 style: {...S.inp,fontSize:16,marginBottom:sifreHata?10:0}}),
               sifreHata&&React.createElement('div', { style: {fontSize:13,color:"var(--ios-red)",background:"rgba(255,59,48,0.1)",borderRadius:10,padding:"8px 12px"}}, "🚫 " , sifreHata)
             ),
             React.createElement('div', { style: {padding:"8px 18px 10px",display:"flex",gap:10}},
               React.createElement('button', { onClick: ()=>setSifreModal(false), style: {flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}, "İptal"),
-              React.createElement('button', { onClick: ()=>{if(sifreInput==="asis94"){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("");}},
+              React.createElement('button', { onClick: ()=>{if(sifreInput==="asis94"){firebaseLogin("yonetici@asistakip.app","asis94").then(()=>{setRol("yonetici");setTab(0);setSifreModal(false);});}else{setSifreHata("Hatalı şifre!");setSifreInput("");}},
                 style: {flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}, "Giriş")
             )
           )
