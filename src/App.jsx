@@ -250,14 +250,6 @@ async function geocodeRouteQueries(queries,context){
   return best&&best.rank>=70?best:null;
 }
 
-function routeCoordsValue(coords){
-  if(!coords) return "";
-  var lat=Number(coords.lat);
-  var lng=Number(coords.lng);
-  if(!Number.isFinite(lat)||!Number.isFinite(lng)) return "";
-  return lat+","+lng;
-}
-
 async function fetchRoadDistanceMatrix(points,startPoint){
   var coords=(startPoint?[startPoint]:[]).concat(points.map(function(p){return p.coords;})).filter(Boolean);
   if(coords.length<2||coords.length>26) return null;
@@ -1029,46 +1021,129 @@ function App(){
     if(yeniStr!==eskiStr) setRotaSec(ids);
   },[rol,tab,maints,fMonth,elevs,aktifBakimci]);
 
-  // İlçe → Semt → Sokak öbeklemesi (tıklama sırası korunarak)
+  // Seçili duraklar için gerçek yol mesafesine göre rota sırala
   useEffect(function(){
-    var secili=rotaSec.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
-    if(secili.length===0){setRotaOtomatikIds([]);return;}
-    // Adres alanından sokak adını çıkar (mahalle kısmını atla)
-    function sokakAdi(adres){
-      if(!adres) return "";
-      var s=adres.toUpperCase().replace(/\s+/g," ").trim();
-      // "XXX MAHALLESİ YYY SOKAK NO:ZZ" → "YYY SOKAK" kısmını bul
-      var m=s.match(/MAHALLESİ\s+(.+?)(?:\s+NO\s*[:.]|$)/i);
-      if(m) return m[1].replace(/\s+/g," ").trim();
-      // "XXX MAH. YYY SOK." formatı
-      var m2=s.match(/MAH\.?\s+(.+?)(?:\s+NO\s*[:.]|$)/i);
-      if(m2) return m2[1].replace(/\s+/g," ").trim();
-      return s;
+    var bakimciTab=(rol==="bakimci"&&tab===2);
+    if(tab!==5&&!bakimciTab){return;}
+    var seciliElevs=rotaSec.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
+    if(seciliElevs.length===0){
+      setRotaOtomatikIds([]);
+      setRotaTahminiKm(null);
+      setRotaOptHata("");
+      setRotaEslesmeyenSayi(0);
+      setRotaHesaplaniyor(false);
+      return;
     }
-    // Öbekleme anahtarı: ilçe|semt|sokak
-    function grupKey(e){
-      return (e.ilce||"").toLocaleLowerCase("tr")+"|"+(e.semt||"").toLocaleLowerCase("tr")+"|"+sokakAdi(e.adres).toLocaleLowerCase("tr");
+    var iptal=false;
+    async function geocodeAddress(text){
+      return geocodeRouteQueries(buildStartGeocodeQueries(text),{});
     }
-    // Tıklama sırasını koruyarak grupla
-    var gruplar=[]; // [{key, items:[elev]}]
-    var grupMap={};
-    secili.forEach(function(e){
-      var k=grupKey(e);
-      if(grupMap[k]!==undefined){
-        gruplar[grupMap[k]].items.push(e);
-      } else {
-        grupMap[k]=gruplar.length;
-        gruplar.push({key:k,items:[e]});
+    async function hesapla(){
+      setRotaHesaplaniyor(true);
+      setRotaOptHata("");
+      setRotaEslesmeyenSayi(0);
+      var cacheGuncel=Object.assign({},rotaGeoCacheRef.current);
+      var routePoints=[];
+      for(var i=0;i<seciliElevs.length;i++){
+        if(iptal) return;
+        var elev=seciliElevs[i];
+        var override=normalizeRouteText(rotaAdresOverrides[elev.id]);
+        var key=override
+          ? "__override_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(override)
+          : routeAddressKey(elev);
+        var cached=cacheGuncel[key];
+        if(!cached){
+          try{
+            var geo=override
+              ? await geocodeRouteQueries([override],{})
+              : await geocodeRouteQueries(buildRouteGeocodeQueries(elev),{
+                  semt:normalizeRouteText(elev.semt),
+                  ilce:normalizeRouteText(elev.ilce)
+                });
+            if(geo){
+              cached={lat:geo.lat,lng:geo.lng,label:geo.label,precision:geo.precision,source:geo.source,v:ROUTE_GEO_CACHE_VERSION};
+              cacheGuncel[key]=cached;
+            }
+          }catch(e){}
+        }
+        routePoints.push({
+          elev:elev,
+          coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,
+          manualIndex:i
+        });
+      }
+      var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
+      if(!startPoint && rotaStart.trim()){
+        var startKey="__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim());
+        var startCached=cacheGuncel[startKey];
+        if(!startCached){
+          try{
+            var startGeo=await geocodeAddress(rotaStart.trim()+", İstanbul");
+            if(startGeo){
+              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label,precision:startGeo.precision,source:startGeo.source,v:ROUTE_GEO_CACHE_VERSION};
+              cacheGuncel[startKey]=startCached;
+            }
+          }catch(e){}
+        }
+        if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
+      }
+      if(iptal) return;
+      var cacheStr=JSON.stringify(cacheGuncel);
+      if(cacheStr!==JSON.stringify(rotaGeoCacheRef.current)){
+        setRotaGeoCache(cacheGuncel);
+      }
+      var coordsOlan=routePoints.filter(function(p){return p.coords;});
+      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
+      var optimizeEdilen=coordsOlan;
+      var distanceMatrix=null;
+      if(coordsOlan.length>1){
+        try{
+          distanceMatrix=await fetchRoadDistanceMatrix(coordsOlan,startPoint);
+          optimizeEdilen=distanceMatrix?optimizeRouteWithMatrix(coordsOlan,distanceMatrix,startPoint):optimizeRoute(coordsOlan,startPoint);
+        }catch(e){
+          distanceMatrix=null;
+          optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
+        }
+      }
+      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
+      var optimizedIndexes=optimizeEdilen.map(function(p){return coordsOlan.indexOf(p);}).filter(function(idx){return idx>=0;});
+      var toplamKm=distanceMatrix?matrixRouteDistanceKm(distanceMatrix,optimizedIndexes,startPoint):null;
+      if(toplamKm===null){
+        toplamKm=0;
+        var onceki=startPoint;
+        finalPoints.forEach(function(p){
+          if(onceki&&p.coords) toplamKm+=haversineKm(onceki,p.coords);
+          onceki=p.coords||onceki;
+        });
+      }
+      if(iptal) return;
+      var finalIds=finalPoints.map(function(p){return p.elev.id;});
+      setRotaOtomatikIds(finalIds);
+      setRotaSec(function(prev){
+        if(prev.length!==finalIds.length) return prev;
+        for(var j=0;j<prev.length;j++){
+          if(prev[j]!==finalIds[j]){
+            return finalIds;
+          }
+        }
+        return prev;
+      });
+      setRotaTahminiKm(toplamKm>0?toplamKm:null);
+      setRotaEslesmeyenSayi(coordsOlmayan.length);
+      setRotaOptHata("");
+      setRotaHesaplaniyor(false);
+    }
+    hesapla().catch(function(){
+      if(!iptal){
+        setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
+        setRotaTahminiKm(null);
+        setRotaEslesmeyenSayi(0);
+        setRotaOptHata("");
+        setRotaHesaplaniyor(false);
       }
     });
-    // Grup sırası: ilk tıklanan elemanın sırasına göre (tıklama sırası korunuyor)
-    // Grup içindeki elemanlar da tıklama sırasında (forEach zaten o sırada)
-    var sonuc=[];
-    gruplar.forEach(function(g){
-      g.items.forEach(function(e){sonuc.push(e.id);});
-    });
-    setRotaOtomatikIds(sonuc);
-  },[rotaSec, elevs]);
+    return function(){ iptal=true; };
+  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rol, rotaAdresOverrides]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -1172,7 +1247,12 @@ function App(){
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
-  const rotaStartStr=rotaKonum?(rotaKonum.lat+","+rotaKonum.lng):(rotaStart||"");
+  const rotaStartCacheKey=rotaStart.trim()?"__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim()):"";
+  const rotaStartCache=rotaStartCacheKey?rotaGeoCache[rotaStartCacheKey]:null;
+  const rotaStartCoords=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:(rotaStartCache?{lat:Number(rotaStartCache.lat),lng:Number(rotaStartCache.lng)}:null);
+  const rotaStartInput=rotaStart.trim();
+  const rotaStartDisplay=rotaKonum?rotaKonum.label:rotaStartInput;
+  const rotaMapsOrigin=rotaKonum?"":rotaStartInput;
   const rotaMapStops=rotaElevs.map(function(e){
     var override=rotaAdresOverrides[e.id];
     var target=override||routeAddressLabel(e);
@@ -1197,16 +1277,16 @@ function App(){
       }
       base+="&travelmode=driving&dir_action=navigate";
       return base;
-    }
+      }
     if(addrs.length<=MAPS_MAX){
-      return {mapsUrl:buildMapsLink(rotaStartStr,addrs),mapsUrl2:""};
+      return {mapsUrl:buildMapsLink(rotaMapsOrigin,addrs),mapsUrl2:""};
     }
     // İlk bölüm: ilk MAPS_MAX durak
     var firstPart=addrs.slice(0,MAPS_MAX);
     // İkinci bölüm: MAPS_MAX-1'den devam (1 durak overlap → bağlantı noktası)
     var secondPart=addrs.slice(MAPS_MAX-1);
     return {
-      mapsUrl:buildMapsLink(rotaStartStr,firstPart),
+      mapsUrl:buildMapsLink(rotaMapsOrigin,firstPart),
       mapsUrl2:buildMapsLink(firstPart[firstPart.length-1],secondPart)
     };
   })();
@@ -1887,7 +1967,7 @@ function App(){
               React.createElement('div',null,
                 React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"var(--text)"}}, "Rota Özeti"),
                 React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
-                  "İlçe → Semt → Sokak sırasıyla gruplanıp Google Maps'e gönderilecek."
+                  "Seçilen duraklar mesafeye göre sıralanıp Google Maps'e gönderilecek."
                 )
               ),
               React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak")
@@ -1898,12 +1978,12 @@ function App(){
             )
           ),
           /* Başlangıç noktası özeti */
-          rotaStartStr
+          (rotaKonum||rotaStartInput)
             ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(16,185,129,0.1)",borderRadius:9,border:"1px solid #10b98133"}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},"S"),
                 React.createElement('div',null,
                   React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#10b981"}},"Başlangıç Noktası"),
-                  React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},rotaKonum?rotaKonum.label:rotaStart)
+                  React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},rotaStartDisplay)
                 )
               )
             : React.createElement('div',{style:{padding:"8px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:9}},
