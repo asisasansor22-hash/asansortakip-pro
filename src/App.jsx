@@ -266,10 +266,129 @@ async function fetchRoadDistanceMatrix(points,startPoint){
   return Array.isArray(data&&data.distances)?data.distances:null;
 }
 
+function matrixDistanceValue(matrix,fromIdx,toIdx,startPoint){
+  if(toIdx==null) return Infinity;
+  var offset=startPoint?1:0;
+  var fromMatrixIdx=fromIdx==null?0:(fromIdx+offset);
+  var toMatrixIdx=toIdx+offset;
+  var row=matrix&&matrix[fromMatrixIdx];
+  if(!row) return Infinity;
+  var value=row[toMatrixIdx];
+  return Number.isFinite(value)?value:Infinity;
+}
+
+function buildExactMatrixOrder(points,matrix,startPoint){
+  var n=points.length;
+  if(!Array.isArray(matrix)||n<=1||n>12) return null;
+  var totalMasks=1<<n;
+  var dp=Array.from({length:totalMasks},function(){
+    return Array(n).fill(Infinity);
+  });
+  var parent=Array.from({length:totalMasks},function(){
+    return Array(n).fill(-1);
+  });
+
+  for(var i=0;i<n;i++){
+    dp[1<<i][i]=matrixDistanceValue(matrix,null,i,startPoint);
+  }
+
+  for(var mask=1;mask<totalMasks;mask++){
+    for(var end=0;end<n;end++){
+      if(!(mask&(1<<end))) continue;
+      var currentCost=dp[mask][end];
+      if(!Number.isFinite(currentCost)) continue;
+      for(var next=0;next<n;next++){
+        if(mask&(1<<next)) continue;
+        var stepCost=matrixDistanceValue(matrix,end,next,startPoint);
+        if(!Number.isFinite(stepCost)) continue;
+        var nextMask=mask|(1<<next);
+        var totalCost=currentCost+stepCost;
+        if(totalCost<dp[nextMask][next]){
+          dp[nextMask][next]=totalCost;
+          parent[nextMask][next]=end;
+        }
+      }
+    }
+  }
+
+  var fullMask=totalMasks-1;
+  var bestEnd=0;
+  var bestCost=Infinity;
+  for(var j=0;j<n;j++){
+    if(dp[fullMask][j]<bestCost){
+      bestCost=dp[fullMask][j];
+      bestEnd=j;
+    }
+  }
+  if(!Number.isFinite(bestCost)) return null;
+
+  var orderedIdxs=[];
+  var walkMask=fullMask;
+  var walkEnd=bestEnd;
+  while(walkEnd!==-1){
+    orderedIdxs.push(walkEnd);
+    var prev=parent[walkMask][walkEnd];
+    walkMask=walkMask^(1<<walkEnd);
+    walkEnd=prev;
+  }
+  orderedIdxs.reverse();
+  return orderedIdxs;
+}
+
+function improveMatrixOrder(points,matrix,startPoint,ordered){
+  if(!Array.isArray(matrix)||ordered.length<4) return ordered.slice();
+  var current=ordered.slice();
+  function routeCost(order){
+    var total=0;
+    var prev=null;
+    for(var i=0;i<order.length;i++){
+      var step=matrixDistanceValue(matrix,prev,order[i],startPoint);
+      if(!Number.isFinite(step)) return Infinity;
+      total+=step;
+      prev=order[i];
+    }
+    return total;
+  }
+  var improved=true;
+  var bestCost=routeCost(current);
+  while(improved){
+    improved=false;
+    for(var i=0;i<current.length-2;i++){
+      for(var j=i+1;j<current.length-1;j++){
+        var candidate=current.slice(0,i).concat(current.slice(i,j+1).reverse(),current.slice(j+1));
+        var candidateCost=routeCost(candidate);
+        if(candidateCost+5<bestCost){
+          current=candidate;
+          bestCost=candidateCost;
+          improved=true;
+        }
+      }
+    }
+  }
+  return current;
+}
+
+function matrixRouteDistanceKm(matrix,ordered,startPoint){
+  if(!Array.isArray(matrix)||!ordered.length) return null;
+  var totalMeters=0;
+  var prev=null;
+  for(var i=0;i<ordered.length;i++){
+    var step=matrixDistanceValue(matrix,prev,ordered[i],startPoint);
+    if(!Number.isFinite(step)) return null;
+    totalMeters+=step;
+    prev=ordered[i];
+  }
+  return totalMeters>0?(totalMeters/1000):null;
+}
+
 function optimizeRouteWithMatrix(points,matrix,startPoint){
   if(!Array.isArray(matrix)||points.length<=1) return points.slice();
   var offset=startPoint?1:0;
   var remaining=points.map(function(_,idx){return idx;});
+  var orderedIdxs=buildExactMatrixOrder(points,matrix,startPoint);
+  if(orderedIdxs){
+    return orderedIdxs.map(function(idx){return points[idx];});
+  }
   var ordered=[];
   var currentIdx=null;
 
@@ -319,27 +438,7 @@ function optimizeRouteWithMatrix(points,matrix,startPoint){
     currentIdx=bestIdx;
   }
 
-  if(ordered.length>=4){
-    var improved=true;
-    while(improved){
-      improved=false;
-      for(var i=0;i<ordered.length-2;i++){
-        for(var j=i+1;j<ordered.length-1;j++){
-          var prevIdx=(i===0?null:ordered[i-1]);
-          var a=ordered[i];
-          var c=ordered[j];
-          var nextIdx=ordered[j+1];
-          var mevcut=edgeDistance(prevIdx,a)+edgeDistance(c,nextIdx);
-          var alternatif=edgeDistance(prevIdx,c)+edgeDistance(a,nextIdx);
-          if(alternatif+5<mevcut){
-            ordered=ordered.slice(0,i).concat(ordered.slice(i,j+1).reverse(),ordered.slice(j+1));
-            improved=true;
-          }
-        }
-      }
-    }
-  }
-
+  ordered=improveMatrixOrder(points,matrix,startPoint,ordered);
   return ordered.map(function(idx){return points[idx];});
 }
 
@@ -1009,21 +1108,29 @@ function App(){
       var coordsOlan=routePoints.filter(function(p){return p.coords;});
       var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
       var optimizeEdilen=coordsOlan;
+      var distanceMatrix=null;
       if(coordsOlan.length>1){
         try{
-          var distanceMatrix=await fetchRoadDistanceMatrix(coordsOlan,startPoint);
+          distanceMatrix=await fetchRoadDistanceMatrix(coordsOlan,startPoint);
           optimizeEdilen=distanceMatrix?optimizeRouteWithMatrix(coordsOlan,distanceMatrix,startPoint):optimizeRoute(coordsOlan,startPoint);
         }catch(e){
+          distanceMatrix=null;
           optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
         }
       }
       var finalPoints=optimizeEdilen.concat(coordsOlmayan);
-      var toplamKm=0;
-      var onceki=startPoint;
-      finalPoints.forEach(function(p){
-        if(onceki&&p.coords) toplamKm+=haversineKm(onceki,p.coords);
-        onceki=p.coords||onceki;
-      });
+      var optimizedIndexes=optimizeEdilen.map(function(p){
+        return coordsOlan.indexOf(p);
+      }).filter(function(idx){return idx>=0;});
+      var toplamKm=distanceMatrix?matrixRouteDistanceKm(distanceMatrix,optimizedIndexes,startPoint):null;
+      if(toplamKm===null){
+        toplamKm=0;
+        var onceki=startPoint;
+        finalPoints.forEach(function(p){
+          if(onceki&&p.coords) toplamKm+=haversineKm(onceki,p.coords);
+          onceki=p.coords||onceki;
+        });
+      }
       if(iptal) return;
       setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
