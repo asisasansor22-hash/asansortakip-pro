@@ -604,14 +604,9 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
-  const [rotaGeoCache,setRotaGeoCache]=useState(function(){return lsGet("at_geo_cache")||{};});
-  const rotaGeoCacheRef=React.useRef(rotaGeoCache);
   const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
-  const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
-  const [rotaOptHata,setRotaOptHata]=useState("");
-  const [rotaEslesmeyenSayi,setRotaEslesmeyenSayi]=useState(0);
-  const [rotaKoordModal,setRotaKoordModal]=useState(null);
-  const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
+  const [rotaAdresModal,setRotaAdresModal]=useState(null);
+  const [rotaAdresOverrides,setRotaAdresOverrides]=useState(function(){return lsGet("at_adres_overrides")||{};});
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
   // Tema uygula
@@ -1009,9 +1004,8 @@ function App(){
   },[tab,rol]);
 
   useEffect(function(){
-    rotaGeoCacheRef.current=rotaGeoCache;
-    lsSet("at_geo_cache",rotaGeoCache);
-  },[rotaGeoCache]);
+    lsSet("at_adres_overrides",rotaAdresOverrides);
+  },[rotaAdresOverrides]);
 
   // Bakımcı tab 2'deyken bekleyen bakımları otomatik rotaya yükle
   useEffect(function(){
@@ -1034,138 +1028,19 @@ function App(){
     if(yeniStr!==eskiStr) setRotaSec(ids);
   },[rol,tab,maints,fMonth,elevs,aktifBakimci]);
 
+  // Metin tabanlı sıralama: ilçe → semt → sokak/adres
   useEffect(function(){
-    var bakimciTab=(rol==="bakimci"&&tab===2);
-    if(tab!==5&&!bakimciTab){return;}
-    var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
-    if(seciliElevs.length===0){
-      setRotaOtomatikIds([]);
-      setRotaTahminiKm(null);
-      setRotaOptHata("");
-      setRotaEslesmeyenSayi(0);
-      setRotaHesaplaniyor(false);
-      return;
-    }
-    var iptal=false;
-    async function geocodeAddressLegacy(text){
-      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{
-        headers:{Accept:"application/json","Accept-Language":"tr"}
-      });
-      if(!res.ok) throw new Error("Geocode başarısız");
-      var data=await res.json();
-      if(!Array.isArray(data)||!data[0]) return null;
-      return {lat:Number(data[0].lat),lng:Number(data[0].lon),label:data[0].display_name||text};
-    }
-    async function geocodeAddress(text){
-      return geocodeRouteQueries(buildStartGeocodeQueries(text),{});
-    }
-    async function hesapla(){
-      setRotaHesaplaniyor(true);
-      setRotaOptHata("");
-      setRotaEslesmeyenSayi(0);
-      // rotaGeoCacheRef kullan — state'e bağımlı değil, double-run önler
-      var cacheGuncel=Object.assign({},rotaGeoCacheRef.current);
-      var routePoints=[];
-      for(var i=0;i<seciliElevs.length;i++){
-        if(iptal) return;
-        var elev=seciliElevs[i];
-        var key=routeAddressKey(elev);
-        var cached=cacheGuncel[key];
-        if(!cached && elev.adres){
-          try{
-            var geo=await geocodeRouteQueries(buildRouteGeocodeQueries(elev),{
-              semt:normalizeRouteText(elev.semt),
-              ilce:normalizeRouteText(elev.ilce)
-            });
-            if(geo){
-              cached={lat:geo.lat,lng:geo.lng,label:geo.label,precision:geo.precision,source:geo.source,v:ROUTE_GEO_CACHE_VERSION};
-              cacheGuncel[key]=cached;
-            }
-          }catch(e){}
-        }
-        routePoints.push({
-          elev:elev,
-          coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,
-          manualIndex:rotaSec.indexOf(elev.id),
-          matchKind:cached?(cached.precision||"approximate"):null
-        });
-      }
-      var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
-      if(!startPoint && rotaStart.trim()){
-        var startKey="__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim());
-        var startCached=cacheGuncel[startKey];
-        if(!startCached){
-          try{
-            var startGeo=await geocodeAddress(rotaStart.trim()+", İstanbul");
-            if(startGeo){
-              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label,precision:startGeo.precision,source:startGeo.source,v:ROUTE_GEO_CACHE_VERSION};
-              cacheGuncel[startKey]=startCached;
-            }
-          }catch(e){}
-        }
-        if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
-      }
-      if(iptal) return;
-      // Sadece yeni veri varsa cache güncelle
-      var cacheStr=JSON.stringify(cacheGuncel);
-      if(cacheStr!==JSON.stringify(rotaGeoCacheRef.current)){
-        setRotaGeoCache(cacheGuncel);
-      }
-      var coordsOlan=routePoints.filter(function(p){return p.coords;});
-      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
-      var optimizeEdilen=coordsOlan;
-      var distanceMatrix=null;
-      if(coordsOlan.length>1){
-        try{
-          distanceMatrix=await fetchRoadDistanceMatrix(coordsOlan,startPoint);
-          optimizeEdilen=distanceMatrix?optimizeRouteWithMatrix(coordsOlan,distanceMatrix,startPoint):optimizeRoute(coordsOlan,startPoint);
-        }catch(e){
-          distanceMatrix=null;
-          optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
-        }
-      }
-      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
-      var optimizedIndexes=optimizeEdilen.map(function(p){
-        return coordsOlan.indexOf(p);
-      }).filter(function(idx){return idx>=0;});
-      var toplamKm=distanceMatrix?matrixRouteDistanceKm(distanceMatrix,optimizedIndexes,startPoint):null;
-      if(toplamKm===null){
-        toplamKm=0;
-        var onceki=startPoint;
-        finalPoints.forEach(function(p){
-          if(onceki&&p.coords) toplamKm+=haversineKm(onceki,p.coords);
-          onceki=p.coords||onceki;
-        });
-      }
-      if(iptal) return;
-      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
-      setRotaTahminiKm(toplamKm>0?toplamKm:null);
-      setRotaEslesmeyenSayi(coordsOlmayan.length);
-      setRotaOptHata("");
-      setRotaHesaplaniyor(false);
-    }
-    hesapla().catch(function(){
-      if(!iptal){
-        // Hesaplama başarısız olsa bile cache'ten koordinat varsa haversine ile optimize et
-        var fallbackPoints=seciliElevs.map(function(e){
-          var cKey=routeAddressKey(e);
-          var c=rotaGeoCacheRef.current[cKey];
-          return {elev:e,coords:c?{lat:Number(c.lat),lng:Number(c.lng)}:null};
-        });
-        var withCoords=fallbackPoints.filter(function(p){return p.coords;});
-        var withoutCoords=fallbackPoints.filter(function(p){return !p.coords;});
-        var sp=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
-        var optimized=withCoords.length>1?optimizeRoute(withCoords,sp):withCoords;
-        var finalFallback=optimized.concat(withoutCoords);
-        setRotaOtomatikIds(finalFallback.map(function(p){return p.elev.id;}));
-        setRotaTahminiKm(null);
-        setRotaEslesmeyenSayi(withoutCoords.length);
-        setRotaOptHata("");
-        setRotaHesaplaniyor(false);
-      }
+    var secili=elevs.filter(function(e){return rotaSec.includes(e.id);});
+    if(secili.length===0){setRotaOtomatikIds([]);return;}
+    secili.sort(function(a,b){
+      var c=(a.ilce||"").localeCompare(b.ilce||"","tr");
+      if(c!==0) return c;
+      c=(a.semt||"").localeCompare(b.semt||"","tr");
+      if(c!==0) return c;
+      return (a.adres||"").localeCompare(b.adres||"","tr");
     });
-    return function(){ iptal=true; };
-  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rol]);
+    setRotaOtomatikIds(secili.map(function(e){return e.id;}));
+  },[rotaSec, elevs]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -1269,18 +1144,14 @@ function App(){
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
-  const rotaStartCacheKey=rotaStart.trim()?"__start_v"+ROUTE_GEO_CACHE_VERSION+"__:"+routeFold(rotaStart.trim()):"";
-  const rotaStartCache=rotaStartCacheKey?rotaGeoCache[rotaStartCacheKey]:null;
-  const rotaStartCoords=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:(rotaStartCache?{lat:Number(rotaStartCache.lat),lng:Number(rotaStartCache.lng)}:null);
-  const rotaStartStr=rotaStartCoords?routeCoordsValue(rotaStartCoords):rotaStart;
+  const rotaStartStr=rotaKonum?(rotaKonum.lat+","+rotaKonum.lng):(rotaStart||"");
   const rotaMapStops=rotaElevs.map(function(e){
-    var cached=rotaGeoCache[routeAddressKey(e)];
-    var coords=cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null;
+    var override=rotaAdresOverrides[e.id];
+    var target=override||routeAddressLabel(e);
     return {
       elev:e,
-      coords:coords,
-      target:routeCoordsValue(coords)||routeAddressLabel(e),
-      exactMatch:!!coords
+      target:target,
+      hasOverride:!!override
     };
   });
   // Google Maps Directions URL — waypoints %7C ile ayrılıyor (pipe encoding)
@@ -1778,7 +1649,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,hesaplaniyor:rotaHesaplaniyor,tahminiKm:rotaTahminiKm,konum:rotaKonum,eslesmeyenSayi:rotaEslesmeyenSayi},})
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,konum:rotaKonum},})
 )
 
 /* ARIZALAR - YÖNETİCİ */
@@ -1850,16 +1721,6 @@ function App(){
 
     /* Konum hatası */
     , konumHata&&React.createElement('div',{style:{fontSize:11,color:"#ef4444",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:7,padding:"8px 12px",marginBottom:10}},"⚠️ "+konumHata)
-    , (rotaHesaplaniyor||rotaTahminiKm!==null)&&React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginBottom:12}},
-        React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:rotaHesaplaniyor?"rgba(59,130,246,0.12)":"var(--bg-card)",border:"1px solid "+(rotaHesaplaniyor?"#3b82f655":"var(--border)")}},
-          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:rotaHesaplaniyor?"#60a5fa":"var(--text-muted)",marginBottom:4}},"ROTA"),
-          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)"}}, rotaHesaplaniyor?"Adresler analiz ediliyor...":"Rota hazır")
-        ),
-        rotaTahminiKm!==null&&React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:"rgba(16,185,129,0.10)",border:"1px solid #10b98133"}},
-          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:"#10b981",marginBottom:4}},"TAHMİNİ MESAFE"),
-          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#a7f3d0"}}, rotaTahminiKm.toFixed(1)+" km")
-        )
-      )
 
     /* Konum bilgisi veya manuel adres */
     , rotaKonum
@@ -1998,25 +1859,14 @@ function App(){
               React.createElement('div',null,
                 React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"var(--text)"}}, "Rota Özeti"),
                 React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
-                  rotaHesaplaniyor
-                    ? "Adresler çözülüyor, rota hazırlanıyor..."
-                    : "Seçilen duraklar mesafeye göre sıralanıp Google Maps'e gönderilecek."
+                  "İlçe → Semt → Sokak sırasıyla gruplanıp Google Maps'e gönderilecek."
                 )
               ),
-              React.createElement('div',{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak"),
-                rotaTahminiKm!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(16,185,129,0.14)",color:"#34d399"}}, "~ "+rotaTahminiKm.toFixed(1)+" km")
-              )
+              React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak")
             ),
-            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8}},
-              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Başlangıç"),
-                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, rotaKonum?"Mevcut konum":(rotaStart.trim()||"Google Maps soracak"))
-              ),
-              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Sıralama"),
-                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:rotaHesaplaniyor?"var(--ios-orange)":"var(--ios-green)"}}, rotaHesaplaniyor?"Hesaplanıyor":"Hazır")
-              )
+            React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
+              React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Başlangıç"),
+              React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, rotaKonum?"Mevcut konum":(rotaStart.trim()||"Google Maps soracak"))
             )
           ),
           /* Başlangıç noktası özeti */
@@ -2038,25 +1888,25 @@ function App(){
             rotaElevs.map(function(e,i){
               var c=getIlceRenk(e.ilce);
               var bekliyor=bekleyenRotaIds.includes(e.id);
-              var cacheKey=routeAddressKey(e);
-              var cached=rotaGeoCache[cacheKey];
-              var hasCoords=!!(cached&&Number.isFinite(Number(cached.lat))&&Number.isFinite(Number(cached.lng)));
+              var override=rotaAdresOverrides[e.id];
+              var adresText=override||routeAddressLabel(e);
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:bekliyor?"rgba(16,185,129,0.08)":"var(--bg-elevated)",borderRadius:7,border:"1px solid "+(bekliyor?"#10b98133":"var(--border)")}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
                   React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)",display:"flex",alignItems:"center",gap:6}},
                     e.ad,
-                    bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor")
+                    bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor"),
+                    override&&React.createElement('span',{style:{fontSize:9,color:"#3b82f6",background:"rgba(59,130,246,0.12)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"düzenlendi")
                   ),
-                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},routeAddressLabel(e))
+                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},adresText)
                 ),
-                /* Koordinat düzelt butonu */
+                /* Adres düzelt butonu */
                 React.createElement('button',{
-                  onClick:function(ev){ev.stopPropagation();setRotaKoordModal({elev:e,cacheKey:cacheKey,lat:cached?String(cached.lat):"",lng:cached?String(cached.lng):"" });},
-                  style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:hasCoords?"rgba(16,185,129,0.15)":"rgba(245,158,11,0.15)",color:hasCoords?"#10b981":"#f59e0b",border:"none",cursor:"pointer",fontWeight:700,flexShrink:0}
-                },hasCoords?"✏️":"⚠️"),
+                  onClick:function(ev){ev.stopPropagation();setRotaAdresModal({elev:e,adres:override||routeAddressLabel(e)});},
+                  style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:override?"rgba(59,130,246,0.15)":"rgba(245,158,11,0.15)",color:override?"#3b82f6":"#f59e0b",border:"none",cursor:"pointer",fontWeight:700,flexShrink:0}
+                },"✏️"),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent((cached&&routeCoordsValue({lat:Number(cached.lat),lng:Number(cached.lng)}))||routeAddressLabel(e)),
+                  href:"https://maps.google.com/?q="+encodeURIComponent(adresText),
                   target:"_blank",rel:"noreferrer",
                   onClick:function(ev){ev.stopPropagation();},
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
@@ -2100,64 +1950,50 @@ function App(){
           )
         )
 
-    /* Koordinat Düzelt Modalı */
-    , rotaKoordModal&&React.createElement(Modal,{onClose:function(){setRotaKoordModal(null);}},
-        React.createElement('div',{style:{padding:20,maxWidth:400}},
-          React.createElement('div',{style:{fontSize:16,fontWeight:900,marginBottom:12,color:"var(--text)"}},"📍 Koordinat Düzenle"),
-          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},rotaKoordModal.elev.ad),
-          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginBottom:12}},routeAddressLabel(rotaKoordModal.elev)),
+    /* Adres Düzenleme Modalı */
+    , rotaAdresModal&&React.createElement(Modal,{onClose:function(){setRotaAdresModal(null);}},
+        React.createElement('div',{style:{padding:20,maxWidth:420}},
+          React.createElement('div',{style:{fontSize:16,fontWeight:900,marginBottom:12,color:"var(--text)"}},"✏️ Adres Düzenle"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},rotaAdresModal.elev.ad),
+          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginBottom:8}},"Orijinal: "+routeAddressLabel(rotaAdresModal.elev)),
           React.createElement('a',{
-            href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(rotaKoordModal.elev)),
+            href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(rotaAdresModal.elev)),
             target:"_blank",rel:"noreferrer",
             style:{display:"inline-block",fontSize:11,color:"#3b82f6",marginBottom:12,textDecoration:"underline"}
           },"Google Maps'te adresi bul →"),
-          React.createElement('div',{style:{display:"flex",gap:8,marginBottom:12}},
-            React.createElement('div',{style:{flex:1}},
-              React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Enlem (Lat)"),
-              React.createElement('input',{
-                type:"text",value:rotaKoordModal.lat,
-                onChange:function(ev){setRotaKoordModal(function(p){return Object.assign({},p,{lat:ev.target.value});});},
-                placeholder:"ör: 41.0082",
-                style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box"}
-              })
-            ),
-            React.createElement('div',{style:{flex:1}},
-              React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Boylam (Lng)"),
-              React.createElement('input',{
-                type:"text",value:rotaKoordModal.lng,
-                onChange:function(ev){setRotaKoordModal(function(p){return Object.assign({},p,{lng:ev.target.value});});},
-                placeholder:"ör: 28.9784",
-                style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box"}
-              })
-            )
+          React.createElement('div',{style:{marginBottom:12}},
+            React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Google Maps'e gönderilecek adres"),
+            React.createElement('textarea',{
+              value:rotaAdresModal.adres,
+              onChange:function(ev){setRotaAdresModal(function(p){return Object.assign({},p,{adres:ev.target.value});});},
+              placeholder:"Adres yazın...",
+              rows:3,
+              style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}
+            })
           ),
           React.createElement('div',{style:{display:"flex",gap:8}},
             React.createElement('button',{
               onClick:function(){
-                var lat=parseFloat(rotaKoordModal.lat);
-                var lng=parseFloat(rotaKoordModal.lng);
-                if(!Number.isFinite(lat)||!Number.isFinite(lng)){alert("Geçerli enlem ve boylam girin.");return;}
-                if(lat<35||lat>43||lng<25||lng>45){alert("Koordinatlar Türkiye sınırları dışında! (Enlem: 35-43, Boylam: 25-45)");return;}
-                var newCache=Object.assign({},rotaGeoCache);
-                newCache[rotaKoordModal.cacheKey]={lat:lat,lng:lng,label:"Manuel düzenleme",precision:"exact",source:"manual",v:ROUTE_GEO_CACHE_VERSION};
-                setRotaGeoCache(newCache);
-                setRotaOtomatikIds([]);
-                setRotaKoordModal(null);
+                var adres=rotaAdresModal.adres.trim();
+                if(!adres){alert("Adres boş olamaz.");return;}
+                var yeni=Object.assign({},rotaAdresOverrides);
+                yeni[rotaAdresModal.elev.id]=adres;
+                setRotaAdresOverrides(yeni);
+                setRotaAdresModal(null);
               },
               style:{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:8,color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}
             },"Kaydet"),
-            React.createElement('button',{
+            rotaAdresOverrides[rotaAdresModal.elev.id]&&React.createElement('button',{
               onClick:function(){
-                var newCache=Object.assign({},rotaGeoCache);
-                delete newCache[rotaKoordModal.cacheKey];
-                setRotaGeoCache(newCache);
-                setRotaOtomatikIds([]);
-                setRotaKoordModal(null);
+                var yeni=Object.assign({},rotaAdresOverrides);
+                delete yeni[rotaAdresModal.elev.id];
+                setRotaAdresOverrides(yeni);
+                setRotaAdresModal(null);
               },
               style:{padding:"10px 16px",background:"rgba(239,68,68,0.15)",border:"1px solid #ef444444",borderRadius:8,color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}
-            },"Sil"),
+            },"Sıfırla"),
             React.createElement('button',{
-              onClick:function(){setRotaKoordModal(null);},
+              onClick:function(){setRotaAdresModal(null);},
               style:{padding:"10px 16px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text-muted)",fontWeight:600,fontSize:12,cursor:"pointer"}
             },"İptal")
           )

@@ -259,29 +259,21 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
             React.createElement('div',null,
               React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},"🗺️ Rota"),
               React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
-                rotaData.hesaplaniyor?"Adresler çözülüyor, rota hazırlanıyor...":"Bekleyen bakımlar mesafeye göre sıralanıp Google Maps'e gönderilecek"
+                "Bekleyen bakımlar ilçe/semt/sokak sırasıyla Google Maps'e gönderilecek"
               )
             ),
-            React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-              React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}},rotaStops.length+" durak"),
-              rotaData.tahminiKm!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(16,185,129,0.14)",color:"#34d399"}},"~ "+rotaData.tahminiKm.toFixed(1)+" km")
-            )
+            React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}},rotaStops.length+" durak")
           ),
           /* Durak listesi */
           React.createElement('div',{style:{padding:"8px 10px",display:"flex",flexDirection:"column",gap:3}},
             rotaStops.map(function(stop,i){
               var e=stop.elev;
               var c=getIlceRenk(e.ilce);
-              var exact=stop.exactMatch!==false;
-              return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:exact?"#1a1f2e":"rgba(245,158,11,0.08)",borderRadius:7,border:"1px solid "+(exact?"#2a3050":"#f59e0b44")}},
-                React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:exact?c:"#f59e0b",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},exact?(i+1):"!"),
+              return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#1a1f2e",borderRadius:7,border:"1px solid #2a3050"}},
+                React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
-                  React.createElement('div',{style:{fontSize:12,fontWeight:700,color:exact?"#e0e6f0":"#f59e0b"}},e.ad),
-                  React.createElement('div',{style:{fontSize:9,color:exact?"#64748b":"#f59e0b99",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-                    exact
-                      ?(e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:""))
-                      :"⚠️ Adres bulunamadı — rota sonuna eklendi"
-                  )
+                  React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#e0e6f0"}},e.ad),
+                  React.createElement('div',{style:{fontSize:9,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},stop.target||(e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:"")))
                 ),
                 React.createElement('a',{
                   href:"https://maps.google.com/?q="+encodeURIComponent(stop.target||((e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul")),
@@ -290,11 +282,6 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                 },"📍")
               );
             })
-          ),
-          /* Koordinatsız bina uyarısı */
-          rotaData.eslesmeyenSayi>0&&React.createElement('div',{style:{margin:"6px 10px 0",padding:"8px 12px",background:"rgba(245,158,11,0.10)",border:"1px solid #f59e0b44",borderRadius:8}},
-            React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#f59e0b"}},"⚠️ "+rotaData.eslesmeyenSayi+" binanın adresi çözümlenemedi"),
-            React.createElement('div',{style:{fontSize:10,color:"#f59e0b99",marginTop:2}},"Bu binalar rota sonuna eklendi. Yöneticinizden koordinat düzeltmesini isteyebilirsiniz.")
           ),
           /* Konum bilgisi */
           React.createElement('div',{style:{padding:"0 10px 8px"}},
