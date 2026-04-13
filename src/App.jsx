@@ -1028,18 +1028,45 @@ function App(){
     if(yeniStr!==eskiStr) setRotaSec(ids);
   },[rol,tab,maints,fMonth,elevs,aktifBakimci]);
 
-  // Metin tabanlı sıralama: ilçe → semt → sokak/adres
+  // İlçe → Semt → Sokak öbeklemesi (tıklama sırası korunarak)
   useEffect(function(){
-    var secili=elevs.filter(function(e){return rotaSec.includes(e.id);});
+    var secili=rotaSec.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
     if(secili.length===0){setRotaOtomatikIds([]);return;}
-    secili.sort(function(a,b){
-      var c=(a.ilce||"").localeCompare(b.ilce||"","tr");
-      if(c!==0) return c;
-      c=(a.semt||"").localeCompare(b.semt||"","tr");
-      if(c!==0) return c;
-      return (a.adres||"").localeCompare(b.adres||"","tr");
+    // Adres alanından sokak adını çıkar (mahalle kısmını atla)
+    function sokakAdi(adres){
+      if(!adres) return "";
+      var s=adres.toUpperCase().replace(/\s+/g," ").trim();
+      // "XXX MAHALLESİ YYY SOKAK NO:ZZ" → "YYY SOKAK" kısmını bul
+      var m=s.match(/MAHALLESİ\s+(.+?)(?:\s+NO\s*[:.]|$)/i);
+      if(m) return m[1].replace(/\s+/g," ").trim();
+      // "XXX MAH. YYY SOK." formatı
+      var m2=s.match(/MAH\.?\s+(.+?)(?:\s+NO\s*[:.]|$)/i);
+      if(m2) return m2[1].replace(/\s+/g," ").trim();
+      return s;
+    }
+    // Öbekleme anahtarı: ilçe|semt|sokak
+    function grupKey(e){
+      return (e.ilce||"").toLocaleLowerCase("tr")+"|"+(e.semt||"").toLocaleLowerCase("tr")+"|"+sokakAdi(e.adres).toLocaleLowerCase("tr");
+    }
+    // Tıklama sırasını koruyarak grupla
+    var gruplar=[]; // [{key, items:[elev]}]
+    var grupMap={};
+    secili.forEach(function(e){
+      var k=grupKey(e);
+      if(grupMap[k]!==undefined){
+        gruplar[grupMap[k]].items.push(e);
+      } else {
+        grupMap[k]=gruplar.length;
+        gruplar.push({key:k,items:[e]});
+      }
     });
-    setRotaOtomatikIds(secili.map(function(e){return e.id;}));
+    // Grup sırası: ilk tıklanan elemanın sırasına göre (tıklama sırası korunuyor)
+    // Grup içindeki elemanlar da tıklama sırasında (forEach zaten o sırada)
+    var sonuc=[];
+    gruplar.forEach(function(g){
+      g.items.forEach(function(e){sonuc.push(e.id);});
+    });
+    setRotaOtomatikIds(sonuc);
   },[rotaSec, elevs]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
