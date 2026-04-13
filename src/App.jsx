@@ -33,6 +33,7 @@ function routeAddressLabelOriginal(e){
 }
 
 var ROUTE_GEO_CACHE_VERSION = 2;
+var MAPS_MAX = 13;
 
 function normalizeRouteText(value){
   return String(value||"")
@@ -182,6 +183,32 @@ function scoreRouteCandidateLabel(label,context,baseScore){
   return score;
 }
 
+async function geocodeWithGoogleMaps(query,context,apiKey){
+  if(!apiKey) return null;
+  var res=await fetch("https://maps.googleapis.com/maps/api/geocode/json?address="+encodeURIComponent(query)+"&key="+encodeURIComponent(apiKey)+"&language=tr&region=tr",{
+    headers:{Accept:"application/json"}
+  });
+  if(!res.ok) throw new Error("Google Maps geocode başarısız");
+  var data=await res.json();
+  var results=Array.isArray(data&&data.results)?data.results:[];
+  return results.map(function(item){
+    var geo=item&&item.geometry;
+    var loc=geo&&geo.location;
+    var lat=loc?Number(loc.lat):NaN;
+    var lng=loc?Number(loc.lng):NaN;
+    var label=item&&item.formatted_address||query;
+    var locationType=geo&&geo.location_type||"";
+    var rank=scoreRouteCandidateLabel(label,context,90);
+    var precision=(locationType==="ROOFTOP"||locationType==="RANGE_INTERPOLATED")?"exact":"approximate";
+    if(locationType==="ROOFTOP") rank+=12;
+    else if(locationType==="RANGE_INTERPOLATED") rank+=8;
+    else if(locationType==="GEOMETRIC_CENTER") rank+=4;
+    return {lat:lat,lng:lng,label:label,precision:precision,source:"google",rank:rank};
+  }).filter(function(item){
+    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
+  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
+}
+
 async function geocodeWithArcGIS(query,context){
   var res=await fetch("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=5&outFields=Match_addr,Addr_type,City,Region,Country&singleLine="+encodeURIComponent(query),{
     headers:{Accept:"application/json","Accept-Language":"tr"}
@@ -229,6 +256,19 @@ async function geocodeWithNominatim(query,context){
 
 async function geocodeRouteQueries(queries,context){
   var best=null;
+  var gmapsKey=localStorage.getItem("at_gmaps_key")||"";
+  // 1) Google Maps API (varsa)
+  if(gmapsKey){
+    for(var g=0;g<queries.length;g++){
+      try{
+        var gResult=await geocodeWithGoogleMaps(queries[g],context,gmapsKey);
+        if(gResult&&(!best||gResult.rank>best.rank)) best=gResult;
+        if(gResult&&(gResult.precision==="exact"||gResult.rank>=95)) return gResult;
+      }catch(e){}
+    }
+    if(best&&best.source==="google"&&best.rank>=85) return best;
+  }
+  // 2) ArcGIS
   for(var i=0;i<queries.length;i++){
     try{
       var arcgis=await geocodeWithArcGIS(queries[i],context);
@@ -236,6 +276,7 @@ async function geocodeRouteQueries(queries,context){
       if(arcgis&&(arcgis.precision==="exact"||arcgis.rank>=88)) return arcgis;
     }catch(e){}
   }
+  // 3) Nominatim
   for(var j=0;j<queries.length;j++){
     try{
       var nominatim=await geocodeWithNominatim(queries[j],context);
@@ -605,6 +646,10 @@ function App(){
   const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
   const [rotaOptHata,setRotaOptHata]=useState("");
   const [rotaEslesmeyenSayi,setRotaEslesmeyenSayi]=useState(0);
+  const [gmapsKey,setGmapsKey]=useState(function(){return localStorage.getItem("at_gmaps_key")||"";});
+  const [gmapsKeyInput,setGmapsKeyInput]=useState(function(){return localStorage.getItem("at_gmaps_key")||"";});
+  const [gmapsKeyKayitli,setGmapsKeyKayitli]=useState(function(){return !!(localStorage.getItem("at_gmaps_key"));});
+  const [rotaKoordModal,setRotaKoordModal]=useState(null);
   const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
@@ -1267,17 +1312,32 @@ function App(){
     };
   });
   // Google Maps Directions URL — waypoints %7C ile ayrılıyor (pipe encoding)
-  const mapsUrl=(function(){
-    if(rotaMapStops.length===0) return "";
+  // MAPS_MAX=13 → 13'ten fazla durakta 2 ayrı URL oluştur
+  const {mapsUrl,mapsUrl2}=(function(){
+    if(rotaMapStops.length===0) return {mapsUrl:"",mapsUrl2:""};
     var addrs=rotaMapStops.map(function(stop){return stop.target;});
-    var base="https://www.google.com/maps/dir/?api=1";
-    if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
-    base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1){
-      base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("%7C");
+    function buildMapsLink(origin,destinations){
+      if(destinations.length===0) return "";
+      var base="https://www.google.com/maps/dir/?api=1";
+      if(origin) base+="&origin="+encodeURIComponent(origin);
+      base+="&destination="+encodeURIComponent(destinations[destinations.length-1]);
+      if(destinations.length>1){
+        base+="&waypoints="+destinations.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("%7C");
+      }
+      base+="&travelmode=driving&dir_action=navigate";
+      return base;
     }
-    base+="&travelmode=driving&dir_action=navigate";
-    return base;
+    if(addrs.length<=MAPS_MAX){
+      return {mapsUrl:buildMapsLink(rotaStartStr,addrs),mapsUrl2:""};
+    }
+    // İlk bölüm: ilk MAPS_MAX durak
+    var firstPart=addrs.slice(0,MAPS_MAX);
+    // İkinci bölüm: MAPS_MAX-1'den devam (1 durak overlap → bağlantı noktası)
+    var secondPart=addrs.slice(MAPS_MAX-1);
+    return {
+      mapsUrl:buildMapsLink(rotaStartStr,firstPart),
+      mapsUrl2:buildMapsLink(firstPart[firstPart.length-1],secondPart)
+    };
   })();
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){return m.planlanmis&&!m.yapildi&&elevs.some(function(e){return e.id===m.asansorId;});}).map(function(m){return m.asansorId;}))];
@@ -1746,7 +1806,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,hesaplaniyor:rotaHesaplaniyor,tahminiKm:rotaTahminiKm,konum:rotaKonum},})
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,hesaplaniyor:rotaHesaplaniyor,tahminiKm:rotaTahminiKm,konum:rotaKonum,eslesmeyenSayi:rotaEslesmeyenSayi},})
 )
 
 /* ARIZALAR - YÖNETİCİ */
@@ -1813,6 +1873,52 @@ function App(){
         : React.createElement('button',{onClick:()=>konumAl(false),disabled:konumYukleniyor,
             style:{padding:"7px 13px",background:"rgba(59,130,246,0.15)",border:"1px solid #3b82f644",borderRadius:8,color:"#3b82f6",cursor:"pointer",fontSize:12,fontWeight:700}},
             konumYukleniyor?"⏳ Alınıyor...":"📡 Konumu Al"
+          )
+    )
+
+    /* Google Maps API Key kartı (sadece yönetici) */
+    , rol==="yonetici"&&(
+      gmapsKeyKayitli
+        ? React.createElement('div',{style:{background:"rgba(16,185,129,0.08)",border:"1px solid #10b98144",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#10b981"}},"✅ Google Maps API Aktif"),
+                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginTop:2}},"Adresler öncelikle Google Maps ile çözümleniyor")
+              ),
+              React.createElement('button',{
+                onClick:function(){setGmapsKeyKayitli(false);setGmapsKeyInput(gmapsKey);},
+                style:{padding:"6px 12px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text-muted)",fontSize:11,fontWeight:700,cursor:"pointer"}
+              },"Değiştir")
+            )
+          )
+        : React.createElement('div',{style:{background:"rgba(245,158,11,0.08)",border:"1px solid #f59e0b44",borderRadius:12,padding:"12px 14px",marginBottom:12}},
+            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#f59e0b",marginBottom:6}},"⚠️ Google Maps API Anahtarı Yok"),
+            React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginBottom:8}},"Daha doğru adres çözümleme için Google Maps API anahtarı ekleyin. Anahtar olmadan ArcGIS ve Nominatim kullanılır."),
+            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+              React.createElement('input',{
+                type:"password",
+                value:gmapsKeyInput,
+                onChange:function(e){setGmapsKeyInput(e.target.value);},
+                placeholder:"AIza... ile başlayan API anahtarı",
+                style:{flex:1,minWidth:180,padding:"8px 12px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12}
+              }),
+              React.createElement('button',{
+                onClick:function(){
+                  var key=gmapsKeyInput.trim();
+                  if(!key){localStorage.removeItem("at_gmaps_key");setGmapsKey("");setGmapsKeyKayitli(false);return;}
+                  if(!key.startsWith("AIza")){alert("Geçersiz API anahtarı! Anahtar 'AIza' ile başlamalıdır.");return;}
+                  localStorage.setItem("at_gmaps_key",key);
+                  setGmapsKey(key);setGmapsKeyKayitli(true);
+                  setRotaGeoCache({});setRotaOtomatikIds([]);
+                },
+                style:{padding:"8px 16px",background:"#f59e0b",border:"none",borderRadius:8,color:"#000",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}
+              },"Kaydet")
+            ),
+            React.createElement('a',{
+              href:"https://console.cloud.google.com/apis/credentials",
+              target:"_blank",rel:"noreferrer",
+              style:{fontSize:10,color:"#60a5fa",marginTop:6,display:"inline-block",textDecoration:"underline"}
+            },"Google Cloud Console'da API anahtarı oluştur →")
           )
     )
 
@@ -2006,6 +2112,9 @@ function App(){
             rotaElevs.map(function(e,i){
               var c=getIlceRenk(e.ilce);
               var bekliyor=bekleyenRotaIds.includes(e.id);
+              var cacheKey=routeAddressKey(e);
+              var cached=rotaGeoCache[cacheKey];
+              var hasCoords=!!(cached&&Number.isFinite(Number(cached.lat))&&Number.isFinite(Number(cached.lng)));
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:bekliyor?"rgba(16,185,129,0.08)":"var(--bg-elevated)",borderRadius:7,border:"1px solid "+(bekliyor?"#10b98133":"var(--border)")}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
@@ -2015,9 +2124,15 @@ function App(){
                   ),
                   React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},routeAddressLabel(e))
                 ),
+                /* Koordinat düzelt butonu */
+                React.createElement('button',{
+                  onClick:function(ev){ev.stopPropagation();setRotaKoordModal({elev:e,cacheKey:cacheKey,lat:cached?String(cached.lat):"",lng:cached?String(cached.lng):"" });},
+                  style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:hasCoords?"rgba(16,185,129,0.15)":"rgba(245,158,11,0.15)",color:hasCoords?"#10b981":"#f59e0b",border:"none",cursor:"pointer",fontWeight:700,flexShrink:0}
+                },hasCoords?"✏️":"⚠️"),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent((rotaGeoCache[routeAddressKey(e)]&&routeCoordsValue({lat:Number(rotaGeoCache[routeAddressKey(e)].lat),lng:Number(rotaGeoCache[routeAddressKey(e)].lng)}))||routeAddressLabel(e)),
+                  href:"https://maps.google.com/?q="+encodeURIComponent((cached&&routeCoordsValue({lat:Number(cached.lat),lng:Number(cached.lng)}))||routeAddressLabel(e)),
                   target:"_blank",rel:"noreferrer",
+                  onClick:function(ev){ev.stopPropagation();},
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")
               );
@@ -2025,11 +2140,24 @@ function App(){
           ),
 
           /* Ana butonlar */
-          React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
-            style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
-              background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
-              textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-          }, "🗺️ Google Maps'te Rotayı Başlat"),
+          mapsUrl2
+            ? React.createElement(React.Fragment,null,
+                React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
+                  style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                    background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
+                    textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+                }, "🗺️ Google Maps — 1. Bölüm (1-"+MAPS_MAX+")"),
+                React.createElement('a',{href:mapsUrl2,target:"_blank",rel:"noreferrer",
+                  style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                    background:"linear-gradient(135deg,#3b82f6,#2563eb)",borderRadius:12,color:"#fff",
+                    textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #3b82f644"}
+                }, "🗺️ Google Maps — 2. Bölüm ("+(MAPS_MAX)+"-"+rotaElevs.length+")")
+              )
+            : React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
+                style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                  background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
+                  textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+              }, "🗺️ Google Maps'te Rotayı Başlat"),
 
           React.createElement('button',{
             onClick:()=>_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(mapsUrl),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]),
@@ -2045,6 +2173,70 @@ function App(){
               :"Seçilen asansörler mevcut konumunuzdan sıralanır"
           )
         )
+
+    /* Koordinat Düzelt Modalı */
+    , rotaKoordModal&&React.createElement(Modal,{onClose:function(){setRotaKoordModal(null);}},
+        React.createElement('div',{style:{padding:20,maxWidth:400}},
+          React.createElement('div',{style:{fontSize:16,fontWeight:900,marginBottom:12,color:"var(--text)"}},"📍 Koordinat Düzenle"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},rotaKoordModal.elev.ad),
+          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginBottom:12}},routeAddressLabel(rotaKoordModal.elev)),
+          React.createElement('a',{
+            href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(rotaKoordModal.elev)),
+            target:"_blank",rel:"noreferrer",
+            style:{display:"inline-block",fontSize:11,color:"#3b82f6",marginBottom:12,textDecoration:"underline"}
+          },"Google Maps'te adresi bul →"),
+          React.createElement('div',{style:{display:"flex",gap:8,marginBottom:12}},
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Enlem (Lat)"),
+              React.createElement('input',{
+                type:"text",value:rotaKoordModal.lat,
+                onChange:function(ev){setRotaKoordModal(function(p){return Object.assign({},p,{lat:ev.target.value});});},
+                placeholder:"ör: 41.0082",
+                style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box"}
+              })
+            ),
+            React.createElement('div',{style:{flex:1}},
+              React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Boylam (Lng)"),
+              React.createElement('input',{
+                type:"text",value:rotaKoordModal.lng,
+                onChange:function(ev){setRotaKoordModal(function(p){return Object.assign({},p,{lng:ev.target.value});});},
+                placeholder:"ör: 28.9784",
+                style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box"}
+              })
+            )
+          ),
+          React.createElement('div',{style:{display:"flex",gap:8}},
+            React.createElement('button',{
+              onClick:function(){
+                var lat=parseFloat(rotaKoordModal.lat);
+                var lng=parseFloat(rotaKoordModal.lng);
+                if(!Number.isFinite(lat)||!Number.isFinite(lng)){alert("Geçerli enlem ve boylam girin.");return;}
+                if(lat<35||lat>43||lng<25||lng>45){alert("Koordinatlar Türkiye sınırları dışında! (Enlem: 35-43, Boylam: 25-45)");return;}
+                var newCache=Object.assign({},rotaGeoCache);
+                newCache[rotaKoordModal.cacheKey]={lat:lat,lng:lng,label:"Manuel düzenleme",precision:"exact",source:"manual",v:ROUTE_GEO_CACHE_VERSION};
+                setRotaGeoCache(newCache);
+                setRotaOtomatikIds([]);
+                setRotaKoordModal(null);
+              },
+              style:{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:8,color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}
+            },"Kaydet"),
+            React.createElement('button',{
+              onClick:function(){
+                var newCache=Object.assign({},rotaGeoCache);
+                delete newCache[rotaKoordModal.cacheKey];
+                setRotaGeoCache(newCache);
+                setRotaOtomatikIds([]);
+                setRotaKoordModal(null);
+              },
+              style:{padding:"10px 16px",background:"rgba(239,68,68,0.15)",border:"1px solid #ef444444",borderRadius:8,color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}
+            },"Sil"),
+            React.createElement('button',{
+              onClick:function(){setRotaKoordModal(null);},
+              style:{padding:"10px 16px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text-muted)",fontWeight:600,fontSize:12,cursor:"pointer"}
+            },"İptal")
+          )
+        )
+      )
   )
 )
 
