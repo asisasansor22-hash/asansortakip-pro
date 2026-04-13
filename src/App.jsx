@@ -297,14 +297,39 @@ function routeCoordsValue(coords){
 
 async function fetchRoadDistanceMatrix(points,startPoint){
   var coords=(startPoint?[startPoint]:[]).concat(points.map(function(p){return p.coords;})).filter(Boolean);
-  if(coords.length<2||coords.length>26) return null;
-  var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
-  var res=await fetch("https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=distance",{
-    headers:{Accept:"application/json"}
-  });
-  if(!res.ok) throw new Error("OSRM tablo baÅŸarÄ±sÄ±z");
-  var data=await res.json();
-  return Array.isArray(data&&data.distances)?data.distances:null;
+  if(coords.length<2||coords.length>25) return null;
+  // Google Maps Distance Matrix API kullan
+  if(GMAPS_API_KEY){
+    try{
+      var origins=coords.map(function(c){return Number(c.lat)+","+Number(c.lng);}).join("|");
+      var destinations=origins;
+      var gRes=await fetch("https://maps.googleapis.com/maps/api/distancematrix/json?origins="+encodeURIComponent(origins)+"&destinations="+encodeURIComponent(destinations)+"&mode=driving&language=tr&key="+GMAPS_API_KEY,{
+        headers:{Accept:"application/json"}
+      });
+      if(gRes.ok){
+        var gData=await gRes.json();
+        if(gData&&gData.status==="OK"&&Array.isArray(gData.rows)){
+          var gMatrix=gData.rows.map(function(row){
+            return row.elements.map(function(el){
+              return (el&&el.status==="OK"&&el.distance)?el.distance.value:null;
+            });
+          });
+          var valid=gMatrix.every(function(row){return row.some(function(v){return v!==null;});});
+          if(valid) return gMatrix;
+        }
+      }
+    }catch(e){}
+  }
+  // Fallback: OSRM
+  try{
+    var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
+    var res=await fetch("https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=distance",{
+      headers:{Accept:"application/json"}
+    });
+    if(!res.ok) return null;
+    var data=await res.json();
+    return Array.isArray(data&&data.distances)?data.distances:null;
+  }catch(e){ return null; }
 }
 
 function matrixDistanceValue(matrix,fromIdx,toIdx,startPoint){
