@@ -272,11 +272,16 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
             rotaStops.map(function(stop,i){
               var e=stop.elev;
               var c=getIlceRenk(e.ilce);
-              return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#1a1f2e",borderRadius:7,border:"1px solid #2a3050"}},
-                React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
+              var exact=stop.exactMatch!==false;
+              return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:exact?"#1a1f2e":"rgba(245,158,11,0.08)",borderRadius:7,border:"1px solid "+(exact?"#2a3050":"#f59e0b44")}},
+                React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:exact?c:"#f59e0b",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},exact?(i+1):"!"),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
-                  React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#e0e6f0"}},e.ad),
-                  React.createElement('div',{style:{fontSize:9,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:""))
+                  React.createElement('div',{style:{fontSize:12,fontWeight:700,color:exact?"#e0e6f0":"#f59e0b"}},e.ad),
+                  React.createElement('div',{style:{fontSize:9,color:exact?"#64748b":"#f59e0b99",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                    exact
+                      ?(e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:""))
+                      :"⚠️ Adres bulunamadı — rota sonuna eklendi"
+                  )
                 ),
                 React.createElement('a',{
                   href:"https://maps.google.com/?q="+encodeURIComponent(stop.target||((e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul")),
@@ -285,6 +290,11 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                 },"📍")
               );
             })
+          ),
+          /* Koordinatsız bina uyarısı */
+          rotaData.eslesmeyenSayi>0&&React.createElement('div',{style:{margin:"6px 10px 0",padding:"8px 12px",background:"rgba(245,158,11,0.10)",border:"1px solid #f59e0b44",borderRadius:8}},
+            React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#f59e0b"}},"⚠️ "+rotaData.eslesmeyenSayi+" binanın adresi çözümlenemedi"),
+            React.createElement('div',{style:{fontSize:10,color:"#f59e0b99",marginTop:2}},"Bu binalar rota sonuna eklendi. Yöneticinizden koordinat düzeltmesini isteyebilirsiniz.")
           ),
           /* Konum bilgisi */
           React.createElement('div',{style:{padding:"0 10px 8px"}},
@@ -296,11 +306,24 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
           ),
           /* Google Maps butonu */
           rotaData.mapsUrl&&React.createElement('div',{style:{padding:"0 10px 10px",display:"flex",flexDirection:"column",gap:6}},
-            React.createElement('a',{href:rotaData.mapsUrl,target:"_blank",rel:"noreferrer",
-              style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
-                background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:10,color:"#fff",
-                textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-            },"🗺️ Google Maps'te Rotayı Başlat"),
+            rotaData.mapsUrl2
+              ? React.createElement(React.Fragment,null,
+                  React.createElement('a',{href:rotaData.mapsUrl,target:"_blank",rel:"noreferrer",
+                    style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
+                      background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:10,color:"#fff",
+                      textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+                  },"🗺️ Google Maps — 1. Bölüm"),
+                  React.createElement('a',{href:rotaData.mapsUrl2,target:"_blank",rel:"noreferrer",
+                    style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
+                      background:"linear-gradient(135deg,#3b82f6,#2563eb)",borderRadius:10,color:"#fff",
+                      textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #3b82f644"}
+                  },"🗺️ Google Maps — 2. Bölüm")
+                )
+              : React.createElement('a',{href:rotaData.mapsUrl,target:"_blank",rel:"noreferrer",
+                  style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
+                    background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:10,color:"#fff",
+                    textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+                },"🗺️ Google Maps'te Rotayı Başlat"),
             React.createElement('button',{
               onClick:function(){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(rotaData.mapsUrl).then(function(){alert("Kopyalandı!");}).catch(function(){});}},
               style:{padding:"8px 0",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:8,color:"#94a3b8",fontWeight:600,fontSize:11,cursor:"pointer"}
