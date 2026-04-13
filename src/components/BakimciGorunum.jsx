@@ -259,7 +259,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
             React.createElement('div',null,
               React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},"🗺️ Rota"),
               React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
-                "Bekleyen bakımlar ilçe/semt/sokak sırasıyla Google Maps'e gönderilecek"
+                "Bekleyen bakımlar mevcut sırayla Google Maps'e gönderilecek"
               )
             ),
             React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}},rotaStops.length+" durak")
