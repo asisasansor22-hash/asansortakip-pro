@@ -68,6 +68,11 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
   },[tamamlananBakimlarTum,seciliTarihStr]);
 
   const atananArizalar=useMemo(()=>faults.filter(f=>f.bakimciAtandi),[faults]);
+  const rotaStops=(rotaData&&Array.isArray(rotaData.stops)&&rotaData.stops.length>0)
+    ? rotaData.stops
+    : ((rotaData&&Array.isArray(rotaData.elevs))?rotaData.elevs.map(function(e){
+        return {elev:e,target:(e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul"};
+      }):[]);
 
   const kaydetOdeme=()=>{
     const {elev,maint}=odemeModal;
@@ -246,25 +251,26 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
           )
       )
 
-      /* AKILLI ROTA — bekleyen bakımlar için */
-      , subTab===0&&bakimSubTab===0&&rotaData&&rotaData.elevs&&rotaData.elevs.length>0&&(
+      /* ROTA — bekleyen bakımlar için */
+      , subTab===0&&bakimSubTab===0&&rotaData&&rotaStops.length>0&&(
         React.createElement('div',{style:{background:"linear-gradient(180deg,#0f1a2e,#141824)",borderRadius:14,border:"1px solid #10b98144",overflow:"hidden",marginTop:10,marginBottom:10}},
           /* Başlık */
           React.createElement('div',{style:{padding:"12px 14px",background:"linear-gradient(135deg,rgba(16,185,129,0.12),rgba(59,130,246,0.08))",borderBottom:"1px solid #10b98133",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}},
             React.createElement('div',null,
-              React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},"🗺️ Akıllı Rota"),
+              React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},"🗺️ Rota"),
               React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
-                rotaData.hesaplaniyor?"Adresler çözülüyor, en mantıklı sıra hesaplanıyor...":"Bekleyen bakımlar yakınlık bazlı sıralandı"
+                rotaData.hesaplaniyor?"Adresler çözülüyor, rota hazırlanıyor...":"Bekleyen bakımlar mesafeye göre sıralanıp Google Maps'e gönderilecek"
               )
             ),
             React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-              React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}},rotaData.elevs.length+" durak"),
+              React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}},rotaStops.length+" durak"),
               rotaData.tahminiKm!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"4px 9px",borderRadius:999,background:"rgba(16,185,129,0.14)",color:"#34d399"}},"~ "+rotaData.tahminiKm.toFixed(1)+" km")
             )
           ),
           /* Durak listesi */
           React.createElement('div',{style:{padding:"8px 10px",display:"flex",flexDirection:"column",gap:3}},
-            rotaData.elevs.map(function(e,i){
+            rotaStops.map(function(stop,i){
+              var e=stop.elev;
               var c=getIlceRenk(e.ilce);
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#1a1f2e",borderRadius:7,border:"1px solid #2a3050"}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
@@ -273,15 +279,13 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                   React.createElement('div',{style:{fontSize:9,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:""))
                 ),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent((e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul"),
+                  href:"https://maps.google.com/?q="+encodeURIComponent(stop.target||((e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul")),
                   target:"_blank",rel:"noreferrer",onClick:function(ev){ev.stopPropagation();},
                   style:{fontSize:10,padding:"4px 8px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")
               );
             })
           ),
-          /* Uyarı mesajı */
-          rotaData.optHata&&React.createElement('div',{style:{margin:"0 10px 8px",fontSize:11,color:"#f59e0b",background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.18)",borderRadius:8,padding:"6px 10px"}},"⚠️ "+rotaData.optHata),
           /* Konum bilgisi */
           React.createElement('div',{style:{padding:"0 10px 8px"}},
             rotaData.konum
