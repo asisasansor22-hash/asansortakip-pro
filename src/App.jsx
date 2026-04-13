@@ -34,7 +34,6 @@ function routeAddressLabelOriginal(e){
 
 var ROUTE_GEO_CACHE_VERSION = 2;
 var MAPS_MAX = 13;
-var GMAPS_API_KEY = "AIzaSyBjhEFPOFTNJLo1RfRM7G9cCq9L1Aw5ItA";
 
 function normalizeRouteText(value){
   return String(value||"")
@@ -184,32 +183,6 @@ function scoreRouteCandidateLabel(label,context,baseScore){
   return score;
 }
 
-async function geocodeWithGoogleMaps(query,context,apiKey){
-  if(!apiKey) return null;
-  var res=await fetch("https://maps.googleapis.com/maps/api/geocode/json?address="+encodeURIComponent(query)+"&key="+encodeURIComponent(apiKey)+"&language=tr&region=tr",{
-    headers:{Accept:"application/json"}
-  });
-  if(!res.ok) throw new Error("Google Maps geocode başarısız");
-  var data=await res.json();
-  var results=Array.isArray(data&&data.results)?data.results:[];
-  return results.map(function(item){
-    var geo=item&&item.geometry;
-    var loc=geo&&geo.location;
-    var lat=loc?Number(loc.lat):NaN;
-    var lng=loc?Number(loc.lng):NaN;
-    var label=item&&item.formatted_address||query;
-    var locationType=geo&&geo.location_type||"";
-    var rank=scoreRouteCandidateLabel(label,context,90);
-    var precision=(locationType==="ROOFTOP"||locationType==="RANGE_INTERPOLATED")?"exact":"approximate";
-    if(locationType==="ROOFTOP") rank+=12;
-    else if(locationType==="RANGE_INTERPOLATED") rank+=8;
-    else if(locationType==="GEOMETRIC_CENTER") rank+=4;
-    return {lat:lat,lng:lng,label:label,precision:precision,source:"google",rank:rank};
-  }).filter(function(item){
-    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
-  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
-}
-
 async function geocodeWithArcGIS(query,context){
   var res=await fetch("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=5&outFields=Match_addr,Addr_type,City,Region,Country&singleLine="+encodeURIComponent(query),{
     headers:{Accept:"application/json","Accept-Language":"tr"}
@@ -257,18 +230,7 @@ async function geocodeWithNominatim(query,context){
 
 async function geocodeRouteQueries(queries,context){
   var best=null;
-  // 1) Google Maps API
-  if(GMAPS_API_KEY){
-    for(var g=0;g<queries.length;g++){
-      try{
-        var gResult=await geocodeWithGoogleMaps(queries[g],context,GMAPS_API_KEY);
-        if(gResult&&(!best||gResult.rank>best.rank)) best=gResult;
-        if(gResult&&(gResult.precision==="exact"||gResult.rank>=95)) return gResult;
-      }catch(e){}
-    }
-    if(best&&best.source==="google"&&best.rank>=85) return best;
-  }
-  // 2) ArcGIS
+  // ArcGIS
   for(var i=0;i<queries.length;i++){
     try{
       var arcgis=await geocodeWithArcGIS(queries[i],context);
@@ -276,7 +238,7 @@ async function geocodeRouteQueries(queries,context){
       if(arcgis&&(arcgis.precision==="exact"||arcgis.rank>=88)) return arcgis;
     }catch(e){}
   }
-  // 3) Nominatim
+  // Nominatim
   for(var j=0;j<queries.length;j++){
     try{
       var nominatim=await geocodeWithNominatim(queries[j],context);
@@ -297,30 +259,7 @@ function routeCoordsValue(coords){
 
 async function fetchRoadDistanceMatrix(points,startPoint){
   var coords=(startPoint?[startPoint]:[]).concat(points.map(function(p){return p.coords;})).filter(Boolean);
-  if(coords.length<2||coords.length>25) return null;
-  // Google Maps Distance Matrix API kullan
-  if(GMAPS_API_KEY){
-    try{
-      var origins=coords.map(function(c){return Number(c.lat)+","+Number(c.lng);}).join("|");
-      var destinations=origins;
-      var gRes=await fetch("https://maps.googleapis.com/maps/api/distancematrix/json?origins="+encodeURIComponent(origins)+"&destinations="+encodeURIComponent(destinations)+"&mode=driving&language=tr&key="+GMAPS_API_KEY,{
-        headers:{Accept:"application/json"}
-      });
-      if(gRes.ok){
-        var gData=await gRes.json();
-        if(gData&&gData.status==="OK"&&Array.isArray(gData.rows)){
-          var gMatrix=gData.rows.map(function(row){
-            return row.elements.map(function(el){
-              return (el&&el.status==="OK"&&el.distance)?el.distance.value:null;
-            });
-          });
-          var valid=gMatrix.every(function(row){return row.some(function(v){return v!==null;});});
-          if(valid) return gMatrix;
-        }
-      }
-    }catch(e){}
-  }
-  // Fallback: OSRM
+  if(coords.length<2||coords.length>26) return null;
   try{
     var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
     var res=await fetch("https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=distance",{
@@ -1207,9 +1146,20 @@ function App(){
     }
     hesapla().catch(function(){
       if(!iptal){
-        setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
+        // Hesaplama başarısız olsa bile cache'ten koordinat varsa haversine ile optimize et
+        var fallbackPoints=seciliElevs.map(function(e){
+          var cKey=routeAddressKey(e);
+          var c=rotaGeoCacheRef.current[cKey];
+          return {elev:e,coords:c?{lat:Number(c.lat),lng:Number(c.lng)}:null};
+        });
+        var withCoords=fallbackPoints.filter(function(p){return p.coords;});
+        var withoutCoords=fallbackPoints.filter(function(p){return !p.coords;});
+        var sp=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
+        var optimized=withCoords.length>1?optimizeRoute(withCoords,sp):withCoords;
+        var finalFallback=optimized.concat(withoutCoords);
+        setRotaOtomatikIds(finalFallback.map(function(p){return p.elev.id;}));
         setRotaTahminiKm(null);
-        setRotaEslesmeyenSayi(0);
+        setRotaEslesmeyenSayi(withoutCoords.length);
         setRotaOptHata("");
         setRotaHesaplaniyor(false);
       }
