@@ -34,6 +34,7 @@ function routeAddressLabelOriginal(e){
 
 var ROUTE_GEO_CACHE_VERSION = 2;
 var MAPS_MAX = 13;
+var GMAPS_API_KEY = "AIzaSyBjhEFPOFTNJLo1RfRM7G9cCq9L1Aw5ItA";
 
 function normalizeRouteText(value){
   return String(value||"")
@@ -256,12 +257,11 @@ async function geocodeWithNominatim(query,context){
 
 async function geocodeRouteQueries(queries,context){
   var best=null;
-  var gmapsKey=localStorage.getItem("at_gmaps_key")||"";
-  // 1) Google Maps API (varsa)
-  if(gmapsKey){
+  // 1) Google Maps API
+  if(GMAPS_API_KEY){
     for(var g=0;g<queries.length;g++){
       try{
-        var gResult=await geocodeWithGoogleMaps(queries[g],context,gmapsKey);
+        var gResult=await geocodeWithGoogleMaps(queries[g],context,GMAPS_API_KEY);
         if(gResult&&(!best||gResult.rank>best.rank)) best=gResult;
         if(gResult&&(gResult.precision==="exact"||gResult.rank>=95)) return gResult;
       }catch(e){}
@@ -646,9 +646,6 @@ function App(){
   const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
   const [rotaOptHata,setRotaOptHata]=useState("");
   const [rotaEslesmeyenSayi,setRotaEslesmeyenSayi]=useState(0);
-  const [gmapsKey,setGmapsKey]=useState(function(){return localStorage.getItem("at_gmaps_key")||"";});
-  const [gmapsKeyInput,setGmapsKeyInput]=useState(function(){return localStorage.getItem("at_gmaps_key")||"";});
-  const [gmapsKeyKayitli,setGmapsKeyKayitli]=useState(function(){return !!(localStorage.getItem("at_gmaps_key"));});
   const [rotaKoordModal,setRotaKoordModal]=useState(null);
   const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
   const giderKapamaTetiklendi=React.useRef(false);
@@ -1873,52 +1870,6 @@ function App(){
         : React.createElement('button',{onClick:()=>konumAl(false),disabled:konumYukleniyor,
             style:{padding:"7px 13px",background:"rgba(59,130,246,0.15)",border:"1px solid #3b82f644",borderRadius:8,color:"#3b82f6",cursor:"pointer",fontSize:12,fontWeight:700}},
             konumYukleniyor?"⏳ Alınıyor...":"📡 Konumu Al"
-          )
-    )
-
-    /* Google Maps API Key kartı (sadece yönetici) */
-    , rol==="yonetici"&&(
-      gmapsKeyKayitli
-        ? React.createElement('div',{style:{background:"rgba(16,185,129,0.08)",border:"1px solid #10b98144",borderRadius:12,padding:"12px 14px",marginBottom:12}},
-            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              React.createElement('div',null,
-                React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#10b981"}},"✅ Google Maps API Aktif"),
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginTop:2}},"Adresler öncelikle Google Maps ile çözümleniyor")
-              ),
-              React.createElement('button',{
-                onClick:function(){setGmapsKeyKayitli(false);setGmapsKeyInput(gmapsKey);},
-                style:{padding:"6px 12px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text-muted)",fontSize:11,fontWeight:700,cursor:"pointer"}
-              },"Değiştir")
-            )
-          )
-        : React.createElement('div',{style:{background:"rgba(245,158,11,0.08)",border:"1px solid #f59e0b44",borderRadius:12,padding:"12px 14px",marginBottom:12}},
-            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#f59e0b",marginBottom:6}},"⚠️ Google Maps API Anahtarı Yok"),
-            React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginBottom:8}},"Daha doğru adres çözümleme için Google Maps API anahtarı ekleyin. Anahtar olmadan ArcGIS ve Nominatim kullanılır."),
-            React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
-              React.createElement('input',{
-                type:"password",
-                value:gmapsKeyInput,
-                onChange:function(e){setGmapsKeyInput(e.target.value);},
-                placeholder:"AIza... ile başlayan API anahtarı",
-                style:{flex:1,minWidth:180,padding:"8px 12px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12}
-              }),
-              React.createElement('button',{
-                onClick:function(){
-                  var key=gmapsKeyInput.trim();
-                  if(!key){localStorage.removeItem("at_gmaps_key");setGmapsKey("");setGmapsKeyKayitli(false);return;}
-                  if(!key.startsWith("AIza")){alert("Geçersiz API anahtarı! Anahtar 'AIza' ile başlamalıdır.");return;}
-                  localStorage.setItem("at_gmaps_key",key);
-                  setGmapsKey(key);setGmapsKeyKayitli(true);
-                  setRotaGeoCache({});setRotaOtomatikIds([]);
-                },
-                style:{padding:"8px 16px",background:"#f59e0b",border:"none",borderRadius:8,color:"#000",fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}
-              },"Kaydet")
-            ),
-            React.createElement('a',{
-              href:"https://console.cloud.google.com/apis/credentials",
-              target:"_blank",rel:"noreferrer",
-              style:{fontSize:10,color:"#60a5fa",marginTop:6,display:"inline-block",textDecoration:"underline"}
-            },"Google Cloud Console'da API anahtarı oluştur →")
           )
     )
 
