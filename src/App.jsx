@@ -1028,18 +1028,9 @@ function App(){
     var seciliElevs=rotaSec.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
     if(seciliElevs.length===0){
       setRotaOtomatikIds([]);
-      setRotaTahminiKm(null);
-      setRotaOptHata("");
-      setRotaEslesmeyenSayi(0);
-      setRotaHesaplaniyor(false);
       return;
     }
-    setRotaHesaplaniyor(true);
     setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
-    setRotaTahminiKm(null);
-    setRotaEslesmeyenSayi(0);
-    setRotaOptHata("");
-    setRotaHesaplaniyor(false);
   },[tab, rotaSec, elevs, rol]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
