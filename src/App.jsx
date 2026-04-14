@@ -50,7 +50,7 @@ function App(){
   const [rotaStart,setRotaStart]=useState("");
   const [rotaKonum,setRotaKonum]=useState(null);
   const [rotaEditingId,setRotaEditingId]=useState(null);
-  const [rotaEditingVal,setRotaEditingVal]=useState("");
+  const [rotaEditingVal,setRotaEditingVal]=useState({adres:"",semt:"",ilce:""});
   const [konumYukleniyor,setKonumYukleniyor]=useState(false);
   const [konumHata,setKonumHata]=useState("");
   const [sifreModal,setSifreModal]=useState(false);
@@ -1228,25 +1228,48 @@ function App(){
                     bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor")
                   ),
                   editing
-                    ? React.createElement('div',{style:{display:"flex",gap:4,marginTop:3}},
-                        React.createElement('input',{
-                          value:rotaEditingVal,
-                          onChange:function(ev){setRotaEditingVal(ev.target.value);},
-                          onKeyDown:function(ev){
-                            if(ev.key==="Enter"){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);}
-                            if(ev.key==="Escape")setRotaEditingId(null);
-                          },
-                          autoFocus:true,
-                          style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #3b82f6",color:"#e0e6f0",outline:"none"}
-                        }),
-                        React.createElement('button',{
-                          onClick:function(){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);},
-                          style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
-                        },"✓"),
-                        React.createElement('button',{
-                          onClick:function(){setRotaEditingId(null);},
-                          style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer"}
-                        },"✗")
+                    ? React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:3,marginTop:3}},
+                        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4}},
+                          React.createElement('span',{style:{fontSize:9,color:"#64748b",width:34,flexShrink:0}},"Sokak"),
+                          React.createElement('input',{
+                            value:rotaEditingVal.adres,
+                            onChange:function(ev){setRotaEditingVal(function(p){return {...p,adres:ev.target.value};});},
+                            onKeyDown:function(ev){if(ev.key==="Escape")setRotaEditingId(null);},
+                            autoFocus:true,
+                            placeholder:"Sokak, bina no...",
+                            style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #3b82f6",color:"#e0e6f0",outline:"none"}
+                          })
+                        ),
+                        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4}},
+                          React.createElement('span',{style:{fontSize:9,color:"#64748b",width:34,flexShrink:0}},"Semt"),
+                          React.createElement('input',{
+                            value:rotaEditingVal.semt,
+                            onChange:function(ev){setRotaEditingVal(function(p){return {...p,semt:ev.target.value};});},
+                            onKeyDown:function(ev){if(ev.key==="Escape")setRotaEditingId(null);},
+                            placeholder:"Mahalle/Semt...",
+                            style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #2a3050",color:"#e0e6f0",outline:"none"}
+                          })
+                        ),
+                        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4}},
+                          React.createElement('span',{style:{fontSize:9,color:"#64748b",width:34,flexShrink:0}},"İlçe"),
+                          React.createElement('input',{
+                            value:rotaEditingVal.ilce,
+                            onChange:function(ev){setRotaEditingVal(function(p){return {...p,ilce:ev.target.value};});},
+                            onKeyDown:function(ev){if(ev.key==="Escape")setRotaEditingId(null);},
+                            placeholder:"İlçe...",
+                            style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #2a3050",color:"#e0e6f0",outline:"none"}
+                          })
+                        ),
+                        React.createElement('div',{style:{display:"flex",gap:4,marginTop:2}},
+                          React.createElement('button',{
+                            onClick:function(){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal.adres,semt:rotaEditingVal.semt,ilce:rotaEditingVal.ilce,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);},
+                            style:{flex:1,fontSize:11,padding:"4px 0",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
+                          },"✓ Kaydet"),
+                          React.createElement('button',{
+                            onClick:function(){setRotaEditingId(null);},
+                            style:{fontSize:11,padding:"4px 10px",borderRadius:5,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer"}
+                          },"✗")
+                        )
                       )
                     : React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4,marginTop:1}},
                         React.createElement('span',{style:{fontSize:9,color:e.rotaAdres?"#60a5fa":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},
@@ -1258,7 +1281,7 @@ function App(){
                           style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
                         },"↺"),
                         React.createElement('button',{
-                          onClick:function(ev){ev.stopPropagation();setRotaEditingVal(e.adres||"");setRotaEditingId(e.id);},
+                          onClick:function(ev){ev.stopPropagation();setRotaEditingVal({adres:e.adres||"",semt:e.semt||"",ilce:e.ilce||""});setRotaEditingId(e.id);},
                           style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#1e3a5f",color:"#3b82f6",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
                         },"✏️")
                       )
