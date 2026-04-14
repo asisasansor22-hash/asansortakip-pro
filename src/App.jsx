@@ -532,39 +532,42 @@ function App(){
       return {lat:Number(data[0].lat),lng:Number(data[0].lon)};
     }
     function adresSadele(adres){
-      return adres
-        // Mahalle önekini temizle: "ŞİRİNEVLER MAH." veya "ŞİRİNEVLER MAHALLESİ" gibi
-        .replace(/^[\wÇĞİÖŞÜçğışöüA-Z\s]+\bMAH(?:ALLESİ|ALLE)?\b\.?\s*/i,"")
-        // Kısaltmaları aç
-        .replace(/\bSok?\b\.?/gi,"Sokak").replace(/\bCad\b\.?/gi,"Caddesi")
-        .replace(/\bBlv\b\.?/gi,"Bulvarı").replace(/\bBulv\b\.?/gi,"Bulvarı")
-        // Bina/kat/daire ve "No:" temizle
-        .replace(/\bNo\s*[:.]?\s*\d+[\/\-]?\d*/gi,"").replace(/\bKat\s*[:.]?\s*\d+/gi,"")
-        .replace(/\bD(?:aire)?\s*[:.]?\s*\d+/gi,"")
-        .replace(/\s+/g," ").trim().replace(/[,\s]+$/,"");
+      var s=adres;
+      // "ŞİRİNEVLER MAHALLESİ BADEM SOKAK" → "BADEM SOKAK"
+      // ^\S+ = mahalle adı (boşluksuz), \s+ = boşluk, MAH\S* = MAH/MAHALLE/MAHALLESİ
+      s=s.replace(/^\S+\s+MAH\S*\.?\s*/i,"");
+      // Kısaltmaları aç (SOK./SK. → Sokak, CAD. → Caddesi vb.)
+      s=s.replace(/\bS[Oo][Kk]\.?\b/g,"Sokak").replace(/\bCAD\.?\b/gi,"Caddesi");
+      s=s.replace(/\bBLV\.?\b/gi,"Bulvarı").replace(/\bBULV\.?\b/gi,"Bulvarı");
+      // Bina/kat/daire ve "No:" temizle
+      s=s.replace(/\bNo\s*[:.]?\s*\d+[\d\/\-]*/gi,"").replace(/\bKat\s*[:.]?\s*\d+/gi,"");
+      s=s.replace(/\bD(?:aire)?\s*[:.]?\s*\d+/gi,"");
+      return s.replace(/\s+/g," ").trim().replace(/[,\s]+$/,"");
     }
     function sokaciAl(adres){
-      // "Badem Sokak 5/3" → "Badem Sokak"
-      return adres.replace(/\s+\d[\d\/\-]*.*$/,"").replace(/,.*$/,"").trim();
+      // "Badem Sokak 5/3" → "Badem Sokak" (sondaki rakam ve sonrasını at)
+      return adres.replace(/\s+\d[\d\/\-]*\s*.*$/,"").replace(/,.*$/,"").trim();
     }
     async function geocodeAddress(elev){
       var adresRaw=elev.adres||""; var semt=elev.semt||""; var ilce=elev.ilce||"";
       var suffix=ilce?", "+ilce+", İstanbul":", İstanbul";
       var temiz=adresSadele(adresRaw);
       var sokak=sokaciAl(temiz);
-      // Fallback zinciri: giderek sadeleşen 5 sorgu
-      var sorgular=[
-        // 1. Temiz sokak + ilçe (en güvenilir)
-        temiz+suffix,
-        // 2. Sadece sokak adı + ilçe (numara yok)
-        sokak+suffix,
-        // 3. semt mahallesi + sokak + ilçe
-        semt?semt+" Mahallesi, "+sokak+suffix:null,
-        // 4. semt mahallesi + ilçe
-        semt?semt+" Mahallesi"+suffix:null,
-        // 5. Sadece ilçe (son çare, yaklaşık konum)
-        ilce?ilce+", İstanbul":null,
-      ].filter(function(s){return s&&s.trim().length>5;});
+      // Fallback zinciri — tekrarları filtrele
+      var kandidatlar=[
+        sokak+suffix,                                              // Sokak adı + ilçe
+        temiz!==sokak?temiz+suffix:null,                          // Numaralı hali (farklıysa)
+        semt&&sokak?semt+" Mahallesi, "+sokak+suffix:null,        // Semt + sokak
+        semt?semt+" Mahallesi"+suffix:null,                       // Sadece semt
+        ilce?ilce+", İstanbul":null,                              // Son çare: ilçe merkezi
+      ];
+      var goruldu={};
+      var sorgular=kandidatlar.filter(function(s){
+        if(!s||s.trim().length<6) return false;
+        var k=s.trim().toLowerCase();
+        if(goruldu[k]) return false;
+        goruldu[k]=true; return true;
+      });
       for(var s=0;s<sorgular.length;s++){
         if(iptal) return null;
         try{ var geo=await nominatimSorgu(sorgular[s]); if(geo) return geo; }catch(e){}
@@ -589,7 +592,7 @@ function App(){
       if(!startPoint&&rotaStart.trim()){
         var startKey="__start__:"+rotaStart.trim().toLowerCase();
         var startCached=cacheGuncel[startKey];
-        if(!startCached){ try{ var sg=await geocodeAddress(rotaStart.trim()+", İstanbul"); if(sg){startCached={lat:sg.lat,lng:sg.lng};cacheGuncel[startKey]=startCached;} }catch(e){} }
+        if(!startCached){ try{ var sg=await nominatimSorgu(rotaStart.trim()+", İstanbul"); if(sg){startCached={lat:sg.lat,lng:sg.lng};cacheGuncel[startKey]=startCached;} }catch(e){} }
         if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
       }
       if(iptal) return;
