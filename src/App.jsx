@@ -532,27 +532,39 @@ function App(){
       return {lat:Number(data[0].lat),lng:Number(data[0].lon)};
     }
     function adresSadele(adres){
-      // Kısaltmaları aç, bina/kat/daire numaralarını temizle
       return adres
-        .replace(/\bSk\b\.?/gi,"Sokak").replace(/\bCad\b\.?/gi,"Caddesi")
-        .replace(/\bBlv\b\.?/gi,"Bulvarı").replace(/\bMah\b\.?/gi,"Mahallesi")
+        // Mahalle önekini temizle: "ŞİRİNEVLER MAH." veya "ŞİRİNEVLER MAHALLESİ" gibi
+        .replace(/^[\wÇĞİÖŞÜçğışöüA-Z\s]+\bMAH(?:ALLESİ|ALLE)?\b\.?\s*/i,"")
+        // Kısaltmaları aç
+        .replace(/\bSok?\b\.?/gi,"Sokak").replace(/\bCad\b\.?/gi,"Caddesi")
+        .replace(/\bBlv\b\.?/gi,"Bulvarı").replace(/\bBulv\b\.?/gi,"Bulvarı")
+        // Bina/kat/daire ve "No:" temizle
         .replace(/\bNo\s*[:.]?\s*\d+[\/\-]?\d*/gi,"").replace(/\bKat\s*[:.]?\s*\d+/gi,"")
-        .replace(/\bD\s*[:.]?\s*\d+/gi,"").replace(/\s+/g," ").trim().replace(/,\s*$/,"");
+        .replace(/\bD(?:aire)?\s*[:.]?\s*\d+/gi,"")
+        .replace(/\s+/g," ").trim().replace(/[,\s]+$/,"");
     }
     function sokaciAl(adres){
-      // "Atatürk Caddesi 5/3" → "Atatürk Caddesi" (numara kısmını at)
-      return adres.replace(/\s+\d+.*$/,"").replace(/,.*$/,"").trim();
+      // "Badem Sokak 5/3" → "Badem Sokak"
+      return adres.replace(/\s+\d[\d\/\-]*.*$/,"").replace(/,.*$/,"").trim();
     }
     async function geocodeAddress(elev){
-      var adres=elev.adres||""; var semt=elev.semt||""; var ilce=elev.ilce||"";
+      var adresRaw=elev.adres||""; var semt=elev.semt||""; var ilce=elev.ilce||"";
       var suffix=ilce?", "+ilce+", İstanbul":", İstanbul";
-      // Fallback zinciri: 4 farklı sorgu dene
+      var temiz=adresSadele(adresRaw);
+      var sokak=sokaciAl(temiz);
+      // Fallback zinciri: giderek sadeleşen 5 sorgu
       var sorgular=[
-        semt?semt+" Mahallesi, "+adresSadele(adres)+suffix:adresSadele(adres)+suffix,
-        adresSadele(adres)+suffix,
-        sokaciAl(adresSadele(adres))+suffix,
-        semt?semt+" Mahallesi"+suffix:ilce?ilce+", İstanbul":null,
-      ].filter(Boolean);
+        // 1. Temiz sokak + ilçe (en güvenilir)
+        temiz+suffix,
+        // 2. Sadece sokak adı + ilçe (numara yok)
+        sokak+suffix,
+        // 3. semt mahallesi + sokak + ilçe
+        semt?semt+" Mahallesi, "+sokak+suffix:null,
+        // 4. semt mahallesi + ilçe
+        semt?semt+" Mahallesi"+suffix:null,
+        // 5. Sadece ilçe (son çare, yaklaşık konum)
+        ilce?ilce+", İstanbul":null,
+      ].filter(function(s){return s&&s.trim().length>5;});
       for(var s=0;s<sorgular.length;s++){
         if(iptal) return null;
         try{ var geo=await nominatimSorgu(sorgular[s]); if(geo) return geo; }catch(e){}
@@ -1352,7 +1364,13 @@ function App(){
           React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#a7f3d0"}},rotaTahminiKm.toFixed(1)+" km")
         )
       )
-    , rotaOptHata&&React.createElement('div',{style:{fontSize:11,color:"#f59e0b",background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:8,padding:"8px 12px",marginBottom:4}},"⚠️ "+rotaOptHata)
+    , rotaOptHata&&React.createElement('div',{style:{fontSize:11,color:"#f59e0b",background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:8,padding:"8px 12px",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
+        React.createElement('span',null,"⚠️ "+rotaOptHata),
+        React.createElement('button',{
+          onClick:function(){setRotaGeoCache({});lsSet("at_geo_cache",{});},
+          style:{fontSize:10,padding:"4px 8px",borderRadius:6,background:"#f59e0b22",color:"#f59e0b",border:"1px solid #f59e0b55",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}
+        },"🔄 Yeniden Dene")
+      )
 
     /* Rota özeti + butonlar */
     , rotaElevs.length>0
