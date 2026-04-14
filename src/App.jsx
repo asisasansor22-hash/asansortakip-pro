@@ -1249,7 +1249,7 @@ function App(){
                         },"✗")
                       )
                     : React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4,marginTop:1}},
-                        React.createElement('span',{style:{fontSize:9,color:rotaAdresOverrides[e.id]?"#60a5fa":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},
+                        React.createElement('span',{style:{fontSize:9,color:e.rotaAdres?"#60a5fa":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},
                           displayAddr
                         ),
                         e.rotaAdres&&React.createElement('button',{
