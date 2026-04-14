@@ -548,14 +548,24 @@ function App(){
       if(iptal) return;
       if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)) setRotaGeoCache(cacheGuncel);
       var coordsOlan=routePoints.filter(function(p){return p.coords;});
-      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
+      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;});
+      if(coordsOlmayan.length>0){
+        // Kısmi başarısızlık → seçim sırasına göre göster (optimize etme)
+        var secimSirasi=routePoints.slice().sort(function(a,b){return a.manualIndex-b.manualIndex;});
+        var toplamKm2=0; var onceki2=startPoint;
+        secimSirasi.forEach(function(p){ if(onceki2&&p.coords){toplamKm2+=haversineKm(onceki2,p.coords);} onceki2=p.coords||onceki2; });
+        setRotaOtomatikIds(secimSirasi.map(function(p){return p.elev.id;}));
+        setRotaTahminiKm(toplamKm2>0?toplamKm2:null);
+        setRotaOptHata(coordsOlmayan.length+" adres konumu bulunamadı, seçim sırasına göre gösteriliyor.");
+        setRotaHesaplaniyor(false);
+        return;
+      }
       var optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
-      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
       var toplamKm=0; var onceki=startPoint;
-      finalPoints.forEach(function(p){ if(onceki&&p.coords){toplamKm+=haversineKm(onceki,p.coords);} onceki=p.coords||onceki; });
-      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
+      optimizeEdilen.forEach(function(p){ if(onceki&&p.coords){toplamKm+=haversineKm(onceki,p.coords);} onceki=p.coords||onceki; });
+      setRotaOtomatikIds(optimizeEdilen.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
-      setRotaOptHata(coordsOlmayan.length>0?coordsOlmayan.length+" adres haritada çözülemedi, listenin sonuna eklendi.":"");
+      setRotaOptHata("");
       setRotaHesaplaniyor(false);
     }
     hesapla().catch(function(){
