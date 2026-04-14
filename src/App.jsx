@@ -1233,14 +1233,14 @@ function App(){
                           value:rotaEditingVal,
                           onChange:function(ev){setRotaEditingVal(ev.target.value);},
                           onKeyDown:function(ev){
-                            if(ev.key==="Enter"){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,rotaAdres:rotaEditingVal}:x;});});setRotaEditingId(null);}
+                            if(ev.key==="Enter"){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});});setRotaEditingId(null);}
                             if(ev.key==="Escape")setRotaEditingId(null);
                           },
                           autoFocus:true,
                           style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #3b82f6",color:"#e0e6f0",outline:"none"}
                         }),
                         React.createElement('button',{
-                          onClick:function(){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,rotaAdres:rotaEditingVal}:x;});});setRotaEditingId(null);},
+                          onClick:function(){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});});setRotaEditingId(null);},
                           style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
                         },"✓"),
                         React.createElement('button',{
@@ -1258,7 +1258,7 @@ function App(){
                           style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
                         },"↺"),
                         React.createElement('button',{
-                          onClick:function(ev){ev.stopPropagation();setRotaEditingVal(e.rotaAdres||defaultAddr);setRotaEditingId(e.id);},
+                          onClick:function(ev){ev.stopPropagation();setRotaEditingVal(e.adres||"");setRotaEditingId(e.id);},
                           style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#1e3a5f",color:"#3b82f6",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
                         },"✏️")
                       )
