@@ -49,6 +49,8 @@ function App(){
   const [rotaIlce,setRotaIlce]=useState("Tümü");
   const [rotaStart,setRotaStart]=useState("");
   const [rotaKonum,setRotaKonum]=useState(null);
+  const [rotaEditingId,setRotaEditingId]=useState(null);
+  const [rotaEditingVal,setRotaEditingVal]=useState("");
   const [konumYukleniyor,setKonumYukleniyor]=useState(false);
   const [konumHata,setKonumHata]=useState("");
   const [sifreModal,setSifreModal]=useState(false);
@@ -569,7 +571,7 @@ function App(){
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrl=(function(){
     if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return (e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");});
+    var addrs=rotaElevs.map(function(e){if(e.rotaAdres)return e.rotaAdres;return (e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
@@ -1214,6 +1216,10 @@ function App(){
             rotaElevs.map(function(e,i){
               var c=getIlceRenk(e.ilce);
               var bekliyor=bekleyenRotaIds.includes(e.id);
+              var defaultAddr=(e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");
+              var mapsAddr=e.rotaAdres||defaultAddr;
+              var displayAddr=e.rotaAdres||((e.semt?e.semt+" Mah., ":"")+e.adres);
+              var editing=rotaEditingId===e.id;
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:bekliyor?"#0d1f15":"#0d1321",borderRadius:7,border:"1px solid "+(bekliyor?"#10b98133":"#1e2640")}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
@@ -1221,10 +1227,44 @@ function App(){
                     e.ad,
                     bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor")
                   ),
-                  React.createElement('div',{style:{fontSize:9,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(e.semt?e.semt+" Mah., ":"")+e.adres)
+                  editing
+                    ? React.createElement('div',{style:{display:"flex",gap:4,marginTop:3}},
+                        React.createElement('input',{
+                          value:rotaEditingVal,
+                          onChange:function(ev){setRotaEditingVal(ev.target.value);},
+                          onKeyDown:function(ev){
+                            if(ev.key==="Enter"){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,rotaAdres:rotaEditingVal}:x;});});setRotaEditingId(null);}
+                            if(ev.key==="Escape")setRotaEditingId(null);
+                          },
+                          autoFocus:true,
+                          style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #3b82f6",color:"#e0e6f0",outline:"none"}
+                        }),
+                        React.createElement('button',{
+                          onClick:function(){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,rotaAdres:rotaEditingVal}:x;});});setRotaEditingId(null);},
+                          style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
+                        },"✓"),
+                        React.createElement('button',{
+                          onClick:function(){setRotaEditingId(null);},
+                          style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer"}
+                        },"✗")
+                      )
+                    : React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4,marginTop:1}},
+                        React.createElement('span',{style:{fontSize:9,color:rotaAdresOverrides[e.id]?"#60a5fa":"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}},
+                          displayAddr
+                        ),
+                        e.rotaAdres&&React.createElement('button',{
+                          onClick:function(ev){ev.stopPropagation();setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,rotaAdres:""}:x;});});},
+                          title:"Orijinal adrese dön",
+                          style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#2a3050",color:"#94a3b8",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
+                        },"↺"),
+                        React.createElement('button',{
+                          onClick:function(ev){ev.stopPropagation();setRotaEditingVal(e.rotaAdres||defaultAddr);setRotaEditingId(e.id);},
+                          style:{fontSize:10,padding:"1px 5px",borderRadius:4,background:"#1e3a5f",color:"#3b82f6",border:"none",cursor:"pointer",flexShrink:0,lineHeight:1.5}
+                        },"✏️")
+                      )
                 ),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent((e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"")),
+                  href:"https://maps.google.com/?q="+encodeURIComponent(mapsAddr),
                   target:"_blank",rel:"noreferrer",
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"#1e3a5f",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")
