@@ -24,6 +24,44 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
 function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
 
+// Rota yardımcı fonksiyonları
+function routeAddressKey(e){ return [e.ad||"",e.semt||"",e.adres||"",e.ilce||""].join(" | "); }
+function routeAddressLabel(e){ return (e.semt?e.semt+" Mahallesi, ":"")+(e.adres||"")+(e.ilce?", "+e.ilce+", İstanbul":""); }
+function deg2rad(v){ return v*(Math.PI/180); }
+function haversineKm(a,b){
+  if(!a||!b) return Infinity;
+  var R=6371;
+  var dLat=deg2rad((b.lat||0)-(a.lat||0));
+  var dLon=deg2rad((b.lng||0)-(a.lng||0));
+  var lat1=deg2rad(a.lat||0); var lat2=deg2rad(b.lat||0);
+  var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function optimizeRoute(points,startPoint){
+  if(points.length<=1) return points.slice();
+  var remaining=points.slice(); var ordered=[]; var current=startPoint||remaining[0].coords;
+  while(remaining.length){
+    var bestIdx=0; var bestScore=Infinity;
+    remaining.forEach(function(p,i){ var score=current?haversineKm(current,p.coords):i; if(score<bestScore){bestScore=score;bestIdx=i;} });
+    var next=remaining.splice(bestIdx,1)[0]; ordered.push(next); current=next.coords;
+  }
+  if(ordered.length<4) return ordered;
+  var improved=true;
+  while(improved){
+    improved=false;
+    for(var i=0;i<ordered.length-2;i++){
+      for(var j=i+1;j<ordered.length-1;j++){
+        var a=(i===0?startPoint:ordered[i-1].coords)||ordered[i].coords;
+        var b=ordered[i].coords; var c=ordered[j].coords; var d=ordered[j+1].coords;
+        var mevcut=haversineKm(a,b)+haversineKm(c,d);
+        var alternatif=haversineKm(a,c)+haversineKm(b,d);
+        if(alternatif+0.05<mevcut){ ordered=ordered.slice(0,i).concat(ordered.slice(i,j+1).reverse(),ordered.slice(j+1)); improved=true; }
+      }
+    }
+  }
+  return ordered;
+}
+
 
 function App(){
   const [rol,setRol]=useState(null);
@@ -51,6 +89,11 @@ function App(){
   const [rotaKonum,setRotaKonum]=useState(null);
   const [rotaEditingId,setRotaEditingId]=useState(null);
   const [rotaEditingVal,setRotaEditingVal]=useState({adres:"",semt:"",ilce:""});
+  const [rotaGeoCache,setRotaGeoCache]=useState(function(){return lsGet("at_geo_cache")||{};});
+  const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
+  const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
+  const [rotaOptHata,setRotaOptHata]=useState("");
+  const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
   const [konumYukleniyor,setKonumYukleniyor]=useState(false);
   const [konumHata,setKonumHata]=useState("");
   const [sifreModal,setSifreModal]=useState(false);
@@ -463,10 +506,63 @@ function App(){
   };
   // Rota sekmesi açılınca otomatik konum al
   useEffect(()=>{
-    if(tab===5&&!rotaKonum&&!konumYukleniyor){
-      konumAl(true);
-    }
+    if(tab===5&&!rotaKonum&&!konumYukleniyor){ konumAl(true); }
   },[tab]);
+
+  // Geo cache localStorage'a kaydet
+  useEffect(function(){ lsSet("at_geo_cache",rotaGeoCache); },[rotaGeoCache]);
+
+  // Rota: Nominatim geocoding + Greedy/2-Opt optimizasyon
+  useEffect(function(){
+    if(tab!==5) return;
+    var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
+    if(seciliElevs.length===0){ setRotaOtomatikIds([]); setRotaTahminiKm(null); setRotaOptHata(""); setRotaHesaplaniyor(false); return; }
+    var iptal=false;
+    async function geocodeAddress(text){
+      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{headers:{Accept:"application/json","Accept-Language":"tr"}});
+      if(!res.ok) throw new Error("Geocode başarısız");
+      var data=await res.json();
+      if(!Array.isArray(data)||!data[0]) return null;
+      return {lat:Number(data[0].lat),lng:Number(data[0].lon)};
+    }
+    async function hesapla(){
+      setRotaHesaplaniyor(true); setRotaOptHata("");
+      var cacheGuncel=Object.assign({},rotaGeoCache);
+      var routePoints=[];
+      for(var i=0;i<seciliElevs.length;i++){
+        var elev=seciliElevs[i];
+        var key=routeAddressKey(elev);
+        var cached=cacheGuncel[key];
+        if(!cached&&elev.adres){
+          try{ var geo=await geocodeAddress(routeAddressLabel(elev)); if(geo){cached={lat:geo.lat,lng:geo.lng};cacheGuncel[key]=cached;} }catch(e){}
+        }
+        routePoints.push({elev:elev,coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,manualIndex:rotaSec.indexOf(elev.id)});
+      }
+      var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
+      if(!startPoint&&rotaStart.trim()){
+        var startKey="__start__:"+rotaStart.trim().toLowerCase();
+        var startCached=cacheGuncel[startKey];
+        if(!startCached){ try{ var sg=await geocodeAddress(rotaStart.trim()+", İstanbul"); if(sg){startCached={lat:sg.lat,lng:sg.lng};cacheGuncel[startKey]=startCached;} }catch(e){} }
+        if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
+      }
+      if(iptal) return;
+      if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)) setRotaGeoCache(cacheGuncel);
+      var coordsOlan=routePoints.filter(function(p){return p.coords;});
+      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
+      var optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
+      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
+      var toplamKm=0; var onceki=startPoint;
+      finalPoints.forEach(function(p){ if(onceki&&p.coords){toplamKm+=haversineKm(onceki,p.coords);} onceki=p.coords||onceki; });
+      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
+      setRotaTahminiKm(toplamKm>0?toplamKm:null);
+      setRotaOptHata(coordsOlmayan.length>0?coordsOlmayan.length+" adres haritada çözülemedi, listenin sonuna eklendi.":"");
+      setRotaHesaplaniyor(false);
+    }
+    hesapla().catch(function(){
+      if(!iptal){ setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;})); setRotaTahminiKm(null); setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor."); setRotaHesaplaniyor(false); }
+    });
+    return function(){ iptal=true; };
+  },[tab,rotaSec,rotaKonum,rotaStart,elevs,rotaGeoCache]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -566,12 +662,13 @@ function App(){
   const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},[]),[filteredElevs]);
 
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
-  const rotaElevs=elevs.filter(e=>rotaSec.includes(e.id));
+  const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
+  const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
   const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrl=(function(){
     if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){if(e.rotaAdres)return e.rotaAdres;return (e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");});
+    var addrs=rotaElevs.map(function(e){return routeAddressLabel(e);});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
@@ -1193,6 +1290,19 @@ function App(){
           })
       )
     )
+
+    /* Akıllı rota durum kartları */
+    , rotaSec.length>0&&React.createElement('div',{style:{display:"flex",gap:8,marginBottom:4,flexWrap:"wrap"}},
+        React.createElement('div',{style:{flex:1,minWidth:140,padding:"10px 12px",borderRadius:10,background:rotaHesaplaniyor?"rgba(59,130,246,0.12)":"rgba(16,185,129,0.10)",border:"1px solid "+(rotaHesaplaniyor?"#3b82f655":"#10b98133")}},
+          React.createElement('div',{style:{fontSize:9,fontWeight:800,color:rotaHesaplaniyor?"#60a5fa":"#10b981",marginBottom:3}},"AKILLI ROTA"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#e0e6f0"}},rotaHesaplaniyor?"Adresler analiz ediliyor...":"Rota sırası hazır")
+        ),
+        rotaTahminiKm!==null&&React.createElement('div',{style:{padding:"10px 12px",borderRadius:10,background:"rgba(16,185,129,0.10)",border:"1px solid #10b98133"}},
+          React.createElement('div',{style:{fontSize:9,fontWeight:800,color:"#10b981",marginBottom:3}},"TAHMİNİ MESAFE"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#a7f3d0"}},rotaTahminiKm.toFixed(1)+" km")
+        )
+      )
+    , rotaOptHata&&React.createElement('div',{style:{fontSize:11,color:"#f59e0b",background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)",borderRadius:8,padding:"8px 12px",marginBottom:4}},"⚠️ "+rotaOptHata)
 
     /* Rota özeti + butonlar */
     , rotaElevs.length>0
