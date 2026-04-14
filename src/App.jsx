@@ -1477,11 +1477,18 @@ function App(){
           ),
 
           /* Ana butonlar */
-          React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
-            style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
-              background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
-              textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-          }, "🗺️ Google Maps'te Rotayı Başlat"),
+          rotaHesaplaniyor
+            ? React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:"15px 0",
+                background:"#1a2a20",borderRadius:12,color:"#6ee7b7",fontWeight:700,fontSize:13,
+                border:"2px solid #10b98144",letterSpacing:"0.3px"}},
+                React.createElement('span',{style:{display:"inline-block",animation:"spin 1s linear infinite"}},"⏳"),
+                "Rota optimize ediliyor, lütfen bekleyin..."
+              )
+            : React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
+                style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                  background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
+                  textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+              }, "🗺️ Google Maps'te Rotayı Başlat"),
 
           React.createElement('button',{
             onClick:()=>_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(mapsUrl),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]),
