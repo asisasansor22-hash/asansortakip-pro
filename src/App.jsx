@@ -661,8 +661,7 @@ function App(){
   },[elevs,fIlce,arama]);
   const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},[]),[filteredElevs]);
 
-  const rotaAtananIds=rol==="bakimci"&&aktifBakimci?new Set(mMonth.filter(function(m){return m.planlanmis&&m.bakimciId===aktifBakimci.id;}).map(function(m){return m.asansorId;})):null;
-  const rotaPool=(function(){var base=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);return rotaAtananIds?base.filter(e=>rotaAtananIds.has(e.id)):base;})();
+  const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
   const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
@@ -678,7 +677,12 @@ function App(){
     return base;
   })();
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
-  const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){return m.planlanmis&&!m.yapildi&&elevs.some(function(e){return e.id===m.asansorId;});}).map(function(m){return m.asansorId;}))];
+  const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){
+    if(!m.planlanmis||m.yapildi) return false;
+    if(!elevs.some(function(e){return e.id===m.asansorId;})) return false;
+    if(rol==="bakimci"&&aktifBakimci&&m.bakimciId&&m.bakimciId!==aktifBakimci.id) return false;
+    return true;
+  }).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
   const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
