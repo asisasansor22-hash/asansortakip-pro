@@ -520,17 +520,44 @@ function App(){
     var iptal=false;
     function bekle(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
     var sonGeoIstegi=0;
-    async function geocodeAddress(text){
-      // Nominatim: maks 1 istek/saniye
+    async function nominatimSorgu(text){
       var simdi=Date.now();
       var beklenecek=1100-(simdi-sonGeoIstegi);
       if(beklenecek>0) await bekle(beklenecek);
       sonGeoIstegi=Date.now();
       var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{headers:{Accept:"application/json","Accept-Language":"tr","User-Agent":"AsansorTakipPro/1.0"}});
-      if(!res.ok) throw new Error("Geocode başarısız");
+      if(!res.ok) return null;
       var data=await res.json();
       if(!Array.isArray(data)||!data[0]) return null;
       return {lat:Number(data[0].lat),lng:Number(data[0].lon)};
+    }
+    function adresSadele(adres){
+      // Kısaltmaları aç, bina/kat/daire numaralarını temizle
+      return adres
+        .replace(/\bSk\b\.?/gi,"Sokak").replace(/\bCad\b\.?/gi,"Caddesi")
+        .replace(/\bBlv\b\.?/gi,"Bulvarı").replace(/\bMah\b\.?/gi,"Mahallesi")
+        .replace(/\bNo\s*[:.]?\s*\d+[\/\-]?\d*/gi,"").replace(/\bKat\s*[:.]?\s*\d+/gi,"")
+        .replace(/\bD\s*[:.]?\s*\d+/gi,"").replace(/\s+/g," ").trim().replace(/,\s*$/,"");
+    }
+    function sokaciAl(adres){
+      // "Atatürk Caddesi 5/3" → "Atatürk Caddesi" (numara kısmını at)
+      return adres.replace(/\s+\d+.*$/,"").replace(/,.*$/,"").trim();
+    }
+    async function geocodeAddress(elev){
+      var adres=elev.adres||""; var semt=elev.semt||""; var ilce=elev.ilce||"";
+      var suffix=ilce?", "+ilce+", İstanbul":", İstanbul";
+      // Fallback zinciri: 4 farklı sorgu dene
+      var sorgular=[
+        semt?semt+" Mahallesi, "+adresSadele(adres)+suffix:adresSadele(adres)+suffix,
+        adresSadele(adres)+suffix,
+        sokaciAl(adresSadele(adres))+suffix,
+        semt?semt+" Mahallesi"+suffix:ilce?ilce+", İstanbul":null,
+      ].filter(Boolean);
+      for(var s=0;s<sorgular.length;s++){
+        if(iptal) return null;
+        try{ var geo=await nominatimSorgu(sorgular[s]); if(geo) return geo; }catch(e){}
+      }
+      return null;
     }
     async function hesapla(){
       setRotaHesaplaniyor(true); setRotaOptHata("");
@@ -542,7 +569,7 @@ function App(){
         var key=routeAddressKey(elev);
         var cached=cacheGuncel[key];
         if(!cached&&elev.adres){
-          try{ var geo=await geocodeAddress(routeAddressLabel(elev)); if(geo){cached={lat:geo.lat,lng:geo.lng};cacheGuncel[key]=cached;} }catch(e){}
+          try{ var geo=await geocodeAddress(elev); if(geo){cached={lat:geo.lat,lng:geo.lng};cacheGuncel[key]=cached;} }catch(e){}
         }
         routePoints.push({elev:elev,coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,manualIndex:rotaSec.indexOf(elev.id)});
       }
