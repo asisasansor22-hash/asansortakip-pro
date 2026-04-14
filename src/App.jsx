@@ -661,7 +661,8 @@ function App(){
   },[elevs,fIlce,arama]);
   const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},[]),[filteredElevs]);
 
-  const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
+  const rotaAtananIds=rol==="bakimci"&&aktifBakimci?new Set(mMonth.filter(function(m){return m.planlanmis&&m.bakimciId===aktifBakimci.id;}).map(function(m){return m.asansorId;})):null;
+  const rotaPool=(function(){var base=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);return rotaAtananIds?base.filter(e=>rotaAtananIds.has(e.id)):base;})();
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
   const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
