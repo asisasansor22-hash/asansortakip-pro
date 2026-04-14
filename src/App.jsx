@@ -518,8 +518,15 @@ function App(){
     var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
     if(seciliElevs.length===0){ setRotaOtomatikIds([]); setRotaTahminiKm(null); setRotaOptHata(""); setRotaHesaplaniyor(false); return; }
     var iptal=false;
+    function bekle(ms){ return new Promise(function(r){setTimeout(r,ms);}); }
+    var sonGeoIstegi=0;
     async function geocodeAddress(text){
-      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{headers:{Accept:"application/json","Accept-Language":"tr"}});
+      // Nominatim: maks 1 istek/saniye
+      var simdi=Date.now();
+      var beklenecek=1100-(simdi-sonGeoIstegi);
+      if(beklenecek>0) await bekle(beklenecek);
+      sonGeoIstegi=Date.now();
+      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{headers:{Accept:"application/json","Accept-Language":"tr","User-Agent":"AsansorTakipPro/1.0"}});
       if(!res.ok) throw new Error("Geocode başarısız");
       var data=await res.json();
       if(!Array.isArray(data)||!data[0]) return null;
@@ -530,6 +537,7 @@ function App(){
       var cacheGuncel=Object.assign({},rotaGeoCache);
       var routePoints=[];
       for(var i=0;i<seciliElevs.length;i++){
+        if(iptal) return;
         var elev=seciliElevs[i];
         var key=routeAddressKey(elev);
         var cached=cacheGuncel[key];
