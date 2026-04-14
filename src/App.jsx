@@ -1233,14 +1233,14 @@ function App(){
                           value:rotaEditingVal,
                           onChange:function(ev){setRotaEditingVal(ev.target.value);},
                           onKeyDown:function(ev){
-                            if(ev.key==="Enter"){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});});setRotaEditingId(null);}
+                            if(ev.key==="Enter"){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);}
                             if(ev.key==="Escape")setRotaEditingId(null);
                           },
                           autoFocus:true,
                           style:{flex:1,fontSize:10,padding:"3px 7px",borderRadius:5,background:"#0d1321",border:"1px solid #3b82f6",color:"#e0e6f0",outline:"none"}
                         }),
                         React.createElement('button',{
-                          onClick:function(){setElevs(function(p){return p.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});});setRotaEditingId(null);},
+                          onClick:function(){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);},
                           style:{fontSize:11,padding:"2px 8px",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
                         },"✓"),
                         React.createElement('button',{
