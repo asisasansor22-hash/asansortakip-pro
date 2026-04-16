@@ -1,239 +1,97 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { S } from '../utils/constants.js'
 import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
-import { firebaseLogin, dbGetPublic } from '../firebase.js'
-import { hashPassword, verifyPassword, isHashed } from '../utils/auth.js'
+import { firebaseLogin } from '../firebase.js'
 
-function LoginScreen({ onLogin, bakimcilar, firmaKayitAc, kayitliFirma }) {
-  // Firma seçim state'leri
-  const [firmaAdim, setFirmaAdim] = useState(kayitliFirma ? "login" : "firma"); // "firma" | "login"
-  const [firmaKodu, setFirmaKodu] = useState(kayitliFirma || "");
-  const [firmaHata, setFirmaHata] = useState("");
-  const [firmaBilgi, setFirmaBilgi] = useState(null); // { ad, logo, ... }
-  const [firmaYukleniyor, setFirmaYukleniyor] = useState(false);
-
-  // Login state'leri (mevcut)
+function LoginScreen({ onLogin, bakimcilar }) {
   const [sifre, setSifre] = useState("");
   const [hata, setHata] = useState("");
   const [sifreAcik, setSifreAcik] = useState(false);
   const [yukleniyor, setYukleniyor] = useState(false);
 
-  // Bakımcı login
+  // Bireysel bakimci login
   const [bakimciSec, setBakimciSec] = useState(null);
   const [bakimciSifre, setBakimciSifre] = useState("");
   const [bakimciHata, setBakimciHata] = useState("");
   const [listAcik, setListAcik] = useState(false);
 
-  // Kayıtlı firma varsa bilgisini yükle
-  useEffect(function(){
-    if(kayitliFirma && !firmaBilgi){
-      firmaDogrula(kayitliFirma, true);
-    }
-  },[kayitliFirma]);
-
-  // E-posta oluştur (firma kodu bazlı)
+  // E-posta oluştur (bakimci adından veya rol'den)
   function makeEmail(rol, bakimci) {
-    var kod = firmaKodu || "default";
-    if (rol === "yonetici") return "yonetici_" + kod + "@asansortakip.app";
+    if (rol === "yonetici") return "yonetici@asistakip.app";
     if (bakimci && bakimci.ad) {
       var safe = bakimci.ad.toLowerCase()
         .replace(/ş/g,"s").replace(/ç/g,"c").replace(/ğ/g,"g")
         .replace(/ı/g,"i").replace(/ö/g,"o").replace(/ü/g,"u")
         .replace(/[^a-z0-9]/g,"");
-      return "bakimci_" + safe + "_" + kod + "@asansortakip.app";
+      return "bakimci_" + safe + "@asistakip.app";
     }
-    return "bakimci_" + kod + "@asansortakip.app";
+    return "bakimci@asistakip.app";
   }
 
-  // Firma kodu doğrulama
-  async function firmaDogrula(kod, sessiz) {
-    if(!kod || !kod.trim()){ if(!sessiz) setFirmaHata("Firma kodu girin"); return; }
-    var slug = kod.trim().toLowerCase();
-    if(!sessiz) setFirmaYukleniyor(true);
-    setFirmaHata("");
-    try {
-      var bilgi = await dbGetPublic("sirketler/" + slug + "/bilgi");
-      if(bilgi && bilgi.ad) {
-        setFirmaBilgi(bilgi);
-        setFirmaKodu(slug);
-        setFirmaAdim("login");
-        // Firma bilgisini üst bileşene bildir
-        onLogin("firma_secildi", null, slug, bilgi);
-      } else {
-        if(!sessiz) setFirmaHata("Bu firma kodu bulunamadı");
-      }
-    } catch(e) {
-      if(!sessiz) setFirmaHata("Bağlantı hatası");
-    }
-    if(!sessiz) setFirmaYukleniyor(false);
-  }
-
-  // Yönetici giriş — şifre Firebase'den doğrulanır
   const yoneticiGiris = async () => {
-    if(!sifre.trim()){ setHata("Şifre girin"); return; }
+    if (sifre !== "asis94") {
+      setHata("Şifre hatalı!");
+      setSifre("");
+      return;
+    }
     setYukleniyor(true);
     setHata("");
-    try {
-      // Firebase'den yönetici hash'ini çek
-      var slug = firmaKodu || kayitliFirma;
-      var hash = await dbGetPublic("sirketler/" + slug + "/yonetici_sifre");
-      if(!hash) {
-        // Eski sistem: hardcoded fallback (migration süreci)
-        setHata("Firma yapılandırması eksik");
-        setYukleniyor(false);
-        return;
-      }
-      // Şifreyi doğrula
-      var gecerli = false;
-      if(isHashed(hash)){
-        gecerli = await verifyPassword(sifre, hash);
-      } else {
-        // Migration: henüz hash'lenmemiş eski şifre
-        gecerli = (sifre === hash);
-      }
-      if(!gecerli){
-        setHata("Şifre hatalı!");
-        setSifre("");
-        setYukleniyor(false);
-        return;
-      }
-      // Firebase Auth ile giriş
-      var res = await firebaseLogin(makeEmail("yonetici"), sifre);
-      if(res.success){
-        onLogin("yonetici", null, slug, firmaBilgi);
-      } else {
-        setHata("Giriş hatası: " + res.error);
-      }
-    } catch(e){
-      setHata("Bağlantı hatası");
-    }
+    var res = await firebaseLogin(makeEmail("yonetici"), "asis94");
     setYukleniyor(false);
+    if (res.success) {
+      onLogin("yonetici");
+    } else {
+      setHata("Firebase giriş hatası: " + res.error);
+    }
   };
 
-  // Bakımcı seçim
   const bakimciSec_ = async (b) => {
     setBakimciSec(b);
     setBakimciSifre("");
     setBakimciHata("");
-    // Şifresi yoksa direkt giriş
+    // Sifresi yoksa direkt giris
     if (!b.sifre) {
       setYukleniyor(true);
       var pw = "bakimci_" + (b.id || "nosifre");
       var res = await firebaseLogin(makeEmail("bakimci", b), pw);
       setYukleniyor(false);
       if (res.success) {
-        onLogin("bakimci", b, firmaKodu || kayitliFirma, firmaBilgi);
+        onLogin("bakimci", b);
       } else {
-        setBakimciHata("Giriş hatası");
+        setBakimciHata("Firebase giriş hatası");
       }
     }
   };
 
-  // Bakımcı şifre giriş
   const bakimciGiris = async () => {
     if (!bakimciSec) return;
+    if (bakimciSifre !== bakimciSec.sifre) {
+      setBakimciHata("Şifre hatalı!");
+      setBakimciSifre("");
+      return;
+    }
     setYukleniyor(true);
     setBakimciHata("");
-    try {
-      var gecerli = false;
-      if(isHashed(bakimciSec.sifre)){
-        gecerli = await verifyPassword(bakimciSifre, bakimciSec.sifre);
-      } else {
-        gecerli = (bakimciSifre === bakimciSec.sifre);
-      }
-      if(!gecerli){
-        setBakimciHata("Şifre hatalı!");
-        setBakimciSifre("");
-        setYukleniyor(false);
-        return;
-      }
-      var res = await firebaseLogin(makeEmail("bakimci", bakimciSec), bakimciSifre);
-      if (res.success) {
-        onLogin("bakimci", bakimciSec, firmaKodu || kayitliFirma, firmaBilgi);
-      } else {
-        setBakimciHata("Giriş hatası: " + res.error);
-      }
-    } catch(e){
-      setBakimciHata("Bağlantı hatası");
-    }
+    var res = await firebaseLogin(makeEmail("bakimci", bakimciSec), bakimciSec.sifre);
     setYukleniyor(false);
+    if (res.success) {
+      onLogin("bakimci", bakimciSec);
+    } else {
+      setBakimciHata("Firebase giriş hatası: " + res.error);
+    }
   };
 
   const hasBakimcilar = bakimcilar && bakimcilar.length > 0;
-  var logo = (firmaBilgi && firmaBilgi.logo) || ASIS_LOGO_B64;
-  var firmaAd = (firmaBilgi && firmaBilgi.ad) || "AsansörTakip";
 
-  // ═══════════════════════════════════════════
-  // ADIM 1: FİRMA KODU GİRİŞİ
-  // ═══════════════════════════════════════════
-  if(firmaAdim === "firma") {
-    return (
-      React.createElement('div', { className: "login-wrap ios-fade" },
-        React.createElement('div', { style: { width: "100%", maxWidth: 380 } },
-
-          /* Logo & Başlık */
-          React.createElement('div', { style: { textAlign: "center", marginBottom: 44 } },
-            React.createElement('div', { style: { fontSize: 48, marginBottom: 12 } }, "\uD83C\uDFE2"),
-            React.createElement('div', { style: { fontWeight: 800, fontSize: 26, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, "AsansörTakip Pro"),
-            React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Firma kodunuzu girerek başlayın")
-          ),
-
-          firmaYukleniyor
-            ? React.createElement('div', { style: { textAlign: "center", padding: 40 } },
-                React.createElement('div', { style: { fontSize: 28, marginBottom: 12 } }, "\u23F3"),
-                React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Firma doğrulanıyor...")
-              )
-            : React.createElement('div', { style: { display: "flex", flexDirection: "column", gap: 14 } },
-
-              /* Firma kodu input */
-              React.createElement('div', { className: "login-card", style: { padding: 20 } },
-                React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)", marginBottom: 8, fontWeight: 600 } }, "Firma Kodu"),
-                React.createElement('input', {
-                  type: "text", value: firmaKodu,
-                  onChange: function(e){ setFirmaKodu(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"")); setFirmaHata(""); },
-                  onKeyDown: function(e){ if(e.key==="Enter") firmaDogrula(firmaKodu); },
-                  placeholder: "ornek: asis-asansor", autoFocus: true,
-                  style: { ...S.inp, fontSize: 18, textAlign: "center", letterSpacing: 1, fontWeight: 700 }
-                }),
-                firmaHata && React.createElement('div', {
-                  style: { marginTop: 10, fontSize: 13, color: "var(--ios-red)", padding: "8px 12px", background: "rgba(255,59,48,0.1)", borderRadius: 10 }
-                }, "\uD83D\uDEAB " + firmaHata),
-                React.createElement('button', {
-                  onClick: function(){ firmaDogrula(firmaKodu); },
-                  style: { width: "100%", marginTop: 14, padding: "14px", background: "var(--accent)", border: "none", borderRadius: 14, color: "#fff", fontWeight: 700, fontSize: 16, cursor: "pointer" }
-                }, "Giriş Yap")
-              ),
-
-              /* Yeni firma kayıt butonu */
-              React.createElement('button', {
-                onClick: firmaKayitAc,
-                style: { padding: "14px", background: "none", border: "1px dashed var(--border)", borderRadius: 14, color: "var(--text-muted)", fontSize: 14, cursor: "pointer", textAlign: "center" }
-              }, "\u2795 Yeni Firma Kaydı")
-            )
-        )
-      )
-    );
-  }
-
-  // ═══════════════════════════════════════════
-  // ADIM 2: ROL SEÇİMİ + ŞİFRE (mevcut ekran)
-  // ═══════════════════════════════════════════
   return (
     React.createElement('div', { className: "login-wrap ios-fade" },
       React.createElement('div', { style: { width: "100%", maxWidth: 380 } },
 
-        /* Logo & Başlık */
+        /* Logo & Baslik */
         React.createElement('div', { style: { textAlign: "center", marginBottom: 44 } },
-          typeof logo === "string" && logo.startsWith("data:")
-            ? React.createElement('img', { src: logo, alt: firmaAd, className: "asis-logo-img", style: { height: "70px", objectFit: "contain", marginBottom: "8px" } })
-            : React.createElement('div', { style: { fontSize: 48, marginBottom: 8 } }, "\uD83C\uDFE2"),
-          React.createElement('div', { style: { fontWeight: 800, fontSize: 26, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, firmaAd),
-          React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 },
-            onClick: function(){ setFirmaAdim("firma"); setFirmaBilgi(null); }
-          },
-            React.createElement('span', null, "\uD83C\uDFE2 " + (firmaKodu || kayitliFirma)),
-            React.createElement('span', { style: { fontSize: 11, opacity: 0.7 } }, "(de\u011fi\u015ftir)")
-          )
+          React.createElement('img', { src: ASIS_LOGO_B64, alt: "Asis", className: "asis-logo-img", style: { height: "70px", objectFit: "contain", marginBottom: "8px" } }),
+          React.createElement('div', { style: { fontWeight: 800, fontSize: 30, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, "AsansörTakip"),
+          React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Pro")
         ),
 
         yukleniyor
@@ -336,9 +194,9 @@ function LoginScreen({ onLogin, bakimcilar, firmaKayitAc, kayitliFirma }) {
             : React.createElement('button', {
               onClick: async () => {
                 setYukleniyor(true);
-                var res = await firebaseLogin(makeEmail("bakimci"), "bakimci_genel");
+                var res = await firebaseLogin("bakimci@asistakip.app", "bakimci_genel");
                 setYukleniyor(false);
-                if (res.success) onLogin("bakimci", null, firmaKodu || kayitliFirma, firmaBilgi);
+                if (res.success) onLogin("bakimci", null);
               },
               style: { padding: "18px 20px", background: "var(--bg-panel)", border: "0.5px solid var(--border)", borderRadius: 20, cursor: "pointer", textAlign: "left", transition: "transform 0.15s, box-shadow 0.15s", boxShadow: "var(--shadow-sm)" }
             },
@@ -362,7 +220,7 @@ function LoginScreen({ onLogin, bakimcilar, firmaKayitAc, kayitliFirma }) {
                 React.createElement('div', { style: { background: "rgba(0,122,255,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "\uD83D\uDC54"),
                 React.createElement('div', { style: { flex: 1 } },
                   React.createElement('div', { style: { fontWeight: 700, fontSize: 17, color: "var(--text)", marginBottom: 2 } }, "Yönetici Girişi"),
-                  React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)" } }, "Tam yönetim \u00B7 Şifre gerekli")
+                  React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)" } }, "Tam yönetim · Şifre gerekli")
                 ),
                 React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, sifreAcik ? "\u2303" : "\uD83D\uDD12")
               )

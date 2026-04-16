@@ -17,17 +17,6 @@ const auth = getAuth(app);
 
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
 
-// ── Firma (şirket) scope yönetimi ──
-var _currentCompanyId = null;
-
-export function setCurrentCompany(companyId) {
-  _currentCompanyId = companyId;
-}
-
-export function getCurrentCompany() {
-  return _currentCompanyId;
-}
-
 // Auth token'ı al
 async function getToken() {
   var user = auth.currentUser;
@@ -65,20 +54,11 @@ export function onAuthChange(cb) {
 
 export { auth };
 
-// ── Database - REST API (firma scope'lu) ──
-
-function dbPath(key) {
-  if (_currentCompanyId) {
-    return "/sirketler/" + _currentCompanyId + "/" + key;
-  }
-  // fallback: eski yapı (migration öncesi)
-  return "/asansor/" + key;
-}
-
+// Database - REST API (artık auth token ile)
 export async function dbGet(key) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + dbPath(key) + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
     if (token) url += "?auth=" + token;
     var controller = new AbortController();
     var timer = setTimeout(function(){ controller.abort(); }, 8000);
@@ -93,35 +73,7 @@ export async function dbGet(key) {
 export async function dbSet(key, value) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + dbPath(key) + ".json";
-    if (token) url += "?auth=" + token;
-    await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-  } catch(e) {}
-}
-
-// ── Firma listesi (scope dışı — login öncesi) ──
-
-export async function dbGetPublic(path) {
-  try {
-    var url = FIREBASE_DB_URL + "/" + path + ".json";
-    var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, 8000);
-    var res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    if(!res.ok) return null;
-    var data = await res.json();
-    return (data !== null && data !== undefined) ? data : null;
-  } catch(e) { return null; }
-}
-
-export async function dbSetPublic(path, value) {
-  try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + "/" + path + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
     if (token) url += "?auth=" + token;
     await fetch(url, {
       method: "PUT",
