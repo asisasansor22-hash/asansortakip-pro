@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "AsansörTakip Pro",
+    "slug": "asansortakip-pro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f1117"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.asisasansor.takippro",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Rota planlaması için konumunuza ihtiyacımız var.",
+        "NSLocationAlwaysUsageDescription": "Rota planlaması için konumunuza ihtiyacımız var."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f1117"
+      },
+      "package": "com.asisasansor.takippro",
+      "edgeToEdgeEnabled": true,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
