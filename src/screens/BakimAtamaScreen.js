@@ -184,6 +184,17 @@ export default function BakimAtamaScreen({ data }) {
 
   if (acilanIlce && ilceDetay) {
     const renk = getIlceRenk(acilanIlce);
+    const gunGruplari = {};
+    ilceDetay.items.forEach((e) => {
+      const gun = e.bakimGunu ? String(parseInt(e.bakimGunu, 10) || e.bakimGunu) : '—';
+      if (!gunGruplari[gun]) gunGruplari[gun] = [];
+      gunGruplari[gun].push(e);
+    });
+    const sirali = Object.keys(gunGruplari).sort((a, b) => {
+      if (a === '—') return 1;
+      if (b === '—') return -1;
+      return parseInt(a, 10) - parseInt(b, 10);
+    });
     return (
       <View style={styles.container}>
         <View style={styles.detayHeader}>
@@ -208,81 +219,96 @@ export default function BakimAtamaScreen({ data }) {
           {ilceDetay.items.length === 0 ? (
             <Empty text="Bu ilçede asansör yok" />
           ) : (
-            ilceDetay.items
-              .slice()
-              .sort((a, b) => {
+            sirali.map((gun) => {
+              const items = gunGruplari[gun].slice().sort((a, b) => {
                 const ay = yapilanMap.has(a.id) ? 2 : atananMap.has(a.id) ? 1 : 0;
                 const by = yapilanMap.has(b.id) ? 2 : atananMap.has(b.id) ? 1 : 0;
                 if (ay !== by) return ay - by;
                 return (a.ad || '').localeCompare(b.ad || '');
-              })
-              .map((e) => {
-                const yapildi = yapilanMap.has(e.id);
-                const atama = atananMap.get(e.id);
-                const bakimci = atama ? getBakimci(atama.bakimciId) : null;
-                return (
-                  <View key={e.id} style={styles.card}>
-                    <TouchableOpacity
-                      style={[styles.checkbox, yapildi && styles.checkboxDone]}
-                      onPress={() => bakimiYapildiIsaretle(e)}
-                      activeOpacity={0.7}
-                    >
-                      {yapildi ? (
-                        <Text style={styles.checkmark}>✓</Text>
-                      ) : null}
-                    </TouchableOpacity>
-                    <View style={styles.flex1}>
-                      <Text
-                        style={[styles.cardTitle, yapildi && styles.textDone]}
-                        numberOfLines={1}
-                      >
-                        {e.ad}
+              });
+              const gunYapilan = items.filter((e) => yapilanMap.has(e.id)).length;
+              return (
+                <View key={gun} style={styles.gunGrup}>
+                  <View style={[styles.gunHeader, { backgroundColor: renk + '15', borderColor: renk + '40' }]}>
+                    <Text style={[styles.gunEmoji]}>📅</Text>
+                    <Text style={[styles.gunTitle, { color: renk }]}>
+                      {gun === '—' ? 'Bakım günü belirlenmemiş' : 'Her ayın ' + gun + '. günü'}
+                    </Text>
+                    <View style={[styles.gunCount, { backgroundColor: renk + '30' }]}>
+                      <Text style={[styles.gunCountText, { color: renk }]}>
+                        {gunYapilan}/{items.length}
                       </Text>
-                      <Text style={styles.metaText} numberOfLines={1}>
-                        {e.semt}
-                        {e.bakimGunu ? ' · 📅 ' + e.bakimGunu + '. gün' : ''}
-                      </Text>
-                      {bakimci ? (
-                        <View style={styles.bakimciRow}>
-                          <View
-                            style={[
-                              styles.bakimciDot,
-                              { backgroundColor: bakimci.renk || '#007AFF' },
-                            ]}
-                          />
+                    </View>
+                  </View>
+                  {items.map((e) => {
+                    const yapildi = yapilanMap.has(e.id);
+                    const atama = atananMap.get(e.id);
+                    const bakimci = atama ? getBakimci(atama.bakimciId) : null;
+                    return (
+                      <View key={e.id} style={styles.card}>
+                        <TouchableOpacity
+                          style={[styles.checkbox, yapildi && styles.checkboxDone]}
+                          onPress={() => bakimiYapildiIsaretle(e)}
+                          activeOpacity={0.7}
+                        >
+                          {yapildi ? (
+                            <Text style={styles.checkmark}>✓</Text>
+                          ) : null}
+                        </TouchableOpacity>
+                        <View style={styles.flex1}>
+                          <Text
+                            style={[styles.cardTitle, yapildi && styles.textDone]}
+                            numberOfLines={1}
+                          >
+                            {e.ad}
+                          </Text>
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {e.semt}
+                          </Text>
+                          {bakimci ? (
+                            <View style={styles.bakimciRow}>
+                              <View
+                                style={[
+                                  styles.bakimciDot,
+                                  { backgroundColor: bakimci.renk || '#007AFF' },
+                                ]}
+                              />
+                              <Text
+                                style={[
+                                  styles.bakimciAd,
+                                  { color: bakimci.renk || '#007AFF' },
+                                ]}
+                              >
+                                {bakimci.ad}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <TouchableOpacity
+                          style={[
+                            styles.atamaBtn,
+                            bakimci && {
+                              backgroundColor: (bakimci.renk || '#007AFF') + '25',
+                            },
+                          ]}
+                          onPress={() => setAtamaElev(e)}
+                          activeOpacity={0.7}
+                        >
                           <Text
                             style={[
-                              styles.bakimciAd,
-                              { color: bakimci.renk || '#007AFF' },
+                              styles.atamaBtnText,
+                              bakimci && { color: bakimci.renk || '#007AFF' },
                             ]}
                           >
-                            {bakimci.ad}
+                            {bakimci ? 'Değiştir' : '+ Ata'}
                           </Text>
-                        </View>
-                      ) : null}
-                    </View>
-                    <TouchableOpacity
-                      style={[
-                        styles.atamaBtn,
-                        bakimci && {
-                          backgroundColor: (bakimci.renk || '#007AFF') + '25',
-                        },
-                      ]}
-                      onPress={() => setAtamaElev(e)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.atamaBtnText,
-                          bakimci && { color: bakimci.renk || '#007AFF' },
-                        ]}
-                      >
-                        {bakimci ? 'Değiştir' : '+ Ata'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                );
-              })
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })
           )}
         </ScrollView>
 
@@ -546,6 +572,25 @@ const styles = StyleSheet.create({
   backBtnText: { color: '#007AFF', fontSize: 15, fontWeight: '700' },
   detayTitle: { fontSize: 20, fontWeight: '800' },
   detaySub: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  gunGrup: { marginBottom: 14 },
+  gunHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    marginBottom: 6,
+  },
+  gunEmoji: { fontSize: 14 },
+  gunTitle: { flex: 1, fontSize: 13, fontWeight: '800' },
+  gunCount: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  gunCountText: { fontSize: 11, fontWeight: '800' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
