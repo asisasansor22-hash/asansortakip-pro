@@ -24,6 +24,17 @@ const auth = getAuth(app);
 
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
 
+// Asis Asansör: mevcut /asansor/ path'ini kullanır (geriye uyumlu)
+// Yeni firmalar: /tenants/{firmaId}/ path'ini kullanır
+const ASIS_FIRMA_ID = 'asis';
+
+export function getTenantBasePath(firmaId) {
+  if (!firmaId || firmaId === ASIS_FIRMA_ID) return '/asansor/';
+  return '/tenants/' + firmaId + '/';
+}
+
+export { ASIS_FIRMA_ID };
+
 async function getToken() {
   const user = auth.currentUser;
   if (!user) return null;
@@ -70,10 +81,13 @@ export function onAuthChange(cb) {
 
 export { auth };
 
-export async function dbGet(key) {
+// --- Tenant-aware DB operations ---
+
+export async function dbGet(key, firmaId) {
   try {
     const token = await getToken();
-    let url = FIREBASE_DB_URL + '/asansor/' + key + '.json';
+    const basePath = getTenantBasePath(firmaId);
+    let url = FIREBASE_DB_URL + basePath + key + '.json';
     if (token) url += '?auth=' + token;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -87,10 +101,11 @@ export async function dbGet(key) {
   }
 }
 
-export async function dbSet(key, value) {
+export async function dbSet(key, value, firmaId) {
   try {
     const token = await getToken();
-    let url = FIREBASE_DB_URL + '/asansor/' + key + '.json';
+    const basePath = getTenantBasePath(firmaId);
+    let url = FIREBASE_DB_URL + basePath + key + '.json';
     if (token) url += '?auth=' + token;
     await fetch(url, {
       method: 'PUT',
@@ -98,4 +113,68 @@ export async function dbSet(key, value) {
       body: JSON.stringify(value),
     });
   } catch {}
+}
+
+// --- Firma (Company) Registry ---
+// Firmalar /firmalar/ path'inde saklanır (tenant verisinden ayrı)
+
+export async function firmaGetAll() {
+  try {
+    const token = await getToken();
+    let url = FIREBASE_DB_URL + '/firmalar.json';
+    if (token) url += '?auth=' + token;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function firmaGet(firmaId) {
+  try {
+    const token = await getToken();
+    let url = FIREBASE_DB_URL + '/firmalar/' + firmaId + '.json';
+    if (token) url += '?auth=' + token;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function firmaSet(firmaId, value) {
+  try {
+    const token = await getToken();
+    let url = FIREBASE_DB_URL + '/firmalar/' + firmaId + '.json';
+    if (token) url += '?auth=' + token;
+    await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value),
+    });
+  } catch {}
+}
+
+// Firma slug oluştur (URL-safe ID)
+export function firmaSlug(ad) {
+  return ad
+    .toLowerCase()
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ü/g, 'u')
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 30);
 }
