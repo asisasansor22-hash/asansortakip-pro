@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { firebaseLogin, firebaseLogout, onAuthChange, ASIS_FIRMA_ID } from '../config/firebase';
 import { lsGet, lsSet } from '../utils/storage';
 
@@ -29,11 +29,15 @@ export function useAuth() {
   const [rol, setRol] = useState(null);
   const [aktifBakimci, setAktifBakimci] = useState(null);
   const [loading, setLoading] = useState(true);
+  const firmaLoaded = useRef(false);
+  const authLoaded = useRef(false);
 
   useEffect(() => {
     (async () => {
       const savedFirma = await lsGet('at_firma');
       if (savedFirma && savedFirma.id) setFirma(savedFirma);
+      firmaLoaded.current = true;
+      if (authLoaded.current) setLoading(false);
     })();
   }, []);
 
@@ -50,7 +54,8 @@ export function useAuth() {
         setRol(null);
         setAktifBakimci(null);
       }
-      setLoading(false);
+      authLoaded.current = true;
+      if (firmaLoaded.current) setLoading(false);
     });
     return unsub;
   }, []);
