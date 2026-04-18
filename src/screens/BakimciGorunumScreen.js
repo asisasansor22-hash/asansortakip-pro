@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Empty, IlceBadge } from '../components/UI';
 import { MONTHS, getIlceRenk } from '../utils/constants';
+import { buildMapsAddress } from '../utils/address';
 
 function todayISO() {
   const d = new Date();
@@ -33,14 +34,6 @@ function matchesAyYil(m, ay, yil) {
     return d.getMonth() === ay && d.getFullYear() === yil;
   }
   return false;
-}
-
-function addressLabel(e) {
-  return (
-    (e.semt ? e.semt + ' Mahallesi, ' : '') +
-    (e.adres || '') +
-    (e.ilce ? ', ' + e.ilce + ', İstanbul' : '')
-  );
 }
 
 export default function BakimciGorunumScreen({ data, auth }) {
@@ -156,7 +149,7 @@ export default function BakimciGorunumScreen({ data, auth }) {
   };
 
   const openMaps = (elev) => {
-    const addr = encodeURIComponent(addressLabel(elev));
+    const addr = encodeURIComponent(buildMapsAddress(elev));
     Linking.openURL(
       'https://www.google.com/maps/search/?api=1&query=' + addr,
     );

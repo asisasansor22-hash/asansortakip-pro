@@ -10,14 +10,7 @@ import {
 } from 'react-native';
 import { Empty } from '../components/UI';
 import { getIlceRenk } from '../utils/constants';
-
-function addressLabel(e) {
-  return (
-    (e.semt ? e.semt + ' Mahallesi, ' : '') +
-    (e.adres || '') +
-    (e.ilce ? ', ' + e.ilce + ', İstanbul' : '')
-  );
-}
+import { buildMapsAddress } from '../utils/address';
 
 export default function RotaScreen({ data, auth }) {
   const { elevs, faults } = data;
@@ -104,7 +97,7 @@ export default function RotaScreen({ data, auth }) {
       return (a.semt || '').localeCompare(b.semt || '');
     });
 
-    const adresler = seciliElevs.map(addressLabel);
+    const adresler = seciliElevs.map(buildMapsAddress);
     if (adresler.length === 1) {
       Linking.openURL(
         'https://www.google.com/maps/search/?api=1&query=' +
