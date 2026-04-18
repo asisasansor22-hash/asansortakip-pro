@@ -251,34 +251,31 @@ export default function BakimAtamaScreen({ data }) {
                   const bakimci = atama ? getBakimci(atama.bakimciId) : null;
                   const secili = seciliIds.includes(e.id);
                   return (
-                    <View key={e.id} style={[styles.card, secili && styles.cardSecili]}>
-                      <TouchableOpacity
-                        style={[styles.selectBox, secili && styles.selectBoxActive]}
-                        onPress={() => toggleSecim(e.id)}
-                        activeOpacity={0.7}
-                      >
+                    <TouchableOpacity
+                      key={e.id}
+                      style={[styles.card, secili && styles.cardSecili]}
+                      onPress={() => toggleSecim(e.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.selectBox, secili && styles.selectBoxActive]}>
                         {secili ? <Text style={styles.selectCheck}>✓</Text> : null}
-                      </TouchableOpacity>
-                      <View style={styles.flex1}>
-                        <Text style={[styles.cardTitle, yapildi && styles.textDone]} numberOfLines={1}>{e.ad}</Text>
-                        <Text style={styles.metaText} numberOfLines={1}>{e.semt}</Text>
-                        {bakimci ? (
-                          <View style={styles.bakimciRow}>
-                            <View style={[styles.bakimciDot, { backgroundColor: bakimci.renk || '#007AFF' }]} />
-                            <Text style={[styles.bakimciAd, { color: bakimci.renk || '#007AFF' }]}>{bakimci.ad}</Text>
-                          </View>
-                        ) : null}
                       </View>
-                      <TouchableOpacity
-                        style={[styles.durumBtn, yapildi ? styles.durumYapildi : atama ? styles.durumAtandi : styles.durumKalan]}
-                        onPress={() => bakimiYapildiIsaretle(e)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.durumText, yapildi ? styles.durumTextYapildi : atama ? styles.durumTextAtandi : styles.durumTextKalan]}>
-                          {yapildi ? '✓' : atama ? '◉' : '○'}
+                      <View style={styles.flex1}>
+                        <View style={styles.cardRow}>
+                          <Text style={[styles.cardTitle, yapildi && styles.textDone]} numberOfLines={1}>{e.ad}</Text>
+                          {yapildi ? (
+                            <View style={styles.badgeYapildi}><Text style={styles.badgeYapildiText}>✓ Yapıldı</Text></View>
+                          ) : bakimci ? (
+                            <View style={[styles.badgeAtandi, { backgroundColor: (bakimci.renk || '#007AFF') + '20' }]}>
+                              <Text style={[styles.badgeAtandiText, { color: bakimci.renk || '#007AFF' }]}>{bakimci.ad}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {e.semt}{e.bakimGunu ? ' · 📅 ' + e.bakimGunu + '. gün' : ''}
                         </Text>
-                      </TouchableOpacity>
-                    </View>
+                      </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -406,23 +403,17 @@ const styles = StyleSheet.create({
   gunCountText: { fontSize: 11, fontWeight: '800' },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1c1e2a', borderRadius: 14, padding: 12, marginBottom: 6, gap: 10, borderWidth: 0.5, borderColor: '#2a3050' },
   cardSecili: { backgroundColor: '#007AFF12', borderColor: '#007AFF60' },
-  selectBox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: '#64748b', alignItems: 'center', justifyContent: 'center' },
+  selectBox: { width: 28, height: 28, borderRadius: 8, borderWidth: 2.5, borderColor: '#4a4d5a', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1117' },
   selectBoxActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-  selectCheck: { color: '#fff', fontSize: 14, fontWeight: '900' },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: '#e0e6f0' },
+  selectCheck: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#e0e6f0', flexShrink: 1 },
   textDone: { textDecorationLine: 'line-through', opacity: 0.5 },
-  metaText: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-  bakimciRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  bakimciDot: { width: 8, height: 8, borderRadius: 4 },
-  bakimciAd: { fontSize: 12, fontWeight: '700' },
-  durumBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  durumYapildi: { backgroundColor: '#34c75925' },
-  durumAtandi: { backgroundColor: '#007AFF25' },
-  durumKalan: { backgroundColor: '#2a2d3a' },
-  durumText: { fontSize: 16, fontWeight: '900' },
-  durumTextYapildi: { color: '#34c759' },
-  durumTextAtandi: { color: '#007AFF' },
-  durumTextKalan: { color: '#64748b' },
+  metaText: { fontSize: 12, color: '#94a3b8', marginTop: 3 },
+  badgeYapildi: { backgroundColor: '#34c75920', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  badgeYapildiText: { fontSize: 10, fontWeight: '800', color: '#34c759' },
+  badgeAtandi: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  badgeAtandiText: { fontSize: 10, fontWeight: '800' },
   floatBar: { position: 'absolute', bottom: 16, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#1c1e2a', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#007AFF', gap: 10 },
   floatText: { flex: 1, color: '#e0e6f0', fontSize: 14, fontWeight: '700' },
   floatBtn: { backgroundColor: '#007AFF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
