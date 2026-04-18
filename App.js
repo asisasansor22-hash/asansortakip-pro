@@ -3,12 +3,13 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from './src/hooks/useAuth';
 import { useFirebaseData } from './src/hooks/useFirebaseData';
+import FirmaSecimScreen from './src/screens/FirmaSecimScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   const auth = useAuth();
-  const data = useFirebaseData(auth.rol);
+  const data = useFirebaseData(auth.rol, auth.firmaId);
 
   const handleLogin = async (rolType, sifre, bakimci) => {
     if (rolType === 'yonetici') {
@@ -29,10 +30,23 @@ export default function App() {
     );
   }
 
+  if (!auth.firma) {
+    return (
+      <>
+        <FirmaSecimScreen onSelect={auth.selectFirma} />
+        <StatusBar style="light" />
+      </>
+    );
+  }
+
   if (!auth.rol) {
     return (
       <>
-        <LoginScreen onLogin={handleLogin} />
+        <LoginScreen
+          onLogin={handleLogin}
+          firma={auth.firma}
+          onFirmaDegistir={auth.clearFirma}
+        />
         <StatusBar style="light" />
       </>
     );

@@ -104,6 +104,7 @@ function LogoutButton({ onPress }) {
 }
 
 export default function AdminNavigator({ data, onLogout, onRefresh, auth }) {
+  const firmaAd = auth?.firma?.ad || 'AsansörTakip';
   return (
     <Tab.Navigator
       screenOptions={{
@@ -126,7 +127,7 @@ export default function AdminNavigator({ data, onLogout, onRefresh, auth }) {
       <Tab.Screen
         name="Dashboard"
         options={{
-          title: 'Dashboard',
+          title: firmaAd,
           tabBarIcon: () => <TabIcon emoji="📊" />,
           headerRight: () => <LogoutButton onPress={onLogout} />,
         }}

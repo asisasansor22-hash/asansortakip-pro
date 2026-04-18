@@ -3,7 +3,7 @@ import { dbGet, dbSet } from '../config/firebase';
 import { lsGet, lsSet } from '../utils/storage';
 import { EXCEL_ELEVS } from '../data/elevators';
 
-export function useFirebaseData(rol) {
+export function useFirebaseData(rol, firmaId) {
   const [elevs, setElevs] = useState([]);
   const [maints, setMaints] = useState([]);
   const [faults, setFaults] = useState([]);
@@ -21,6 +21,11 @@ export function useFirebaseData(rol) {
   const [giderHaftaArsiv, setGiderHaftaArsiv] = useState([]);
   const [loading, setLoading] = useState(true);
   const ilkYukleme = useRef(true);
+  const fid = useRef(firmaId);
+
+  useEffect(() => {
+    fid.current = firmaId;
+  }, [firmaId]);
 
   function fb(v) {
     return Array.isArray(v) ? v : v && typeof v === 'string' ? JSON.parse(v) : null;
@@ -29,23 +34,24 @@ export function useFirebaseData(rol) {
   const yukle = useCallback(async () => {
     setLoading(true);
     ilkYukleme.current = true;
+    const id = fid.current;
     try {
       const results = await Promise.all([
-        dbGet('at_elevs'),
-        dbGet('at_maints'),
-        dbGet('at_faults'),
-        dbGet('at_tasks'),
-        dbGet('at_sozlesme'),
-        dbGet('at_hesapkayit'),
-        dbGet('at_notlar'),
-        dbGet('at_ekstraisler'),
-        dbGet('at_muayeneler'),
-        dbGet('at_bakimcilar'),
-        dbGet('at_sonodemeler'),
-        dbGet('at_haftalik'),
-        dbGet('at_aylik'),
-        dbGet('at_giderler'),
-        dbGet('at_giderhafta'),
+        dbGet('at_elevs', id),
+        dbGet('at_maints', id),
+        dbGet('at_faults', id),
+        dbGet('at_tasks', id),
+        dbGet('at_sozlesme', id),
+        dbGet('at_hesapkayit', id),
+        dbGet('at_notlar', id),
+        dbGet('at_ekstraisler', id),
+        dbGet('at_muayeneler', id),
+        dbGet('at_bakimcilar', id),
+        dbGet('at_sonodemeler', id),
+        dbGet('at_haftalik', id),
+        dbGet('at_aylik', id),
+        dbGet('at_giderler', id),
+        dbGet('at_giderhafta', id),
       ]);
 
       const [
@@ -99,46 +105,46 @@ export function useFirebaseData(rol) {
   }, [rol, yukle]);
 
   useEffect(() => {
-    if (!ilkYukleme.current && elevs.length > 0) dbSet('at_elevs', elevs);
+    if (!ilkYukleme.current && elevs.length > 0) dbSet('at_elevs', elevs, fid.current);
   }, [elevs]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_maints', maints);
+    if (!ilkYukleme.current) dbSet('at_maints', maints, fid.current);
   }, [maints]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_faults', faults);
+    if (!ilkYukleme.current) dbSet('at_faults', faults, fid.current);
   }, [faults]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_tasks', tasks);
+    if (!ilkYukleme.current) dbSet('at_tasks', tasks, fid.current);
   }, [tasks]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_sozlesme', sozlesmeler);
+    if (!ilkYukleme.current) dbSet('at_sozlesme', sozlesmeler, fid.current);
   }, [sozlesmeler]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_hesapkayit', hesapKayitlari);
+    if (!ilkYukleme.current) dbSet('at_hesapkayit', hesapKayitlari, fid.current);
   }, [hesapKayitlari]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_notlar', notlar);
+    if (!ilkYukleme.current) dbSet('at_notlar', notlar, fid.current);
   }, [notlar]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_ekstraisler', ekstraIsler);
+    if (!ilkYukleme.current) dbSet('at_ekstraisler', ekstraIsler, fid.current);
   }, [ekstraIsler]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_muayeneler', muayeneler);
+    if (!ilkYukleme.current) dbSet('at_muayeneler', muayeneler, fid.current);
   }, [muayeneler]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_sonodemeler', sonOdemeler);
+    if (!ilkYukleme.current) dbSet('at_sonodemeler', sonOdemeler, fid.current);
   }, [sonOdemeler]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_haftalik', haftalikKapamalar);
+    if (!ilkYukleme.current) dbSet('at_haftalik', haftalikKapamalar, fid.current);
   }, [haftalikKapamalar]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_aylik', aylikKapamalar);
+    if (!ilkYukleme.current) dbSet('at_aylik', aylikKapamalar, fid.current);
   }, [aylikKapamalar]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_giderler', giderler);
+    if (!ilkYukleme.current) dbSet('at_giderler', giderler, fid.current);
   }, [giderler]);
   useEffect(() => {
-    if (!ilkYukleme.current) dbSet('at_giderhafta', giderHaftaArsiv);
+    if (!ilkYukleme.current) dbSet('at_giderhafta', giderHaftaArsiv, fid.current);
   }, [giderHaftaArsiv]);
 
   return {

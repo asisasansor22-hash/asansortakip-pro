@@ -13,7 +13,7 @@ import {
 import { dbGet } from '../config/firebase';
 import { lsGet, lsSet } from '../utils/storage';
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen({ onLogin, firma, onFirmaDegistir }) {
   const [sifre, setSifre] = useState('');
   const [hata, setHata] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
@@ -24,10 +24,12 @@ export default function LoginScreen({ onLogin }) {
   const [bakimciHata, setBakimciHata] = useState('');
   const [listAcik, setListAcik] = useState(false);
 
+  const firmaId = firma?.id || null;
+
   useEffect(() => {
     (async () => {
       try {
-        const r = await dbGet('at_bakimcilar');
+        const r = await dbGet('at_bakimcilar', firmaId);
         const d = Array.isArray(r) ? r : r && typeof r === 'string' ? JSON.parse(r) : null;
         if (Array.isArray(d) && d.length > 0) {
           setBakimcilar(d);
@@ -38,19 +40,17 @@ export default function LoginScreen({ onLogin }) {
         }
       } catch {}
     })();
-  }, []);
+  }, [firmaId]);
 
   const yoneticiGiris = async () => {
-    if (sifre !== 'asis94') {
-      setHata('Şifre hatalı!');
-      setSifre('');
-      return;
-    }
     setYukleniyor(true);
     setHata('');
     const res = await onLogin('yonetici', sifre);
     setYukleniyor(false);
-    if (!res.success) setHata(res.error || 'Giriş hatası');
+    if (!res.success) {
+      setHata(res.error || 'Giriş hatası');
+      setSifre('');
+    }
   };
 
   const bakimciSecFunc = async (b) => {
@@ -104,6 +104,24 @@ export default function LoginScreen({ onLogin }) {
           <Text style={styles.logoTitle}>AsansörTakip</Text>
           <Text style={styles.logoSub}>Pro</Text>
         </View>
+
+        {firma && (
+          <TouchableOpacity
+            style={styles.firmaBanner}
+            onPress={onFirmaDegistir}
+            activeOpacity={0.7}
+          >
+            <View style={styles.firmaBannerIcon}>
+              <Text style={styles.firmaBannerIconText}>
+                {(firma.ad || '?')[0].toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.flex1}>
+              <Text style={styles.firmaBannerAd}>{firma.ad}</Text>
+              <Text style={styles.firmaBannerSub}>Firma degistir ›</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Bakimci Section */}
         {bakimcilar.length > 0 ? (
@@ -322,7 +340,7 @@ const styles = StyleSheet.create({
   },
   logoBox: {
     alignItems: 'center',
-    marginBottom: 44,
+    marginBottom: 24,
   },
   logoIcon: {
     fontSize: 60,
@@ -338,6 +356,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94a3b8',
     marginTop: 4,
+  },
+  firmaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a2744',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#007AFF44',
+  },
+  firmaBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  firmaBannerIconText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  firmaBannerAd: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#e0e6f0',
+  },
+  firmaBannerSub: {
+    fontSize: 12,
+    color: '#007AFF',
+    marginTop: 2,
   },
   card: {
     backgroundColor: '#1c1e2a',
