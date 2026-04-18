@@ -1,14 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  SectionList,
   StyleSheet,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { MONTHS, getIlceRenk } from '../utils/constants';
-import { Empty, PrimaryButton } from '../components/UI';
+import { Empty } from '../components/UI';
 
 function todayISO() {
   const d = new Date();
@@ -21,36 +21,100 @@ function todayISO() {
   );
 }
 
+function SectionHeader({ ilce, yapilan, toplam, collapsed, onToggle }) {
+  const renk = getIlceRenk(ilce);
+  const pct = toplam > 0 ? Math.round((yapilan / toplam) * 100) : 0;
+  return (
+    <TouchableOpacity
+      style={styles.sectionHeader}
+      onPress={onToggle}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.sectionDot, { backgroundColor: renk }]} />
+      <Text style={[styles.sectionTitle, { color: renk }]}>{ilce}</Text>
+      <View style={styles.sectionProgress}>
+        <View style={styles.sectionProgressBar}>
+          <View
+            style={[
+              styles.sectionProgressFill,
+              { width: pct + '%', backgroundColor: renk },
+            ]}
+          />
+        </View>
+      </View>
+      <View style={[styles.sectionCount, { backgroundColor: renk + '20' }]}>
+        <Text style={[styles.sectionCountText, { color: renk }]}>
+          {yapilan}/{toplam}
+        </Text>
+      </View>
+      <Text style={styles.sectionChevron}>{collapsed ? '›' : '⌄'}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function BakimAtamaScreen({ data }) {
-  const { elevs, maints, setMaints, bakimcilar } = data;
+  const { elevs, maints, setMaints } = data;
   const [seciliAy, setSeciliAy] = useState(new Date().getMonth());
   const [seciliYil] = useState(new Date().getFullYear());
-  const [filtre, setFiltre] = useState('hepsi'); // hepsi | yapildi | yapilmadi
+  const [filtre, setFiltre] = useState('hepsi');
+  const [collapsed, setCollapsed] = useState({});
+
+  const toggleSection = useCallback((ilce) => {
+    setCollapsed((prev) => ({ ...prev, [ilce]: !prev[ilce] }));
+  }, []);
 
   const ayBakimlari = useMemo(() => {
     return maints.filter((m) => {
       const d = new Date(m.tarih);
-      return (
-        d.getMonth() === seciliAy && d.getFullYear() === seciliYil
-      );
+      return d.getMonth() === seciliAy && d.getFullYear() === seciliYil;
     });
   }, [maints, seciliAy, seciliYil]);
 
-  const yapildiIds = new Set(ayBakimlari.map((m) => m.asansorId));
+  const yapildiIds = useMemo(
+    () => new Set(ayBakimlari.map((m) => m.asansorId)),
+    [ayBakimlari],
+  );
 
-  const filtrelenmisAsansorler = useMemo(() => {
+  const sections = useMemo(() => {
     let list = elevs.slice();
     if (filtre === 'yapildi') {
       list = list.filter((e) => yapildiIds.has(e.id));
     } else if (filtre === 'yapilmadi') {
       list = list.filter((e) => !yapildiIds.has(e.id));
     }
-    return list.sort((a, b) => {
-      const ay = String(a.bakimGunu || 99).padStart(2, '0');
-      const by = String(b.bakimGunu || 99).padStart(2, '0');
-      return ay.localeCompare(by);
+
+    const grouped = {};
+    list.forEach((e) => {
+      const ilce = e.ilce || 'Diğer';
+      if (!grouped[ilce]) grouped[ilce] = { all: [], items: [] };
+      grouped[ilce].items.push(e);
     });
-  }, [elevs, filtre, yapildiIds]);
+
+    elevs.forEach((e) => {
+      const ilce = e.ilce || 'Diğer';
+      if (!grouped[ilce]) return;
+      grouped[ilce].all.push(e);
+    });
+
+    return Object.keys(grouped)
+      .sort()
+      .map((ilce) => {
+        const allIds = grouped[ilce].all.map((e) => e.id);
+        const yapilan = allIds.filter((id) => yapildiIds.has(id)).length;
+        const items = grouped[ilce].items.sort((a, b) => {
+          const av = yapildiIds.has(a.id) ? 1 : 0;
+          const bv = yapildiIds.has(b.id) ? 1 : 0;
+          if (av !== bv) return av - bv;
+          return (a.bakimGunu || 99) - (b.bakimGunu || 99);
+        });
+        return {
+          ilce,
+          yapilan,
+          toplam: allIds.length,
+          data: collapsed[ilce] ? [] : items,
+        };
+      });
+  }, [elevs, filtre, yapildiIds, collapsed]);
 
   const bakimEkle = (elev) => {
     const yapildi = yapildiIds.has(elev.id);
@@ -66,8 +130,7 @@ export default function BakimAtamaScreen({ data }) {
                 if (m.asansorId !== elev.id) return true;
                 const d = new Date(m.tarih);
                 return (
-                  d.getMonth() !== seciliAy ||
-                  d.getFullYear() !== seciliYil
+                  d.getMonth() !== seciliAy || d.getFullYear() !== seciliYil
                 );
               }),
             );
@@ -94,10 +157,9 @@ export default function BakimAtamaScreen({ data }) {
     setSeciliAy(y);
   };
 
+  const toplamYapilan = ayBakimlari.length;
   const tamamlananYuzde =
-    elevs.length > 0
-      ? Math.round((ayBakimlari.length / elevs.length) * 100)
-      : 0;
+    elevs.length > 0 ? Math.round((toplamYapilan / elevs.length) * 100) : 0;
 
   return (
     <View style={styles.container}>
@@ -122,14 +184,11 @@ export default function BakimAtamaScreen({ data }) {
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
           <View
-            style={[
-              styles.progressFill,
-              { width: tamamlananYuzde + '%' },
-            ]}
+            style={[styles.progressFill, { width: tamamlananYuzde + '%' }]}
           />
         </View>
         <Text style={styles.progressText}>
-          {ayBakimlari.length}/{elevs.length} · %{tamamlananYuzde}
+          {toplamYapilan}/{elevs.length} · %{tamamlananYuzde}
         </Text>
       </View>
 
@@ -159,66 +218,58 @@ export default function BakimAtamaScreen({ data }) {
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
-        {filtrelenmisAsansorler.length === 0 ? (
-          <Empty text="Bu kriterlere uygun asansör yok" />
-        ) : (
-          filtrelenmisAsansorler.map((e) => {
-            const yapildi = yapildiIds.has(e.id);
-            const renk = getIlceRenk(e.ilce);
-            return (
-              <TouchableOpacity
-                key={e.id}
-                style={[
-                  styles.card,
-                  yapildi && styles.cardDone,
-                ]}
-                onPress={() => bakimEkle(e)}
-                activeOpacity={0.7}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => String(item.id)}
+        renderSectionHeader={({ section }) => (
+          <SectionHeader
+            ilce={section.ilce}
+            yapilan={section.yapilan}
+            toplam={section.toplam}
+            collapsed={!!collapsed[section.ilce]}
+            onToggle={() => toggleSection(section.ilce)}
+          />
+        )}
+        renderItem={({ item }) => {
+          const yapildi = yapildiIds.has(item.id);
+          const renk = getIlceRenk(item.ilce);
+          return (
+            <TouchableOpacity
+              style={[styles.card, yapildi && styles.cardDone]}
+              onPress={() => bakimEkle(item)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[styles.checkbox, yapildi && styles.checkboxDone]}
               >
-                <View
-                  style={[
-                    styles.checkbox,
-                    yapildi && styles.checkboxDone,
-                  ]}
+                {yapildi ? (
+                  <Text style={styles.checkmark}>✓</Text>
+                ) : null}
+              </View>
+              <View style={styles.flex1}>
+                <Text
+                  style={[styles.cardTitle, yapildi && styles.textDone]}
                 >
-                  {yapildi ? (
-                    <Text style={styles.checkmark}>✓</Text>
+                  {item.ad}
+                </Text>
+                <View style={styles.cardMetaRow}>
+                  <Text style={styles.metaText}>{item.semt}</Text>
+                  {item.bakimGunu ? (
+                    <Text style={styles.gunText}>
+                      📅 {item.bakimGunu}. gün
+                    </Text>
                   ) : null}
                 </View>
-                <View style={styles.flex1}>
-                  <Text
-                    style={[
-                      styles.cardTitle,
-                      yapildi && styles.textDone,
-                    ]}
-                  >
-                    {e.ad}
-                  </Text>
-                  <View style={styles.cardMetaRow}>
-                    <View
-                      style={[
-                        styles.ilceBadge,
-                        { backgroundColor: renk + '20' },
-                      ]}
-                    >
-                      <Text style={[styles.ilceText, { color: renk }]}>
-                        {e.ilce}
-                      </Text>
-                    </View>
-                    <Text style={styles.metaText}>{e.semt}</Text>
-                    {e.bakimGunu ? (
-                      <Text style={styles.gunText}>
-                        📅 {e.bakimGunu}. gün
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+              </View>
+              <View style={[styles.sideDot, { backgroundColor: renk }]} />
+            </TouchableOpacity>
+          );
+        }}
+        ListEmptyComponent={<Empty text="Bu kriterlere uygun asansör yok" />}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={true}
+      />
     </View>
   );
 }
@@ -300,9 +351,55 @@ const styles = StyleSheet.create({
   filtreTextActive: {
     color: '#007AFF',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151722',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#2a3050',
+  },
+  sectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sectionProgress: {
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  sectionProgressBar: {
+    height: 4,
+    backgroundColor: '#2a2d3a',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  sectionProgressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  sectionCount: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  sectionCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  sectionChevron: {
+    fontSize: 16,
+    color: '#64748b',
+    width: 20,
+    textAlign: 'center',
+  },
   list: {
-    padding: 16,
-    paddingTop: 4,
     paddingBottom: 40,
   },
   card: {
@@ -310,8 +407,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#1c1e2a',
     borderRadius: 14,
+    marginHorizontal: 16,
+    marginTop: 8,
     padding: 14,
-    marginBottom: 8,
     gap: 12,
     borderWidth: 0.5,
     borderColor: '#2a3050',
@@ -355,15 +453,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
   },
-  ilceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 20,
-  },
-  ilceText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
   metaText: {
     fontSize: 12,
     color: '#94a3b8',
@@ -372,5 +461,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
     fontWeight: '600',
+  },
+  sideDot: {
+    width: 4,
+    height: 32,
+    borderRadius: 2,
   },
 });

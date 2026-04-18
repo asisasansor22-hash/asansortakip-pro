@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -46,21 +46,35 @@ function ElevatorCard({ item, onPress }) {
   );
 }
 
+function SectionHeader({ ilce, count, collapsed, onToggle }) {
+  const renk = getIlceRenk(ilce);
+  return (
+    <TouchableOpacity
+      style={styles.sectionHeader}
+      onPress={onToggle}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.sectionDot, { backgroundColor: renk }]} />
+      <Text style={[styles.sectionTitle, { color: renk }]}>{ilce}</Text>
+      <View style={[styles.sectionCount, { backgroundColor: renk + '20' }]}>
+        <Text style={[styles.sectionCountText, { color: renk }]}>{count}</Text>
+      </View>
+      <Text style={styles.sectionChevron}>{collapsed ? '›' : '⌄'}</Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function ElevatorListScreen({ data, navigation }) {
   const { elevs } = data;
   const [arama, setArama] = useState('');
-  const [filtre, setFiltre] = useState('Tümü');
+  const [collapsed, setCollapsed] = useState({});
 
-  const ilceler = useMemo(() => {
-    const set = new Set(elevs.map((e) => e.ilce));
-    return ['Tümü', ...Array.from(set).sort()];
-  }, [elevs]);
+  const toggleSection = useCallback((ilce) => {
+    setCollapsed((prev) => ({ ...prev, [ilce]: !prev[ilce] }));
+  }, []);
 
-  const filtrelenmis = useMemo(() => {
+  const sections = useMemo(() => {
     let list = elevs;
-    if (filtre !== 'Tümü') {
-      list = list.filter((e) => e.ilce === filtre);
-    }
     if (arama.trim()) {
       const q = arama.toLowerCase();
       list = list.filter(
@@ -72,8 +86,24 @@ export default function ElevatorListScreen({ data, navigation }) {
           String(e.id).includes(q),
       );
     }
-    return list;
-  }, [elevs, filtre, arama]);
+
+    const grouped = {};
+    list.forEach((e) => {
+      const ilce = e.ilce || 'Diğer';
+      if (!grouped[ilce]) grouped[ilce] = [];
+      grouped[ilce].push(e);
+    });
+
+    return Object.keys(grouped)
+      .sort()
+      .map((ilce) => ({
+        ilce,
+        count: grouped[ilce].length,
+        data: collapsed[ilce] ? [] : grouped[ilce],
+      }));
+  }, [elevs, arama, collapsed]);
+
+  const totalCount = sections.reduce((s, sec) => s + sec.count, 0);
 
   const handlePress = (item) => {
     navigation.navigate('ElevatorDetail', { elevator: item });
@@ -89,44 +119,28 @@ export default function ElevatorListScreen({ data, navigation }) {
         onChangeText={setArama}
       />
 
-      <FlatList
-        horizontal
-        data={ilceler}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-        renderItem={({ item: ilce }) => (
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              filtre === ilce && styles.filterChipActive,
-            ]}
-            onPress={() => setFiltre(ilce)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filtre === ilce && styles.filterTextActive,
-              ]}
-            >
-              {ilce}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      <View style={styles.summaryRow}>
+        <Text style={styles.countText}>{totalCount} asansör</Text>
+        <Text style={styles.countText}>{sections.length} ilçe</Text>
+      </View>
 
-      <Text style={styles.countText}>
-        {filtrelenmis.length} asansör
-      </Text>
-
-      <FlatList
-        data={filtrelenmis}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <ElevatorCard item={item} onPress={handlePress} />
         )}
+        renderSectionHeader={({ section }) => (
+          <SectionHeader
+            ilce={section.ilce}
+            count={section.count}
+            collapsed={!!collapsed[section.ilce]}
+            onToggle={() => toggleSection(section.ilce)}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={true}
       />
     </View>
   );
@@ -149,46 +163,59 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#2a3050',
   },
-  filterRow: {
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 8,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#1c1e2a',
-    borderWidth: 0.5,
-    borderColor: '#2a3050',
-  },
-  filterChipActive: {
-    backgroundColor: '#007AFF20',
-    borderColor: '#007AFF',
-  },
-  filterText: {
-    fontSize: 13,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  filterTextActive: {
-    color: '#007AFF',
-    fontWeight: '700',
   },
   countText: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
     fontSize: 13,
     color: '#64748b',
   },
-  listContent: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151722',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#2a3050',
+  },
+  sectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    flex: 1,
+  },
+  sectionCount: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  sectionCountText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  sectionChevron: {
+    fontSize: 16,
+    color: '#64748b',
+    width: 20,
+    textAlign: 'center',
+  },
+  listContent: {
     paddingBottom: 40,
   },
   card: {
     backgroundColor: '#1c1e2a',
     borderRadius: 16,
-    marginBottom: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
     overflow: 'hidden',
     borderWidth: 0.5,
     borderColor: '#2a3050',
@@ -240,7 +267,6 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 14,
     paddingBottom: 12,
-    paddingTop: 0,
     borderTopWidth: 0.5,
     borderTopColor: '#1e2236',
     paddingTop: 10,
