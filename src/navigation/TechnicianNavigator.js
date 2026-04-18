@@ -56,7 +56,7 @@ export default function TechnicianNavigator({ data, onLogout, auth }) {
           headerRight: () => <LogoutButton onPress={onLogout} />,
         }}
       >
-        {() => <BakimciGorunumScreen data={data} />}
+        {() => <BakimciGorunumScreen data={data} auth={auth} />}
       </Tab.Screen>
 
       <Tab.Screen
@@ -66,7 +66,7 @@ export default function TechnicianNavigator({ data, onLogout, auth }) {
           tabBarIcon: () => <TabIcon emoji="🗺️" />,
         }}
       >
-        {() => <RotaScreen data={data} />}
+        {() => <RotaScreen data={data} auth={auth} />}
       </Tab.Screen>
 
       <Tab.Screen

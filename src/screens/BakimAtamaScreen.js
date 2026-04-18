@@ -2,13 +2,13 @@ import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  SectionList,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   Alert,
 } from 'react-native';
 import { MONTHS, getIlceRenk } from '../utils/constants';
-import { Empty } from '../components/UI';
+import { Empty, SheetModal } from '../components/UI';
 
 function todayISO() {
   const d = new Date();
@@ -21,103 +21,132 @@ function todayISO() {
   );
 }
 
-function SectionHeader({ ilce, yapilan, toplam, collapsed, onToggle }) {
-  const renk = getIlceRenk(ilce);
-  const pct = toplam > 0 ? Math.round((yapilan / toplam) * 100) : 0;
-  return (
-    <TouchableOpacity
-      style={styles.sectionHeader}
-      onPress={onToggle}
-      activeOpacity={0.7}
-    >
-      <View style={[styles.sectionDot, { backgroundColor: renk }]} />
-      <Text style={[styles.sectionTitle, { color: renk }]}>{ilce}</Text>
-      <View style={styles.sectionProgress}>
-        <View style={styles.sectionProgressBar}>
-          <View
-            style={[
-              styles.sectionProgressFill,
-              { width: pct + '%', backgroundColor: renk },
-            ]}
-          />
-        </View>
-      </View>
-      <View style={[styles.sectionCount, { backgroundColor: renk + '20' }]}>
-        <Text style={[styles.sectionCountText, { color: renk }]}>
-          {yapilan}/{toplam}
-        </Text>
-      </View>
-      <Text style={styles.sectionChevron}>{collapsed ? '›' : '⌄'}</Text>
-    </TouchableOpacity>
-  );
+function ayYilStr(ay, yil) {
+  return yil + '-' + String(ay + 1).padStart(2, '0');
+}
+
+function matchesAyYil(m, ay, yil) {
+  if (m.atamaAyYil) return m.atamaAyYil === ayYilStr(ay, yil);
+  if (m.tarih) {
+    const d = new Date(m.tarih);
+    return d.getMonth() === ay && d.getFullYear() === yil;
+  }
+  return false;
 }
 
 export default function BakimAtamaScreen({ data }) {
-  const { elevs, maints, setMaints } = data;
+  const { elevs, maints, setMaints, bakimcilar } = data;
   const [seciliAy, setSeciliAy] = useState(new Date().getMonth());
   const [seciliYil] = useState(new Date().getFullYear());
-  const [filtre, setFiltre] = useState('hepsi');
-  const [collapsed, setCollapsed] = useState({});
+  const [acilanIlce, setAcilanIlce] = useState(null);
+  const [atamaElev, setAtamaElev] = useState(null);
 
-  const toggleSection = useCallback((ilce) => {
-    setCollapsed((prev) => ({ ...prev, [ilce]: !prev[ilce] }));
-  }, []);
-
-  const ayBakimlari = useMemo(() => {
-    return maints.filter((m) => {
-      const d = new Date(m.tarih);
-      return d.getMonth() === seciliAy && d.getFullYear() === seciliYil;
-    });
-  }, [maints, seciliAy, seciliYil]);
-
-  const yapildiIds = useMemo(
-    () => new Set(ayBakimlari.map((m) => m.asansorId)),
-    [ayBakimlari],
+  const ayBakimlari = useMemo(
+    () => maints.filter((m) => matchesAyYil(m, seciliAy, seciliYil)),
+    [maints, seciliAy, seciliYil],
   );
 
-  const sections = useMemo(() => {
-    let list = elevs.slice();
-    if (filtre === 'yapildi') {
-      list = list.filter((e) => yapildiIds.has(e.id));
-    } else if (filtre === 'yapilmadi') {
-      list = list.filter((e) => !yapildiIds.has(e.id));
-    }
-
-    const grouped = {};
-    list.forEach((e) => {
-      const ilce = e.ilce || 'Diğer';
-      if (!grouped[ilce]) grouped[ilce] = { all: [], items: [] };
-      grouped[ilce].items.push(e);
+  const yapilanMap = useMemo(() => {
+    const m = new Map();
+    ayBakimlari.forEach((b) => {
+      if (b.durum !== 'atandi') m.set(b.asansorId, b);
     });
+    return m;
+  }, [ayBakimlari]);
 
+  const atananMap = useMemo(() => {
+    const m = new Map();
+    ayBakimlari.forEach((b) => {
+      if (b.durum === 'atandi' && !yapilanMap.has(b.asansorId)) {
+        m.set(b.asansorId, b);
+      }
+    });
+    return m;
+  }, [ayBakimlari, yapilanMap]);
+
+  const ilceler = useMemo(() => {
+    const grouped = {};
     elevs.forEach((e) => {
       const ilce = e.ilce || 'Diğer';
-      if (!grouped[ilce]) return;
-      grouped[ilce].all.push(e);
+      if (!grouped[ilce]) grouped[ilce] = [];
+      grouped[ilce].push(e);
     });
-
     return Object.keys(grouped)
       .sort()
       .map((ilce) => {
-        const allIds = grouped[ilce].all.map((e) => e.id);
-        const yapilan = allIds.filter((id) => yapildiIds.has(id)).length;
-        const items = grouped[ilce].items.sort((a, b) => {
-          const av = yapildiIds.has(a.id) ? 1 : 0;
-          const bv = yapildiIds.has(b.id) ? 1 : 0;
-          if (av !== bv) return av - bv;
-          return (a.bakimGunu || 99) - (b.bakimGunu || 99);
-        });
+        const items = grouped[ilce];
+        const yapilan = items.filter((e) => yapilanMap.has(e.id)).length;
+        const atanan = items.filter((e) => atananMap.has(e.id)).length;
         return {
           ilce,
+          items,
+          toplam: items.length,
           yapilan,
-          toplam: allIds.length,
-          data: collapsed[ilce] ? [] : items,
+          atanan,
+          kalan: items.length - yapilan - atanan,
         };
       });
-  }, [elevs, filtre, yapildiIds, collapsed]);
+  }, [elevs, yapilanMap, atananMap]);
 
-  const bakimEkle = (elev) => {
-    const yapildi = yapildiIds.has(elev.id);
+  const ilceDetay = useMemo(() => {
+    if (!acilanIlce) return null;
+    return ilceler.find((x) => x.ilce === acilanIlce);
+  }, [ilceler, acilanIlce]);
+
+  const ayDegistir = (dir) => {
+    let y = seciliAy + dir;
+    if (y < 0) y = 11;
+    if (y > 11) y = 0;
+    setSeciliAy(y);
+  };
+
+  const toplamYapilan = Array.from(yapilanMap.keys()).length;
+  const toplamAtanan = Array.from(atananMap.keys()).length;
+
+  const bakimciAta = (bakimci) => {
+    if (!atamaElev) return;
+    const elevId = atamaElev.id;
+    const ayYil = ayYilStr(seciliAy, seciliYil);
+    const mevcut = ayBakimlari.find(
+      (m) => m.asansorId === elevId && m.durum === 'atandi',
+    );
+    if (mevcut) {
+      setMaints((p) =>
+        p.map((m) =>
+          m.id === mevcut.id ? { ...m, bakimciId: bakimci.id } : m,
+        ),
+      );
+    } else {
+      setMaints((p) => [
+        ...p,
+        {
+          id: Date.now(),
+          asansorId: elevId,
+          atamaAyYil: ayYil,
+          bakimciId: bakimci.id,
+          durum: 'atandi',
+          atamaTarihi: todayISO(),
+        },
+      ]);
+    }
+    setAtamaElev(null);
+  };
+
+  const atamayiKaldir = () => {
+    if (!atamaElev) return;
+    const elevId = atamaElev.id;
+    setMaints((p) =>
+      p.filter((m) => {
+        if (m.asansorId !== elevId) return true;
+        if (m.durum !== 'atandi') return true;
+        return !matchesAyYil(m, seciliAy, seciliYil);
+      }),
+    );
+    setAtamaElev(null);
+  };
+
+  const bakimiYapildiIsaretle = (elev) => {
+    const yapildi = yapilanMap.has(elev.id);
     if (yapildi) {
       Alert.alert('Bakım İptal', `${elev.ad} için bakım kaydı silinsin mi?`, [
         { text: 'Hayır', style: 'cancel' },
@@ -128,16 +157,15 @@ export default function BakimAtamaScreen({ data }) {
             setMaints((p) =>
               p.filter((m) => {
                 if (m.asansorId !== elev.id) return true;
-                const d = new Date(m.tarih);
-                return (
-                  d.getMonth() !== seciliAy || d.getFullYear() !== seciliYil
-                );
+                if (m.durum === 'atandi') return true;
+                return !matchesAyYil(m, seciliAy, seciliYil);
               }),
             );
           },
         },
       ]);
     } else {
+      const atama = atananMap.get(elev.id);
       setMaints((p) => [
         ...p,
         {
@@ -145,21 +173,175 @@ export default function BakimAtamaScreen({ data }) {
           asansorId: elev.id,
           tarih: todayISO(),
           notlar: '',
+          bakimciId: atama ? atama.bakimciId : undefined,
         },
       ]);
     }
   };
 
-  const ayDegistir = (dir) => {
-    let y = seciliAy + dir;
-    if (y < 0) y = 11;
-    if (y > 11) y = 0;
-    setSeciliAy(y);
-  };
+  const getBakimci = (id) =>
+    (bakimcilar || []).find((b) => b.id === id) || null;
 
-  const toplamYapilan = ayBakimlari.length;
-  const tamamlananYuzde =
-    elevs.length > 0 ? Math.round((toplamYapilan / elevs.length) * 100) : 0;
+  if (acilanIlce && ilceDetay) {
+    const renk = getIlceRenk(acilanIlce);
+    return (
+      <View style={styles.container}>
+        <View style={styles.detayHeader}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => setAcilanIlce(null)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.backBtnText}>‹ Geri</Text>
+          </TouchableOpacity>
+          <View style={styles.flex1}>
+            <Text style={[styles.detayTitle, { color: renk }]}>
+              {acilanIlce}
+            </Text>
+            <Text style={styles.detaySub}>
+              {MONTHS[seciliAy]} {seciliYil} · {ilceDetay.yapilan}/{ilceDetay.toplam} yapıldı
+            </Text>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.list}>
+          {ilceDetay.items.length === 0 ? (
+            <Empty text="Bu ilçede asansör yok" />
+          ) : (
+            ilceDetay.items
+              .slice()
+              .sort((a, b) => {
+                const ay = yapilanMap.has(a.id) ? 2 : atananMap.has(a.id) ? 1 : 0;
+                const by = yapilanMap.has(b.id) ? 2 : atananMap.has(b.id) ? 1 : 0;
+                if (ay !== by) return ay - by;
+                return (a.ad || '').localeCompare(b.ad || '');
+              })
+              .map((e) => {
+                const yapildi = yapilanMap.has(e.id);
+                const atama = atananMap.get(e.id);
+                const bakimci = atama ? getBakimci(atama.bakimciId) : null;
+                return (
+                  <View key={e.id} style={styles.card}>
+                    <TouchableOpacity
+                      style={[styles.checkbox, yapildi && styles.checkboxDone]}
+                      onPress={() => bakimiYapildiIsaretle(e)}
+                      activeOpacity={0.7}
+                    >
+                      {yapildi ? (
+                        <Text style={styles.checkmark}>✓</Text>
+                      ) : null}
+                    </TouchableOpacity>
+                    <View style={styles.flex1}>
+                      <Text
+                        style={[styles.cardTitle, yapildi && styles.textDone]}
+                        numberOfLines={1}
+                      >
+                        {e.ad}
+                      </Text>
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {e.semt}
+                        {e.bakimGunu ? ' · 📅 ' + e.bakimGunu + '. gün' : ''}
+                      </Text>
+                      {bakimci ? (
+                        <View style={styles.bakimciRow}>
+                          <View
+                            style={[
+                              styles.bakimciDot,
+                              { backgroundColor: bakimci.renk || '#007AFF' },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.bakimciAd,
+                              { color: bakimci.renk || '#007AFF' },
+                            ]}
+                          >
+                            {bakimci.ad}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.atamaBtn,
+                        bakimci && {
+                          backgroundColor: (bakimci.renk || '#007AFF') + '25',
+                        },
+                      ]}
+                      onPress={() => setAtamaElev(e)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.atamaBtnText,
+                          bakimci && { color: bakimci.renk || '#007AFF' },
+                        ]}
+                      >
+                        {bakimci ? 'Değiştir' : '+ Ata'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+          )}
+        </ScrollView>
+
+        <SheetModal
+          visible={!!atamaElev}
+          onClose={() => setAtamaElev(null)}
+          title={atamaElev ? 'Bakımcı Ata: ' + atamaElev.ad : 'Bakımcı Ata'}
+        >
+          {(bakimcilar || []).length === 0 ? (
+            <Empty text="Bakımcı kaydı yok. Bakımcılar ekranından ekleyin." />
+          ) : (
+            <View style={{ paddingBottom: 10 }}>
+              {(bakimcilar || []).map((b) => {
+                const seciliMi =
+                  atamaElev && atananMap.get(atamaElev.id)?.bakimciId === b.id;
+                return (
+                  <TouchableOpacity
+                    key={b.id}
+                    style={[
+                      styles.bakimciSecenek,
+                      seciliMi && {
+                        backgroundColor: (b.renk || '#007AFF') + '20',
+                        borderColor: b.renk || '#007AFF',
+                      },
+                    ]}
+                    onPress={() => bakimciAta(b)}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.avatar,
+                        { backgroundColor: b.renk || '#3b82f6' },
+                      ]}
+                    >
+                      <Text style={styles.avatarText}>
+                        {(b.ad || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.bakimciSecenekAd}>{b.ad}</Text>
+                    {seciliMi ? (
+                      <Text style={styles.seciliCheck}>✓</Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+              {atamaElev && atananMap.has(atamaElev.id) ? (
+                <TouchableOpacity
+                  style={styles.kaldirBtn}
+                  onPress={atamayiKaldir}
+                >
+                  <Text style={styles.kaldirBtnText}>✕ Atamayı Kaldır</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          )}
+        </SheetModal>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -181,104 +363,85 @@ export default function BakimAtamaScreen({ data }) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View
-            style={[styles.progressFill, { width: tamamlananYuzde + '%' }]}
-          />
+      <View style={styles.statRow}>
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: '#34c759' }]}>
+            {toplamYapilan}
+          </Text>
+          <Text style={styles.statLabel}>Yapılan</Text>
         </View>
-        <Text style={styles.progressText}>
-          {toplamYapilan}/{elevs.length} · %{tamamlananYuzde}
-        </Text>
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: '#007AFF' }]}>
+            {toplamAtanan}
+          </Text>
+          <Text style={styles.statLabel}>Atanan</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={[styles.statValue, { color: '#f59e0b' }]}>
+            {elevs.length - toplamYapilan - toplamAtanan}
+          </Text>
+          <Text style={styles.statLabel}>Kalan</Text>
+        </View>
       </View>
 
-      <View style={styles.filtreRow}>
-        {[
-          { k: 'hepsi', l: 'Hepsi' },
-          { k: 'yapilmadi', l: 'Yapılmadı' },
-          { k: 'yapildi', l: 'Yapıldı' },
-        ].map((f) => (
-          <TouchableOpacity
-            key={f.k}
-            style={[
-              styles.filtreChip,
-              filtre === f.k && styles.filtreChipActive,
-            ]}
-            onPress={() => setFiltre(f.k)}
-          >
-            <Text
-              style={[
-                styles.filtreText,
-                filtre === f.k && styles.filtreTextActive,
-              ]}
-            >
-              {f.l}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.sectionLabel}>İLÇELER — atama yapmak için seçin</Text>
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => String(item.id)}
-        renderSectionHeader={({ section }) => (
-          <SectionHeader
-            ilce={section.ilce}
-            yapilan={section.yapilan}
-            toplam={section.toplam}
-            collapsed={!!collapsed[section.ilce]}
-            onToggle={() => toggleSection(section.ilce)}
-          />
-        )}
-        renderItem={({ item }) => {
-          const yapildi = yapildiIds.has(item.id);
-          const renk = getIlceRenk(item.ilce);
-          return (
-            <TouchableOpacity
-              style={[styles.card, yapildi && styles.cardDone]}
-              onPress={() => bakimEkle(item)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[styles.checkbox, yapildi && styles.checkboxDone]}
+      <ScrollView contentContainerStyle={styles.list}>
+        {ilceler.length === 0 ? (
+          <Empty text="Asansör yok" />
+        ) : (
+          ilceler.map((g) => {
+            const renk = getIlceRenk(g.ilce);
+            const pct =
+              g.toplam > 0 ? Math.round((g.yapilan / g.toplam) * 100) : 0;
+            return (
+              <TouchableOpacity
+                key={g.ilce}
+                style={styles.ilceCard}
+                onPress={() => setAcilanIlce(g.ilce)}
+                activeOpacity={0.7}
               >
-                {yapildi ? (
-                  <Text style={styles.checkmark}>✓</Text>
-                ) : null}
-              </View>
-              <View style={styles.flex1}>
-                <Text
-                  style={[styles.cardTitle, yapildi && styles.textDone]}
-                >
-                  {item.ad}
-                </Text>
-                <View style={styles.cardMetaRow}>
-                  <Text style={styles.metaText}>{item.semt}</Text>
-                  {item.bakimGunu ? (
-                    <Text style={styles.gunText}>
-                      📅 {item.bakimGunu}. gün
+                <View style={[styles.ilceBar, { backgroundColor: renk }]} />
+                <View style={styles.flex1}>
+                  <View style={styles.ilceTopRow}>
+                    <Text style={[styles.ilceTitle, { color: renk }]}>
+                      {g.ilce}
                     </Text>
-                  ) : null}
+                    <Text style={styles.ilceToplam}>{g.toplam} bina</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: pct + '%', backgroundColor: renk },
+                      ]}
+                    />
+                  </View>
+                  <View style={styles.ilceStatRow}>
+                    <Text style={[styles.statChip, { color: '#34c759' }]}>
+                      ✓ {g.yapilan}
+                    </Text>
+                    <Text style={[styles.statChip, { color: '#007AFF' }]}>
+                      ◉ {g.atanan}
+                    </Text>
+                    <Text style={[styles.statChip, { color: '#94a3b8' }]}>
+                      · {g.kalan}
+                    </Text>
+                    <Text style={styles.yuzdeText}>%{pct}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={[styles.sideDot, { backgroundColor: renk }]} />
-            </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={<Empty text="Bu kriterlere uygun asansör yok" />}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={true}
-      />
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f1117',
-  },
+  container: { flex: 1, backgroundColor: '#0f1117' },
   ayHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -294,128 +457,105 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ayBtnText: {
-    fontSize: 24,
-    color: '#007AFF',
-    fontWeight: '700',
-  },
-  ayText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#e0e6f0',
-  },
-  progressContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#1c1e2a',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#34c759',
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#94a3b8',
-    textAlign: 'right',
-    marginTop: 6,
-  },
-  filtreRow: {
+  ayBtnText: { fontSize: 24, color: '#007AFF', fontWeight: '700' },
+  ayText: { fontSize: 18, fontWeight: '800', color: '#e0e6f0' },
+  statRow: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  filtreChip: {
+  statBox: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
     backgroundColor: '#1c1e2a',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
     borderWidth: 0.5,
     borderColor: '#2a3050',
+  },
+  statValue: { fontSize: 20, fontWeight: '800' },
+  statLabel: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
+  sectionLabel: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  list: { padding: 16, paddingTop: 4, paddingBottom: 40 },
+  ilceCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1c1e2a',
+    borderRadius: 14,
+    marginBottom: 10,
+    gap: 12,
+    borderWidth: 0.5,
+    borderColor: '#2a3050',
+    overflow: 'hidden',
   },
-  filtreChipActive: {
-    backgroundColor: '#007AFF20',
-    borderColor: '#007AFF',
+  ilceBar: { width: 4, alignSelf: 'stretch' },
+  flex1: { flex: 1, padding: 12, paddingLeft: 8 },
+  ilceTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  filtreText: {
-    fontSize: 13,
+  ilceTitle: { fontSize: 16, fontWeight: '800' },
+  ilceToplam: { fontSize: 12, color: '#94a3b8' },
+  progressBarBg: {
+    height: 5,
+    backgroundColor: '#2a2d3a',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: { height: '100%', borderRadius: 3 },
+  ilceStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statChip: { fontSize: 12, fontWeight: '700' },
+  yuzdeText: {
+    marginLeft: 'auto',
+    fontSize: 12,
     color: '#94a3b8',
     fontWeight: '600',
   },
-  filtreTextActive: {
-    color: '#007AFF',
+  chevron: {
+    fontSize: 22,
+    color: '#64748b',
+    paddingRight: 12,
   },
-  sectionHeader: {
+  detayHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#151722',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 14,
     gap: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#2a3050',
+    borderBottomColor: '#1e2236',
   },
-  sectionDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  backBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  sectionProgress: {
-    flex: 1,
-    paddingHorizontal: 4,
-  },
-  sectionProgressBar: {
-    height: 4,
-    backgroundColor: '#2a2d3a',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  sectionProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  sectionCount: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  sectionCountText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  sectionChevron: {
-    fontSize: 16,
-    color: '#64748b',
-    width: 20,
-    textAlign: 'center',
-  },
-  list: {
-    paddingBottom: 40,
-  },
+  backBtnText: { color: '#007AFF', fontSize: 15, fontWeight: '700' },
+  detayTitle: { fontSize: 20, fontWeight: '800' },
+  detaySub: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1c1e2a',
     borderRadius: 14,
-    marginHorizontal: 16,
-    marginTop: 8,
-    padding: 14,
+    padding: 12,
+    marginBottom: 8,
     gap: 12,
     borderWidth: 0.5,
     borderColor: '#2a3050',
-  },
-  cardDone: {
-    opacity: 0.5,
   },
   checkbox: {
     width: 26,
@@ -426,45 +566,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxDone: {
-    backgroundColor: '#34c759',
-    borderColor: '#34c759',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  flex1: {
-    flex: 1,
-  },
+  checkboxDone: { backgroundColor: '#34c759', borderColor: '#34c759' },
+  checkmark: { color: '#fff', fontSize: 14, fontWeight: '900' },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#e0e6f0',
-    marginBottom: 4,
   },
-  textDone: {
-    textDecorationLine: 'line-through',
-  },
-  cardMetaRow: {
+  textDone: { textDecorationLine: 'line-through', opacity: 0.5 },
+  metaText: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  bakimciRow: {
     flexDirection: 'row',
-    gap: 8,
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
   },
-  metaText: {
-    fontSize: 12,
-    color: '#94a3b8',
+  bakimciDot: { width: 8, height: 8, borderRadius: 4 },
+  bakimciAd: { fontSize: 12, fontWeight: '700' },
+  atamaBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#2a2d3a',
   },
-  gunText: {
-    fontSize: 11,
-    color: '#64748b',
-    fontWeight: '600',
+  atamaBtnText: { fontSize: 12, fontWeight: '700', color: '#94a3b8' },
+  bakimciSecenek: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 12,
+    borderRadius: 12,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#2a3050',
+    backgroundColor: '#1a1d28',
   },
-  sideDot: {
-    width: 4,
-    height: 32,
-    borderRadius: 2,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  avatarText: { fontSize: 15, fontWeight: '900', color: '#fff' },
+  bakimciSecenekAd: { flex: 1, fontSize: 15, color: '#e0e6f0', fontWeight: '700' },
+  seciliCheck: { fontSize: 18, fontWeight: '900', color: '#34c759' },
+  kaldirBtn: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#ff3b3015',
+    alignItems: 'center',
+  },
+  kaldirBtnText: { color: '#ff3b30', fontWeight: '700', fontSize: 14 },
 });
