@@ -1,7 +1,10 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import PlaceholderScreen from '../screens/PlaceholderScreen';
+import BakimciGorunumScreen from '../screens/BakimciGorunumScreen';
+import RotaScreen from '../screens/RotaScreen';
+import NotlarScreen from '../screens/NotlarScreen';
+import EkstraIsScreen from '../screens/EkstraIsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,7 +28,7 @@ function LogoutButton({ onPress }) {
   );
 }
 
-export default function TechnicianNavigator({ data, onLogout }) {
+export default function TechnicianNavigator({ data, onLogout, auth }) {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -53,11 +56,7 @@ export default function TechnicianNavigator({ data, onLogout }) {
           headerRight: () => <LogoutButton onPress={onLogout} />,
         }}
       >
-        {() => (
-          <PlaceholderScreen
-            route={{ params: { title: 'Bakım & Arızalar' } }}
-          />
-        )}
+        {() => <BakimciGorunumScreen data={data} />}
       </Tab.Screen>
 
       <Tab.Screen
@@ -67,9 +66,7 @@ export default function TechnicianNavigator({ data, onLogout }) {
           tabBarIcon: () => <TabIcon emoji="🗺️" />,
         }}
       >
-        {() => (
-          <PlaceholderScreen route={{ params: { title: 'Rota Planlama' } }} />
-        )}
+        {() => <RotaScreen data={data} />}
       </Tab.Screen>
 
       <Tab.Screen
@@ -79,9 +76,7 @@ export default function TechnicianNavigator({ data, onLogout }) {
           tabBarIcon: () => <TabIcon emoji="📝" />,
         }}
       >
-        {() => (
-          <PlaceholderScreen route={{ params: { title: 'Notlar' } }} />
-        )}
+        {() => <NotlarScreen data={data} auth={auth} />}
       </Tab.Screen>
 
       <Tab.Screen
@@ -91,9 +86,7 @@ export default function TechnicianNavigator({ data, onLogout }) {
           tabBarIcon: () => <TabIcon emoji="🔩" />,
         }}
       >
-        {() => (
-          <PlaceholderScreen route={{ params: { title: 'Ekstra İşler' } }} />
-        )}
+        {() => <EkstraIsScreen data={data} />}
       </Tab.Screen>
     </Tab.Navigator>
   );

@@ -45,6 +45,7 @@ export default function App() {
         data={data}
         onLogout={auth.logout}
         onRefresh={data.reload}
+        auth={auth}
       />
       <StatusBar style="light" />
     </>
