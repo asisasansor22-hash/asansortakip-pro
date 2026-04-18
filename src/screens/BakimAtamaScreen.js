@@ -108,7 +108,7 @@ export default function BakimAtamaScreen({ data }) {
     setMaints((p) => {
       let yeni = [...p];
       seciliIds.forEach((elevId) => {
-        const mevcut = yeni.find((m) => m.asansorId === elevId && m.durum === 'atandi' && (m.atamaAyYil === ayYil || matchesAyYil(m, seciliAy, seciliYil)));
+        const mevcut = yeni.find((m) => m.asansorId === elevId && m.durum === 'atandi' && m.atamaAyYil === ayYil);
         if (mevcut) {
           yeni = yeni.map((m) => m.id === mevcut.id ? { ...m, bakimciId: bakimci.id } : m);
         } else {

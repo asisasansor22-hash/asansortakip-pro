@@ -36,11 +36,12 @@ function ElevatorStack({ data }) {
       </Stack.Screen>
       <Stack.Screen
         name="ElevatorDetail"
-        component={ElevatorDetailScreen}
         options={({ route }) => ({
           title: route.params?.elevator?.ad || 'Detay',
         })}
-      />
+      >
+        {(props) => <ElevatorDetailScreen {...props} data={data} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }

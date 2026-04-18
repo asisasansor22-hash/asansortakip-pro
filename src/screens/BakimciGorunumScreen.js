@@ -49,7 +49,7 @@ export default function BakimciGorunumScreen({ data, auth }) {
     return faults.filter((f) => {
       if (f.durum === 'Çözüldü') return false;
       if (!bakimciId) return !!f.bakimciAtandi;
-      return f.bakimciId === bakimciId || f.bakimciAtandi === bakimciId;
+      return f.bakimciId === bakimciId;
     });
   }, [faults, bakimciId]);
 
@@ -85,7 +85,7 @@ export default function BakimciGorunumScreen({ data, auth }) {
     return ayBakimlari.filter(
       (m) =>
         m.durum !== 'atandi' &&
-        (bakimciId ? m.bakimciId === bakimciId || !m.bakimciId : true),
+        (bakimciId ? m.bakimciId === bakimciId : true),
     );
   }, [ayBakimlari, bakimciId]);
 

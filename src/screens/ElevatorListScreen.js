@@ -112,6 +112,16 @@ export default function ElevatorListScreen({ data, navigation }) {
 
   const updateField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
 
+  const modal = (
+    <SheetModal
+      visible={formVisible}
+      onClose={() => setFormVisible(false)}
+      title="Yeni Asansör Ekle"
+    >
+      {renderForm()}
+    </SheetModal>
+  );
+
   if (acilanIlce && ilceDetay) {
     const renk = getIlceRenk(acilanIlce);
     return (
@@ -187,14 +197,7 @@ export default function ElevatorListScreen({ data, navigation }) {
               );
             })}
         </ScrollView>
-
-        <SheetModal
-          visible={formVisible}
-          onClose={() => setFormVisible(false)}
-          title="Yeni Asansör Ekle"
-        >
-          {renderForm()}
-        </SheetModal>
+        {modal}
       </View>
     );
   }
@@ -396,13 +399,7 @@ export default function ElevatorListScreen({ data, navigation }) {
         )}
       </ScrollView>
 
-      <SheetModal
-        visible={formVisible}
-        onClose={() => setFormVisible(false)}
-        title="Yeni Asansör Ekle"
-      >
-        {renderForm()}
-      </SheetModal>
+      {modal}
     </View>
   );
 }

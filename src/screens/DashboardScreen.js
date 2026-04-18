@@ -41,9 +41,16 @@ export default function DashboardScreen({ data, onRefresh }) {
   const currentMonth = now.getMonth();
 
   const aylikBakimlar = useMemo(() => {
+    const yil = now.getFullYear();
+    const ayYil = yil + '-' + String(currentMonth + 1).padStart(2, '0');
     return maints.filter((m) => {
-      const d = new Date(m.tarih);
-      return d.getMonth() === currentMonth && d.getFullYear() === now.getFullYear();
+      if (m.durum === 'atandi') return false;
+      if (m.atamaAyYil) return m.atamaAyYil === ayYil;
+      if (m.tarih) {
+        const d = new Date(m.tarih);
+        return d.getMonth() === currentMonth && d.getFullYear() === yil;
+      }
+      return false;
     });
   }, [maints, currentMonth]);
 
