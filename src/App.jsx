@@ -69,12 +69,12 @@ function routeUniqueParts(parts){
 
 function normalizeRouteAddress(value){
   return normalizeRouteText(value)
-    .replace(/\bMAH\b\.?/gi,"Mahallesi")
-    .replace(/\bSOK\b\.?/gi,"Sokak")
-    .replace(/\bCAD\b\.?/gi,"Caddesi")
-    .replace(/\bBLV\b\.?/gi,"Bulvar\u0131")
+    .replace(/\bMAH\b\.?\s*/gi,"Mahallesi ")
+    .replace(/\bSOK\b\.?\s*/gi,"Sokak ")
+    .replace(/\bCAD\b\.?\s*/gi,"Caddesi ")
+    .replace(/\bBLV\b\.?\s*/gi,"Bulvar\u0131 ")
     .replace(/\bNO\s*:\s*$/i,"")
-    .replace(/\bD(?:A(?:I|\u0130)RE)?\s*:\s*$/i,"")
+    .replace(/\s*\bD(?:A(?:I|\u0130)RE)?\s*:?\s*\d+\s*$/i,"")
     .replace(/\s+/g," ")
     .trim();
 }
