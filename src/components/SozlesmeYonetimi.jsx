@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal } from '../utils/constants'
+import { IconDocument, IconEdit, IconTrash, IconNote, IconWarning, IconCamera, StatusDot, DotRed, DotYellow, DotGreen } from './Icons.jsx'
 
 function gunKaldi(tarihStr){
   if(!tarihStr) return null;
@@ -30,7 +31,6 @@ function SozlesmeKart({s, elev, onEdit, onDel}){
   const gk = gunKaldi(s.bitis);
   const renk = durumRenk(gk);
   const durum = durumMetin(gk);
-  const ikon = gk===null?"⚪":gk<0?"🔴":gk<=30?"🟡":gk<=60?"🔵":"🟢";
 
   return (
     <div style={{background:"var(--bg-panel)",borderRadius:14,padding:"12px 14px",marginBottom:8,
@@ -41,8 +41,8 @@ function SozlesmeKart({s, elev, onEdit, onDel}){
           <div style={{fontSize:11,color:"var(--text-muted)"}}>{elev?.ilce}{elev?.semt?" · "+elev.semt:""}</div>
         </div>
         <div style={{display:"flex",gap:4}}>
-          <button onClick={()=>onEdit(s)} style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}>✏️</button>
-          <button onClick={()=>onDel(s.id)} style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}>🗑️</button>
+          <button onClick={()=>onEdit(s)} style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}><IconEdit size={14} /></button>
+          <button onClick={()=>onDel(s.id)} style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"4px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}><IconTrash size={14} /></button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:5,fontSize:11}}>
@@ -54,10 +54,10 @@ function SozlesmeKart({s, elev, onEdit, onDel}){
       {durum&&(
         <div style={{marginTop:6,fontSize:11,color:renk,fontWeight:700,
           background:`${renk}11`,borderRadius:6,padding:"4px 8px",display:"inline-block"}}>
-          {ikon} {durum}
+          <StatusDot color={renk} size={8} /> {durum}
         </div>
       )}
-      {s.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:6,padding:"6px 8px",background:"var(--bg-elevated)",borderRadius:8}}>📝 {s.notlar}</div>}
+      {s.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:6,padding:"6px 8px",background:"var(--bg-elevated)",borderRadius:8}}><IconNote size={12} /> {s.notlar}</div>}
   {s.fotograflar&&s.fotograflar.length>0&&(
     <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
       {s.fotograflar.map((f,i)=>(
@@ -136,22 +136,22 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
-        <h2 style={{fontSize:18,fontWeight:900,margin:0}}>📄 Sözleşme Yönetimi</h2>
+        <h2 style={{fontSize:18,fontWeight:900,margin:0}}><IconDocument size={16} /> Sözleşme Yönetimi</h2>
         <button onClick={oAdd} style={{background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Sözleşme Ekle</button>
       </div>
 
       {/* Özet sayaçlar */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
         {[
-          {label:"Süresi Dolmuş",count:gecikti,renk:"#ef4444",icon:"🔴",k:"biten"},
-          {label:"30 Gün İçinde",count:yakin30,renk:"#f59e0b",icon:"🟡",k:"yakin"},
-          {label:"Aktif",count:aktif,renk:"#34c759",icon:"🟢",k:"aktif"},
+          {label:"Süresi Dolmuş",count:gecikti,renk:"#ef4444",k:"biten"},
+          {label:"30 Gün İçinde",count:yakin30,renk:"#f59e0b",k:"yakin"},
+          {label:"Aktif",count:aktif,renk:"#34c759",k:"aktif"},
         ].map(x=>(
           <button key={x.k} onClick={()=>setFiltre(filtre===x.k?"tumu":x.k)}
             style={{background:filtre===x.k?`${x.renk}22`:"var(--bg-panel)",border:`2px solid ${filtre===x.k?x.renk:x.renk+"44"}`,
               borderRadius:12,padding:"10px 8px",cursor:"pointer",textAlign:"center"}}>
             <div style={{fontSize:20,fontWeight:900,color:x.renk}}>{x.count}</div>
-            <div style={{fontSize:10,color:filtre===x.k?x.renk:"var(--text-muted)",fontWeight:600,marginTop:2}}>{x.icon} {x.label}</div>
+            <div style={{fontSize:10,color:filtre===x.k?x.renk:"var(--text-muted)",fontWeight:600,marginTop:2}}><StatusDot color={x.renk} size={8} /> {x.label}</div>
           </button>
         ))}
       </div>
@@ -159,7 +159,7 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
       {/* Bitiş tarihi yaklaşan uyarı şeridi */}
       {uyarilar.length>0&&filtre==="tumu"&&ilce==="Tümü"&&(
         <div style={{background:"rgba(245,158,11,0.08)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:12,padding:"10px 14px",marginBottom:12}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#f59e0b",marginBottom:8}}>⚠️ Bitiş Tarihi Yaklaşan Sözleşmeler ({uyarilar.length})</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#f59e0b",marginBottom:8}}><IconWarning size={14} /> Bitiş Tarihi Yaklaşan Sözleşmeler ({uyarilar.length})</div>
           {uyarilar.slice(0,5).map(s=>{
             const elev = elevs.find(e=>e.id===s.asansorId);
             const gk = gunKaldi(s.bitis);
@@ -276,7 +276,7 @@ export default function SozlesmeYonetimi({elevs, sozlesmeler, setSozlesmeler}){
 
           {/* Fotoğraflar */}
           <div>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}>📷 Fotoğraflar</label>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:6}}><IconCamera size={14} /> Fotoğraflar</label>
             <input type="file" accept="image/*" multiple
               onChange={e=>{
                 const files=Array.from(e.target.files);

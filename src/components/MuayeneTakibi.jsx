@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Modal } from '../utils/constants'
+import { IconClipboard, IconCalendar, IconEdit, IconTrash, IconWarning, StatusDot } from './Icons.jsx'
 
 const KURUM_LISTESI = ["TSE","TÜRKAK","Belediye","Özel Akredite Kuruluş","Diğer"];
 const AY_ADLARI = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
@@ -55,8 +56,7 @@ function MuayeneKart({m, elev, onEdit, onDel}){
   const sonraki = m.sonrakiTarih || sonrakiHesapla(m.tarih);
   const gk = gunKaldi(sonraki);
   const renk = durumRenk(gk);
-  const ikon = gk===null?"⚪":gk<0?"🔴":gk<=30?"🟡":gk<=90?"🔵":"🟢";
-
+  
   return (
     <div style={{background:"var(--bg-panel)",borderRadius:12,padding:"11px 14px",marginBottom:6,
       border:`1px solid ${renk}33`,borderLeft:`4px solid ${renk}`,
@@ -86,15 +86,15 @@ function MuayeneKart({m, elev, onEdit, onDel}){
       {/* Orta: sonraki tarih + gün bilgisi */}
       <div style={{textAlign:"center",flexShrink:0}}>
         <div style={{fontSize:13,fontWeight:800,color:renk}}>{sonraki||"—"}</div>
-        <div style={{fontSize:11,fontWeight:600,color:renk}}>{ikon} {durumMetin(gk)}</div>
+        <div style={{fontSize:11,fontWeight:600,color:renk}}><StatusDot color={renk} size={8} /> {durumMetin(gk)}</div>
       </div>
 
       {/* Sağ: butonlar */}
       <div style={{display:"flex",gap:4,flexShrink:0}}>
         <button onClick={()=>onEdit(m)}
-          style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}>✏️</button>
+          style={{background:"var(--bg-elevated)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"var(--text-muted)"}}><IconEdit size={14} /></button>
         <button onClick={()=>onDel(m.id)}
-          style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}>🗑️</button>
+          style={{background:"rgba(255,59,48,0.12)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",fontSize:12,color:"#ef4444"}}><IconTrash size={14} /></button>
       </div>
     </div>
   );
@@ -155,7 +155,8 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
     // Sıralı gruplar
     return Object.keys(aylar).sort().map(k=>({
       anahtar: k,
-      baslik: k==="0000-00"?"⚠️ Süresi Geçmiş":ayBaslik(k),
+      baslik: k==="0000-00"?"Süresi Geçmiş":ayBaslik(k),
+      gecikmi: k==="0000-00",
       renk: k==="0000-00"?"#ef4444":"#3b82f6",
       kayitlar: aylar[k]
     }));
@@ -188,21 +189,21 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
-        <h2 style={{fontSize:18,fontWeight:900,margin:0}}>📋 Yıllık Muayene Takibi</h2>
+        <h2 style={{fontSize:18,fontWeight:900,margin:0}}><IconClipboard size={16} /> Yıllık Muayene Takibi</h2>
         <button onClick={oAdd} style={{background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>+ Muayene Ekle</button>
       </div>
 
       {/* Sayaçlar */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
         {[
-          {label:"Süresi Geçmiş",count:gecikti,renk:"#ef4444",ikon:"🔴"},
-          {label:"Bu Ay",count:buAy,renk:"#f59e0b",ikon:"🟡"},
-          {label:"30 Gün İçinde",count:sonraki30,renk:"#3b82f6",ikon:"🔵"},
+          {label:"Süresi Geçmiş",count:gecikti,renk:"#ef4444"},
+          {label:"Bu Ay",count:buAy,renk:"#f59e0b"},
+          {label:"30 Gün İçinde",count:sonraki30,renk:"#3b82f6"},
         ].map(x=>(
           <div key={x.label} style={{background:"var(--bg-panel)",border:`1px solid ${x.renk}44`,
             borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
             <div style={{fontSize:22,fontWeight:900,color:x.renk}}>{x.count}</div>
-            <div style={{fontSize:10,color:"var(--text-muted)",fontWeight:600,marginTop:2}}>{x.ikon} {x.label}</div>
+            <div style={{fontSize:10,color:"var(--text-muted)",fontWeight:600,marginTop:2}}><StatusDot color={x.renk} size={8} /> {x.label}</div>
           </div>
         ))}
       </div>
@@ -228,7 +229,7 @@ export default function MuayeneTakibi({elevs, muayeneler, setMuayeneler}){
           <div style={{fontSize:12,fontWeight:800,color:grup.renk,marginBottom:8,
             padding:"5px 10px",background:`${grup.renk}11`,borderRadius:8,
             display:"inline-flex",alignItems:"center",gap:6}}>
-            📅 {grup.baslik}
+            {grup.gecikmi ? <IconWarning size={12} /> : <IconCalendar size={12} />} {grup.baslik}
             <span style={{background:grup.renk,color:"#fff",borderRadius:20,
               fontSize:10,padding:"1px 7px",fontWeight:900}}>{grup.kayitlar.length}</span>
           </div>

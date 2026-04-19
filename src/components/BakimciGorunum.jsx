@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { IconWrench, IconWarning, IconCheckCircle, IconCheck, IconX, IconMapPin, IconUser, IconPhone, IconDoor, IconCalendar, IconClock, IconHourglass, IconMap, IconGPS, IconClipboard, IconPrinter, IconMoney, IconRefresh, IconChart, IconNote } from './Icons.jsx'
 import { makbuzBakimYazdir } from '../utils/makbuz.js'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
@@ -125,8 +126,8 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
   const acikAriza=atananArizalar.filter(f=>f.durum!=="Çözüldü").length;
 
   const TABS2=[
-    {l:"🔧 Bakımlar",c:"#f59e0b",count:bekleyenBakimlar.length},
-    {l:"⚠️ Arızalar",c:"#ef4444",count:atananArizalar.filter(f=>f.durum!=="Çözüldü").length},
+    {l:[React.createElement(IconWrench, {size:14}), " Bakımlar"],c:"#f59e0b",count:bekleyenBakimlar.length},
+    {l:[React.createElement(IconWarning, {size:14}), " Arızalar"],c:"#ef4444",count:atananArizalar.filter(f=>f.durum!=="Çözüldü").length},
   ];
 
   return(
@@ -189,10 +190,10 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
         React.createElement('div', { style: {display:"flex",gap:5,marginBottom:12},}
           , React.createElement('button', { onClick:()=>setBakimSubTab(0),
             style:{flex:1,padding:"8px",borderRadius:8,background:bakimSubTab===0?"#f59e0b22":"#1a1f2e",border:"2px solid "+(bakimSubTab===0?"#f59e0b66":"#2a3050"),color:bakimSubTab===0?"#f59e0b":"#64748b",fontWeight:bakimSubTab===0?800:400,fontSize:12,cursor:"pointer"}},
-            "⏳ Bekleyen ("+bekleyenBakimlar.length+")")
+            [React.createElement(IconHourglass, {size:13}), " Bekleyen ("+bekleyenBakimlar.length+")"])
           , React.createElement('button', { onClick:()=>setBakimSubTab(1),
             style:{flex:1,padding:"8px",borderRadius:8,background:bakimSubTab===1?"#10b98122":"#1a1f2e",border:"2px solid "+(bakimSubTab===1?"#10b98166":"#2a3050"),color:bakimSubTab===1?"#10b981":"#64748b",fontWeight:bakimSubTab===1?800:400,fontSize:12,cursor:"pointer"}},
-            "✅ Tamamlanan ("+tamamlananBakimlarTum.length+")")
+            [React.createElement(IconCheckCircle, {size:13, color:"#22c55e"}), " Tamamlanan ("+tamamlananBakimlarTum.length+")"])
         )
       )
 
@@ -200,7 +201,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
       , subTab===0&&bakimSubTab===0&&(
         bekleyenBakimlar.length===0
           ?React.createElement('div', { style: {textAlign:"center",padding:"40px 20px",background:"#1a1f2e",borderRadius:14,border:"1px solid #2a3050"},}
-            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, "✅")
+            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, React.createElement(IconCheckCircle, {size:40, color:"#10b981"}))
             , React.createElement('div', { style: {fontWeight:700,fontSize:14,color:"#94a3b8",marginBottom:6},}, "Bekleyen bakım yok")
             , React.createElement('div', { style: {fontSize:12,color:"#475569"},}, "Tüm bakımlar tamamlandı!")
           )
@@ -223,12 +224,12 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                           , elev.bakimGunu&&React.createElement('span', { style: {fontSize:10,color:"#64748b"},}, "· Her ", elev.bakimGunu, ". gün")
                         )
                         , React.createElement('div', {style:{marginTop:4,display:"flex",flexDirection:"column",gap:2}}
-                          , (elev.adres||elev.semt)&&React.createElement('div',{style:{fontSize:11,color:"#64748b"}},"📍 "+(elev.semt?elev.semt+" Mah., ":"")+elev.adres)
-                          , elev.yoneticiDaire&&React.createElement('div',{style:{fontSize:12,color:"#f59e0b",fontWeight:800}},"🚪 Daire: "+elev.yoneticiDaire)
-                          , elev.yonetici&&React.createElement('div',{style:{fontSize:11,color:"#94a3b8",marginTop:1}},"👤 ",elev.yonetici,elev.tel?React.createElement('a',{href:"tel:"+elev.tel.replace(/\s/g,""),style:{color:"#3b82f6",textDecoration:"none",fontWeight:700,marginLeft:6,fontSize:12}},"📞 ",elev.tel):"")
+                          , (elev.adres||elev.semt)&&React.createElement('div',{style:{fontSize:11,color:"#64748b"}},React.createElement(IconMapPin, {size:12}), " "+(elev.semt?elev.semt+" Mah., ":"")+elev.adres)
+                          , elev.yoneticiDaire&&React.createElement('div',{style:{fontSize:12,color:"#f59e0b",fontWeight:800}},React.createElement(IconDoor, {size:12}), " Daire: "+elev.yoneticiDaire)
+                          , elev.yonetici&&React.createElement('div',{style:{fontSize:11,color:"#94a3b8",marginTop:1}},React.createElement(IconUser, {size:12}), " ",elev.yonetici,elev.tel?React.createElement('a',{href:"tel:"+elev.tel.replace(/\s/g,""),style:{color:"#3b82f6",textDecoration:"none",fontWeight:700,marginLeft:6,fontSize:12}},React.createElement(IconPhone, {size:12}), " ",elev.tel):"")
                           , m.bakimciAd&&React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,fontSize:10,fontWeight:700,color:m.bakimciRenk||"#8b5cf6",background:(m.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 8px"}}
                             ,React.createElement('span',{style:{width:6,height:6,borderRadius:"50%",background:m.bakimciRenk||"#8b5cf6",display:"inline-block"}})
-                            ,"🔧 "+m.bakimciAd
+                            ,React.createElement(IconWrench, {size:11}), " "+m.bakimciAd
                           )
                         )
                       )
@@ -242,7 +243,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                     , React.createElement('div', { style: {display:"flex",gap:6}},
                       React.createElement('button', { onClick:()=>tamamlaBakim(m,elev),
                         style:{flex:1,padding:"9px",borderRadius:8,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}},
-                        "✅ Bakımı Tamamla")
+                        [React.createElement(IconCheckCircle, {size:14}), " Bakımı Tamamla"])
                     )
                   )
                 )
@@ -257,7 +258,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
           /* Başlık */
           React.createElement('div',{style:{padding:"12px 14px",background:"linear-gradient(135deg,rgba(16,185,129,0.12),rgba(59,130,246,0.08))",borderBottom:"1px solid #10b98133",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}},
             React.createElement('div',null,
-              React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},"🗺️ Rota"),
+              React.createElement('div',{style:{fontSize:14,fontWeight:900,color:"#10b981"}},[React.createElement(IconMap, {size:14, color:"#10b981"}), " Rota"]),
               React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
                 rotaData.hesaplaniyor?"Adresler çözülüyor, rota hazırlanıyor...":"Bekleyen bakımlar mesafeye göre sıralanıp Google Maps'e gönderilecek"
               )
@@ -280,29 +281,29 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                   React.createElement('div',{style:{fontSize:9,color:exact?"#64748b":"#f59e0b99",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
                     exact
                       ?(e.ilce+(e.semt?", "+e.semt:"")+(e.adres?", "+e.adres:""))
-                      :"⚠️ Adres bulunamadı — rota sonuna eklendi"
+                      :[React.createElement(IconWarning, {size:12}), " Adres bulunamadı — rota sonuna eklendi"]
                   )
                 ),
                 React.createElement('a',{
                   href:"https://maps.google.com/?q="+encodeURIComponent(stop.target||((e.semt?e.semt+" Mah., ":"")+(e.adres||"")+", "+(e.ilce||"")+", İstanbul")),
                   target:"_blank",rel:"noreferrer",onClick:function(ev){ev.stopPropagation();},
                   style:{fontSize:10,padding:"4px 8px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
-                },"📍")
+                },React.createElement(IconMapPin, {size:11}))
               );
             })
           ),
           /* Koordinatsız bina uyarısı */
           rotaData.eslesmeyenSayi>0&&React.createElement('div',{style:{margin:"6px 10px 0",padding:"8px 12px",background:"rgba(245,158,11,0.10)",border:"1px solid #f59e0b44",borderRadius:8}},
-            React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#f59e0b"}},"⚠️ "+rotaData.eslesmeyenSayi+" binanın adresi çözümlenemedi"),
+            React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#f59e0b"}},React.createElement(IconWarning, {size:12}), " "+rotaData.eslesmeyenSayi+" binanın adresi çözümlenemedi"),
             React.createElement('div',{style:{fontSize:10,color:"#f59e0b99",marginTop:2}},"Bu binalar rota sonuna eklendi. Yöneticinizden koordinat düzeltmesini isteyebilirsiniz.")
           ),
           /* Konum bilgisi */
           React.createElement('div',{style:{padding:"0 10px 8px"}},
             rotaData.konum
               ?React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:"rgba(16,185,129,0.08)",borderRadius:7,border:"1px solid #10b98133"}},
-                React.createElement('span',{style:{fontSize:10,color:"#10b981",fontWeight:700}},"📡 Konumunuz alındı — rota buradan başlayacak")
+                React.createElement('span',{style:{fontSize:10,color:"#10b981",fontWeight:700}},React.createElement(IconGPS, {size:12}), " Konumunuz alındı — rota buradan başlayacak")
               )
-              :React.createElement('div',{style:{fontSize:10,color:"#94a3b8",padding:"2px 0"}},"📡 Konum otomatik alınıyor...")
+              :React.createElement('div',{style:{fontSize:10,color:"#94a3b8",padding:"2px 0"}},React.createElement(IconGPS, {size:12}), " Konum otomatik alınıyor...")
           ),
           /* Google Maps butonu */
           rotaData.mapsUrl&&React.createElement('div',{style:{padding:"0 10px 10px",display:"flex",flexDirection:"column",gap:6}},
@@ -312,22 +313,22 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                     style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
                       background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:10,color:"#fff",
                       textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-                  },"🗺️ Google Maps — 1. Bölüm"),
+                  },React.createElement(IconMap, {size:14}), " Google Maps — 1. Bölüm"),
                   React.createElement('a',{href:rotaData.mapsUrl2,target:"_blank",rel:"noreferrer",
                     style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
                       background:"linear-gradient(135deg,#3b82f6,#2563eb)",borderRadius:10,color:"#fff",
                       textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #3b82f644"}
-                  },"🗺️ Google Maps — 2. Bölüm")
+                  },React.createElement(IconMap, {size:14}), " Google Maps — 2. Bölüm")
                 )
               : React.createElement('a',{href:rotaData.mapsUrl,target:"_blank",rel:"noreferrer",
                   style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
                     background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:10,color:"#fff",
                     textDecoration:"none",fontWeight:800,fontSize:13,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-                },"🗺️ Google Maps'te Rotayı Başlat"),
+                },React.createElement(IconMap, {size:14}), " Google Maps'te Rotayı Başlat"),
             React.createElement('button',{
               onClick:function(){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(rotaData.mapsUrl).then(function(){alert("Kopyalandı!");}).catch(function(){});}},
               style:{padding:"8px 0",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:8,color:"#94a3b8",fontWeight:600,fontSize:11,cursor:"pointer"}
-            },"📋 Rota Linkini Kopyala")
+            },React.createElement(IconClipboard, {size:14}), " Rota Linkini Kopyala")
           )
         )
       )
@@ -336,7 +337,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
       , subTab===0&&bakimSubTab===1&&(
         tamamlananBakimlar.length===0
           ?React.createElement('div', { style: {textAlign:"center",padding:"40px 20px",background:"#1a1f2e",borderRadius:14,border:"1px solid #2a3050"},}
-            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, "🔧")
+            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, React.createElement(IconWrench, {size:40, color:"#64748b"}))
             , React.createElement('div', { style: {fontWeight:700,fontSize:14,color:"#94a3b8",marginBottom:6},}, sonGunler[seciliGun]?sonGunler[seciliGun].label+" için bakım yok":"Henüz tamamlanan bakım yok")
           )
           :React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:6},}
@@ -362,12 +363,12 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                         , React.createElement('div', { style: {display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"},}
                           , React.createElement(IlceBadge, { ilce: elev.ilce,})
                           , React.createElement('span', { style: {fontSize:10,color:"#64748b"},}, elev.semt)
-                          , elev.yoneticiDaire&&React.createElement('span',{style:{fontSize:10,color:"#f59e0b",fontWeight:700}},"🚪 "+elev.yoneticiDaire)
+                          , elev.yoneticiDaire&&React.createElement('span',{style:{fontSize:10,color:"#f59e0b",fontWeight:700}},React.createElement(IconDoor, {size:11}), " "+elev.yoneticiDaire)
                         )
-                        , m.yapildiSaat&&React.createElement('div',{style:{fontSize:11,color:"#10b981",marginTop:3,fontWeight:700}},"✅ "+m.yapildiSaat+(saatStr?" · 🕐 "+saatStr:""))
+                        , m.yapildiSaat&&React.createElement('div',{style:{fontSize:11,color:"#10b981",marginTop:3,fontWeight:700}},React.createElement(IconCheckCircle, {size:12, color:"#10b981"}), " "+m.yapildiSaat+(saatStr?" · ":""),(saatStr?React.createElement(IconClock, {size:11}):null),(saatStr?" "+saatStr:""))
                         , m.bakimciAd&&React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,fontSize:10,fontWeight:700,color:m.bakimciRenk||"#8b5cf6",background:(m.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 8px"}}
                           ,React.createElement('span',{style:{width:6,height:6,borderRadius:"50%",background:m.bakimciRenk||"#8b5cf6",display:"inline-block"}})
-                          ,"🔧 "+m.bakimciAd
+                          ,React.createElement(IconWrench, {size:10}), " "+m.bakimciAd
                         )
                       )
                       , saatStr&&React.createElement('div',{style:{background:"#10b98122",border:"1px solid #10b98144",borderRadius:8,padding:"4px 8px",textAlign:"center",flexShrink:0}}
@@ -424,7 +425,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
       , subTab===1&&(
         atananArizalar.length===0
           ?React.createElement('div', { style: {textAlign:"center",padding:"40px 20px",background:"#1a1f2e",borderRadius:14,border:"1px solid #2a3050"},}
-            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, "⚠️")
+            , React.createElement('div', { style: {fontSize:40,marginBottom:10},}, React.createElement(IconWarning, {size:40, color:"#f59e0b"}))
             , React.createElement('div', { style: {fontWeight:700,fontSize:14,color:"#94a3b8",marginBottom:6},}, "Atanan arıza yok"  )
             , React.createElement('div', { style: {fontSize:12,color:"#475569"},}, "Yönetici Arızalar sekmesinden size arıza atayacak"     )
           )
@@ -440,10 +441,10 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                       , React.createElement('div', { style: {fontWeight:800,fontSize:14,marginBottom:3},}, f.aciklama)
                       , React.createElement('div', { style: {fontSize:11,color:"#64748b",marginBottom:2},}, eName(f.asansorId), elev?" · "+elev.semt+", "+elev.ilce:"")
                       , React.createElement('div', { style: {display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"},}
-                        , React.createElement('span', { style: {fontSize:10,color:"#64748b"},}, "📅 " , f.tarih)
+                        , React.createElement('span', { style: {fontSize:10,color:"#64748b"},}, React.createElement(IconCalendar, {size:11}), " " , f.tarih)
                         , React.createElement('span', { style: {fontSize:10,padding:"2px 7px",borderRadius:4,background:onRenk+"22",color:onRenk,fontWeight:700},}, f.oncelik)
-                        , (elev&&elev.yonetici)&&React.createElement('span', { style: {fontSize:10,color:"#94a3b8"},}, "👤 " , elev.yonetici)
-                        , (elev&&elev.tel)&&React.createElement('a', { href: "tel:"+elev.tel.replace(/\s/g,""), style: {fontSize:10,color:"#3b82f6",textDecoration:"none"},}, "📞 " , elev.tel)
+                        , (elev&&elev.yonetici)&&React.createElement('span', { style: {fontSize:10,color:"#94a3b8"},}, React.createElement(IconUser, {size:11}), " " , elev.yonetici)
+                        , (elev&&elev.tel)&&React.createElement('a', { href: "tel:"+elev.tel.replace(/\s/g,""), style: {fontSize:10,color:"#3b82f6",textDecoration:"none"},}, React.createElement(IconPhone, {size:11}), " " , elev.tel)
                       )
                     )
                   )
@@ -451,7 +452,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                     , ["Beklemede","Devam Ediyor","Çözüldü"].map(d=>(
                       React.createElement('button', { key: d, onClick: ()=>setFaults(p=>p.map(x=>x.id===f.id?{...x,durum:d}:x)),
                         style: {padding:"6px 12px",borderRadius:7,background:f.durum===d?(d==="Çözüldü"?"#1e3a2e":d==="Devam Ediyor"?"#3a1e1e":"#1e2640"):"#0d1321",color:f.durum===d?(d==="Çözüldü"?"#10b981":d==="Devam Ediyor"?"#ef4444":"#3b82f6"):"#64748b",border:"1px solid "+(f.durum===d?"currentColor":"#2a3050"),fontSize:11,fontWeight:f.durum===d?700:400,cursor:"pointer"},}
-                        , d==="Beklemede"?"⏳ Beklemede":d==="Devam Ediyor"?"🔧 Devam":"✅ Çözüldü"
+                        , d==="Beklemede"?[React.createElement(IconHourglass, {size:12}), " Beklemede"]:d==="Devam Ediyor"?[React.createElement(IconWrench, {size:12}), " Devam"]:[React.createElement(IconCheckCircle, {size:12, color:"#10b981"}), " Çözüldü"]
                       )
                     ))
                     , f.durum==="Çözüldü"&&elev&&elev.tel&&React.createElement('button', {
@@ -484,7 +485,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
         React.createElement('div',{style:{position:"fixed",inset:0,background:"#000000cc",zIndex:2100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}
           ,React.createElement('div',{style:{background:"var(--bg-panel)",borderRadius:20,border:"1px solid var(--border)",width:"100%",maxWidth:380,overflow:"hidden"}}
             ,React.createElement('div',{style:{padding:"16px 18px",borderBottom:"0.5px solid var(--border-soft)",textAlign:"center"}}
-              ,React.createElement('div',{style:{fontSize:32,marginBottom:4}},"🖨️")
+              ,React.createElement('div',{style:{fontSize:32,marginBottom:4}},React.createElement(IconPrinter,{size:32,color:"var(--accent)"}))
               ,React.createElement('div',{style:{fontWeight:800,fontSize:16,color:"var(--text)"}}, "Makbuz Yazdır")
               ,React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",marginTop:4}},
                 (makbuzSonBakim.elev?makbuzSonBakim.elev.ad:"")+" · "+(makbuzSonBakim.tutar||0).toLocaleString("tr-TR")+" ₺")
@@ -493,7 +494,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
               ,React.createElement('button',{
                 onClick:function(){makbuzBakimYazdir(makbuzSonBakim.m,makbuzSonBakim.elev);setMakbuzSonBakim(null);},
                 style:{padding:"14px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
-              },"🖨️ Bakım Makbuzunu Yazdır")
+              },React.createElement(IconPrinter,{size:16,color:"#fff"})," Bakım Makbuzunu Yazdır")
               ,React.createElement('button',{
                 onClick:function(){setMakbuzSonBakim(null);},
                 style:{padding:"12px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
@@ -510,7 +511,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
 
             /* Başlık */
             , React.createElement('div', {style:{padding:"14px 18px",borderBottom:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}
-              , React.createElement('div', {style:{fontWeight:800,fontSize:16,color:"var(--ios-green)"}}, "✅ Bakım Tamamlandı!")
+              , React.createElement('div', {style:{fontWeight:800,fontSize:16,color:"var(--ios-green)"}}, React.createElement(IconCheckCircle,{size:16,color:"var(--ios-green)"})," Bakım Tamamlandı!")
               , React.createElement('button', {onClick:function(){setOdemeSorModal(null);setOdemeMiktar("");},style:{background:"none",border:"none",color:"var(--text-muted)",fontSize:22,cursor:"pointer",lineHeight:1}}, "×")
             )
 
@@ -523,13 +524,13 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
               /* Finansal özet kutusu */
               , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:14,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}
                 , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                  , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, "📋 Aylık Bakım Ücreti")
+                  , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, React.createElement(IconClipboard,{size:12,color:"var(--text-muted)"})," Aylık Bakım Ücreti")
                   , React.createElement('span', {style:{fontSize:14,fontWeight:800,color:"var(--accent)"}},
                       (odemeSorModal.elev?odemeSorModal.elev.aylikUcret:0).toLocaleString("tr-TR")+" ₺")
                 )
                 , React.createElement('div', {style:{height:"0.5px",background:"var(--border-soft)"}})
                 , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                  , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, "📊 Mevcut Devir")
+                  , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, React.createElement(IconChart,{size:12,color:"var(--text-muted)"})," Mevcut Devir")
                   , React.createElement('span', {style:{fontSize:14,fontWeight:800,color:(odemeSorModal.elev&&(odemeSorModal.elev.bakiyeDevir||0))>0?"var(--ios-red)":"var(--ios-green)"}},
                       ((odemeSorModal.elev&&(odemeSorModal.elev.bakiyeDevir||0))>0?"+":"")+
                       ((odemeSorModal.elev?odemeSorModal.elev.bakiyeDevir||0:0)).toLocaleString("tr-TR")+" ₺")
@@ -548,7 +549,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
-                        }, "❌ Hayır")
+                        }, React.createElement(IconX,{size:14,color:"var(--text-muted)"})," Hayır")
                       , React.createElement('button', {
                           onClick:function(){
                             var varsayilan=odemeSorModal.elev?String(odemeSorModal.elev.aylikUcret):"";
@@ -556,13 +557,13 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             setOdemeSorModal(Object.assign({},odemeSorModal,{odemeGir:true}));
                           },
                           style:{flex:1,padding:"13px",background:"var(--ios-green)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}
-                        }, "✅ Evet")
+                        }, React.createElement(IconCheckCircle,{size:14,color:"#fff"})," Evet")
                     )
                   )
                 : React.createElement('div', {style:{display:"flex",flexDirection:"column",gap:10}}
 
                     /* Tutar etiketi */
-                    , React.createElement('div', {style:{fontSize:12,fontWeight:700,color:"var(--text-muted)"}}, "💵 Alınan Tutar (₺)")
+                    , React.createElement('div', {style:{fontSize:12,fontWeight:700,color:"var(--text-muted)"}}, React.createElement(IconMoney,{size:12,color:"var(--text-muted)"})," Alınan Tutar (₺)")
 
                     /* Tutar input */
                     , React.createElement('input', {
@@ -591,7 +592,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                                 eskiDevir.toLocaleString("tr-TR")+" + "+aylikUcret.toLocaleString("tr-TR")+" - "+alinan.toLocaleString("tr-TR"))
                           )
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "🔄 Yeni Devir")
+                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, React.createElement(IconRefresh,{size:13,color:renk})," Yeni Devir")
                             , React.createElement('span', {style:{fontSize:18,fontWeight:900,color:renk}},
                                 (yeniD>0?"+":"")+yeniD.toLocaleString("tr-TR")+" ₺")
                           )
@@ -607,7 +608,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                           odemeSorKaydet();
                         },
                         style:{padding:"14px",background:"linear-gradient(135deg,var(--ios-green),#059669)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,minHeight:52,letterSpacing:"0.3px"}
-                      }, "💰 Ödemeyi Kaydet")
+                      }, React.createElement(IconMoney,{size:15,color:"#fff"})," Ödemeyi Kaydet")
                   )
             )
           )

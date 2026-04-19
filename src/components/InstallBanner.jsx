@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useInstallPrompt } from '../hooks/useInstallPrompt.js'
+import { IconBuilding } from './Icons.jsx'
 
 export default function InstallBanner() {
   const { canInstall, install } = useInstallPrompt()
@@ -48,7 +49,7 @@ export default function InstallBanner() {
         flexShrink: 0,
         fontSize: 22,
       }}>
-        🏢
+        <IconBuilding size={22} color="#fff" />
       </div>
 
       {/* Metin */}

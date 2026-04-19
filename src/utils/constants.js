@@ -84,11 +84,11 @@ export const MahallePicker=({ilce, value, onChange})=>{
 
 
 export const KONTROL = [
-  {id:"kp", kat:"🚪 Kapı Sistemi", m:["Kapı açılış/kapanış hızı","Kapı emniyet sensörü","Kapı rayları yağlama","Kapı kilitleri","Fotosel çalışması"]},
-  {id:"kt", kat:"⚙️ Kabin & Tahrik", m:["Kabin aydınlatması","Kabin temizliği","Halat/zincir gerginliği","Motor ve dişli kutusu","Hız regülatörü"]},
-  {id:"ke", kat:"🔒 Emniyet", m:["Fren sistemi testi","Aşırı yük sensörü","Acil durdurma butonu","Güvenlik kilitleri","Tampon testi"]},
-  {id:"kel",kat:"⚡ Elektrik", m:["Kumanda panosu","Buton ve göstergeler","Topraklama","Kablo bağlantıları","Acil aydınlatma pil"]},
-  {id:"km", kat:"🏭 Makine Dairesi", m:["Makine dairesi temizliği","Yağ seviyesi kontrolü","Rulman ve yataklar","Havalandırma","Yangın söndürücü"]},
+  {id:"kp", kat:"Kapı Sistemi", m:["Kapı açılış/kapanış hızı","Kapı emniyet sensörü","Kapı rayları yağlama","Kapı kilitleri","Fotosel çalışması"]},
+  {id:"kt", kat:"Kabin & Tahrik", m:["Kabin aydınlatması","Kabin temizliği","Halat/zincir gerginliği","Motor ve dişli kutusu","Hız regülatörü"]},
+  {id:"ke", kat:"Emniyet", m:["Fren sistemi testi","Aşırı yük sensörü","Acil durdurma butonu","Güvenlik kilitleri","Tampon testi"]},
+  {id:"kel",kat:"Elektrik", m:["Kumanda panosu","Buton ve göstergeler","Topraklama","Kablo bağlantıları","Acil aydınlatma pil"]},
+  {id:"km", kat:"Makine Dairesi", m:["Makine dairesi temizliği","Yağ seviyesi kontrolü","Rulman ve yataklar","Havalandırma","Yangın söndürücü"]},
 ];
 
 export const S={

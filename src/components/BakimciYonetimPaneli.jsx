@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { S } from '../utils/constants.js'
+import { IconUsers, IconEdit, IconPlus, IconSave, IconCheckCircle, IconPhone, IconLock, IconUnlock, IconTrash, IconHardHat } from './Icons.jsx'
 
 const RENKLER = [
   "#3b82f6","#10b981","#f59e0b","#ef4444",
@@ -56,7 +57,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
     React.createElement('div', { className: "ios-animate" },
 
       React.createElement('h2', { style: { fontSize: 18, fontWeight: 900, margin: 0, marginBottom: 16 } },
-        "👥 Bakımcı Yönetimi"
+        React.createElement(IconUsers, {size:16}), " Bakımcı Yönetimi"
       ),
 
       /* ── FORM ── */
@@ -72,7 +73,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
             fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
             marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px"
           }
-        }, editId ? "✏️ Bakımcı Düzenle" : "➕ Yeni Bakımcı Ekle"),
+        }, editId ? [React.createElement(IconEdit, {size:13}), " Bakımcı Düzenle"] : [React.createElement(IconPlus, {size:13}), " Yeni Bakımcı Ekle"]),
 
         React.createElement('input', {
           placeholder: "Ad Soyad *",
@@ -129,7 +130,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
               border: "none", borderRadius: 12, color: "#fff",
               cursor: "pointer", fontWeight: 700, fontSize: 15
             }
-          }, editId ? "💾 Güncelle" : "✅ Ekle")
+          }, editId ? [React.createElement(IconSave, {size:14}), " Güncelle"] : [React.createElement(IconCheckCircle, {size:14}), " Ekle"])
         )
       ),
 
@@ -142,7 +143,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
             borderRadius: 14, border: "1px solid var(--border-soft)"
           }
         },
-          React.createElement('div', { style: { fontSize: 44, marginBottom: 12 } }, "👷"),
+          React.createElement('div', { style: { fontSize: 44, marginBottom: 12 } }, React.createElement(IconHardHat, {size:44, color:"var(--text-dim)"})),
           React.createElement('div', { style: { fontSize: 16, fontWeight: 700 } }, "Henüz bakımcı eklenmedi"),
           React.createElement('div', { style: { fontSize: 13, marginTop: 6, color: "var(--text-dim)" } },
             "Yukarıdaki formdan yeni bakımcı ekleyebilirsiniz"
@@ -178,11 +179,11 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
                 React.createElement('div', {
                   style: { fontSize: 12, color: "var(--text-muted)", marginTop: 3, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }
                 },
-                  b.tel && React.createElement('span', null, "📞 " + b.tel),
+                  b.tel && React.createElement('span', null, React.createElement(IconPhone, {size:12}), " " + b.tel),
                   React.createElement('span', null,
                     b.sifre
-                      ? (sifreGoster[b.id] ? ("🔓 " + b.sifre) : "🔒 Şifreli")
-                      : "🔓 Şifresiz"
+                      ? (sifreGoster[b.id] ? [React.createElement(IconUnlock, {size:12}), " " + b.sifre] : [React.createElement(IconLock, {size:12}), " Şifreli"])
+                      : [React.createElement(IconUnlock, {size:12}), " Şifresiz"]
                   ),
                   b.sifre && React.createElement('button', {
                     onClick: () => togSifreGoster(b.id),
@@ -203,7 +204,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
                     background: "var(--bg-elevated)", border: "none",
                     color: "var(--accent)", cursor: "pointer", fontWeight: 600, fontSize: 12
                   }
-                }, "✏️"),
+                }, React.createElement(IconEdit, {size:14})),
 
                 silOnay === b.id
                   ? React.createElement('div', { style: { display: "flex", gap: 4, alignItems: "center" } },
@@ -232,7 +233,7 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
                       background: "rgba(255,59,48,0.1)", border: "none",
                       color: "var(--ios-red)", cursor: "pointer", fontWeight: 600, fontSize: 12
                     }
-                  }, "🗑️")
+                  }, React.createElement(IconTrash, {size:14}))
               )
             )
           )

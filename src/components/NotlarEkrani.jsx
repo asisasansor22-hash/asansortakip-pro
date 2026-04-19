@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, MONTHS } from '../utils/constants.js'
+import { IconNote, IconEdit, IconSave, IconFolder, IconInbox, IconTie, IconWrench, IconTrash } from './Icons.jsx'
 
 function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
   var [yeniIlce,setYeniIlce]=useState("");
@@ -55,7 +56,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
   return React.createElement('div', null,
 
     /* ─── Başlık ─── */
-    React.createElement('div', {style:{fontSize:20,fontWeight:800,marginBottom:16,letterSpacing:-0.5}}, "📝 Notlar"),
+    React.createElement('div', {style:{fontSize:20,fontWeight:800,marginBottom:16,letterSpacing:-0.5}}, React.createElement(IconNote, {size:14}), " Notlar"),
 
     /* ══════════════════════════════════
        YENİ NOT EKLE ALANI
@@ -64,7 +65,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
 
       /* Başlık şeridi */
       React.createElement('div', {style:{padding:"12px 16px",borderBottom:"0.5px solid var(--border-soft)",display:"flex",alignItems:"center",gap:8}},
-        React.createElement('div', {style:{width:28,height:28,borderRadius:8,background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}, "✏️"),
+        React.createElement('div', {style:{width:28,height:28,borderRadius:8,background:"var(--accent)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}, React.createElement(IconEdit, {size:14})),
         React.createElement('div', {style:{fontWeight:700,fontSize:15,color:"var(--text)"}}, "Yeni Not Ekle")
       ),
 
@@ -127,7 +128,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
             cursor:(yeniNot.trim()&&yeniBina)?"pointer":"default",
             minHeight:50,transition:"all 0.2s"
           }
-        }, "💾 Notu Kaydet")
+        }, React.createElement(IconSave, {size:14}), " Notu Kaydet")
       )
     ),
 
@@ -139,7 +140,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
       /* Başlık + bina filtresi */
       React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}},
         React.createElement('div', {style:{fontWeight:700,fontSize:15,color:"var(--text)"}},
-          "🗂 Kayıtlı Notlar",
+          React.createElement(IconFolder, {size:14}), " Kayıtlı Notlar",
           React.createElement('span',{style:{marginLeft:8,fontSize:12,fontWeight:500,color:"var(--text-muted)"}}, "("+gorunenNotlar.length+")")
         ),
         notluBinalar.length>0&&React.createElement('select', {
@@ -162,7 +163,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
             padding:"40px 20px",background:"var(--bg-panel)",
             borderRadius:16,boxShadow:"var(--shadow-sm)"
           }},
-            React.createElement('div',{style:{fontSize:36,marginBottom:10}},"📭"),
+            React.createElement('div',{style:{fontSize:36,marginBottom:10}},React.createElement(IconInbox, {size:36})),
             "Henüz kayıtlı not yok.",
             React.createElement('br',null),
             React.createElement('span',{style:{fontSize:13}}, "Yukarıdaki alandan ilk notu ekleyebilirsiniz.")
@@ -171,7 +172,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
             gorunenNotlar.map(function(n){
               var isYon=n.rol==="yonetici";
               var renkAcc=isYon?"var(--accent)":"var(--ios-green)";
-              var rolLabel=isYon?"👔 Yönetici":"🔧 Bakımcı";
+              var rolLabel=isYon?[React.createElement(IconTie, {size:14, key:"i"}), " Yönetici"]:[React.createElement(IconWrench, {size:14, key:"i"}), " Bakımcı"];
               var bAdi=binaAdi(n.asansorId);
               var bIlce=binaIlce(n.asansorId);
               return React.createElement('div', {key:n.id,
@@ -191,7 +192,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
                     /* Oluşturulma */
                     React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4}},
                       React.createElement('span',{style:{fontSize:10,color:"var(--text-dim)"}}, "Yazan:"),
-                      React.createElement('span',{style:{fontSize:10,fontWeight:700,color:renkAcc}}, isYon?"👔 Yönetici":"🔧 Bakımcı"),
+                      React.createElement('span',{style:{fontSize:10,fontWeight:700,color:renkAcc}}, isYon?[React.createElement(IconTie, {size:12, key:"i"}), " Yönetici"]:[React.createElement(IconWrench, {size:12, key:"i"}), " Bakımcı"]),
                       React.createElement('span',{style:{fontSize:10,color:"var(--text-muted)"}}, n.tarihSaat)
                     ),
                     /* Son düzenleme — varsa */
@@ -201,7 +202,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
                       var dRenk=dIsYon?"var(--accent)":"var(--ios-green)";
                       return React.createElement('div',{style:{display:"flex",alignItems:"center",gap:4}},
                         React.createElement('span',{style:{fontSize:10,color:"var(--text-dim)"}}, "Düzenleyen:"),
-                        React.createElement('span',{style:{fontSize:10,fontWeight:700,color:dRenk}}, dIsYon?"👔 Yönetici":"🔧 Bakımcı"),
+                        React.createElement('span',{style:{fontSize:10,fontWeight:700,color:dRenk}}, dIsYon?[React.createElement(IconTie, {size:12, key:"i"}), " Yönetici"]:[React.createElement(IconWrench, {size:12, key:"i"}), " Bakımcı"]),
                         React.createElement('span',{style:{fontSize:10,color:"var(--text-muted)"}}, n.duzenlendi)
                       );
                     })()
@@ -222,7 +223,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
                         },"İptal"),
                         React.createElement('button',{onClick:duzenlemeSaydet,
                           style:{padding:"8px 16px",background:"var(--accent)",border:"none",borderRadius:10,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:13}
-                        },"💾 Kaydet")
+                        },React.createElement(IconSave, {size:14}), " Kaydet")
                       )
                     )
                   : React.createElement('div',null,
@@ -230,10 +231,10 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
                       React.createElement('div',{style:{display:"flex",gap:8,justifyContent:"flex-end"}},
                         React.createElement('button',{onClick:function(){duzenlemeBaslat(n);},
                           style:{padding:"7px 14px",background:"var(--bg-elevated)",border:"none",borderRadius:10,color:"var(--accent)",cursor:"pointer",fontWeight:600,fontSize:12,minHeight:36}
-                        },"✏️ Düzenle"),
+                        },React.createElement(IconEdit, {size:14}), " Düzenle"),
                         React.createElement('button',{onClick:function(){notSil(n.id);},
                           style:{padding:"7px 14px",background:"rgba(255,59,48,0.1)",border:"none",borderRadius:10,color:"var(--ios-red)",cursor:"pointer",fontWeight:600,fontSize:12,minHeight:36}
-                        },"🗑 Sil")
+                        },React.createElement(IconTrash, {size:14}), " Sil")
                       )
                     )
               );

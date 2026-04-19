@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import KontrolListesi from './KontrolListesi.jsx'
 import { makbuzBakimYazdir } from '../utils/makbuz.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK } from '../utils/constants.js'
+import { IconMapPin, IconUser, IconPhone, IconWrench, IconUpload, IconHourglass, IconCheckCircle, IconWarning, IconMap } from './Icons.jsx'
 
 function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMonth,ilceler,elevByIlce,today,eName,bakimcilar,onRotaOlustur}){
   const [seciliIlce,setSeciliIlce]=useState(null);   // hangi ilçe açık
@@ -125,9 +126,9 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
   };
 
   const GORUNUM_TABS=[
-    {k:"bekleyen",l:"⏳ Bekleyen",c:"#f59e0b",count:bekleyenler.length},
-    {k:"atandi",l:"🔧 Bakımcıda",c:"#8b5cf6",count:atananlar.length},
-    {k:"tamam",l:"✅ Tamamlandı",c:"#10b981",count:tamamlananlar.length},
+    {k:"bekleyen",l:[React.createElement(IconHourglass, {size:13}), " Bekleyen"],c:"#f59e0b",count:bekleyenler.length},
+    {k:"atandi",l:[React.createElement(IconWrench, {size:13}), " Bakımcıda"],c:"#8b5cf6",count:atananlar.length},
+    {k:"tamam",l:[React.createElement(IconCheckCircle, {size:13, color:"#10b981"}), " Tamamlandı"],c:"#10b981",count:tamamlananlar.length},
   ];
 
   const listSrcIlce=gorunum==="bekleyen"?bekleyenler:gorunum==="atandi"?atananlar:tamamlananlar;
@@ -136,7 +137,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
     React.createElement('div', null
       /* Başlık */
       , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10},}
-        , React.createElement('h2', { style: {fontSize:18,fontWeight:900,margin:0},}, "🔧 Bakım Atama Paneli"   )
+        , React.createElement('h2', { style: {fontSize:18,fontWeight:900,margin:0},}, [React.createElement(IconWrench, {size:16}), " Bakım Atama Paneli"]   )
         , React.createElement('select', { value: fMonth, onChange: e=>setFMonth(+e.target.value), style: S.sel,}
           , MONTHS.map((m,i)=>React.createElement('option', { key: i, value: i,}, m))
         )
@@ -161,7 +162,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
             ))
           )
           ,seciliBakimci&&React.createElement('div',{style:{marginTop:8,fontSize:12,color:"var(--ios-orange)",fontWeight:600}}
-            ,"⚠️ Atama yapılacak: "+seciliBakimci.ad
+            ,React.createElement(IconWarning, {size:13}), " Atama yapılacak: "+seciliBakimci.ad
           )
         )
       )
@@ -242,7 +243,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
               )
               , seciliSayi>0&&gorunum==="bekleyen"&&(
                 React.createElement('button', { onClick: ataSecililer,
-                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"},}, "📤 "
+                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"},}, React.createElement(IconUpload, {size:12}), " "
                    , seciliSayi, " Binayı Bakımcıya At"
                 )
               )
@@ -253,7 +254,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                     onRotaOlustur(ids);
                   },
                   style:{padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",color:"#fff",fontWeight:800,fontSize:11,cursor:"pointer"}
-                },"🗺️ ",seciliSayi," Bina İçin Rota Oluştur")
+                },React.createElement(IconMap, {size:12}), " ",seciliSayi," Bina İçin Rota Oluştur")
               )
               , seciliSayi>0&&gorunum==="atandi"&&(
                 React.createElement('button', { onClick: ()=>{Object.keys(secili).filter(id=>secili[id]).forEach(id=>geriAl(parseInt(id)));setSecili({});},
@@ -302,7 +303,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                             display:"flex",alignItems:"center",justifyContent:"center",
                             cursor:"pointer",flexShrink:0,fontSize:9,color:"#fff",fontWeight:900
                           },}, hepsiSec?"✓":"")
-                        , React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"var(--text-muted)"},}, "📍 " , semt)
+                        , React.createElement('span', { style: {fontSize:11,fontWeight:700,color:"var(--text-muted)"},}, React.createElement(IconMapPin, {size:11}), " " , semt)
                         , React.createElement('span', { style: {fontSize:10,color:"var(--text-dim)"},}, "(", eles.length, " bina)" )
                         , gorunum==="bekleyen"&&(
                           React.createElement('button', { onClick: ()=>togSemtTum(eles),
@@ -346,9 +347,9 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                   overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"
                                 },}, e.ad)
                                 , e.yonetici&&(
-                                  React.createElement('div', { style: {fontSize:10,color:"var(--text-muted)"},}, "👤 "
+                                  React.createElement('div', { style: {fontSize:10,color:"var(--text-muted)"},}, React.createElement(IconUser, {size:11}), " "
                                      , e.yonetici
-                                    , e.tel&&React.createElement('span', null, " · "  , React.createElement('a', { href: "tel:"+e.tel.replace(/\s/g,""), onClick: ev=>ev.stopPropagation(), style: {color:"#3b82f6",textDecoration:"none"},}, "📞 " , e.tel))
+                                    , e.tel&&React.createElement('span', null, " · "  , React.createElement('a', { href: "tel:"+e.tel.replace(/\s/g,""), onClick: ev=>ev.stopPropagation(), style: {color:"#3b82f6",textDecoration:"none"},}, React.createElement(IconPhone, {size:11}), " " , e.tel))
                                   )
                                 )
                                 , gorunum==="atandi"&&(function(){
@@ -356,7 +357,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                   if(!bk||!bk.bakimciAd) return null;
                                   return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,fontSize:10,fontWeight:700,color:bk.bakimciRenk||"#8b5cf6",background:(bk.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 7px"}}
                                     ,React.createElement('span',{style:{width:6,height:6,borderRadius:"50%",background:bk.bakimciRenk||"#8b5cf6",display:"inline-block",flexShrink:0}})
-                                    ,"🔧 "+bk.bakimciAd
+                                    ,React.createElement(IconWrench, {size:10}), " "+bk.bakimciAd
                                   );
                                 })()
                               )
@@ -394,7 +395,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                 )
                                 , gorunum==="bekleyen"&&(
                                   React.createElement('button', { onClick: (ev)=>{ev.stopPropagation();ataEl(e.id);},
-                                    style: {padding:"3px 10px",borderRadius:6,background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.30)",color:"#b45309",fontSize:10,cursor:"pointer",fontWeight:700},}, "📤 Ata"
+                                    style: {padding:"3px 10px",borderRadius:6,background:"rgba(245,158,11,0.12)",border:"1px solid rgba(245,158,11,0.30)",color:"#b45309",fontSize:10,cursor:"pointer",fontWeight:700},}, React.createElement(IconUpload, {size:11}), " Ata"
 
                                   )
                                 )

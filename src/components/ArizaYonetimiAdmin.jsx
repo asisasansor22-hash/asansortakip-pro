@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal } from '../utils/constants.js'
+import { IconWarning, IconCheckCircle, IconWrench, IconUpload, IconEdit, IconTrash } from './Icons.jsx'
 
 function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
   return(
     React.createElement('div', null
       , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16},}
-        , React.createElement('h2', { style: {fontSize:18,fontWeight:900,margin:0},}, "⚠️ Arıza Takibi"  )
+        , React.createElement('h2', { style: {fontSize:18,fontWeight:900,margin:0},}, React.createElement(IconWarning, {size:14}), " Arıza Takibi"  )
         , React.createElement('button', { onClick: ()=>oAdd("f"), style: {background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",color:"#fff",border:"none",borderRadius:10,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer"},}, "+ Arıza Ekle"  )
       )
       /* Özet */
@@ -37,7 +38,7 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                     , elev&&React.createElement(IlceBadge, { ilce: elev.ilce,})
                     , React.createElement('span', { style: {fontSize:12,color:"var(--text-muted)"},}, eName(f.asansorId), " · "  , f.tarih||"")
                     , React.createElement('span', { style: {fontSize:12,padding:"3px 9px",borderRadius:20,background:onRenk+"20",color:onRenk,fontWeight:600},}, f.oncelik)
-                    , f.durum==="Çözüldü"&&f.cozumTarih&&React.createElement('span', { style: {fontSize:12,color:"var(--ios-green)"},}, "✅ " , f.cozumTarih)
+                    , f.durum==="Çözüldü"&&f.cozumTarih&&React.createElement('span', { style: {fontSize:12,color:"var(--ios-green)"},}, React.createElement(IconCheckCircle, {size:14, color:"#22c55e"}), " " , f.cozumTarih)
                   )
                   , f.fotolar&&f.fotolar.length>0&&React.createElement('div', {className:"foto-grid",style:{marginBottom:8}},
                     f.fotolar.slice(0,4).map(function(src,i){
@@ -51,7 +52,7 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                     , React.createElement('select', { value: f.durum, onChange: e=>setFaults(p=>p.map(x=>x.id===f.id?{...x,durum:e.target.value}:x)), style: {...S.sel,fontSize:13,padding:"8px 12px"},}
                       , React.createElement('option', null, "Beklemede"), React.createElement('option', null, "Devam Ediyor" ), React.createElement('option', null, "Çözüldü")
                     )
-                    , React.createElement(Tog, { active: !!f.bakimciAtandi, on: "🔧 Bakımcıda" , off: "📤 Bakımcıya At"  , color: "var(--ios-green)",
+                    , React.createElement(Tog, { active: !!f.bakimciAtandi, on: [React.createElement(IconWrench, {size:14, key:"i"}), " Bakımcıda"] , off: [React.createElement(IconUpload, {size:14, key:"i"}), " Bakımcıya At"]  , color: "var(--ios-green)",
                       onClick: ()=>setFaults(p=>p.map(x=>x.id===f.id?{...x,bakimciAtandi:!x.bakimciAtandi}:x)),})
                     , f.durum==="Çözüldü"&&elev&&elev.tel&&React.createElement('button', {
                         onClick:function(){
@@ -71,8 +72,8 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                         style:{padding:"6px 10px",borderRadius:8,background:"rgba(37,211,102,0.12)",border:"1px solid rgba(37,211,102,0.30)",color:"#128c7e",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
                       }, "WhatsApp Bildir"
                     )
-                    , React.createElement(IBtn, { onClick: ()=>oEdit("f",f), icon: "✏️",})
-                    , React.createElement(IBtn, { onClick: ()=>del("f",f.id), icon: "🗑️", danger: true,})
+                    , React.createElement(IBtn, { onClick: ()=>oEdit("f",f), icon: React.createElement(IconEdit, {size:14}),})
+                    , React.createElement(IBtn, { onClick: ()=>del("f",f.id), icon: React.createElement(IconTrash, {size:14}), danger: true,})
                   )
                 )
               )
