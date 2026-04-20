@@ -37,29 +37,171 @@ function haversineKm(a,b){
   var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function optimizeRoute(points,startPoint){
-  if(points.length<=1) return points.slice();
-  var remaining=points.slice(); var ordered=[]; var current=startPoint||remaining[0].coords;
+const ROAD_ROUTE_MAX_POINTS=25;
+const ROUTE_IMPROVE_EPS=0.0001;
+function createHaversineCost(startPoint){
+  return function(prev,next){
+    var from=prev?prev.coords:startPoint;
+    if(!from||!next||!next.coords) return 0;
+    return haversineKm(from,next.coords);
+  };
+}
+function routeCost(order,startPoint,costBetween){
+  var costFn=costBetween||createHaversineCost(startPoint);
+  var total=0; var prev=null;
+  order.forEach(function(p){
+    var cost=costFn(prev,p);
+    if(Number.isFinite(cost)) total+=cost; else total+=999999;
+    prev=p;
+  });
+  return total;
+}
+function routeTotalKm(order,startPoint,distanceBetween){
+  var distanceFn=distanceBetween||createHaversineCost(startPoint);
+  var total=0; var prev=null;
+  order.forEach(function(p){
+    if(!p.coords) return;
+    var km=distanceFn(prev,p);
+    if(Number.isFinite(km)) total+=km;
+    prev=p;
+  });
+  return total;
+}
+function selectRouteStarts(points,startPoint,costBetween){
+  if(points.length<=10) return points.slice();
+  var maxStarts=points.length<=40?10:6;
+  var starts=[]; var seen={};
+  function add(p){
+    if(!p) return;
+    var key=p.elev&&p.elev.id!==undefined?p.elev.id:points.indexOf(p);
+    if(seen[key]) return;
+    seen[key]=true; starts.push(p);
+  }
+  if(startPoint){
+    var byStart=points.slice().sort(function(a,b){return costBetween(null,a)-costBetween(null,b);});
+    byStart.slice(0,Math.max(4,maxStarts-2)).forEach(add);
+    byStart.slice(-2).forEach(add);
+  }else{
+    var byManual=points.slice().sort(function(a,b){return (a.manualIndex||0)-(b.manualIndex||0);});
+    add(byManual[0]); add(byManual[byManual.length-1]);
+    add(points.slice().sort(function(a,b){return (a.coords.lng||0)-(b.coords.lng||0);})[0]);
+    add(points.slice().sort(function(a,b){return (b.coords.lng||0)-(a.coords.lng||0);})[0]);
+    add(points.slice().sort(function(a,b){return (a.coords.lat||0)-(b.coords.lat||0);})[0]);
+    add(points.slice().sort(function(a,b){return (b.coords.lat||0)-(a.coords.lat||0);})[0]);
+  }
+  points.forEach(function(p){ if(starts.length<maxStarts) add(p); });
+  return starts.slice(0,maxStarts);
+}
+function greedyRoute(points,startPoint,costBetween,firstPoint){
+  var remaining=points.slice(); var ordered=[]; var current=null;
+  if(firstPoint){
+    var firstIdx=remaining.indexOf(firstPoint);
+    if(firstIdx>=0){ current=remaining.splice(firstIdx,1)[0]; ordered.push(current); }
+  }
   while(remaining.length){
     var bestIdx=0; var bestScore=Infinity;
-    remaining.forEach(function(p,i){ var score=current?haversineKm(current,p.coords):i; if(score<bestScore){bestScore=score;bestIdx=i;} });
-    var next=remaining.splice(bestIdx,1)[0]; ordered.push(next); current=next.coords;
+    remaining.forEach(function(p,i){
+      var score=current?costBetween(current,p):costBetween(null,p);
+      if(score<bestScore){bestScore=score;bestIdx=i;}
+    });
+    current=remaining.splice(bestIdx,1)[0];
+    ordered.push(current);
   }
-  if(ordered.length<4) return ordered;
-  var improved=true;
-  while(improved){
-    improved=false;
-    for(var i=0;i<ordered.length-2;i++){
-      for(var j=i+1;j<ordered.length-1;j++){
-        var a=(i===0?startPoint:ordered[i-1].coords)||ordered[i].coords;
-        var b=ordered[i].coords; var c=ordered[j].coords; var d=ordered[j+1].coords;
-        var mevcut=haversineKm(a,b)+haversineKm(c,d);
-        var alternatif=haversineKm(a,c)+haversineKm(b,d);
-        if(alternatif+0.05<mevcut){ ordered=ordered.slice(0,i).concat(ordered.slice(i,j+1).reverse(),ordered.slice(j+1)); improved=true; }
+  return ordered;
+}
+function improveTwoOpt(order,startPoint,costBetween){
+  if(order.length<4) return order.slice();
+  var best=order.slice(); var bestCost=routeCost(best,startPoint,costBetween);
+  var maxPasses=order.length>60?2:4; var pass=0; var improved=true;
+  while(improved&&pass<maxPasses){
+    improved=false; pass++;
+    for(var i=0;i<best.length-1;i++){
+      for(var j=i+1;j<best.length;j++){
+        var candidate=best.slice(0,i).concat(best.slice(i,j+1).reverse(),best.slice(j+1));
+        var candidateCost=routeCost(candidate,startPoint,costBetween);
+        if(candidateCost+ROUTE_IMPROVE_EPS<bestCost){
+          best=candidate; bestCost=candidateCost; improved=true;
+        }
       }
     }
   }
-  return ordered;
+  return best;
+}
+function improveRelocate(order,startPoint,costBetween){
+  if(order.length<3) return order.slice();
+  var best=order.slice(); var bestCost=routeCost(best,startPoint,costBetween);
+  var maxPasses=order.length>60?1:3; var pass=0; var improved=true;
+  while(improved&&pass<maxPasses){
+    improved=false; pass++;
+    for(var i=0;i<best.length;i++){
+      for(var pos=0;pos<=best.length;pos++){
+        if(pos===i||pos===i+1) continue;
+        var candidate=best.slice();
+        var moved=candidate.splice(i,1)[0];
+        var insertAt=pos>i?pos-1:pos;
+        candidate.splice(insertAt,0,moved);
+        var candidateCost=routeCost(candidate,startPoint,costBetween);
+        if(candidateCost+ROUTE_IMPROVE_EPS<bestCost){
+          best=candidate; bestCost=candidateCost; improved=true;
+        }
+      }
+    }
+  }
+  return best;
+}
+function optimizeRoute(points,startPoint,costBetween){
+  if(points.length<=1) return points.slice();
+  var costFn=costBetween||createHaversineCost(startPoint);
+  var starts=selectRouteStarts(points,startPoint,costFn);
+  var bestOrder=null; var bestCost=Infinity;
+  starts.forEach(function(firstPoint){
+    var candidate=greedyRoute(points,startPoint,costFn,firstPoint);
+    candidate=improveTwoOpt(candidate,startPoint,costFn);
+    candidate=improveRelocate(candidate,startPoint,costFn);
+    candidate=improveTwoOpt(candidate,startPoint,costFn);
+    var candidateCost=routeCost(candidate,startPoint,costFn);
+    if(candidateCost<bestCost){ bestCost=candidateCost; bestOrder=candidate; }
+  });
+  return bestOrder||points.slice();
+}
+async function getRoadCostContext(points,startPoint){
+  if(points.length<2||points.length>ROAD_ROUTE_MAX_POINTS||typeof fetch!=="function") return null;
+  var hasStart=!!startPoint;
+  var matrixPoints=points.map(function(p,i){return Object.assign({},p,{_routeIndex:hasStart?i+1:i});});
+  var coords=(hasStart?[startPoint]:[]).concat(matrixPoints.map(function(p){return p.coords;}));
+  if(coords.some(function(c){return !c||!Number.isFinite(Number(c.lat))||!Number.isFinite(Number(c.lng));})) return null;
+  var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
+  var url="https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=duration,distance";
+  var controller=typeof AbortController!=="undefined"?new AbortController():null;
+  var timer=controller?setTimeout(function(){controller.abort();},5500):null;
+  try{
+    var res=await fetch(url,controller?{signal:controller.signal}:undefined);
+    if(!res.ok) return null;
+    var data=await res.json();
+    if(data.code&&data.code!=="Ok") return null;
+    if(!Array.isArray(data.durations)||!Array.isArray(data.distances)) return null;
+    return {
+      points:matrixPoints,
+      costBetween:function(prev,next){
+        var fromIdx=prev?prev._routeIndex:(hasStart?0:null);
+        if(fromIdx===null) return 0;
+        var toIdx=next&&next._routeIndex;
+        var v=data.durations[fromIdx]&&data.durations[fromIdx][toIdx];
+        return Number.isFinite(v)?v/60:Infinity;
+      },
+      distanceBetween:function(prev,next){
+        var fromIdx=prev?prev._routeIndex:(hasStart?0:null);
+        if(fromIdx===null) return 0;
+        var toIdx=next&&next._routeIndex;
+        var v=data.distances[fromIdx]&&data.distances[fromIdx][toIdx];
+        return Number.isFinite(v)?v/1000:Infinity;
+      }
+    };
+  }catch(e){
+    return null;
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
 }
 
 
@@ -598,24 +740,21 @@ function App(){
       if(iptal) return;
       if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)) setRotaGeoCache(cacheGuncel);
       var coordsOlan=routePoints.filter(function(p){return p.coords;});
-      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;});
-      if(coordsOlmayan.length>0){
-        // Kısmi başarısızlık → seçim sırasına göre göster (optimize etme)
-        var secimSirasi=routePoints.slice().sort(function(a,b){return a.manualIndex-b.manualIndex;});
-        var toplamKm2=0; var onceki2=startPoint;
-        secimSirasi.forEach(function(p){ if(onceki2&&p.coords){toplamKm2+=haversineKm(onceki2,p.coords);} onceki2=p.coords||onceki2; });
-        setRotaOtomatikIds(secimSirasi.map(function(p){return p.elev.id;}));
-        setRotaTahminiKm(toplamKm2>0?toplamKm2:null);
-        setRotaOptHata(coordsOlmayan.length+" adres konumu bulunamadı, seçim sırasına göre gösteriliyor.");
-        setRotaHesaplaniyor(false);
-        return;
+      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
+      // Her zaman optimize et — konum bulunamayanları sona ekle
+      var roadContext=null;
+      try{ roadContext=await getRoadCostContext(coordsOlan,startPoint); }catch(e){ roadContext=null; }
+      var optimizerPoints=roadContext?roadContext.points:coordsOlan;
+      var optimizeEdilen=optimizerPoints.length>0?optimizeRoute(optimizerPoints,startPoint,roadContext&&roadContext.costBetween):[];
+      if(roadContext&&routeCost(optimizeEdilen,startPoint,roadContext.costBetween)>=999999){
+        roadContext=null;
+        optimizeEdilen=coordsOlan.length>0?optimizeRoute(coordsOlan,startPoint):[];
       }
-      var optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
-      var toplamKm=0; var onceki=startPoint;
-      optimizeEdilen.forEach(function(p){ if(onceki&&p.coords){toplamKm+=haversineKm(onceki,p.coords);} onceki=p.coords||onceki; });
-      setRotaOtomatikIds(optimizeEdilen.map(function(p){return p.elev.id;}));
+      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
+      var toplamKm=routeTotalKm(finalPoints,startPoint,roadContext&&roadContext.distanceBetween);
+      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
-      setRotaOptHata("");
+      setRotaOptHata(coordsOlmayan.length>0?coordsOlmayan.length+" adresin konumu bulunamadı, sona eklendi":"");
       setRotaHesaplaniyor(false);
     }
     hesapla().catch(function(){
