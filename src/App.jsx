@@ -27,6 +27,16 @@ function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]
 // Rota yardımcı fonksiyonları
 function routeAddressKey(e){ return [e.ad||"",e.semt||"",e.adres||"",e.ilce||""].join(" | "); }
 function routeAddressLabel(e){ return (e.semt?e.semt+" Mahallesi, ":"")+(e.adres||"")+(e.ilce?", "+e.ilce+", İstanbul":""); }
+function getElevCoords(e){
+  var lat=Number(e&&e.lat);
+  var lng=Number(e&&e.lng);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)) return {lat:lat,lng:lng};
+  return null;
+}
+function routeMapTarget(e){
+  var coords=getElevCoords(e);
+  return coords?(coords.lat+","+coords.lng):routeAddressLabel(e);
+}
 function deg2rad(v){ return v*(Math.PI/180); }
 function haversineKm(a,b){
   if(!a||!b) return Infinity;
@@ -724,7 +734,8 @@ function App(){
         if(iptal) return;
         var elev=seciliElevs[i];
         var key=routeAddressKey(elev);
-        var cached=cacheGuncel[key];
+        var storedCoords=getElevCoords(elev);
+        var cached=storedCoords||cacheGuncel[key];
         if(!cached&&elev.adres){
           try{ var geo=await geocodeAddress(elev); if(geo){cached={lat:geo.lat,lng:geo.lng};cacheGuncel[key]=cached;} }catch(e){}
         }
@@ -757,10 +768,12 @@ function App(){
       setRotaOptHata(coordsOlmayan.length>0?coordsOlmayan.length+" adresin konumu bulunamadı, sona eklendi":"");
       setRotaHesaplaniyor(false);
     }
-    hesapla().catch(function(){
-      if(!iptal){ setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;})); setRotaTahminiKm(null); setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor."); setRotaHesaplaniyor(false); }
-    });
-    return function(){ iptal=true; };
+    var hesapTimer=setTimeout(function(){
+      hesapla().catch(function(){
+        if(!iptal){ setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;})); setRotaTahminiKm(null); setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor."); setRotaHesaplaniyor(false); }
+      });
+    },350);
+    return function(){ iptal=true; clearTimeout(hesapTimer); };
   },[tab,rotaSec,rotaKonum,rotaStart,elevs,rotaGeoCache]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
@@ -867,7 +880,7 @@ function App(){
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrl=(function(){
     if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return routeAddressLabel(e);});
+    var addrs=rotaElevs.map(function(e){return routeMapTarget(e);});
     var base="https://www.google.com/maps/dir/?api=1";
     if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
     base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
@@ -1537,7 +1550,8 @@ function App(){
               var c=getIlceRenk(e.ilce);
               var bekliyor=bekleyenRotaIds.includes(e.id);
               var defaultAddr=(e.semt?e.semt+" Mahallesi, ":"")+e.adres+(e.ilce?", "+e.ilce+", İstanbul":"");
-              var mapsAddr=e.rotaAdres||defaultAddr;
+              var coords=getElevCoords(e);
+              var mapsAddr=coords?(coords.lat+","+coords.lng):(e.rotaAdres||defaultAddr);
               var displayAddr=e.rotaAdres||((e.semt?e.semt+" Mah., ":"")+e.adres);
               var editing=rotaEditingId===e.id;
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:bekliyor?"#0d1f15":"#0d1321",borderRadius:7,border:"1px solid "+(bekliyor?"#10b98133":"#1e2640")}},
@@ -1582,7 +1596,7 @@ function App(){
                         ),
                         React.createElement('div',{style:{display:"flex",gap:4,marginTop:2}},
                           React.createElement('button',{
-                            onClick:function(){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal.adres,semt:rotaEditingVal.semt,ilce:rotaEditingVal.ilce,rotaAdres:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);},
+                            onClick:function(){var yeni=elevs.map(function(x){return x.id===e.id?{...x,adres:rotaEditingVal.adres,semt:rotaEditingVal.semt,ilce:rotaEditingVal.ilce,rotaAdres:"",lat:null,lng:null,geoQuality:"",geoScore:null,geoType:"",geoAddress:"",geoUpdatedAt:""}:x;});setElevs(yeni);dbSet("at_elevs",yeni);lsSet("ls_elevs",yeni);setRotaEditingId(null);},
                             style:{flex:1,fontSize:11,padding:"4px 0",borderRadius:5,background:"#10b981",color:"#fff",border:"none",cursor:"pointer",fontWeight:800}
                           },"✓ Kaydet"),
                           React.createElement('button',{
