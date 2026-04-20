@@ -33,6 +33,32 @@ function getElevCoords(e){
   if(Number.isFinite(lat)&&Number.isFinite(lng)) return {lat:lat,lng:lng};
   return null;
 }
+function isUsableIstanbulCoord(lat,lng){
+  return Number.isFinite(lat)&&Number.isFinite(lng)&&lat>=40.5&&lat<=41.6&&lng>=28.0&&lng<=30.0;
+}
+function parseGoogleMapsCoords(value){
+  var text=String(value||"").trim();
+  if(!text) return null;
+  text=text.replace(/&amp;/g,"&");
+  try{text=decodeURIComponent(text);}catch(e){}
+  var patterns=[
+    /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/g,
+    /!1d(-?\d+(?:\.\d+)?)!2d(-?\d+(?:\.\d+)?)/g,
+    /@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/g,
+    /[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/g,
+    /(-?\d{2}\.\d+)\s*,\s*(-?\d{2}\.\d+)/g
+  ];
+  for(var p=0;p<patterns.length;p++){
+    var re=patterns[p]; var m;
+    while((m=re.exec(text))!==null){
+      var a=Number(m[1]); var b=Number(m[2]);
+      var lat=p===0?b:a;
+      var lng=p===0?a:b;
+      if(isUsableIstanbulCoord(lat,lng)) return {lat:lat,lng:lng};
+    }
+  }
+  return null;
+}
 function routeMapTarget(e){
   var coords=getElevCoords(e);
   return coords?(coords.lat+","+coords.lng):routeAddressLabel(e);
@@ -1020,6 +1046,30 @@ function App(){
   };
   const eName=(id)=>{const nid=typeof id==="string"?+id:id;return _optionalChain([elevs, 'access', _7 => _7.find, 'call', _8 => _8(e=>e.id===nid||e.id===id), 'optionalAccess', _9 => _9.ad])||"?"};
   const F=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const MapsLinkInput=({value,onChange,required,existingCoords})=>{
+    var text=value||"";
+    var coords=parseGoogleMapsCoords(text);
+    var hasExisting=!!existingCoords;
+    return React.createElement('div',{style:{marginTop:6,marginBottom:14,background:"#0d1321",border:"1px solid "+(coords?"#10b98166":required&&!hasExisting?"#f59e0b66":"#2a3050"),borderRadius:12,padding:"12px 14px"}},
+      React.createElement('label',{style:{display:"block",fontSize:13,fontWeight:800,color:coords?"#10b981":"#f59e0b",marginBottom:6}},
+        "Google Maps linki / iframe"+(required&&!hasExisting?" *":"")
+      ),
+      React.createElement('textarea',{
+        value:text,
+        onChange:function(e){onChange(e.target.value);},
+        placeholder:'Google Maps iframe veya paylaş linkini buraya yapıştırın',
+        rows:4,
+        style:{width:"100%",background:"#070b14",border:"1px solid #2a3050",borderRadius:10,padding:"10px 12px",color:"#e0e6f0",fontSize:12,outline:"none",resize:"vertical",boxSizing:"border-box",lineHeight:1.45}
+      }),
+      React.createElement('div',{style:{fontSize:10,color:coords?"#6ee7b7":"#64748b",marginTop:7,lineHeight:1.45}},
+        coords
+          ? "Koordinat okunacak: "+coords.lat.toFixed(7)+", "+coords.lng.toFixed(7)
+          : hasExisting
+            ? "Mevcut koordinat korunacak: "+existingCoords.lat.toFixed(7)+", "+existingCoords.lng.toFixed(7)+". Değiştirmek için yeni link yapıştırın."
+            : "Yeni bina kaydı için zorunlu. Linkten koordinat okunamazsa kayıt yapılmaz."
+      )
+    );
+  };
   const oAdd=(t)=>{setEdit(null);setForm({tarih:today});setModal(t);};
   const oEdit=(t,item)=>{setEdit(item);setForm({...item});setModal(t);};
   const close=()=>setModal(null);
@@ -1027,14 +1077,30 @@ function App(){
   const saveE=()=>{
     var ilceDeger=form.ilce==="__yeni__"?(form.ilceYeni||"").trim():form.ilce;
     if(!ilceDeger){alert("İlçe seçiniz!");return;}
+    var mapsInput=(form._mapsInput||"").trim();
+    var parsedMapsCoords=mapsInput?parseGoogleMapsCoords(mapsInput):null;
+    var mevcutCoords=getElevCoords(form);
+    if(mapsInput&&!parsedMapsCoords){alert("Google Maps linki/iframe içinden geçerli koordinat okunamadı. Lütfen paylaşılan linki veya embed kodunu kontrol edin.");return;}
+    if(!edit&&!parsedMapsCoords){alert("Google Maps linki / iframe zorunludur. Yeni bina rotaya girebilmesi için koordinatla kaydedilmelidir.");return;}
+    if(edit&&!parsedMapsCoords&&!mevcutCoords){alert("Bu binada koordinat yok. Google Maps linki / iframe girmeniz zorunludur.");return;}
     // _yeniDevirOverride girilmişse yeniDevirManuel olarak kaydet, boşsa null (otomatik)
     var yeniDevirManuelDeger=null;
     if(form._yeniDevirOverride!==undefined&&form._yeniDevirOverride!==""){
       yeniDevirManuelDeger=parseFloat(form._yeniDevirOverride);
     }
     const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:+form.bakiyeDevir||0,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:yeniDevirManuelDeger};
+    if(parsedMapsCoords){
+      d.lat=Number(parsedMapsCoords.lat.toFixed(7));
+      d.lng=Number(parsedMapsCoords.lng.toFixed(7));
+      d.geoQuality="manual";
+      d.geoScore=100;
+      d.geoType="GoogleMaps";
+      d.geoAddress="Google Maps link/iframe";
+      d.geoUpdatedAt=new Date().toISOString();
+    }
     delete d._yeniDevirOverride;
     delete d._devirKilidAcik;
+    delete d._mapsInput;
     edit?setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e)):setElevs(p=>[...p,{...d,id:Date.now()}]);
     close();
   };
@@ -1042,10 +1108,13 @@ function App(){
   const saveF=()=>{
     if(!edit&&form._yeniAdres===true){
       if(!(form._yeniIlce&&form._yeniBinaAd&&form._yeniAdresStr)){alert("İlçe, Bina Adı ve Adres zorunlu!");return;}
+      var yeniFaultCoords=parseGoogleMapsCoords(form._yeniMapsInput||"");
+      if(!yeniFaultCoords){alert("Google Maps linki / iframe zorunludur. Yeni bina koordinatla kaydedilmelidir.");return;}
       var newId=Date.now();
-      var newElevF={id:newId,ad:(form._yeniBinaAd||"").trim(),ilce:form._yeniIlce,semt:(form._yeniSemt||"").trim(),adres:(form._yeniAdresStr||"").trim(),yonetici:(form._yeniYon||"").trim(),tel:(form._yeniTel||"").trim(),bakimGunu:"0",aylikUcret:0,bakiyeDevir:0,tip:"Elektrikli",kat:0,kapasite:0};
+      var newElevF={id:newId,ad:(form._yeniBinaAd||"").trim(),ilce:form._yeniIlce,semt:(form._yeniSemt||"").trim(),adres:(form._yeniAdresStr||"").trim(),yonetici:(form._yeniYon||"").trim(),tel:(form._yeniTel||"").trim(),bakimGunu:"0",aylikUcret:0,bakiyeDevir:0,tip:"Elektrikli",kat:0,kapasite:0,lat:Number(yeniFaultCoords.lat.toFixed(7)),lng:Number(yeniFaultCoords.lng.toFixed(7)),geoQuality:"manual",geoScore:100,geoType:"GoogleMaps",geoAddress:"Google Maps link/iframe",geoUpdatedAt:new Date().toISOString()};
       setElevs(function(p){return p.concat([newElevF]);});
       const d={...form,asansorId:newId};
+      delete d._yeniMapsInput;
       setFaults(function(p){return p.concat([{...d,id:Date.now()+1}]);});
       close();return;
     }
@@ -2663,6 +2732,12 @@ function App(){
                 );
               })()
           )
+          , React.createElement(MapsLinkInput,{
+              value:form._mapsInput||"",
+              onChange:function(v){F("_mapsInput",v);},
+              required:!edit||!getElevCoords(form),
+              existingCoords:getElevCoords(form)
+            })
         )
       )
       , modal==="m"&&(
@@ -2738,6 +2813,12 @@ function App(){
             , form._yeniIlce&&React.createElement('div', null
               , React.createElement(FF, {label:"Bina Adı *", value:form._yeniBinaAd||"", onChange:function(v){F("_yeniBinaAd",v);}})
               , React.createElement(AdresFF, {label:"Adres *", value:form._yeniAdresStr||"", onChange:function(v){F("_yeniAdresStr",v);}})
+              , React.createElement(MapsLinkInput,{
+                  value:form._yeniMapsInput||"",
+                  onChange:function(v){F("_yeniMapsInput",v);},
+                  required:true,
+                  existingCoords:null
+                })
               , React.createElement(FF, {label:"Yönetici", value:form._yeniYon||"", onChange:function(v){F("_yeniYon",v);}})
               , React.createElement(FF, {label:"Telefon", value:form._yeniTel||"", onChange:function(v){F("_yeniTel",v);}})
             )
