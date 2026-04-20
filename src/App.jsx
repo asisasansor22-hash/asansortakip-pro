@@ -360,6 +360,45 @@ async function getRoadCostContext(points,startPoint){
     if(timer) clearTimeout(timer);
   }
 }
+async function getBackendRouteContext(points,startPoint){
+  if(points.length<2||typeof fetch!=="function") return null;
+  var payload={
+    start:startPoint?{lat:Number(startPoint.lat),lng:Number(startPoint.lng)}:null,
+    stops:points.map(function(p){return {id:p.elev&&p.elev.id,lat:Number(p.coords.lat),lng:Number(p.coords.lng)};})
+  };
+  var controller=typeof AbortController!=="undefined"?new AbortController():null;
+  var timer=controller?setTimeout(function(){controller.abort();},22000):null;
+  try{
+    var res=await fetch("/api/optimize-route",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload),
+      signal:controller?controller.signal:undefined
+    });
+    if(!res.ok) return null;
+    var data=await res.json();
+    if(!data||!Array.isArray(data.orderedIds)) return null;
+    var byId={};
+    points.forEach(function(p){byId[String(p.elev&&p.elev.id)]=p;});
+    var ordered=[];
+    data.orderedIds.forEach(function(id){
+      var p=byId[String(id)];
+      if(p) ordered.push(p);
+    });
+    if(ordered.length!==points.length) return null;
+    return {
+      points:ordered,
+      totalKm:Number.isFinite(Number(data.totalKm))?Number(data.totalKm):null,
+      mode:data.mode||"",
+      distanceSource:data.distanceSource||"",
+      warnings:Array.isArray(data.warnings)?data.warnings:[]
+    };
+  }catch(e){
+    return null;
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
+}
 
 
 function App(){
@@ -900,6 +939,20 @@ function App(){
       var coordsOlan=routePoints.filter(function(p){return p.coords;});
       var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
       // Her zaman optimize et — konum bulunamayanları sona ekle
+      var backendContext=null;
+      try{ backendContext=await getBackendRouteContext(coordsOlan,startPoint); }catch(e){ backendContext=null; }
+      if(backendContext){
+        var backendFinalPoints=backendContext.points.concat(coordsOlmayan);
+        var backendHatalar=[];
+        if(coordsOlmayan.length>0) backendHatalar.push(coordsOlmayan.length+" adresin konumu bulunamadı, sona eklendi");
+        if(backendContext.distanceSource&&backendContext.distanceSource!=="osrm-road-distance") backendHatalar.push("Yol mesafesi servisi yerine yedek mesafe hesabı kullanıldı");
+        if(backendContext.mode==="heuristic") backendHatalar.push("Durak sayısı yüksek olduğu için en iyi bulunan rota kullanıldı");
+        setRotaOtomatikIds(backendFinalPoints.map(function(p){return p.elev.id;}));
+        setRotaTahminiKm(backendContext.totalKm!==null?backendContext.totalKm:routeTotalKm(backendFinalPoints,startPoint));
+        setRotaOptHata(backendHatalar.join(" · "));
+        setRotaHesaplaniyor(false);
+        return;
+      }
       var roadContext=null;
       try{ roadContext=await getRoadCostContext(coordsOlan,startPoint); }catch(e){ roadContext=null; }
       var optimizerPoints=roadContext?roadContext.points:coordsOlan;
@@ -910,9 +963,12 @@ function App(){
       }
       var finalPoints=optimizeEdilen.concat(coordsOlmayan);
       var toplamKm=routeTotalKm(finalPoints,startPoint,roadContext&&roadContext.distanceBetween);
+      var fallbackHatalar=[];
+      if(coordsOlmayan.length>0) fallbackHatalar.push(coordsOlmayan.length+" adresin konumu bulunamadı, sona eklendi");
+      if(coordsOlan.length>1) fallbackHatalar.push("Backend rota servisine ulaşılamadı; cihaz içi yedek hesap kullanıldı");
       setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
       setRotaTahminiKm(toplamKm>0?toplamKm:null);
-      setRotaOptHata(coordsOlmayan.length>0?coordsOlmayan.length+" adresin konumu bulunamadı, sona eklendi":"");
+      setRotaOptHata(fallbackHatalar.join(" · "));
       setRotaHesaplaniyor(false);
     }
     var hesapTimer=setTimeout(function(){
