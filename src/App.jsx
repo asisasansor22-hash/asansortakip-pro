@@ -37,6 +37,27 @@ function routeMapTarget(e){
   var coords=getElevCoords(e);
   return coords?(coords.lat+","+coords.lng):routeAddressLabel(e);
 }
+function buildGoogleMapsUrl(targets,origin){
+  if(!targets||targets.length===0) return "";
+  var base="https://www.google.com/maps/dir/?api=1";
+  if(origin) base+="&origin="+encodeURIComponent(origin);
+  base+="&destination="+encodeURIComponent(targets[targets.length-1]);
+  if(targets.length>1) base+="&waypoints="+targets.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
+  base+="&travelmode=driving";
+  return base;
+}
+function buildGoogleMapsChunks(elevs,origin){
+  if(!elevs||elevs.length===0) return [];
+  var chunks=[]; var startIndex=0; var currentOrigin=origin||"";
+  while(startIndex<elevs.length){
+    var chunkElevs=elevs.slice(startIndex,startIndex+GOOGLE_MAPS_MAX_STOPS_PER_LINK);
+    var targets=chunkElevs.map(function(e){return routeMapTarget(e);});
+    chunks.push({url:buildGoogleMapsUrl(targets,currentOrigin),start:startIndex+1,end:startIndex+chunkElevs.length});
+    currentOrigin=targets[targets.length-1];
+    startIndex+=chunkElevs.length;
+  }
+  return chunks;
+}
 function deg2rad(v){ return v*(Math.PI/180); }
 function haversineKm(a,b){
   if(!a||!b) return Infinity;
@@ -47,8 +68,11 @@ function haversineKm(a,b){
   var x=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)*Math.sin(dLon/2);
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-const ROAD_ROUTE_MAX_POINTS=25;
+const ROAD_ROUTE_MAX_COORDS=100;
+const EXACT_ROUTE_MAX_POINTS=16;
+const GOOGLE_MAPS_MAX_STOPS_PER_LINK=10;
 const ROUTE_IMPROVE_EPS=0.0001;
+const LARGE_ROUTE_COST=999999999;
 function createHaversineCost(startPoint){
   return function(prev,next){
     var from=prev?prev.coords:startPoint;
@@ -61,7 +85,7 @@ function routeCost(order,startPoint,costBetween){
   var total=0; var prev=null;
   order.forEach(function(p){
     var cost=costFn(prev,p);
-    if(Number.isFinite(cost)) total+=cost; else total+=999999;
+    if(Number.isFinite(cost)) total+=cost; else total+=LARGE_ROUTE_COST;
     prev=p;
   });
   return total;
@@ -78,7 +102,7 @@ function routeTotalKm(order,startPoint,distanceBetween){
   return total;
 }
 function selectRouteStarts(points,startPoint,costBetween){
-  if(points.length<=10) return points.slice();
+  if(points.length<=25) return points.slice();
   var maxStarts=points.length<=40?10:6;
   var starts=[]; var seen={};
   function add(p){
@@ -118,6 +142,72 @@ function greedyRoute(points,startPoint,costBetween,firstPoint){
     ordered.push(current);
   }
   return ordered;
+}
+function sweepRoute(points,startPoint,costBetween,reverse){
+  if(points.length<=1) return points.slice();
+  var center=points.reduce(function(a,p){a.lat+=p.coords.lat||0;a.lng+=p.coords.lng||0;return a;},{lat:0,lng:0});
+  center.lat/=points.length; center.lng/=points.length;
+  var ordered=points.slice().sort(function(a,b){
+    var aa=Math.atan2((a.coords.lat||0)-center.lat,(a.coords.lng||0)-center.lng);
+    var bb=Math.atan2((b.coords.lat||0)-center.lat,(b.coords.lng||0)-center.lng);
+    return reverse?bb-aa:aa-bb;
+  });
+  if(startPoint){
+    var bestIdx=0; var bestCost=Infinity;
+    ordered.forEach(function(p,i){var cost=costBetween(null,p); if(cost<bestCost){bestCost=cost;bestIdx=i;}});
+    ordered=ordered.slice(bestIdx).concat(ordered.slice(0,bestIdx));
+  }
+  return ordered;
+}
+function optimizeRouteExact(points,startPoint,costBetween){
+  var n=points.length;
+  if(n===0) return [];
+  if(n>EXACT_ROUTE_MAX_POINTS) return null;
+  var stateCount=1<<n;
+  var dp=new Float64Array(stateCount*n);
+  var parent=new Int16Array(stateCount*n);
+  for(var d=0;d<dp.length;d++) dp[d]=Infinity;
+  parent.fill(-1);
+  for(var i=0;i<n;i++){
+    var startCost=startPoint?costBetween(null,points[i]):0;
+    if(!Number.isFinite(startCost)) startCost=LARGE_ROUTE_COST;
+    dp[((1<<i)*n)+i]=startCost;
+  }
+  for(var mask=1;mask<stateCount;mask++){
+    for(var last=0;last<n;last++){
+      var baseIdx=mask*n+last;
+      var baseCost=dp[baseIdx];
+      if(!Number.isFinite(baseCost)) continue;
+      for(var next=0;next<n;next++){
+        var bit=1<<next;
+        if(mask&bit) continue;
+        var step=costBetween(points[last],points[next]);
+        if(!Number.isFinite(step)) step=LARGE_ROUTE_COST;
+        var nextMask=mask|bit;
+        var nextIdx=nextMask*n+next;
+        var candidate=baseCost+step;
+        if(candidate+ROUTE_IMPROVE_EPS<dp[nextIdx]){
+          dp[nextIdx]=candidate;
+          parent[nextIdx]=last;
+        }
+      }
+    }
+  }
+  var fullMask=stateCount-1; var bestLast=-1; var bestCost=Infinity;
+  for(var end=0;end<n;end++){
+    var cost=dp[fullMask*n+end];
+    if(cost<bestCost){bestCost=cost;bestLast=end;}
+  }
+  if(bestLast<0||bestCost>=LARGE_ROUTE_COST/2) return null;
+  var route=[]; var current=bestLast; var currentMask=fullMask;
+  while(current>=0){
+    route.push(points[current]);
+    var idx=currentMask*n+current;
+    var prev=parent[idx];
+    currentMask=currentMask^(1<<current);
+    current=prev;
+  }
+  return route.reverse();
 }
 function improveTwoOpt(order,startPoint,costBetween){
   if(order.length<4) return order.slice();
@@ -159,29 +249,86 @@ function improveRelocate(order,startPoint,costBetween){
   }
   return best;
 }
+function improveSwap(order,startPoint,costBetween){
+  if(order.length<4) return order.slice();
+  var best=order.slice(); var bestCost=routeCost(best,startPoint,costBetween);
+  var maxPasses=order.length>70?1:2; var pass=0; var improved=true;
+  while(improved&&pass<maxPasses){
+    improved=false; pass++;
+    for(var i=0;i<best.length-1;i++){
+      for(var j=i+1;j<best.length;j++){
+        var candidate=best.slice();
+        var tmp=candidate[i]; candidate[i]=candidate[j]; candidate[j]=tmp;
+        var candidateCost=routeCost(candidate,startPoint,costBetween);
+        if(candidateCost+ROUTE_IMPROVE_EPS<bestCost){
+          best=candidate; bestCost=candidateCost; improved=true;
+        }
+      }
+    }
+  }
+  return best;
+}
+function improveSegmentRelocate(order,startPoint,costBetween){
+  if(order.length<5) return order.slice();
+  var best=order.slice(); var bestCost=routeCost(best,startPoint,costBetween);
+  var maxPasses=order.length>70?1:2; var pass=0; var improved=true;
+  while(improved&&pass<maxPasses){
+    improved=false; pass++;
+    for(var segmentSize=2;segmentSize<=3;segmentSize++){
+      if(segmentSize>=best.length) continue;
+      for(var i=0;i<=best.length-segmentSize;i++){
+        for(var pos=0;pos<=best.length;pos++){
+          if(pos>=i&&pos<=i+segmentSize) continue;
+          var candidate=best.slice();
+          var segment=candidate.splice(i,segmentSize);
+          var insertAt=pos>i?pos-segmentSize:pos;
+          candidate.splice.apply(candidate,[insertAt,0].concat(segment));
+          var candidateCost=routeCost(candidate,startPoint,costBetween);
+          if(candidateCost+ROUTE_IMPROVE_EPS<bestCost){
+            best=candidate; bestCost=candidateCost; improved=true;
+          }
+        }
+      }
+    }
+  }
+  return best;
+}
+function polishRoute(order,startPoint,costBetween){
+  var best=order.slice();
+  best=improveTwoOpt(best,startPoint,costBetween);
+  best=improveRelocate(best,startPoint,costBetween);
+  best=improveSwap(best,startPoint,costBetween);
+  best=improveSegmentRelocate(best,startPoint,costBetween);
+  best=improveTwoOpt(best,startPoint,costBetween);
+  return best;
+}
 function optimizeRoute(points,startPoint,costBetween){
   if(points.length<=1) return points.slice();
   var costFn=costBetween||createHaversineCost(startPoint);
+  var exact=optimizeRouteExact(points,startPoint,costFn);
+  if(exact) return exact;
   var starts=selectRouteStarts(points,startPoint,costFn);
   var bestOrder=null; var bestCost=Infinity;
-  starts.forEach(function(firstPoint){
-    var candidate=greedyRoute(points,startPoint,costFn,firstPoint);
-    candidate=improveTwoOpt(candidate,startPoint,costFn);
-    candidate=improveRelocate(candidate,startPoint,costFn);
-    candidate=improveTwoOpt(candidate,startPoint,costFn);
+  var candidates=[];
+  starts.forEach(function(firstPoint){ candidates.push(greedyRoute(points,startPoint,costFn,firstPoint)); });
+  candidates.push(sweepRoute(points,startPoint,costFn,false));
+  candidates.push(sweepRoute(points,startPoint,costFn,true));
+  candidates.forEach(function(candidate){
+    candidate=polishRoute(candidate,startPoint,costFn);
     var candidateCost=routeCost(candidate,startPoint,costFn);
     if(candidateCost<bestCost){ bestCost=candidateCost; bestOrder=candidate; }
   });
   return bestOrder||points.slice();
 }
 async function getRoadCostContext(points,startPoint){
-  if(points.length<2||points.length>ROAD_ROUTE_MAX_POINTS||typeof fetch!=="function") return null;
+  if(points.length<2||typeof fetch!=="function") return null;
   var hasStart=!!startPoint;
+  if(points.length+(hasStart?1:0)>ROAD_ROUTE_MAX_COORDS) return null;
   var matrixPoints=points.map(function(p,i){return Object.assign({},p,{_routeIndex:hasStart?i+1:i});});
   var coords=(hasStart?[startPoint]:[]).concat(matrixPoints.map(function(p){return p.coords;}));
   if(coords.some(function(c){return !c||!Number.isFinite(Number(c.lat))||!Number.isFinite(Number(c.lng));})) return null;
   var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
-  var url="https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=duration,distance";
+  var url="https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=distance";
   var controller=typeof AbortController!=="undefined"?new AbortController():null;
   var timer=controller?setTimeout(function(){controller.abort();},5500):null;
   try{
@@ -189,15 +336,15 @@ async function getRoadCostContext(points,startPoint){
     if(!res.ok) return null;
     var data=await res.json();
     if(data.code&&data.code!=="Ok") return null;
-    if(!Array.isArray(data.durations)||!Array.isArray(data.distances)) return null;
+    if(!Array.isArray(data.distances)) return null;
     return {
       points:matrixPoints,
       costBetween:function(prev,next){
         var fromIdx=prev?prev._routeIndex:(hasStart?0:null);
         if(fromIdx===null) return 0;
         var toIdx=next&&next._routeIndex;
-        var v=data.durations[fromIdx]&&data.durations[fromIdx][toIdx];
-        return Number.isFinite(v)?v/60:Infinity;
+        var v=data.distances[fromIdx]&&data.distances[fromIdx][toIdx];
+        return Number.isFinite(v)?v/1000:Infinity;
       },
       distanceBetween:function(prev,next){
         var fromIdx=prev?prev._routeIndex:(hasStart?0:null);
@@ -757,7 +904,7 @@ function App(){
       try{ roadContext=await getRoadCostContext(coordsOlan,startPoint); }catch(e){ roadContext=null; }
       var optimizerPoints=roadContext?roadContext.points:coordsOlan;
       var optimizeEdilen=optimizerPoints.length>0?optimizeRoute(optimizerPoints,startPoint,roadContext&&roadContext.costBetween):[];
-      if(roadContext&&routeCost(optimizeEdilen,startPoint,roadContext.costBetween)>=999999){
+      if(roadContext&&routeCost(optimizeEdilen,startPoint,roadContext.costBetween)>=LARGE_ROUTE_COST/2){
         roadContext=null;
         optimizeEdilen=coordsOlan.length>0?optimizeRoute(coordsOlan,startPoint):[];
       }
@@ -878,16 +1025,8 @@ function App(){
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
   const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
   // Google Maps Directions API formatı: origin + waypoints + destination
-  const mapsUrl=(function(){
-    if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return routeMapTarget(e);});
-    var base="https://www.google.com/maps/dir/?api=1";
-    if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
-    base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
-    base+="&travelmode=driving";
-    return base;
-  })();
+  const mapsUrls=buildGoogleMapsChunks(rotaElevs,rotaStartStr);
+  const mapsUrl=mapsUrls[0]?mapsUrls[0].url:"";
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){
     if(!m.planlanmis||m.yapildi) return false;
@@ -1641,10 +1780,18 @@ function App(){
                 style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
                   background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
                   textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-              }, "🗺️ Google Maps'te Rotayı Başlat"),
+              }, mapsUrls.length>1?"🗺️ 1. Parçayı Google Maps'te Başlat":"🗺️ Google Maps'te Rotayı Başlat"),
+
+          mapsUrls.length>1&&React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}},
+            mapsUrls.slice(1).map(function(m,idx){
+              return React.createElement('a',{key:idx,href:m.url,target:"_blank",rel:"noreferrer",
+                style:{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 8px",borderRadius:9,background:"#10233f",border:"1px solid #2563eb55",color:"#93c5fd",textDecoration:"none",fontWeight:800,fontSize:12}
+              },(idx+2)+". Parça ("+m.start+"-"+m.end+")");
+            })
+          ),
 
           React.createElement('button',{
-            onClick:()=>_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(mapsUrl),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]),
+            onClick:function(){var text=mapsUrls.length>1?mapsUrls.map(function(m,i){return (i+1)+". Parça ("+m.start+"-"+m.end+"): "+m.url;}).join("\n"):mapsUrl;_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(text),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]);},
             style:{padding:"10px 0",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:10,color:"#94a3b8",fontWeight:600,fontSize:12,cursor:"pointer"}
           },"📋 Rota Linkini Kopyala")
         )
