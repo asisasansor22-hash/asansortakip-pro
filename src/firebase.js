@@ -12,6 +12,83 @@ const firebaseConfig = {
   measurementId: "G-Z6GPHV36QW"
 };
 
+const ROUTE_OPTIMIZE_PATH = "/api/optimize-route";
+const ROUTE_OPTIMIZE_FUNCTION_URL = "https://europe-west1-asansortakipv3.cloudfunctions.net/optimizeRoute";
+
+function isRouteOptimizeRequest(input) {
+  var raw = typeof input === "string" ? input : (input && input.url);
+  if (!raw) return false;
+  if (raw === ROUTE_OPTIMIZE_FUNCTION_URL) return true;
+  try {
+    var base = typeof window !== "undefined" && window.location ? window.location.origin : "https://asansortakipv3.web.app";
+    return new URL(raw, base).pathname === ROUTE_OPTIMIZE_PATH;
+  } catch (e) {
+    return raw === ROUTE_OPTIMIZE_PATH || raw.indexOf(ROUTE_OPTIMIZE_PATH) >= 0;
+  }
+}
+
+function validRouteCoord(point) {
+  return point && Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lng));
+}
+
+function sanitizeRoutePayloadBody(body) {
+  if (typeof body !== "string") return body;
+  try {
+    var payload = JSON.parse(body);
+    if (!payload || !Array.isArray(payload.stops)) return body;
+    payload.stops = payload.stops
+      .filter(validRouteCoord)
+      .map(function(stop) {
+        return { id: stop.id, lat: Number(stop.lat), lng: Number(stop.lng) };
+      });
+    if (payload.start && validRouteCoord(payload.start)) {
+      payload.start = { lat: Number(payload.start.lat), lng: Number(payload.start.lng) };
+    } else {
+      payload.start = null;
+    }
+    return JSON.stringify(payload);
+  } catch (e) {
+    return body;
+  }
+}
+
+function installRouteFetchFallback() {
+  if (typeof globalThis === "undefined" || typeof globalThis.fetch !== "function") return;
+  if (globalThis.__AT_ROUTE_FETCH_PATCHED__) return;
+  globalThis.__AT_ROUTE_FETCH_PATCHED__ = true;
+
+  var nativeFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = async function(input, init) {
+    if (!isRouteOptimizeRequest(input)) return nativeFetch(input, init);
+
+    var safeInit = Object.assign({}, init || {});
+    if (safeInit.body !== undefined) safeInit.body = sanitizeRoutePayloadBody(safeInit.body);
+
+    var firstResponse = null;
+    try {
+      firstResponse = await nativeFetch(input, safeInit);
+      if (firstResponse && firstResponse.ok) return firstResponse;
+    } catch (e) {}
+
+    var raw = typeof input === "string" ? input : (input && input.url);
+    if (raw === ROUTE_OPTIMIZE_FUNCTION_URL) {
+      if (firstResponse) return firstResponse;
+      return nativeFetch(input, safeInit);
+    }
+
+    try {
+      var retryResponse = await nativeFetch(ROUTE_OPTIMIZE_FUNCTION_URL, safeInit);
+      if (retryResponse && retryResponse.ok) return retryResponse;
+      return firstResponse || retryResponse;
+    } catch (e2) {
+      if (firstResponse) return firstResponse;
+      throw e2;
+    }
+  };
+}
+
+installRouteFetchFallback();
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
