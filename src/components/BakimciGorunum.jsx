@@ -4,7 +4,7 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci}){
+function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,kalanEskiDevir,yeniDevir,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci}){
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
   const [odemeModal,setOdemeModal]=useState(null);
@@ -203,7 +203,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
             , bekleyenBakimlar.map(m=>{
               const elev=elevs.find(e=>e.id===m.asansorId);
               if(!elev) return null;
-              const devir=elev.bakiyeDevir||0;
+              const devir=kalanEskiDevir?kalanEskiDevir(elev.id,fMonth):(elev.bakiyeDevir||0);
               const c=getIlceRenk(elev.ilce);
               return(
                 React.createElement('div', { key: m.id, style: {background:"#141824",borderRadius:12,border:"1px solid #2a3050",overflow:"hidden"},}
@@ -257,7 +257,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
             , tamamlananBakimlar.map(m=>{
               const elev=elevs.find(e=>e.id===m.asansorId);
               if(!elev) return null;
-              const devir=elev.bakiyeDevir||0;
+              const devir=kalanEskiDevir?kalanEskiDevir(elev.id,fMonth):(elev.bakiyeDevir||0);
               const c=getIlceRenk(elev.ilce);
               // Saat kısmını çıkar
               var saatStr="";
@@ -308,7 +308,8 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             tel=tel.replace(/^\+/,"");
                             var tarihStr=m.yapildiSaat?m.yapildiSaat.split(" ")[0]:"";
                             var alinan=m.alinanTutar||0;
-                            var toplamBorc=devir+(elev.aylikUcret||0)-alinan;
+                            var toplamBorc=yeniDevir?yeniDevir(elev.id,fMonth):null;
+                            if(toplamBorc===null) toplamBorc=devir+(elev.aylikUcret||0)-alinan;
                             var mesaj=
                               "Sayın "+elev.ad+" Yönetimi,\n\n"+
                               "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
