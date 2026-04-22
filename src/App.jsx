@@ -1041,6 +1041,32 @@ function App(){
   const mMonth=useMemo(()=>maints.filter(m=>{const d=new Date(m.tarih);return d.getMonth()===fMonth&&d.getFullYear()===new Date().getFullYear();}),[maints,fMonth]);
   const unpaid=maints.filter(m=>m.yapildi&&!m.odendi).length;
 
+  const getAyAraligi=(month)=>{
+    const yil=new Date().getFullYear();
+    const hedefAy=month===undefined||month===null?new Date().getMonth():Number(month);
+    const ayBaslangic=new Date(yil,hedefAy,1);
+    ayBaslangic.setHours(0,0,0,0);
+    const aySon=new Date(yil,hedefAy+1,0);
+    aySon.setHours(23,59,59,999);
+    return {ayBaslangic,aySon};
+  };
+
+  const ayTahsilati=(id,month)=>{
+    const aralik=getAyAraligi(month);
+    return sonOdemeler.filter(function(o){
+      var od=new Date(o.tarih);
+      var ayniAsansor=Number(o.aid)===Number(id);
+      return ayniAsansor&&!o.iptal&&od>=aralik.ayBaslangic&&od<=aralik.aySon;
+    }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
+  };
+
+  const kalanEskiDevir=(id,month)=>{
+    const e=elevs.find(x=>x.id===id);if(!e) return 0;
+    const eskiDevir=Number(e.bakiyeDevir)||0;
+    const kalan=eskiDevir-ayTahsilati(id,month);
+    return kalan>0?kalan:0;
+  };
+
   const bal=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return 0;
     return e.bakiyeDevir||0;
@@ -1051,9 +1077,13 @@ function App(){
      - Bakım yapıldıysa & ödeme alınmadıysa: eskiDevir + aylikUcret
      - Bakım henüz yapılmadıysa: null (boş göster)
   */
-  const yeniDevir=(id)=>{
+  const yeniDevir=(id,month)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
-    const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
+    const aralik=getAyAraligi(month);
+    const bakimKaydi=maints.find(function(m){
+      var d=new Date(m.tarih);
+      return Number(m.asansorId)===Number(id)&&m.yapildi&&d>=aralik.ayBaslangic&&d<=aralik.aySon;
+    });
     if(!bakimKaydi) return null;
     // Manuel override varsa direkt döndür
     if(e.yeniDevirManuel!==undefined&&e.yeniDevirManuel!==null&&e.yeniDevirManuel!==""){
@@ -1061,15 +1091,7 @@ function App(){
     }
     const eskiDevir=e.bakiyeDevir||0;
     const aylikUcret=e.aylikUcret||0;
-    const simdi=new Date();
-    const ayBaslangic=new Date(simdi.getFullYear(),simdi.getMonth(),1);
-    const aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);
-    aySon.setHours(23,59,59,999);
-    const toplamAlinan=sonOdemeler.filter(function(o){
-      var od=new Date(o.tarih);
-      var ayniAsansor=Number(o.aid)===Number(id);
-      return ayniAsansor&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
-    }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
+    const toplamAlinan=ayTahsilati(id,month);
     return eskiDevir+aylikUcret-toplamAlinan;
   };
   const eName=(id)=>{const nid=typeof id==="string"?+id:id;return _optionalChain([elevs, 'access', _7 => _7.find, 'call', _8 => _8(e=>e.id===nid||e.id===id), 'optionalAccess', _9 => _9.ad])||"?"};
@@ -1123,7 +1145,15 @@ function App(){
     edit?setTasks(p=>p.map(t=>t.id===edit.id?{...t,...d}:t)):setTasks(p=>[...p,{...d,id:Date.now()}]);
     close();
   };
-  const del=(type,id)=>{if(type==="e")setElevs(p=>p.filter(x=>x.id!==id));if(type==="m")setMaints(p=>p.filter(x=>x.id!==id));if(type==="f")setFaults(p=>p.filter(x=>x.id!==id));if(type==="t")setTasks(p=>p.filter(x=>x.id!==id));};
+  const del=(type,id)=>{
+    if(type==="e"){
+      if(!window.confirm("Bu asansörü listenizden çıkarmak istediğinize emin misiniz?")) return;
+      setElevs(p=>p.filter(x=>x.id!==id));
+    }
+    if(type==="m")setMaints(p=>p.filter(x=>x.id!==id));
+    if(type==="f")setFaults(p=>p.filter(x=>x.id!==id));
+    if(type==="t")setTasks(p=>p.filter(x=>x.id!==id));
+  };
 
   const filteredElevs=useMemo(()=>{
     let list=fIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===fIlce);
@@ -1367,7 +1397,7 @@ function App(){
       })()
     /* Toplam Devir Kartı */
     , (function(){
-        var toplamDevir=elevs.reduce(function(s,e){return s+(e.bakiyeDevir||0);},0);
+        var toplamDevir=elevs.reduce(function(s,e){return s+kalanEskiDevir(e.id,fMonth);},0);
         return React.createElement('div', {style:{background:"var(--bg-panel)",borderRadius:20,padding:"16px 18px",marginBottom:10,boxShadow:"var(--shadow-sm)",borderLeft:"4px solid "+(toplamDevir>0?"var(--ios-red)":toplamDevir===0?"var(--ios-green)":"var(--ios-orange)")}}
           , React.createElement('div', {style:{display:"flex",alignItems:"center",justifyContent:"space-between"}}
             , React.createElement('div', null
@@ -1563,10 +1593,10 @@ function App(){
                   )
                 , React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
                   , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
-                  , React.createElement('span', { style: {fontSize:10,background:bal(e.id)>0?"#3a1e1e":bal(e.id)<0?"#0a2a1a":"#1a1f2e",color:bal(e.id)>0?"#ef4444":bal(e.id)<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, "Eski Devir: " , (bal(e.id)>0?"+":"")+bal(e.id).toLocaleString("tr-TR"), " ₺" )
+                  , React.createElement('span', { style: {fontSize:10,background:kalanEskiDevir(e.id,fMonth)>0?"#3a1e1e":"#1a1f2e",color:kalanEskiDevir(e.id,fMonth)>0?"#ef4444":"#10b981",padding:"2px 8px",borderRadius:6,fontWeight:700},}, "Eski Devir: " , (kalanEskiDevir(e.id,fMonth)>0?"+":"")+kalanEskiDevir(e.id,fMonth).toLocaleString("tr-TR"), " ₺" )
                 )
                 , (function(){
-                    var nd=yeniDevir(e.id);
+                    var nd=yeniDevir(e.id,fMonth);
                     if(nd===null) return null;
                     var ndColor=nd>0?"#f97316":nd===0?"#64748b":"#34d399";
                     var ndBg=nd>0?"rgba(249,115,22,0.12)":nd===0?"rgba(100,116,139,0.10)":"rgba(52,211,153,0.12)";
@@ -1587,7 +1617,7 @@ function App(){
                 , e.tel&&React.createElement('button', {
                       onClick:function(ev){
                         ev.stopPropagation();
-                        var nd=yeniDevir(e.id);
+                        var nd=yeniDevir(e.id,fMonth);
                         var borc=nd!==null?nd:(e.bakiyeDevir||0)+(e.aylikUcret||0);
                         var tutar=borc.toLocaleString("tr-TR")+" ₺";
                         var tel=(e.tel||"").replace(/[\s\-\(\)]/g,"");
@@ -1642,8 +1672,8 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,konum:rotaKonum},})
-)
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, kalanEskiDevir: kalanEskiDevir, yeniDevir: yeniDevir, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,konum:rotaKonum},})
+
 
 /* ARIZALAR - YÖNETİCİ */
 , tab===3&&(
@@ -3028,7 +3058,7 @@ function App(){
                     style:{width:"100%",background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"9px 12px",color:"#e0e6f0",fontSize:13,outline:"none",cursor:"pointer"}
                   }
                   , React.createElement('option',{value:""},"— Bina seçin —")
-                  , elevs.filter(function(e){return (e.ilce||"Diğer")===form.odIlce;}).map(function(e){return React.createElement('option',{key:e.id,value:String(e.id)},e.ad+" (Bakiye: "+(bal(e.id)>0?"+":"")+bal(e.id).toLocaleString("tr-TR")+" ₺)");})
+                  , elevs.filter(function(e){return (e.ilce||"Diğer")===form.odIlce;}).map(function(e){return React.createElement('option',{key:e.id,value:String(e.id)},e.ad+" (Eski Devir: "+(kalanEskiDevir(e.id)>0?"+":"")+kalanEskiDevir(e.id).toLocaleString("tr-TR")+" ₺)");})
                 )
               )
               , (form.odIlce&&form.odBinaId)&&React.createElement('div', null
