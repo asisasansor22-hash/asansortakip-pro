@@ -3,7 +3,7 @@ import KontrolListesi from './KontrolListesi.jsx'
 import { makbuzBakimYazdir } from '../utils/makbuz.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK } from '../utils/constants.js'
 
-function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMonth,ilceler,elevByIlce,today,eName,bakimcilar}){
+function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMonth,ilceler,elevByIlce,today,eName,bakimcilar,bal}){
   const [seciliIlce,setSeciliIlce]=useState(null);   // hangi ilçe açık
   const [secili,setSecili]=useState({});              // {elevId: true}
   const [gorunum,setGorunum]=useState("bekleyen");   // "bekleyen"|"atandi"|"tamam"
@@ -21,7 +21,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
     if(kayitlar.length===0) return "bekleyen";
     // Öncelik: tamamlanan > atanmış > bekleyen
     if(kayitlar.some(m=>m.yapildi)) return "tamam";
-    if(kayitlar.some(m=>m.planlanmis)) return "atandi";
+    if(kayitlar.some(m=>m.planlanmis&&m.bakimciId)) return "atandi";
     return "bekleyen";
   };
 
@@ -52,12 +52,21 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
 
   const ataEl=(elevId)=>{
     const elev=elevs.find(e=>e.id===elevId);
+    if(!elev||!seciliBakimci){
+      alert("Atama yapmak için önce kayıtlı bir bakımcı seçin.");
+      return;
+    }
     // Seçili bakımcı bilgilerini ekle
-    const bkId=seciliBakimci?seciliBakimci.id:null;
-    const bkAd=seciliBakimci?seciliBakimci.ad:null;
-    const bkRenk=seciliBakimci?seciliBakimci.renk:null;
+    const bkId=seciliBakimci.id;
+    const bkAd=seciliBakimci.ad;
+    const bkRenk=seciliBakimci.renk;
     // Bu aya ait TÜM kayıtları bul (duplikat olabilir)
     const ayKayitlari=mMonth.filter(m=>m.asansorId===elevId);
+    const aktifAtama=ayKayitlari.find(m=>m.planlanmis&&m.bakimciId);
+    if(aktifAtama&&aktifAtama.bakimciId!==bkId){
+      alert((elev.ad||"Bu bina")+" zaten "+(aktifAtama.bakimciAd||"başka bir bakımcıya")+" atanmış. Önce geri alın, sonra yeniden atayın.");
+      return;
+    }
     if(ayKayitlari.length>0){
       // Mevcut kayıtların hepsini planlanmis:true yap (duplikat güvenliği)
       const ilkId=ayKayitlari[0].id;
@@ -65,7 +74,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
         if(ayKayitlari.some(k=>k.id===x.id)){
           // İlk kayıt dışındakileri (duplikatları) sil: planlanmis:false, yapildi:false ile "pasif" yap
           // İlk kaydı aktif tut
-          return x.id===ilkId?{...x,planlanmis:true,bakimciId:bkId,bakimciAd:bkAd,bakimciRenk:bkRenk}:{...x,planlanmis:false,yapildi:false};
+          return x.id===ilkId?{...x,planlanmis:true,bakimciId:bkId,bakimciAd:bkAd,bakimciRenk:bkRenk}:{...x,planlanmis:false,yapildi:false,bakimciId:null,bakimciAd:null,bakimciRenk:null};
         }
         return x;
       }));
@@ -88,7 +97,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
     // Bu aya ait TÜM kayıtları iptal et (duplikat güvenliği)
     const ayKayitlari=mMonth.filter(m=>m.asansorId===elevId);
     if(ayKayitlari.length>0){
-      setMaints(p=>p.map(x=>ayKayitlari.some(k=>k.id===x.id)?{...x,planlanmis:false}:x));
+      setMaints(p=>p.map(x=>ayKayitlari.some(k=>k.id===x.id)?{...x,planlanmis:false,bakimciId:null,bakimciAd:null,bakimciRenk:null}:x));
     }
   };
 
@@ -98,6 +107,10 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
   };
 
   const ataSecililer=()=>{
+    if(!seciliBakimci){
+      alert("Toplu atama için önce kayıtlı bir bakımcı seçin.");
+      return;
+    }
     Object.keys(secili).filter(id=>secili[id]).forEach(id=>ataEl(parseInt(id)));
     setSecili({});
   };
@@ -147,10 +160,6 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
         React.createElement('div',{style:{background:"var(--bg-panel)",borderRadius:12,padding:"10px 14px",marginBottom:12,border:"1px solid var(--border-soft)"}}
           ,React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"var(--text-muted)",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.5px"}},"Bakımcı Seç")
           ,React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap"}}
-            ,React.createElement('button',{
-              onClick:()=>setSeciliBakimci(null),
-              style:{padding:"5px 12px",borderRadius:20,border:"2px solid "+(seciliBakimci===null?"var(--accent)":"var(--border)"),background:seciliBakimci===null?"var(--accent)22":"transparent",color:seciliBakimci===null?"var(--accent)":"var(--text-muted)",fontSize:12,fontWeight:700,cursor:"pointer"}
-            },"Tüm Bakımcılar")
             ,bakimcilar.map(b=>React.createElement('button',{
               key:b.id,
               onClick:()=>setSeciliBakimci(b),
@@ -160,8 +169,8 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
               ,b.ad
             ))
           )
-          ,seciliBakimci&&React.createElement('div',{style:{marginTop:8,fontSize:12,color:"var(--ios-orange)",fontWeight:600}}
-            ,"⚠️ Atama yapılacak: "+seciliBakimci.ad
+          ,React.createElement('div',{style:{marginTop:8,fontSize:12,color:seciliBakimci?"var(--ios-orange)":"#ef4444",fontWeight:600}}
+            ,seciliBakimci?"⚠️ Atama yapılacak: "+seciliBakimci.ad:"⚠️ Atama için önce kayıtlı bir bakımcı seçin"
           )
         )
       )
@@ -242,7 +251,8 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
               )
               , seciliSayi>0&&gorunum==="bekleyen"&&(
                 React.createElement('button', { onClick: ataSecililer,
-                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#000",fontWeight:800,fontSize:11,cursor:"pointer"},}, "📤 "
+                  disabled:!seciliBakimci,
+                  style: {padding:"5px 14px",borderRadius:8,background:"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:"#000",fontWeight:800,fontSize:11,cursor:seciliBakimci?"pointer":"not-allowed",opacity:seciliBakimci?1:0.55},}, "📤 "
                    , seciliSayi, " Binayı Bakımcıya At"
                 )
               )
@@ -308,6 +318,8 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                         , eles.map(e=>{
                           const m=mMonth.find(m=>m.asansorId===e.id);
                           const isSec=!!secili[e.id];
+                          const gosterilenDevir=bal?bal(e.id):(e.bakiyeDevir||0);
+                          const devirEtiket=gosterilenDevir!==(e.bakiyeDevir||0)?"Kalan":"Devir";
                           return(
                             React.createElement('div', { key: e.id, style: {
                               display:"flex",alignItems:"center",gap:8,
@@ -363,7 +375,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                 )
                                 , gorunum==="tamam"&&(
                                   React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:3,alignItems:"flex-end"},}
-                                    , React.createElement('span', { style: {fontSize:10,background:(e.bakiyeDevir||0)>0?"#3a1e1e":"#1e3a2e",color:(e.bakiyeDevir||0)>0?"#ef4444":"#10b981",padding:"3px 8px",borderRadius:6,fontWeight:700}}, "Devir: "+((e.bakiyeDevir||0)).toLocaleString("tr-TR")+" ₺")
+                                    , React.createElement('span', { style: {fontSize:10,background:gosterilenDevir>0?"#3a1e1e":gosterilenDevir<0?"#0a2a1a":"#1e3a2e",color:gosterilenDevir>0?"#ef4444":gosterilenDevir<0?"#34d399":"#10b981",padding:"3px 8px",borderRadius:6,fontWeight:700}}, devirEtiket+": "+(gosterilenDevir>0?"+":"")+gosterilenDevir.toLocaleString("tr-TR")+" ₺")
                                     , (function(){
                                         /* Yeni devir hesabı */
                                         var bk=mMonth.find(function(bx){return bx.asansorId===e.id&&bx.yapildi;});
@@ -385,7 +397,8 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                 )
                                 , gorunum==="bekleyen"&&(
                                   React.createElement('button', { onClick: (ev)=>{ev.stopPropagation();ataEl(e.id);},
-                                    style: {padding:"3px 10px",borderRadius:6,background:"#1e3a10",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:10,cursor:"pointer",fontWeight:700},}, "📤 Ata"
+                                    disabled:!seciliBakimci,
+                                    style: {padding:"3px 10px",borderRadius:6,background:"#1e3a10",border:"1px solid #f59e0b44",color:"#f59e0b",fontSize:10,cursor:seciliBakimci?"pointer":"not-allowed",fontWeight:700,opacity:seciliBakimci?1:0.55},}, "📤 Ata"
 
                                   )
                                 )
