@@ -25,11 +25,419 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
 
 function routeAddressKey(e){
-  return [e.ad||"", e.semt||"", e.adres||"", e.ilce||""].join(" | ");
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce)]).join(" | ");
+}
+
+function routeAddressLabelOriginal(e){
+  return (e.semt?e.semt+" Mahallesi, ":"") + (e.adres||"") + (e.ilce?", "+e.ilce+", İstanbul":"");
+}
+
+var ROUTE_GEO_CACHE_VERSION = 2;
+var MAPS_MAX = 13;
+
+function normalizeRouteText(value){
+  return String(value||"")
+    .normalize("NFKC")
+    .replace(/\u0307/g,"")
+    .replace(/\s+/g," ")
+    .replace(/\s+,/g,",")
+    .replace(/,\s+/g,", ")
+    .trim();
+}
+
+function routeFold(value){
+  return normalizeRouteText(value)
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .replace(/\u0131/g,"i");
+}
+
+function routeUniqueParts(parts){
+  return (parts||[]).reduce(function(acc,part){
+    var clean=normalizeRouteText(part);
+    var folded=routeFold(clean);
+    if(!folded) return acc;
+    var exists=acc.some(function(existing){
+      var existingFold=routeFold(existing);
+      return existingFold===folded||existingFold.includes(folded)||folded.includes(existingFold);
+    });
+    if(!exists) acc.push(clean);
+    return acc;
+  },[]);
+}
+
+function normalizeRouteAddress(value){
+  return normalizeRouteText(value)
+    .replace(/\bMAH\b\.?\s*/gi,"Mahallesi ")
+    .replace(/\bSOK\b\.?\s*/gi,"Sokak ")
+    .replace(/\bCAD\b\.?\s*/gi,"Caddesi ")
+    .replace(/\bBLV\b\.?\s*/gi,"Bulvar\u0131 ")
+    .replace(/\bNO\s*:\s*$/i,"")
+    .replace(/\bD(?:A(?:I|\u0130)RE)?\s*:\s*$/i,"")
+    .replace(/\s*D(?:A(?:[İI])RE)?\s*:?\s*\d+\s*$/i,"")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function normalizeRouteBuildingName(value){
+  return normalizeRouteText(value)
+    .replace(/[()]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+
+function stripRouteHouseNumber(value){
+  return normalizeRouteAddress(value)
+    .replace(/\bNO\s*:\s*[A-Z0-9/-]+/gi,"")
+    .replace(/\bD(?:A(?:I|\u0130)RE)?\s*:\s*[A-Z0-9/-]+/gi,"")
+    .replace(/\s+/g," ")
+    .replace(/[,:-]+\s*$/,"")
+    .trim();
+}
+
+function stripRouteBlockInfo(value){
+  return normalizeRouteAddress(value)
+    .replace(/\b(?:BLOK|BLK|APT\.?|APARTMANI|S\u0130TES\u0130|S\u0130TE|DA\u0130RE|D:)\b.*$/i,"")
+    .replace(/\s+/g," ")
+    .replace(/[,:-]+\s*$/,"")
+    .trim();
+}
+
+function pushRouteQuery(list,parts){
+  var query=routeUniqueParts((parts||[]).concat(["\u0130stanbul"])).join(", ");
+  if(!query) return;
+  if(list.some(function(existing){return routeFold(existing)===routeFold(query);})){return;}
+  list.push(query);
+}
+
+function routeAddressKeyLegacy(e){
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce)]).join(" | ");
 }
 
 function routeAddressLabel(e){
-  return (e.semt?e.semt+" Mahallesi, ":"") + (e.adres||"") + (e.ilce?", "+e.ilce+", İstanbul":"");
+  return routeUniqueParts([normalizeRouteAddress(e&&e.adres), normalizeRouteText(e&&e.semt), normalizeRouteText(e&&e.ilce), "\u0130stanbul"]).join(", ");
+}
+
+function buildRouteGeocodeQueries(e){
+  var address=normalizeRouteAddress(e&&e.adres);
+  var streetOnly=stripRouteHouseNumber(address);
+  var blockFree=stripRouteBlockInfo(address);
+  var semt=normalizeRouteText(e&&e.semt);
+  var ilce=normalizeRouteText(e&&e.ilce);
+  var binaAd=normalizeRouteBuildingName(e&&e.ad);
+  var queries=[];
+  if(address){
+    pushRouteQuery(queries,[address,semt,ilce]);
+    pushRouteQuery(queries,[address,ilce]);
+  }
+  if(streetOnly&&routeFold(streetOnly)!==routeFold(address)){
+    pushRouteQuery(queries,[streetOnly,semt,ilce]);
+    pushRouteQuery(queries,[streetOnly,ilce]);
+  }
+  if(blockFree&&routeFold(blockFree)!==routeFold(address)&&routeFold(blockFree)!==routeFold(streetOnly)){
+    pushRouteQuery(queries,[blockFree,semt,ilce]);
+    pushRouteQuery(queries,[blockFree,ilce]);
+  }
+  if(binaAd){
+    pushRouteQuery(queries,[binaAd,address,semt,ilce]);
+    pushRouteQuery(queries,[binaAd,address,ilce]);
+    pushRouteQuery(queries,[binaAd,semt,ilce]);
+    pushRouteQuery(queries,[binaAd,ilce]);
+  }
+  if(semt){
+    pushRouteQuery(queries,[semt,ilce]);
+  }else if(ilce){
+    pushRouteQuery(queries,[ilce]);
+  }
+  return queries;
+}
+
+function buildStartGeocodeQueries(text){
+  var address=normalizeRouteAddress(text);
+  var streetOnly=stripRouteHouseNumber(address);
+  var blockFree=stripRouteBlockInfo(address);
+  var queries=[];
+  if(address) pushRouteQuery(queries,[address]);
+  if(streetOnly&&routeFold(streetOnly)!==routeFold(address)){
+    pushRouteQuery(queries,[streetOnly]);
+  }
+  if(blockFree&&routeFold(blockFree)!==routeFold(address)&&routeFold(blockFree)!==routeFold(streetOnly)){
+    pushRouteQuery(queries,[blockFree]);
+  }
+  return queries;
+}
+
+function scoreRouteCandidateLabel(label,context,baseScore){
+  var score=Number(baseScore)||0;
+  var haystack=routeFold(label);
+  var istKey=routeFold("\u0130stanbul");
+  if(haystack.includes(istKey)) score+=10;
+  else score-=20;
+  var ilceKey=routeFold(context&&context.ilce);
+  if(ilceKey){
+    if(haystack.includes(ilceKey)) score+=12;
+    else score-=6;
+  }
+  var semtKey=routeFold(context&&context.semt);
+  if(semtKey&&haystack.includes(semtKey)) score+=5;
+  return score;
+}
+
+async function geocodeWithArcGIS(query,context){
+  var res=await fetch("https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&maxLocations=5&outFields=Match_addr,Addr_type,City,Region,Country&singleLine="+encodeURIComponent(query),{
+    headers:{Accept:"application/json","Accept-Language":"tr"}
+  });
+  if(!res.ok) throw new Error("ArcGIS geocode baÅŸarÄ±sÄ±z");
+  var data=await res.json();
+  var items=Array.isArray(data&&data.candidates)?data.candidates:[];
+  return items.map(function(item){
+    var location=item&&item.location;
+    var lat=location?Number(location.y):NaN;
+    var lng=location?Number(location.x):NaN;
+    var attrs=item&&item.attributes?item.attributes:{};
+    var addrType=attrs.Addr_type||"";
+    var label=item.address||attrs.Match_addr||query;
+    var rank=scoreRouteCandidateLabel(label,context,item&&item.score);
+    var precision=(addrType==="PointAddress"||addrType==="StreetAddress")?"exact":"approximate";
+    if(addrType==="PointAddress"||addrType==="StreetAddress") rank+=8;
+    else if(addrType==="StreetName") rank+=4;
+    return {lat:lat,lng:lng,label:label,precision:precision,source:"arcgis",rank:rank};
+  }).filter(function(item){
+    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
+  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
+}
+
+async function geocodeWithNominatim(query,context){
+  var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=5&q="+encodeURIComponent(query),{
+    headers:{Accept:"application/json","Accept-Language":"tr"}
+  });
+  if(!res.ok) throw new Error("Nominatim geocode baÅŸarÄ±sÄ±z");
+  var data=await res.json();
+  return (Array.isArray(data)?data:[]).map(function(item){
+    var lat=Number(item&&item.lat);
+    var lng=Number(item&&item.lon);
+    var type=item&&item.type||"";
+    var label=item&&item.display_name||query;
+    var rank=scoreRouteCandidateLabel(label,context,70+((Number(item&&item.importance)||0)*20));
+    var precision=(type==="house"||type==="building")?"exact":"approximate";
+    if(type==="house"||type==="building") rank+=8;
+    else if(type==="road"||type==="residential") rank+=4;
+    return {lat:lat,lng:lng,label:label,precision:precision,source:"nominatim",rank:rank};
+  }).filter(function(item){
+    return Number.isFinite(item.lat)&&Number.isFinite(item.lng);
+  }).sort(function(a,b){return b.rank-a.rank;})[0]||null;
+}
+
+async function geocodeRouteQueries(queries,context){
+  var best=null;
+  // ArcGIS
+  for(var i=0;i<queries.length;i++){
+    try{
+      var arcgis=await geocodeWithArcGIS(queries[i],context);
+      if(arcgis&&(!best||arcgis.rank>best.rank)) best=arcgis;
+      if(arcgis&&(arcgis.precision==="exact"||arcgis.rank>=88)) return arcgis;
+    }catch(e){}
+  }
+  // Nominatim
+  for(var j=0;j<queries.length;j++){
+    try{
+      var nominatim=await geocodeWithNominatim(queries[j],context);
+      if(nominatim&&(!best||nominatim.rank>best.rank)) best=nominatim;
+      if(nominatim&&(nominatim.precision==="exact"||nominatim.rank>=88)) return nominatim;
+    }catch(e){}
+  }
+  return best&&best.rank>=70?best:null;
+}
+
+async function fetchRoadDistanceMatrix(points,startPoint){
+  var coords=(startPoint?[startPoint]:[]).concat(points.map(function(p){return p.coords;})).filter(Boolean);
+  if(coords.length<2||coords.length>26) return null;
+  try{
+    var coordStr=coords.map(function(c){return Number(c.lng)+","+Number(c.lat);}).join(";");
+    var res=await fetch("https://router.project-osrm.org/table/v1/driving/"+coordStr+"?annotations=distance",{
+      headers:{Accept:"application/json"}
+    });
+    if(!res.ok) return null;
+    var data=await res.json();
+    return Array.isArray(data&&data.distances)?data.distances:null;
+  }catch(e){ return null; }
+}
+
+function matrixDistanceValue(matrix,fromIdx,toIdx,startPoint){
+  if(toIdx==null) return Infinity;
+  var offset=startPoint?1:0;
+  var fromMatrixIdx=fromIdx==null?0:(fromIdx+offset);
+  var toMatrixIdx=toIdx+offset;
+  var row=matrix&&matrix[fromMatrixIdx];
+  if(!row) return Infinity;
+  var value=row[toMatrixIdx];
+  return Number.isFinite(value)?value:Infinity;
+}
+
+function buildExactMatrixOrder(points,matrix,startPoint){
+  var n=points.length;
+  if(!Array.isArray(matrix)||n<=1||n>12) return null;
+  var totalMasks=1<<n;
+  var dp=Array.from({length:totalMasks},function(){
+    return Array(n).fill(Infinity);
+  });
+  var parent=Array.from({length:totalMasks},function(){
+    return Array(n).fill(-1);
+  });
+
+  for(var i=0;i<n;i++){
+    dp[1<<i][i]=matrixDistanceValue(matrix,null,i,startPoint);
+  }
+
+  for(var mask=1;mask<totalMasks;mask++){
+    for(var end=0;end<n;end++){
+      if(!(mask&(1<<end))) continue;
+      var currentCost=dp[mask][end];
+      if(!Number.isFinite(currentCost)) continue;
+      for(var next=0;next<n;next++){
+        if(mask&(1<<next)) continue;
+        var stepCost=matrixDistanceValue(matrix,end,next,startPoint);
+        if(!Number.isFinite(stepCost)) continue;
+        var nextMask=mask|(1<<next);
+        var totalCost=currentCost+stepCost;
+        if(totalCost<dp[nextMask][next]){
+          dp[nextMask][next]=totalCost;
+          parent[nextMask][next]=end;
+        }
+      }
+    }
+  }
+
+  var fullMask=totalMasks-1;
+  var bestEnd=0;
+  var bestCost=Infinity;
+  for(var j=0;j<n;j++){
+    if(dp[fullMask][j]<bestCost){
+      bestCost=dp[fullMask][j];
+      bestEnd=j;
+    }
+  }
+  if(!Number.isFinite(bestCost)) return null;
+
+  var orderedIdxs=[];
+  var walkMask=fullMask;
+  var walkEnd=bestEnd;
+  while(walkEnd!==-1){
+    orderedIdxs.push(walkEnd);
+    var prev=parent[walkMask][walkEnd];
+    walkMask=walkMask^(1<<walkEnd);
+    walkEnd=prev;
+  }
+  orderedIdxs.reverse();
+  return orderedIdxs;
+}
+
+function improveMatrixOrder(points,matrix,startPoint,ordered){
+  if(!Array.isArray(matrix)||ordered.length<4) return ordered.slice();
+  var current=ordered.slice();
+  function routeCost(order){
+    var total=0;
+    var prev=null;
+    for(var i=0;i<order.length;i++){
+      var step=matrixDistanceValue(matrix,prev,order[i],startPoint);
+      if(!Number.isFinite(step)) return Infinity;
+      total+=step;
+      prev=order[i];
+    }
+    return total;
+  }
+  var improved=true;
+  var bestCost=routeCost(current);
+  while(improved){
+    improved=false;
+    for(var i=0;i<current.length-2;i++){
+      for(var j=i+1;j<current.length-1;j++){
+        var candidate=current.slice(0,i).concat(current.slice(i,j+1).reverse(),current.slice(j+1));
+        var candidateCost=routeCost(candidate);
+        if(candidateCost+5<bestCost){
+          current=candidate;
+          bestCost=candidateCost;
+          improved=true;
+        }
+      }
+    }
+  }
+  return current;
+}
+
+function matrixRouteDistanceKm(matrix,ordered,startPoint){
+  if(!Array.isArray(matrix)||!ordered.length) return null;
+  var totalMeters=0;
+  var prev=null;
+  for(var i=0;i<ordered.length;i++){
+    var step=matrixDistanceValue(matrix,prev,ordered[i],startPoint);
+    if(!Number.isFinite(step)) return null;
+    totalMeters+=step;
+    prev=ordered[i];
+  }
+  return totalMeters>0?(totalMeters/1000):null;
+}
+
+function optimizeRouteWithMatrix(points,matrix,startPoint){
+  if(!Array.isArray(matrix)||points.length<=1) return points.slice();
+  var offset=startPoint?1:0;
+  var remaining=points.map(function(_,idx){return idx;});
+  var orderedIdxs=buildExactMatrixOrder(points,matrix,startPoint);
+  if(orderedIdxs){
+    return orderedIdxs.map(function(idx){return points[idx];});
+  }
+  var ordered=[];
+  var currentIdx=null;
+
+  function matrixIdx(pointIdx){ return pointIdx+offset; }
+  function edgeDistance(fromIdx,toIdx){
+    if(toIdx==null) return Infinity;
+    var fromMatrixIdx=fromIdx==null?0:matrixIdx(fromIdx);
+    var toMatrixIdx=matrixIdx(toIdx);
+    var row=matrix[fromMatrixIdx];
+    if(!row) return Infinity;
+    var value=row[toMatrixIdx];
+    return Number.isFinite(value)?value:Infinity;
+  }
+
+  if(!startPoint){
+    var baslangic=remaining[0];
+    var enIyiToplam=Infinity;
+    remaining.forEach(function(idx){
+      var toplam=0;
+      remaining.forEach(function(otherIdx){
+        if(otherIdx!==idx){
+          toplam+=edgeDistance(idx,otherIdx);
+        }
+      });
+      if(toplam<enIyiToplam){
+        enIyiToplam=toplam;
+        baslangic=idx;
+      }
+    });
+    ordered.push(baslangic);
+    remaining=remaining.filter(function(idx){return idx!==baslangic;});
+    currentIdx=baslangic;
+  }
+
+  while(remaining.length){
+    var bestIdx=remaining[0];
+    var bestScore=Infinity;
+    remaining.forEach(function(idx){
+      var score=edgeDistance(currentIdx,idx);
+      if(score<bestScore){
+        bestScore=score;
+        bestIdx=idx;
+      }
+    });
+    ordered.push(bestIdx);
+    remaining=remaining.filter(function(idx){return idx!==bestIdx;});
+    currentIdx=bestIdx;
+  }
+
+  ordered=improveMatrixOrder(points,matrix,startPoint,ordered);
+  return ordered.map(function(idx){return points[idx];});
 }
 
 function deg2rad(v){ return v*(Math.PI/180); }
@@ -189,11 +597,9 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
-  const [rotaGeoCache,setRotaGeoCache]=useState(function(){return lsGet("at_geo_cache")||{};});
   const [rotaOtomatikIds,setRotaOtomatikIds]=useState([]);
-  const [rotaHesaplaniyor,setRotaHesaplaniyor]=useState(false);
-  const [rotaOptHata,setRotaOptHata]=useState("");
-  const [rotaTahminiKm,setRotaTahminiKm]=useState(null);
+  const [rotaAdresModal,setRotaAdresModal]=useState(null);
+  const [rotaAdresOverrides,setRotaAdresOverrides]=useState(function(){return lsGet("at_adres_overrides")||{};});
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
   // Tema uygula
@@ -582,109 +988,50 @@ function App(){
     }catch(e){if(!sessiz)setKonumHata("Konum alınamadı. Adres girin.");}
     setKonumYukleniyor(false);
   };
-  // Rota sekmesi açılınca otomatik konum al
+  // Rota sekmesi veya bakımcı tab açılınca otomatik konum al
   useEffect(()=>{
-    if(tab===5&&!rotaKonum&&!konumYukleniyor){
+    var rotaAktif=(tab===5)||(rol==="bakimci"&&tab===2);
+    if(rotaAktif&&!rotaKonum&&!konumYukleniyor){
       konumAl(true);
     }
-  },[tab]);
+  },[tab,rol]);
 
   useEffect(function(){
-    lsSet("at_geo_cache",rotaGeoCache);
-  },[rotaGeoCache]);
+    lsSet("at_adres_overrides",rotaAdresOverrides);
+  },[rotaAdresOverrides]);
 
+  // Bakımcı tab 2'deyken bekleyen bakımları otomatik rotaya yükle
   useEffect(function(){
-    if(tab!==5){return;}
-    var seciliElevs=elevs.filter(function(e){return rotaSec.includes(e.id);});
+    if(rol!=="bakimci"||tab!==2) return;
+    var simdi=new Date();
+    var _mMonth=maints.filter(function(m){var d=new Date(m.tarih);return d.getMonth()===fMonth&&d.getFullYear()===simdi.getFullYear();});
+    var ids=[].concat(new Set(_mMonth.filter(function(m){
+      if(!m.planlanmis||m.yapildi) return false;
+      var elev=elevs.find(function(e){return e.id===m.asansorId;});
+      if(!elev) return false;
+      if(aktifBakimci&&m.bakimciId&&m.bakimciId!==aktifBakimci.id) return false;
+      if(aktifBakimci&&aktifBakimci.ilceler&&aktifBakimci.ilceler.length>0){
+        if(!aktifBakimci.ilceler.includes(elev.ilce)) return false;
+      }
+      return true;
+    }).map(function(m){return m.asansorId;})));
+    // Sadece değiştiyse güncelle (sonsuz döngü önleme)
+    var yeniStr=JSON.stringify(ids.slice().sort());
+    var eskiStr=JSON.stringify(rotaSec.slice().sort());
+    if(yeniStr!==eskiStr) setRotaSec(ids);
+  },[rol,tab,maints,fMonth,elevs,aktifBakimci]);
+
+  // Seçili durakları olduğu sırayla Google Maps'e hazırla
+  useEffect(function(){
+    var bakimciTab=(rol==="bakimci"&&tab===2);
+    if(tab!==5&&!bakimciTab){return;}
+    var seciliElevs=rotaSec.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
     if(seciliElevs.length===0){
       setRotaOtomatikIds([]);
-      setRotaTahminiKm(null);
-      setRotaOptHata("");
-      setRotaHesaplaniyor(false);
       return;
     }
-    var iptal=false;
-    async function geocodeAddress(text){
-      var res=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=tr&limit=1&q="+encodeURIComponent(text),{
-        headers:{Accept:"application/json","Accept-Language":"tr"}
-      });
-      if(!res.ok) throw new Error("Geocode başarısız");
-      var data=await res.json();
-      if(!Array.isArray(data)||!data[0]) return null;
-      return {lat:Number(data[0].lat),lng:Number(data[0].lon),label:data[0].display_name||text};
-    }
-    async function hesapla(){
-      setRotaHesaplaniyor(true);
-      setRotaOptHata("");
-      var cacheGuncel=Object.assign({},rotaGeoCache);
-      var routePoints=[];
-      for(var i=0;i<seciliElevs.length;i++){
-        var elev=seciliElevs[i];
-        var key=routeAddressKey(elev);
-        var cached=cacheGuncel[key];
-        if(!cached && elev.adres){
-          try{
-            var geo=await geocodeAddress(routeAddressLabel(elev));
-            if(geo){
-              cached={lat:geo.lat,lng:geo.lng,label:geo.label};
-              cacheGuncel[key]=cached;
-            }
-          }catch(e){}
-        }
-        routePoints.push({elev:elev,coords:cached?{lat:Number(cached.lat),lng:Number(cached.lng)}:null,manualIndex:rotaSec.indexOf(elev.id)});
-      }
-      var startPoint=rotaKonum?{lat:rotaKonum.lat,lng:rotaKonum.lng}:null;
-      if(!startPoint && rotaStart.trim()){
-        var startKey="__start__:"+rotaStart.trim().toLowerCase();
-        var startCached=cacheGuncel[startKey];
-        if(!startCached){
-          try{
-            var startGeo=await geocodeAddress(rotaStart.trim()+", İstanbul");
-            if(startGeo){
-              startCached={lat:startGeo.lat,lng:startGeo.lng,label:startGeo.label};
-              cacheGuncel[startKey]=startCached;
-            }
-          }catch(e){}
-        }
-        if(startCached) startPoint={lat:Number(startCached.lat),lng:Number(startCached.lng)};
-      }
-      if(iptal) return;
-      if(JSON.stringify(cacheGuncel)!==JSON.stringify(rotaGeoCache)){
-        setRotaGeoCache(cacheGuncel);
-      }
-      var coordsOlan=routePoints.filter(function(p){return p.coords;});
-      var coordsOlmayan=routePoints.filter(function(p){return !p.coords;}).sort(function(a,b){return a.manualIndex-b.manualIndex;});
-      var optimizeEdilen=optimizeRoute(coordsOlan,startPoint);
-      var finalPoints=optimizeEdilen.concat(coordsOlmayan);
-      var toplamKm=0;
-      var onceki=startPoint;
-      finalPoints.forEach(function(p){
-        if(onceki&&p.coords){
-          toplamKm+=haversineKm(onceki,p.coords);
-        }
-        onceki=p.coords||onceki;
-      });
-      setRotaOtomatikIds(finalPoints.map(function(p){return p.elev.id;}));
-      setRotaTahminiKm(toplamKm>0?toplamKm:null);
-      if(coordsOlmayan.length>0){
-        setRotaOptHata(coordsOlmayan.length+" adres tam eşleşmedi. Bu duraklar listenin sonunda bırakıldı.");
-      }else if(!startPoint&&rotaStart.trim()){
-        setRotaOptHata("Başlangıç adresi haritada çözülemedi. Duraklar kendi aralarında optimize edildi.");
-      }else{
-        setRotaOptHata("");
-      }
-      setRotaHesaplaniyor(false);
-    }
-    hesapla().catch(function(){
-      if(!iptal){
-        setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
-        setRotaTahminiKm(null);
-        setRotaOptHata("Akıllı rota hesaplanamadı. Seçim sırasına göre gösteriliyor.");
-        setRotaHesaplaniyor(false);
-      }
-    });
-    return function(){ iptal=true; };
-  },[tab, rotaSec, rotaKonum, rotaStart, elevs, rotaGeoCache]);
+    setRotaOtomatikIds(seciliElevs.map(function(e){return e.id;}));
+  },[tab, rotaSec, elevs, rol]);
 
   const today=(function(){var d=new Date();var y=d.getFullYear();var m=(d.getMonth()+1).toString().padStart(2,"0");var g=d.getDate().toString().padStart(2,"0");return y+"-"+m+"-"+g;})();
   const ilceler=useMemo(()=>[...new Set(elevs.map(e=>e.ilce))].sort(),[elevs]);
@@ -818,21 +1165,45 @@ function App(){
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
   const rotaElevs=rotaOrder.map(function(id){return elevs.find(function(e){return e.id===id;});}).filter(Boolean);
-  const rotaStartStr=rotaKonum?`${rotaKonum.lat},${rotaKonum.lng}`:rotaStart;
-  const rotaEslesmeyenSayi=(function(){
-    var eslesme=(rotaOptHata||"").match(/(\d+)/);
-    return eslesme?Number(eslesme[1]):0;
-  })();
-  // Google Maps Directions API formatı: origin + waypoints + destination
-  const mapsUrl=(function(){
-    if(rotaElevs.length===0) return "";
-    var addrs=rotaElevs.map(function(e){return routeAddressLabel(e);});
-    var base="https://www.google.com/maps/dir/?api=1";
-    if(rotaStartStr) base+="&origin="+encodeURIComponent(rotaStartStr);
-    base+="&destination="+encodeURIComponent(addrs[addrs.length-1]);
-    if(addrs.length>1) base+="&waypoints="+addrs.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("|");
-    base+="&travelmode=driving";
-    return base;
+  const rotaStartInput=rotaStart.trim();
+  const rotaStartDisplay=rotaKonum?rotaKonum.label:rotaStartInput;
+  const rotaMapsOrigin=rotaKonum?"":rotaStartInput;
+  const rotaMapStops=rotaElevs.map(function(e){
+    var override=rotaAdresOverrides[e.id];
+    var target=override||routeAddressLabel(e);
+    return {
+      elev:e,
+      target:target,
+      hasOverride:!!override
+    };
+  });
+  // Google Maps Directions URL — waypoints %7C ile ayrılıyor (pipe encoding)
+  // MAPS_MAX=13 → 13'ten fazla durakta 2 ayrı URL oluştur
+  const {mapsUrl,mapsUrl2}=(function(){
+    if(rotaMapStops.length===0) return {mapsUrl:"",mapsUrl2:""};
+    var addrs=rotaMapStops.map(function(stop){return stop.target;});
+    function buildMapsLink(origin,destinations){
+      if(destinations.length===0) return "";
+      var base="https://www.google.com/maps/dir/?api=1";
+      if(origin) base+="&origin="+encodeURIComponent(origin);
+      base+="&destination="+encodeURIComponent(destinations[destinations.length-1]);
+      if(destinations.length>1){
+        base+="&waypoints="+destinations.slice(0,-1).map(function(a){return encodeURIComponent(a);}).join("%7C");
+      }
+      base+="&travelmode=driving&dir_action=navigate";
+      return base;
+      }
+    if(addrs.length<=MAPS_MAX){
+      return {mapsUrl:buildMapsLink(rotaMapsOrigin,addrs),mapsUrl2:""};
+    }
+    // İlk bölüm: ilk MAPS_MAX durak
+    var firstPart=addrs.slice(0,MAPS_MAX);
+    // İkinci bölüm: MAPS_MAX-1'den devam (1 durak overlap → bağlantı noktası)
+    var secondPart=addrs.slice(MAPS_MAX-1);
+    return {
+      mapsUrl:buildMapsLink(rotaMapsOrigin,firstPart),
+      mapsUrl2:buildMapsLink(firstPart[firstPart.length-1],secondPart)
+    };
   })();
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){return m.planlanmis&&!m.yapildi&&elevs.some(function(e){return e.id===m.asansorId;});}).map(function(m){return m.asansorId;}))];
@@ -1296,13 +1667,13 @@ function App(){
 
 /* BAKIM ATAMA */
 , tab===2&&rol==="yonetici"&&(
-  React.createElement(BakimAtamaPaneli, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, fMonth: fMonth, setFMonth: setFMonth, ilceler: ilceler, elevByIlce: elevByIlce, today: today, eName: eName, bakimcilar: bakimcilar,})
+  React.createElement(BakimAtamaPaneli, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, fMonth: fMonth, setFMonth: setFMonth, ilceler: ilceler, elevByIlce: elevByIlce, today: today, eName: eName, bakimcilar: bakimcilar, onRotaOlustur: function(ids){setRotaSec(ids);setTab(5);},})
 )
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-    React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, kalanEskiDevir: kalanEskiDevir, yeniDevir: yeniDevir, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci,})
-)
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, kalanEskiDevir: kalanEskiDevir, yeniDevir: yeniDevir, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, rotaData: {elevs:rotaElevs,stops:rotaMapStops,mapsUrl:mapsUrl,mapsUrl2:mapsUrl2,konum:rotaKonum},})
+
 
 /* ARIZALAR - YÖNETİCİ */
 , tab===3&&(
@@ -1373,20 +1744,6 @@ function App(){
 
     /* Konum hatası */
     , konumHata&&React.createElement('div',{style:{fontSize:11,color:"#ef4444",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:7,padding:"8px 12px",marginBottom:10}},"⚠️ "+konumHata)
-    , (rotaHesaplaniyor||rotaOptHata||rotaTahminiKm!==null)&&React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginBottom:12}},
-        React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:rotaHesaplaniyor?"rgba(59,130,246,0.12)":"var(--bg-card)",border:"1px solid "+(rotaHesaplaniyor?"#3b82f655":"var(--border)")}},
-          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:rotaHesaplaniyor?"#60a5fa":"var(--text-muted)",marginBottom:4}},"AKILLI ROTA"),
-          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)"}}, rotaHesaplaniyor?"Adresler analiz ediliyor...":"Rota sırası hazır")
-        ),
-        rotaTahminiKm!==null&&React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:"rgba(16,185,129,0.10)",border:"1px solid #10b98133"}},
-          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:"#10b981",marginBottom:4}},"TAHMİNİ MESAFE"),
-          React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"#a7f3d0"}}, rotaTahminiKm.toFixed(1)+" km")
-        ),
-        rotaOptHata&&React.createElement('div',{style:{padding:"11px 12px",borderRadius:12,background:"rgba(245,158,11,0.10)",border:"1px solid rgba(245,158,11,0.25)"}},
-          React.createElement('div',{style:{fontSize:10,fontWeight:800,color:"var(--ios-orange)",marginBottom:4}},"NOT"),
-          React.createElement('div',{style:{fontSize:12,fontWeight:600,color:"var(--text)"}}, rotaOptHata)
-        )
-      )
 
     /* Konum bilgisi veya manuel adres */
     , rotaKonum
@@ -1471,7 +1828,6 @@ function App(){
           React.createElement('span',{style:{color:"#3b82f6"}},rotaSec.length," seçili")
         ),
         React.createElement('div',{style:{display:"flex",gap:6}},
-          rotaOtomatikIds.length>1&&React.createElement('button',{onClick:()=>setRotaSec(rotaOrder),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"rgba(16,185,129,0.14)",color:"#10b981",border:"none",cursor:"pointer",fontWeight:700}},"Akıllı Sırayı Uygula"),
           React.createElement('button',{onClick:()=>setRotaSec(rotaPool.map(e=>e.id)),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",border:"none",cursor:"pointer",fontWeight:700}},"Tümünü Seç"),
           React.createElement('button',{onClick:()=>setRotaSec([]),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"var(--bg-elevated)",color:"var(--text-muted)",border:"none",cursor:"pointer",fontWeight:700}},"Temizle")
         )
@@ -1498,10 +1854,7 @@ function App(){
               React.createElement('div',{style:{width:22,height:22,borderRadius:5,background:sec?"#3b82f6":"var(--bg-deep)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:sec?"#fff":"var(--text-muted)",flexShrink:0}},sec?sira:"☐"),
               /* Bina bilgisi */
               React.createElement('div',{style:{flex:1,minWidth:0}},
-                React.createElement('div',{style:{fontSize:12,fontWeight:600,color:sec?"var(--text)":bekliyor?"#6ee7b7":"var(--text-muted)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},
-                  e.ad,
-                  rotaOtomatikIds.length===rotaSec.length&&React.createElement('span',{style:{fontSize:9,color:"#60a5fa",background:"rgba(59,130,246,0.16)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"Akıllı sıra")
-                ),
+                React.createElement('div',{style:{fontSize:12,fontWeight:600,color:sec?"var(--text)":bekliyor?"#6ee7b7":"var(--text-muted)",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}},e.ad),
                 React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.ilce+(e.semt?", "+e.semt:""))
               ),
               /* Durum badge */
@@ -1523,45 +1876,29 @@ function App(){
             border:"1px solid var(--border-soft)",
             borderRadius:14,
             padding:"12px 14px",
-            boxShadow:"var(--shadow-sm)"
-          }},
+              boxShadow:"var(--shadow-sm)"
+            }},
             React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
               React.createElement('div',null,
-                React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"var(--text)"}}, "Akıllı Rota Özeti"),
+                React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"var(--text)"}}, "Rota Özeti"),
                 React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
-                  rotaHesaplaniyor
-                    ? "Adresler çözülüyor, en mantıklı sıra hazırlanıyor..."
-                    : "Seçilen duraklar uygulama içinde yakınlık bazlı sıralandı."
+                  "Seçilen duraklar mevcut sırayla Google Maps'e gönderilecek."
                 )
               ),
-              React.createElement('div',{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak"),
-                rotaTahminiKm!==null&&React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(16,185,129,0.14)",color:"#34d399"}}, "~ "+rotaTahminiKm.toFixed(1)+" km")
-              )
+              React.createElement('span',{style:{fontSize:11,fontWeight:700,padding:"5px 9px",borderRadius:999,background:"rgba(59,130,246,0.14)",color:"#60a5fa"}}, rotaElevs.length+" durak")
             ),
-            React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8}},
-              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Başlangıç"),
-                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, rotaKonum?"Mevcut konum":(rotaStart.trim()||"Google Maps soracak"))
-              ),
-              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Optimizasyon"),
-                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:rotaHesaplaniyor?"var(--ios-orange)":"var(--ios-green)"}}, rotaHesaplaniyor?"Hesaplanıyor":"Hazır")
-              ),
-              React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
-                React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Eşleşen adres"),
-                React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, (rotaElevs.length-rotaEslesmeyenSayi)+"/"+rotaElevs.length)
-              )
-            ),
-            rotaOptHata&&React.createElement('div',{style:{marginTop:8,fontSize:11,color:"var(--ios-orange)",background:"rgba(255,149,0,0.10)",border:"1px solid rgba(255,149,0,0.18)",borderRadius:10,padding:"8px 10px"}}, "⚠️ "+rotaOptHata)
+            React.createElement('div',{style:{padding:"10px 12px",borderRadius:12,background:"var(--bg-elevated)",border:"1px solid var(--border)"}},
+              React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginBottom:4}},"Başlangıç"),
+              React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)"}}, rotaKonum?"Mevcut konum":(rotaStart.trim()||"Google Maps soracak"))
+            )
           ),
           /* Başlangıç noktası özeti */
-          rotaStartStr
+          (rotaKonum||rotaStartInput)
             ? React.createElement('div',{style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(16,185,129,0.1)",borderRadius:9,border:"1px solid #10b98133"}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},"S"),
                 React.createElement('div',null,
                   React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"#10b981"}},"Başlangıç Noktası"),
-                  React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},rotaKonum?rotaKonum.label:rotaStart)
+                  React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},rotaStartDisplay)
                 )
               )
             : React.createElement('div',{style:{padding:"8px 12px",background:"rgba(239,68,68,0.1)",border:"1px solid #ef444433",borderRadius:9}},
@@ -1574,19 +1911,27 @@ function App(){
             rotaElevs.map(function(e,i){
               var c=getIlceRenk(e.ilce);
               var bekliyor=bekleyenRotaIds.includes(e.id);
+              var override=rotaAdresOverrides[e.id];
+              var adresText=override||routeAddressLabel(e);
               return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:bekliyor?"rgba(16,185,129,0.08)":"var(--bg-elevated)",borderRadius:7,border:"1px solid "+(bekliyor?"#10b98133":"var(--border)")}},
                 React.createElement('div',{style:{width:22,height:22,borderRadius:"50%",background:c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}},i+1),
                 React.createElement('div',{style:{flex:1,minWidth:0}},
                   React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text)",display:"flex",alignItems:"center",gap:6}},
                     e.ad,
                     bekliyor&&React.createElement('span',{style:{fontSize:9,color:"#10b981",background:"#10b98120",padding:"1px 6px",borderRadius:8,fontWeight:700}},"⏳ Bekliyor"),
-                    rotaOtomatikIds.length===rotaSec.length&&React.createElement('span',{style:{fontSize:9,color:"#60a5fa",background:"rgba(59,130,246,0.16)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"Akıllı sıra")
+                    override&&React.createElement('span',{style:{fontSize:9,color:"#3b82f6",background:"rgba(59,130,246,0.12)",padding:"1px 6px",borderRadius:8,fontWeight:700}},"düzenlendi")
                   ),
-                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},routeAddressLabel(e))
+                  React.createElement('div',{style:{fontSize:9,color:"var(--text-muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},adresText)
                 ),
+                /* Adres düzelt butonu */
+                React.createElement('button',{
+                  onClick:function(ev){ev.stopPropagation();setRotaAdresModal({elev:e,adres:override||routeAddressLabel(e)});},
+                  style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:override?"rgba(59,130,246,0.15)":"rgba(245,158,11,0.15)",color:override?"#3b82f6":"#f59e0b",border:"none",cursor:"pointer",fontWeight:700,flexShrink:0}
+                },"✏️"),
                 React.createElement('a',{
-                  href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(e)),
+                  href:"https://maps.google.com/?q="+encodeURIComponent(adresText),
                   target:"_blank",rel:"noreferrer",
+                  onClick:function(ev){ev.stopPropagation();},
                   style:{fontSize:10,padding:"5px 9px",borderRadius:6,background:"rgba(59,130,246,0.15)",color:"#3b82f6",textDecoration:"none",fontWeight:700,flexShrink:0}
                 },"📍")
               );
@@ -1594,11 +1939,24 @@ function App(){
           ),
 
           /* Ana butonlar */
-          React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
-            style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
-              background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
-              textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
-          }, "🗺️ Google Maps'te Rotayı Başlat"),
+          mapsUrl2
+            ? React.createElement(React.Fragment,null,
+                React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
+                  style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                    background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
+                    textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+                }, "🗺️ Google Maps — 1. Bölüm (1-"+MAPS_MAX+")"),
+                React.createElement('a',{href:mapsUrl2,target:"_blank",rel:"noreferrer",
+                  style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                    background:"linear-gradient(135deg,#3b82f6,#2563eb)",borderRadius:12,color:"#fff",
+                    textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #3b82f644"}
+                }, "🗺️ Google Maps — 2. Bölüm ("+(MAPS_MAX)+"-"+rotaElevs.length+")")
+              )
+            : React.createElement('a',{href:mapsUrl,target:"_blank",rel:"noreferrer",
+                style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"15px 0",
+                  background:"linear-gradient(135deg,#10b981,#059669)",borderRadius:12,color:"#fff",
+                  textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #10b98144"}
+              }, "🗺️ Google Maps'te Rotayı Başlat"),
 
           React.createElement('button',{
             onClick:()=>_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(mapsUrl),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]),
@@ -1614,6 +1972,56 @@ function App(){
               :"Seçilen asansörler mevcut konumunuzdan sıralanır"
           )
         )
+
+    /* Adres Düzenleme Modalı */
+    , rotaAdresModal&&React.createElement(Modal,{onClose:function(){setRotaAdresModal(null);}},
+        React.createElement('div',{style:{padding:20,maxWidth:420}},
+          React.createElement('div',{style:{fontSize:16,fontWeight:900,marginBottom:12,color:"var(--text)"}},"✏️ Adres Düzenle"),
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},rotaAdresModal.elev.ad),
+          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginBottom:8}},"Orijinal: "+routeAddressLabel(rotaAdresModal.elev)),
+          React.createElement('a',{
+            href:"https://maps.google.com/?q="+encodeURIComponent(routeAddressLabel(rotaAdresModal.elev)),
+            target:"_blank",rel:"noreferrer",
+            style:{display:"inline-block",fontSize:11,color:"#3b82f6",marginBottom:12,textDecoration:"underline"}
+          },"Google Maps'te adresi bul →"),
+          React.createElement('div',{style:{marginBottom:12}},
+            React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Google Maps'e gönderilecek adres"),
+            React.createElement('textarea',{
+              value:rotaAdresModal.adres,
+              onChange:function(ev){setRotaAdresModal(function(p){return Object.assign({},p,{adres:ev.target.value});});},
+              placeholder:"Adres yazın...",
+              rows:3,
+              style:{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text)",fontSize:12,boxSizing:"border-box",resize:"vertical",fontFamily:"inherit"}
+            })
+          ),
+          React.createElement('div',{style:{display:"flex",gap:8}},
+            React.createElement('button',{
+              onClick:function(){
+                var adres=rotaAdresModal.adres.trim();
+                if(!adres){alert("Adres boş olamaz.");return;}
+                var yeni=Object.assign({},rotaAdresOverrides);
+                yeni[rotaAdresModal.elev.id]=adres;
+                setRotaAdresOverrides(yeni);
+                setRotaAdresModal(null);
+              },
+              style:{flex:1,padding:"10px",background:"#10b981",border:"none",borderRadius:8,color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer"}
+            },"Kaydet"),
+            rotaAdresOverrides[rotaAdresModal.elev.id]&&React.createElement('button',{
+              onClick:function(){
+                var yeni=Object.assign({},rotaAdresOverrides);
+                delete yeni[rotaAdresModal.elev.id];
+                setRotaAdresOverrides(yeni);
+                setRotaAdresModal(null);
+              },
+              style:{padding:"10px 16px",background:"rgba(239,68,68,0.15)",border:"1px solid #ef444444",borderRadius:8,color:"#ef4444",fontWeight:700,fontSize:12,cursor:"pointer"}
+            },"Sıfırla"),
+            React.createElement('button',{
+              onClick:function(){setRotaAdresModal(null);},
+              style:{padding:"10px 16px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text-muted)",fontWeight:600,fontSize:12,cursor:"pointer"}
+            },"İptal")
+          )
+        )
+      )
   )
 )
 

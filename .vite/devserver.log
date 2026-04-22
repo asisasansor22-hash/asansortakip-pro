@@ -1,0 +1,70 @@
+
+> asansortakip-pro@6.0.1 dev
+> vite --host 0.0.0.0 --port 4174
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m249[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4174[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.3:[1m4174[22m/[39m
+[2m21:25:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:25:41[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:29:24[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:29:31[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:34:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:35:56[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:36:29[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:36:33[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:37:30[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ArizaYonetimiAdmin.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx, /src/components/LoginScreen.jsx, /src/components/KontrolListesi.jsx, /src/components/EkstraIsEkrani.jsx, /src/components/ArizaYonetimiAdmin.jsx, /src/components/NotlarEkrani.jsx, /src/components/YoneticiPortali.jsx, /src/components/BakimAtamaPaneli.jsx, /src/components/BakimciYonetimPaneli.jsx, /src/components/SozlesmeYonetimi.jsx, /src/components/MuayeneTakibi.jsx, /src/components/BakimciGorunum.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimciGorunum.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/EkstraIsEkrani.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ArizaYonetimiAdmin.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimciGorunum.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/EkstraIsEkrani.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx, /src/components/LoginScreen.jsx, /src/components/KontrolListesi.jsx, /src/components/EkstraIsEkrani.jsx, /src/components/ArizaYonetimiAdmin.jsx, /src/components/NotlarEkrani.jsx, /src/components/YoneticiPortali.jsx, /src/components/BakimAtamaPaneli.jsx, /src/components/BakimciYonetimPaneli.jsx, /src/components/SozlesmeYonetimi.jsx, /src/components/MuayeneTakibi.jsx, /src/components/BakimciGorunum.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:47:13[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m21:48:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m21:51:09[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m21:58:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:01:20[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:02:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m22:02:32[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:44:05[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/ArizaYonetimiAdmin.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/InstallBanner.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/LoginScreen.jsx, /src/components/KontrolListesi.jsx, /src/components/EkstraIsEkrani.jsx, /src/components/ArizaYonetimiAdmin.jsx, /src/components/NotlarEkrani.jsx, /src/components/YoneticiPortali.jsx, /src/components/BakimAtamaPaneli.jsx, /src/components/BakimciYonetimPaneli.jsx, /src/components/SozlesmeYonetimi.jsx, /src/components/MuayeneTakibi.jsx, /src/components/BakimciGorunum.jsx, /src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/LoginScreen.jsx, /src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/main.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimAtamaPaneli.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimciGorunum.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimciYonetimPaneli.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/EkstraIsEkrani.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/InstallBanner.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/KontrolListesi.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/LoginScreen.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/MuayeneTakibi.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/NotlarEkrani.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/SozlesmeYonetimi.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/YoneticiPortali.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/BakimciGorunum.jsx, /src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/LoginScreen.jsx, /src/components/EkstraIsEkrani.jsx, /src/components/BakimAtamaPaneli.jsx, /src/components/BakimciGorunum.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.jsx[22m
+[2m22:44:07[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:50:47[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m22:50:47[22m [36m[1m[vite][22m[39m server restarted.
+[2m22:58:04[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m22:58:04[22m [36m[1m[vite][22m[39m server restarted.
+[2m23:15:26[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m23:15:26[22m [36m[1m[vite][22m[39m server restarted.
