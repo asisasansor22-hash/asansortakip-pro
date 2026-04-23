@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
 
 function formatTarihTR(value) {
@@ -179,6 +179,19 @@ export default function TeklifYonetimi(_ref2) {
   var _useState3 = useState("Tümü"), filtreIlce = _useState3[0], setFiltreIlce = _useState3[1];
   var _useState4 = useState(""), arama = _useState4[0], setArama = _useState4[1];
   var _useState5 = useState({ tarih: today, asansorId: "", apartmanAdi: "", yonetici: "", adres: "", yapilacakIsler: "", tutar: "", teslimSuresi: "2 hafta", onayTarihi: "" }), form = _useState5[0], setForm = _useState5[1];
+  var _useState6 = useState(typeof window !== "undefined" ? window.innerWidth : 1280), viewportWidth = _useState6[0], setViewportWidth = _useState6[1];
+  var darModal = viewportWidth < 1100;
+  var darAlan = viewportWidth < 760;
+
+  useEffect(function() {
+    function onResize() {
+      setViewportWidth(window.innerWidth);
+    }
+    window.addEventListener("resize", onResize);
+    return function() {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   function F(k, v) {
     setForm(function(p) {
@@ -297,13 +310,13 @@ export default function TeklifYonetimi(_ref2) {
             onPdf: function(tt){ openPdfPrint(tt, elevs.find(function(e){ return e.id === tt.asansorId; })); }
           });
         }),
-    modal && React.createElement('div', { style: { position: "fixed", inset: 0, background: "#000000b8", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
-      React.createElement('div', { style: { width: "100%", maxWidth: 760, maxHeight: "90vh", overflowY: "auto", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 18 } },
+    modal && React.createElement('div', { style: { position: "fixed", inset: 0, background: "#000000b8", zIndex: 2000, display: "flex", alignItems: darModal ? "flex-start" : "center", justifyContent: "center", padding: darAlan ? 8 : 16, overflowY: "auto" } },
+      React.createElement('div', { style: { width: "min(1100px, 100%)", maxWidth: "calc(100vw - " + (darAlan ? 16 : 32) + "px)", maxHeight: darModal ? "none" : "90vh", overflowY: "auto", overflowX: "hidden", background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 18, margin: darModal ? "8px 0" : 0 } },
         React.createElement('div', { style: { padding: "14px 16px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center" } },
           React.createElement('div', { style: { fontWeight: 800, fontSize: 16, color: "#3b82f6" } }, edit ? "Teklif Düzenle" : "Yeni Teklif"),
           React.createElement('button', { onClick: closeModal, style: { background: "none", border: "none", color: "var(--text-muted)", fontSize: 22, cursor: "pointer", lineHeight: 1 } }, "×")
         ),
-        React.createElement('div', { style: { padding: 16, display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 16 } },
+        React.createElement('div', { style: { padding: 16, display: "grid", gridTemplateColumns: darModal ? "1fr" : "minmax(0,1.15fr) minmax(320px,0.85fr)", gap: 16, alignItems: "start" } },
           React.createElement('div', null,
             React.createElement('div', { style: { marginBottom: 12 } },
               React.createElement('label', { style: { display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 } }, "Tarih"),
@@ -330,7 +343,7 @@ export default function TeklifYonetimi(_ref2) {
                 })
               )
             ),
-            React.createElement('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 } },
+            React.createElement('div', { style: { display: "grid", gridTemplateColumns: darAlan ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 12 } },
               React.createElement('div', null,
                 React.createElement('label', { style: { display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 } }, "Apartman Adı"),
                 React.createElement('input', { value: form.apartmanAdi || "", onChange: function(e){ F("apartmanAdi", e.target.value); }, style: { width: "100%", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", boxSizing: "border-box" } })
@@ -355,7 +368,7 @@ export default function TeklifYonetimi(_ref2) {
                 style: { width: "100%", resize: "vertical", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", boxSizing: "border-box", lineHeight: 1.5 }
               })
             ),
-            React.createElement('div', { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 } },
+            React.createElement('div', { style: { display: "grid", gridTemplateColumns: darAlan ? "1fr" : (darModal ? "1fr 1fr" : "1fr 1fr 1fr"), gap: 10 } },
               React.createElement('div', null,
                 React.createElement('label', { style: { display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 } }, "Tutar (TL)"),
                 React.createElement('input', { type: "number", value: form.tutar || "", onChange: function(e){ F("tutar", e.target.value); }, style: { width: "100%", background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 12px", color: "var(--text)", boxSizing: "border-box" } })
@@ -387,7 +400,7 @@ export default function TeklifYonetimi(_ref2) {
             React.createElement('button', { onClick: function(){ downloadWord(form, elevs.find(function(e){ return e.id === (+form.asansorId || form.asansorId); })); }, style: { padding: "10px 14px", borderRadius: 10, background: "#1e3a5f", border: "1px solid #3b82f633", color: "#93c5fd", cursor: "pointer", fontWeight: 700 } }, "📄 Word İndir"),
             React.createElement('button', { onClick: function(){ openPdfPrint(form, elevs.find(function(e){ return e.id === (+form.asansorId || form.asansorId); })); }, style: { padding: "10px 14px", borderRadius: 10, background: "#3a1e1e", border: "1px solid #ef444433", color: "#fca5a5", cursor: "pointer", fontWeight: 700 } }, "🖨️ PDF Aç")
           ),
-          React.createElement('div', { style: { display: "flex", gap: 8 } },
+          React.createElement('div', { style: { display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" } },
             React.createElement('button', { onClick: closeModal, style: { padding: "10px 14px", borderRadius: 10, background: "var(--bg-elevated)", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontWeight: 700 } }, "İptal"),
             React.createElement('button', { onClick: save, style: { padding: "10px 16px", borderRadius: 10, background: "linear-gradient(135deg,#10b981,#059669)", border: "none", color: "#fff", cursor: "pointer", fontWeight: 800 } }, edit ? "Güncelle" : "Kaydet")
           )
