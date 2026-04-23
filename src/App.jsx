@@ -19,6 +19,7 @@ import MuayeneTakibi from './components/MuayeneTakibi.jsx'
 import SozlesmeYonetimi from './components/SozlesmeYonetimi.jsx'
 import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
+import TeklifYonetimi from './components/TeklifYonetimi.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
@@ -439,6 +440,7 @@ function App(){
   const [hesapKayitlari,setHesapKayitlari]=useState([]);
   const [notlar,setNotlar]=useState([]);
   const [ekstraIsler,setEkstraIsler]=useState([]);
+  const [teklifler,setTeklifler]=useState([]);
   const [aktifHesap,setAktifHesap]=useState(null);
   const [modal,setModal]=useState(null);
   const [edit,setEdit]=useState(null);
@@ -525,12 +527,13 @@ function App(){
           dbGet("at_giderhafta"),// r10
           dbGet("at_notlar"),      // r11
           dbGet("at_ekstraisler"), // r12
-          dbGet("at_muayeneler"),  // r13
-          dbGet("at_bakimcilar"),  // r14
+          dbGet("at_teklifler"),   // r13
+          dbGet("at_muayeneler"),  // r14
+          dbGet("at_bakimcilar"),  // r15
         ]);
         var r1=sonuclar[0],r2=sonuclar[1],r3=sonuclar[2],r4=sonuclar[3];
         var r5=sonuclar[4],r6=sonuclar[5],r7=sonuclar[6],r8=sonuclar[7];
-        var r9=sonuclar[8],r10=sonuclar[9],r11=sonuclar[10],r12=sonuclar[11],r13=sonuclar[12],r14=sonuclar[13],r15=sonuclar[14];
+        var r9=sonuclar[8],r10=sonuclar[9],r11=sonuclar[10],r12=sonuclar[11],r13=sonuclar[12],r14=sonuclar[13],r15=sonuclar[14],r16=sonuclar[15];
         // ── Asansör listesi ──────────────────────────────────────
         // Firebase erişilemezse veya boş dönerse localStorage yedeğine bak,
         // o da yoksa ilk kez açılıyordur → EXCEL_ELEVS kullan.
@@ -579,8 +582,9 @@ function App(){
         if(r11){try{var d=fb(r11);if(Array.isArray(d))setGiderHaftaArsiv(d);}catch(e){}}
         if(r12){try{var d=fb(r12);if(Array.isArray(d))setNotlar(d);}catch(e){}}
         if(r13){try{var d=fb(r13);if(Array.isArray(d))setEkstraIsler(d);}catch(e){}}
-        if(r14){try{var d=fb(r14);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
-        if(r15){try{var d=fb(r15);if(Array.isArray(d))setBakimcilar(d);}catch(e){}}
+        if(r14){try{var d=fb(r14);if(Array.isArray(d))setTeklifler(d);}catch(e){}}
+        if(r15){try{var d=fb(r15);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
+        if(r16){try{var d=fb(r16);if(Array.isArray(d))setBakimcilar(d);}catch(e){}}
       }catch(e){}
       ilkYukleme.current=false;
     }
@@ -601,6 +605,7 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
+  useEffect(function(){if(!ilkYukleme.current){dbSet("at_teklifler",teklifler);}},[teklifler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_bakimcilar",bakimcilar);lsSet("ls_bakimcilar",bakimcilar);}},[bakimcilar]);
 
@@ -1170,10 +1175,10 @@ function App(){
   }).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
-  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
-  const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13];
+  const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 
   if(rol===null) return React.createElement(LoginScreen, { onLogin: (r,bk)=>{setRol(r);setAktifBakimci(bk||null);setTab(r==="bakimci"?2:0);}, bakimcilar:bakimcilar,});
 
@@ -1414,7 +1419,7 @@ function App(){
           , React.createElement('div', {style:{fontSize:13,fontWeight:700,color:"var(--ios-red)",marginBottom:8}}, "🔴 Muayene Uyarıları")
           , gecikti.length>0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)",marginBottom:4}},
               "⚠️ "+gecikti.length+" asansörün muayene süresi geçmiş → "
-              , React.createElement('button', {onClick:function(){setTab(10);},style:{background:"none",border:"none",color:"var(--ios-red)",cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}, "Muayene Sekmesine Git →")
+              , React.createElement('button', {onClick:function(){setTab(11);},style:{background:"none",border:"none",color:"var(--ios-red)",cursor:"pointer",fontSize:12,fontWeight:700,padding:0}}, "Muayene Sekmesine Git →")
             )
           , yakin.length>0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)"}},
               "🟡 "+yakin.length+" asansörün muayenesi 30 gün içinde dolacak"
@@ -2624,26 +2629,33 @@ function App(){
 /* PERİYODİK MUAYENE TAKİBİ */
 , tab===10&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(MuayeneTakibi, {elevs:elevs,muayeneler:muayeneler,setMuayeneler:setMuayeneler})
+    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler})
   )
 )
 
 /* SÖZLEŞME YÖNETİMİ */
 , tab===11&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
+    React.createElement(MuayeneTakibi, {elevs:elevs,muayeneler:muayeneler,setMuayeneler:setMuayeneler})
+  )
+)
+
+/* SÃ–ZLEÅME YÃ–NETÄ°MÄ° */
+, tab===12&&rol==="yonetici"&&(
+  React.createElement('div', {className:"ios-animate"},
     React.createElement(SozlesmeYonetimi, {elevs:elevs,sozlesmeler:sozlesmeler,setSozlesmeler:setSozlesmeler})
   )
 )
 
 /* YÖNETİCİ / BİNA PORTALI */
-, tab===12&&rol==="yonetici"&&(
+, tab===13&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(YoneticiPortali, {elevs:elevs,maints:maints,faults:faults,muayeneler:muayeneler,sozlesmeler:sozlesmeler})
   )
 )
 
 /* BAKIMCI YÖNETİMİ */
-, tab===13&&rol==="yonetici"&&(
+, tab===14&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar})
   )
