@@ -1055,6 +1055,35 @@ function App(){
     const toplamAlinan=buAyToplamAlinan(id);
     return eskiDevir+aylikUcret-toplamAlinan;
   };
+  const guncelBorc=(id)=>{
+    const nd=yeniDevir(id);
+    return nd!==null?nd:bal(id);
+  };
+  const normalizeWhatsappTel=(rawTel)=>{
+    var tel=(rawTel||"").replace(/[\s\-\(\)]/g,"");
+    if(!tel) return "";
+    if(tel.startsWith("0")) tel="90"+tel.slice(1);
+    else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
+    return tel.replace(/^\+/,"");
+  };
+  const borcWhatsappMesaji=(e,borc)=>{
+    var tutar=(borc||0).toLocaleString("tr-TR")+" ₺";
+    return "Sayın "+e.ad+" Yönetimi,\n\n"+
+      "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
+      "Bilginize sunmak istediğimiz husus; binanızın asansörüne ait aylık periyodik bakımlar tarafımızca düzenli ve eksiksiz olarak gerçekleştirilmektedir.\n\n"+
+      "Güncel hesap durumunuza göre toplam bakım borcunuz *"+tutar+"* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz.\n\n"+
+      "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten çekinmeyiniz.\n\n"+
+      "Saygılarımızla,\n"+
+      "Asis Asansör Bakım ve Servis Hizmetleri";
+  };
+  const borcWhatsappGonder=(e)=>{
+    if(!e||!e.tel) return;
+    var tel=normalizeWhatsappTel(e.tel);
+    if(!tel){ alert("Geçerli telefon numarası bulunamadı."); return; }
+    var borc=guncelBorc(e.id);
+    var mesaj=borcWhatsappMesaji(e,borc);
+    window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
+  };
   const eName=(id)=>{const nid=typeof id==="string"?+id:id;return _optionalChain([elevs, 'access', _7 => _7.find, 'call', _8 => _8(e=>e.id===nid||e.id===id), 'optionalAccess', _9 => _9.ad])||"?"};
   const F=(k,v)=>setForm(p=>({...p,[k]:v}));
   const MapsLinkInput=({value,onChange,required,existingCoords})=>{
@@ -1542,6 +1571,8 @@ function App(){
                   , e.tel&&React.createElement('button', {
                       onClick:function(ev){
                         ev.stopPropagation();
+                        borcWhatsappGonder(e);
+                        return;
                         var nd=yeniDevir(e.id);
                         var borc=nd!==null?nd:(e.bakiyeDevir||0)+(e.aylikUcret||0);
                         var tutar=borc.toLocaleString("tr-TR")+" ₺";
@@ -1735,7 +1766,7 @@ function App(){
           // Bakımcı modunda ilçedeki bekleyen sayısını göster
           var bekleyen=bekleyenRotaIds.filter(function(id){return es.some(function(e){return e.id===id;});}).length;
           return React.createElement('button',{key:ilce,
-            onClick:()=>{setRotaIlce(ilce);setRotaSec(es.map(e=>e.id));},
+            onClick:()=>{setRotaIlce(ilce);setRotaSec([]);},
             style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:secili?c+"33":"#1a1f2e",color:secili?c:"#94a3b8",border:"1px solid "+(secili?c+"66":"#2a3050"),cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",gap:4}
           },
             ilce+" ("+es.length+")",
