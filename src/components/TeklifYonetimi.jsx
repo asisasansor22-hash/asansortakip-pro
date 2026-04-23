@@ -122,23 +122,35 @@ function teklifHtml(teklif, elev) {
     '</div></body></html>'
 }
 
+function teklifDosyaAdi(teklif, elev, ext) {
+  var apartmanAdi = (teklif.apartmanAdi || (elev && elev.ad) || 'teklif').trim()
+  var tarih = (teklif.tarih || '').trim()
+  var parcalar = ['teklif', apartmanAdi]
+  if (tarih) parcalar.push(tarih)
+  return parcalar.join('-').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.' + ext
+}
+
 function downloadWord(teklif, elev) {
   var html = teklifHtml(teklif, elev)
   var blob = new Blob(['\ufeff', html], { type: 'application/msword' })
   var url = URL.createObjectURL(blob)
   var a = document.createElement('a')
   a.href = url
-  a.download = (teklif.apartmanAdi || (elev && elev.ad) || 'teklif').replace(/[\\/:*?"<>|]+/g, '-') + '.doc'
+  a.download = teklifDosyaAdi(teklif, elev, 'doc')
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
-function openPdfPrint(teklif, elev) {
+function downloadPdf(teklif, elev) {
+  var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
   var w = window.open('', '_blank', 'width=980,height=720')
   if (!w) return
-  w.document.write(teklifHtml(teklif, elev) + '<script>window.onload=function(){window.print();}<\/script>')
+  w.document.write(
+    teklifHtml(teklif, elev).replace('<title>Teklif</title>', '<title>' + escapeHtml(dosyaAdi) + '</title>') +
+    '<script>window.onload=function(){setTimeout(function(){window.focus();window.print();},150);};<\/script>'
+  )
   w.document.close()
 }
 
@@ -172,8 +184,8 @@ function TeklifKart(props) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: '#10b981' }}>{(+teklif.tutar || 0).toLocaleString('tr-TR') + ' ₺'}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={function() { onWord(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#1e3a5f', color: '#93c5fd', border: '1px solid #3b82f633', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>Word</button>
-          <button onClick={function() { onPdf(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#3a1e1e', color: '#fca5a5', border: '1px solid #ef444433', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>PDF</button>
+          <button onClick={function() { onWord(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#1e3a5f', color: '#93c5fd', border: '1px solid #3b82f633', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>Word Olarak Indir</button>
+          <button onClick={function() { onPdf(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#3a1e1e', color: '#fca5a5', border: '1px solid #ef444433', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>PDF Olarak Indir</button>
         </div>
       </div>
     </div>
@@ -274,15 +286,15 @@ function TeklifModal(props) {
               </pre>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-              Tarih yeni teklifte otomatik gelir. Yapilacak islemler alanina her satira bir is kalemi yazmaniz yeterlidir; sistem ciktida bunlari otomatik olarak 1, 2, 3 seklinde siralar. PDF dugmesi belgeyi yazdirma penceresinde acar, Word dugmesi ise indirilebilir .doc dosyasi uretir.
+              Tarih yeni teklifte otomatik gelir. Yapilacak islemler alanina her satira bir is kalemi yazmaniz yeterlidir; sistem ciktida bunlari otomatik olarak 1, 2, 3 seklinde siralar. Alttaki butonlardan teklifi Word olarak indirebilir veya PDF olarak kaydetmek icin yazdirma penceresini acabilirsiniz.
             </div>
           </div>
         </div>
 
         <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={function() { downloadWord(form, seciliElev) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Indir</button>
-            <button onClick={function() { openPdfPrint(form, seciliElev) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Ac</button>
+            <button onClick={function() { downloadWord(form, seciliElev) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Olarak Indir</button>
+            <button onClick={function() { downloadPdf(form, seciliElev) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button onClick={closeModal} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>Iptal</button>
@@ -484,7 +496,7 @@ export default function TeklifYonetimi(props) {
               onEdit={openEdit}
               onDelete={remove}
               onWord={function(item) { downloadWord(item, elevs.find(function(e) { return e.id === item.asansorId })) }}
-              onPdf={function(item) { openPdfPrint(item, elevs.find(function(e) { return e.id === item.asansorId })) }}
+              onPdf={function(item) { downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId })) }}
             />
           )
         })}
