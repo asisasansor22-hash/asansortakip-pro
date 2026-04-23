@@ -19,6 +19,7 @@ function escapeHtml(value) {
 
 var TEKLIF_HEADER_SRC = '/teklif-header.png'
 var teklifHeaderBytesPromise = null
+var teklifHeaderDataUrlPromise = null
 
 function getTeklifHeaderBytes() {
   if (!teklifHeaderBytesPromise) {
@@ -28,6 +29,25 @@ function getTeklifHeaderBytes() {
     })
   }
   return teklifHeaderBytesPromise
+}
+
+function getTeklifHeaderDataUrl() {
+  if (!teklifHeaderDataUrlPromise) {
+    teklifHeaderDataUrlPromise = fetch(TEKLIF_HEADER_SRC)
+      .then(function(res) {
+        if (!res.ok) throw new Error('Teklif basligi yuklenemedi.')
+        return res.blob()
+      })
+      .then(function(blob) {
+        return new Promise(function(resolve, reject) {
+          var reader = new FileReader()
+          reader.onload = function() { resolve(String(reader.result || '')) }
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+      })
+  }
+  return teklifHeaderDataUrlPromise
 }
 
 function cmToTwip(value) {
@@ -104,7 +124,7 @@ function teklifHtmlDocument(teklif, elev, options) {
   var pageMargin = preview ? '0 auto 18px' : '0 auto'
   var pageShadow = preview ? '0 16px 40px rgba(16,24,40,.12)' : 'none'
   var pagePadding = preview ? '32px 36px 42px' : '32mm 20mm 21mm'
-  var script = autoPrint ? '<script>window.onload=function(){setTimeout(function(){window.focus();window.print();},180);};<\/script>' : ''
+  var script = autoPrint ? '<script>window.onload=function(){window.focus();};<\/script>' : ''
 
   return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
@@ -118,9 +138,7 @@ function teklifHtmlDocument(teklif, elev, options) {
     '.indent{margin-left:82px;}' +
     '.items{margin:0 0 14px 114px;font-size:18px;line-height:1.6;}' +
     '.items li{margin-bottom:8px;}' +
-    '.recipient-row{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;margin:0 0 22px;}' +
-    '.recipient-prefix{font-size:18px;font-weight:700;text-align:right;padding-right:10px;}' +
-    '.recipient-name{font-size:18px;font-weight:700;text-align:center;}' +
+    '.recipient-line{margin:0 0 22px;font-size:18px;font-weight:700;text-align:center;}' +
     '.price{margin-left:28px;font-weight:700;color:#1f4e79;}' +
     '.company{font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:700;}' +
     '.signatures{display:flex;gap:28px;margin-top:38px;}' +
@@ -133,7 +151,7 @@ function teklifHtmlDocument(teklif, elev, options) {
     '<section class="page">' +
     '<img class="header" src="' + TEKLIF_HEADER_SRC + '" alt="Asis header" />' +
     '<p class="p right">' + escapeHtml(data.date) + '</p>' +
-    '<div class="recipient-row"><div class="recipient-prefix">SN.</div><div class="recipient-name">' + escapeHtml(data.recipient) + '</div><div></div></div>' +
+    '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
     '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
     '<p class="p indent">' + escapeHtml(data.intro2) + '</p>' +
     '<p class="p indent"><strong>' + escapeHtml(data.title) + '</strong></p>' +
@@ -245,60 +263,51 @@ function teklifImzaTablosu(docx, leftText, rightText) {
   })
 }
 
-function teklifRecipientTablosu(docx, recipient) {
-  return new docx.Table({
-    width: { size: cmToTwip(16.5), type: docx.WidthType.DXA },
-    layout: docx.TableLayoutType.FIXED,
-    borders: teklifBosHucresizBorders(docx),
-    rows: [
-      new docx.TableRow({
-        children: [
-          { text: 'SN.', width: 1.4, align: docx.AlignmentType.RIGHT },
-          { text: recipient, width: 13.7, align: docx.AlignmentType.CENTER },
-          { text: '', width: 1.4, align: docx.AlignmentType.LEFT }
-        ].map(function(item) {
-          return new docx.TableCell({
-            width: { size: cmToTwip(item.width), type: docx.WidthType.DXA },
-            borders: teklifBosHucresizBorders(docx),
-            children: [
-              new docx.Paragraph({
-                alignment: item.align,
-                children: item.text ? [
-                  new docx.TextRun({
-                    text: item.text,
-                    bold: true,
-                    font: 'Verdana',
-                    size: 24
-                  })
-                ] : []
-              })
-            ]
-          })
-        })
+function teklifRecipientParagraf(docx, recipient) {
+  return new docx.Paragraph({
+    alignment: docx.AlignmentType.CENTER,
+    spacing: { after: 160 },
+    children: [
+      new docx.TextRun({
+        text: 'SN. ' + recipient,
+        bold: true,
+        font: 'Verdana',
+        size: 24
       })
     ]
   })
 }
 
-function teklifSpacerTablosu(docx, itemCount) {
-  var spacerCm = Math.max(6.2, 16.4 - (itemCount * 1.15))
-  return new docx.Table({
-    width: { size: cmToTwip(16.5), type: docx.WidthType.DXA },
-    layout: docx.TableLayoutType.FIXED,
-    borders: teklifBosHucresizBorders(docx),
-    rows: [
-      new docx.TableRow({
-        height: { value: cmToTwip(spacerCm), rule: docx.HeightRule.EXACT },
-        children: [
-          new docx.TableCell({
-            width: { size: cmToTwip(16.5), type: docx.WidthType.DXA },
-            borders: teklifBosHucresizBorders(docx),
-            children: [new docx.Paragraph('')]
-          })
-        ]
-      })
-    ]
-  })
+function teklifBoslukParagraflari(docx, itemCount) {
+  var bosSatir = Math.max(7, Math.round(14 - (itemCount * 1.25)))
+  var lines = []
+  for (var i = 0; i < bosSatir; i += 1) {
+    lines.push(new docx.Paragraph({
+      spacing: { after: 110 },
+      children: [new docx.TextRun({ text: ' ', font: 'Verdana', size: 4 })]
+    }))
+  }
+  return lines
+}
+
+function pdfAddHeader(doc, imageData) {
+  var pageWidth = doc.internal.pageSize.getWidth()
+  doc.addImage(imageData, 'PNG', 12, 10, pageWidth - 24, 19.3)
+  doc.setDrawColor(208, 213, 221)
+  doc.setLineWidth(0.25)
+  doc.line(12, 31, pageWidth - 12, 31)
+  return 43
+}
+
+function pdfWriteText(doc, text, x, y, width, options) {
+  var opts = options || {}
+  var lines = Array.isArray(text) ? text : doc.splitTextToSize(String(text || ''), width)
+  doc.setFont(opts.font || 'helvetica', opts.bold ? 'bold' : 'normal')
+  doc.setFontSize(opts.size || 11)
+  if (opts.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2])
+  else doc.setTextColor(17, 17, 17)
+  doc.text(lines, x, y, { align: opts.align || 'left' })
+  return y + (lines.length * (opts.lineHeight || 5.8))
 }
 
 async function downloadWord(teklif, elev) {
@@ -308,7 +317,7 @@ async function downloadWord(teklif, elev) {
 
   var children = [
     teklifParagraf(docx, data.date, { align: docx.AlignmentType.RIGHT, bold: true, afterPt: 4 }),
-    teklifRecipientTablosu(docx, data.recipient),
+    teklifRecipientParagraf(docx, data.recipient),
     teklifParagraf(docx, '', { afterPt: 22 }),
     teklifParagraf(docx, data.intro1, { leftCm: 2.2, afterPt: 2 }),
     teklifParagraf(docx, data.intro2, { leftCm: 2.2, afterPt: 14 }),
@@ -325,7 +334,7 @@ async function downloadWord(teklif, elev) {
     children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
   })
 
-  children.push(teklifSpacerTablosu(docx, data.itemsSecond.length))
+  children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
   children.push(teklifParagraf(docx, data.price, { leftCm: 0.8, bold: true, color: '1F4E79', afterPt: 12 }))
   children.push(teklifParagraf(docx, data.delivery1, { leftCm: 2.2, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.delivery2, { leftCm: 2.2, afterPt: 16 }))
@@ -381,11 +390,69 @@ async function downloadWord(teklif, elev) {
 }
 
 function downloadPdf(teklif, elev) {
-  var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
-  var w = window.open('', '_blank', 'width=980,height=720')
-  if (!w) return
-  w.document.write(teklifHtmlDocument(teklif, elev, { title: dosyaAdi, autoPrint: true }))
-  w.document.close()
+  return (async function() {
+    var data = teklifVerisi(teklif, elev)
+    var _jspdf = await import('jspdf')
+    var jsPDF = _jspdf.jsPDF
+    var imageData = await getTeklifHeaderDataUrl()
+    var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+    var pageWidth = doc.internal.pageSize.getWidth()
+    var pageHeight = doc.internal.pageSize.getHeight()
+
+    function renderItems(items, start, y) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(11)
+      doc.setTextColor(17, 17, 17)
+      items.forEach(function(item, index) {
+        var lines = doc.splitTextToSize((start + index) + '. ' + item, 146)
+        doc.text(lines, 22, y)
+        y += (lines.length * 6.1) + 1.2
+      })
+      return y
+    }
+
+    var y = pdfAddHeader(doc, imageData)
+    y = pdfWriteText(doc, data.date, pageWidth - 12, y, 40, { bold: true, align: 'right', size: 12 })
+    y += 3
+    y = pdfWriteText(doc, 'SN. ' + data.recipient, pageWidth / 2, y, 160, { bold: true, align: 'center', size: 12 })
+    y += 4
+    y = pdfWriteText(doc, data.intro1, 12, y, 176, { size: 11 })
+    y = pdfWriteText(doc, data.intro2, 12, y, 176, { size: 11 })
+    y += 2
+    y = pdfWriteText(doc, data.title, 12, y, 100, { bold: true, size: 11.5 })
+    y += 2
+    y = renderItems(data.itemsFirst, 1, y)
+
+    doc.addPage()
+    y = pdfAddHeader(doc, imageData)
+    if (data.itemsSecond.length) {
+      y = renderItems(data.itemsSecond, data.secondStart, y)
+    }
+
+    var bottomY = Math.max(y + 10, 214)
+    bottomY = pdfWriteText(doc, data.price, 18, bottomY, 170, { bold: true, size: 12, color: [31, 78, 121] })
+    bottomY += 4
+    bottomY = pdfWriteText(doc, data.delivery1, 12, bottomY, 176, { size: 11 })
+    bottomY = pdfWriteText(doc, data.delivery2, 12, bottomY, 176, { size: 11 })
+    bottomY += 6
+    bottomY = pdfWriteText(doc, data.company1, 12, bottomY, 176, { bold: true, size: 11 })
+    bottomY = pdfWriteText(doc, data.company2, 12, bottomY, 176, { bold: true, size: 11 })
+    bottomY = pdfWriteText(doc, data.company3, 12, bottomY, 176, { bold: true, size: 11 })
+    bottomY = pdfWriteText(doc, data.company4, 12, bottomY, 176, { bold: true, size: 11 })
+
+    var imzaY = Math.max(bottomY + 16, pageHeight - 24)
+    doc.setDrawColor(102, 112, 133)
+    doc.setLineWidth(0.3)
+    doc.line(18, imzaY, 92, imzaY)
+    doc.line(118, imzaY, 192, imzaY)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(17, 17, 17)
+    doc.text(data.signLeft, 55, imzaY + 7, { align: 'center' })
+    doc.text(data.signRight, 155, imzaY + 7, { align: 'center' })
+
+    doc.save(teklifDosyaAdi(teklif, elev, 'pdf'))
+  })()
 }
 
 function TeklifKart(props) {
@@ -525,7 +592,7 @@ function TeklifModal(props) {
               </div>
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-              Bu onizleme artik gercek cikti sablonunun aynisidir. Word dosyasi gercek .docx olarak iner; PDF butonu ise ayni sablonu yazdirma kaydetme penceresinde acar.
+              Bu onizleme artik gercek cikti sablonunun aynisidir. Word dosyasi gercek .docx olarak iner; PDF butonu ise ayni duzenden dogrudan .pdf dosyasi indirir.
             </div>
           </div>
         </div>
@@ -533,7 +600,7 @@ function TeklifModal(props) {
         <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={function() { downloadWord(form, seciliElev).catch(function(err) { console.error(err); alert('Word çıktısı hazırlanamadı.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Olarak Indir</button>
-            <button onClick={function() { downloadPdf(form, seciliElev) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
+            <button onClick={function() { downloadPdf(form, seciliElev).catch(function(err) { console.error(err); alert('PDF ciktisi hazirlanamadi.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button onClick={closeModal} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>Iptal</button>
@@ -740,7 +807,12 @@ export default function TeklifYonetimi(props) {
                   alert('Word çıktısı hazırlanamadı.')
                 })
               }}
-              onPdf={function(item) { downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId })) }}
+              onPdf={function(item) {
+                downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId })).catch(function(err) {
+                  console.error(err)
+                  alert('PDF ciktisi hazirlanamadi.')
+                })
+              }}
             />
           )
         })}
