@@ -1,7 +1,34 @@
 import React, { useState } from 'react'
-import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal } from '../utils/constants.js'
+import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, FF, AdresFF, FS, Modal } from '../utils/constants.js'
 
-function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
+function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del,bakimcilar}){
+  const [atamaModal,setAtamaModal]=useState(null);
+  const kayitliBakimcilar=Array.isArray(bakimcilar)?bakimcilar:[];
+  const bakimciAdi=function(f){
+    if(!f) return "";
+    if(f.bakimciAd) return f.bakimciAd;
+    var b=kayitliBakimcilar.find(function(x){return x.id===f.bakimciId;});
+    return b&&b.ad?b.ad:"";
+  };
+  const bakimciRenk=function(f){
+    if(!f) return "#10b981";
+    if(f.bakimciRenk) return f.bakimciRenk;
+    var b=kayitliBakimcilar.find(function(x){return x.id===f.bakimciId;});
+    return b&&b.renk?b.renk:"#10b981";
+  };
+  const atamaAc=function(f){
+    if(kayitliBakimcilar.length===0){alert("Kayıtlı bakımcı bulunamadı. Önce Bakımcılar sekmesinden bakımcı ekleyin.");return;}
+    setAtamaModal(f);
+  };
+  const bakimciyaAta=function(b){
+    if(!atamaModal||!b) return;
+    setFaults(function(p){return p.map(function(x){return x.id===atamaModal.id?Object.assign({},x,{bakimciAtandi:true,bakimciId:b.id,bakimciAd:b.ad,bakimciRenk:b.renk,durum:x.durum==="Beklemede"?"Devam Ediyor":x.durum}):x;});});
+    setAtamaModal(null);
+  };
+  const atamayiKaldir=function(f){
+    if(!window.confirm("Bu arıza bakımcı atamasından kaldırılsın mı?")) return;
+    setFaults(function(p){return p.map(function(x){return x.id===f.id?Object.assign({},x,{bakimciAtandi:false,bakimciId:null,bakimciAd:null,bakimciRenk:null}):x;});});
+  };
   return(
     React.createElement('div', null
       , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16},}
@@ -37,6 +64,7 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                     , elev&&React.createElement(IlceBadge, { ilce: elev.ilce,})
                     , React.createElement('span', { style: {fontSize:12,color:"var(--text-muted)"},}, eName(f.asansorId), " · "  , f.tarih||"")
                     , React.createElement('span', { style: {fontSize:12,padding:"3px 9px",borderRadius:20,background:onRenk+"20",color:onRenk,fontWeight:600},}, f.oncelik)
+                    , f.bakimciAtandi&&React.createElement('span', { style: {fontSize:12,padding:"3px 9px",borderRadius:20,background:bakimciRenk(f)+"22",color:bakimciRenk(f),fontWeight:700},}, "🔧 " , bakimciAdi(f)||"Bakımcı")
                     , f.durum==="Çözüldü"&&f.cozumTarih&&React.createElement('span', { style: {fontSize:12,color:"var(--ios-green)"},}, "✅ " , f.cozumTarih)
                   )
                   , f.fotolar&&f.fotolar.length>0&&React.createElement('div', {className:"foto-grid",style:{marginBottom:8}},
@@ -51,8 +79,14 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
                     , React.createElement('select', { value: f.durum, onChange: e=>setFaults(p=>p.map(x=>x.id===f.id?{...x,durum:e.target.value}:x)), style: {...S.sel,fontSize:13,padding:"8px 12px"},}
                       , React.createElement('option', null, "Beklemede"), React.createElement('option', null, "Devam Ediyor" ), React.createElement('option', null, "Çözüldü")
                     )
-                    , React.createElement(Tog, { active: !!f.bakimciAtandi, on: "🔧 Bakımcıda" , off: "📤 Bakımcıya At"  , color: "var(--ios-green)",
-                      onClick: ()=>setFaults(p=>p.map(x=>x.id===f.id?{...x,bakimciAtandi:!x.bakimciAtandi}:x)),})
+                    , React.createElement('button', {
+                        onClick:function(){atamaAc(f);},
+                        style:{fontSize:12,padding:"6px 12px",borderRadius:20,background:f.bakimciAtandi?bakimciRenk(f)+"20":"var(--bg-elevated)",color:f.bakimciAtandi?bakimciRenk(f):"var(--text-muted)",border:"none",fontWeight:f.bakimciAtandi?800:600,cursor:"pointer",whiteSpace:"nowrap",minHeight:36}
+                      }, f.bakimciAtandi?("🔧 "+(bakimciAdi(f)||"Bakımcıda")):"📤 Bakımcıya At")
+                    , f.bakimciAtandi&&React.createElement('button', {
+                        onClick:function(){atamayiKaldir(f);},
+                        style:{fontSize:12,padding:"6px 10px",borderRadius:20,background:"rgba(239,68,68,0.12)",color:"#ef4444",border:"none",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",minHeight:36}
+                      }, "Atamayı Kaldır")
                     , f.durum==="Çözüldü"&&elev&&elev.tel&&React.createElement('button', {
                         onClick:function(){
                           var tel=(elev.tel||"").replace(/[\s\-\(\)]/g,"");
@@ -79,6 +113,32 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del}){
             )
           );
         })
+      )
+      , atamaModal&&React.createElement('div', {style:{position:"fixed",inset:0,background:"#000000cc",zIndex:2100,display:"flex",alignItems:"center",justifyContent:"center",padding:16},onClick:function(e){if(e.target===e.currentTarget)setAtamaModal(null);}},
+        React.createElement('div', {style:{width:"100%",maxWidth:420,background:"var(--bg-panel)",border:"1px solid var(--border)",borderRadius:18,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.45)"}},
+          React.createElement('div', {style:{padding:"14px 16px",borderBottom:"1px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+            React.createElement('div', null,
+              React.createElement('div', {style:{fontWeight:900,fontSize:15,color:"var(--text)"}}, "Arıza bakımcısı seç"),
+              React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)",marginTop:3}}, atamaModal.aciklama||"Arıza kaydı")
+            ),
+            React.createElement('button', {onClick:function(){setAtamaModal(null);},style:{background:"var(--bg-elevated)",border:"none",color:"var(--text-muted)",fontSize:18,cursor:"pointer",borderRadius:20,width:32,height:32}}, "×")
+          ),
+          React.createElement('div', {style:{padding:14,display:"flex",flexDirection:"column",gap:8}},
+            kayitliBakimcilar.map(function(b){
+              var active=atamaModal.bakimciId===b.id;
+              var renk=b.renk||"#3b82f6";
+              return React.createElement('button', {
+                key:b.id,
+                onClick:function(){bakimciyaAta(b);},
+                style:{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"12px 13px",borderRadius:12,border:"1px solid "+(active?renk:"var(--border)"),background:active?renk+"22":"var(--bg-elevated)",color:active?renk:"var(--text)",cursor:"pointer",fontWeight:800,textAlign:"left"}
+              },
+                React.createElement('span', {style:{width:10,height:10,borderRadius:"50%",background:renk,flexShrink:0}}),
+                React.createElement('span', {style:{flex:1}}, b.ad||"Bakımcı"),
+                active&&React.createElement('span', {style:{fontSize:11,color:renk}}, "Seçili")
+              );
+            })
+          )
+        )
       )
     )
   );

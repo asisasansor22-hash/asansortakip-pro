@@ -79,8 +79,8 @@ function teklifVerisi(teklif, elev) {
   var recipientCore = apartmanHam || 'APARTMAN'
   if (!/YÖNETİMİ$/i.test(recipientCore)) recipientCore += ' YÖNETİMİ'
   var items = parseIsler(teklif.yapilacakIsler)
-  var itemsFirst = items.slice(0, 6)
-  var itemsSecond = items.slice(6)
+  var itemsFirst = items.slice(0, 8)
+  var itemsSecond = items.slice(8)
   var tutar = (+teklif.tutar || 0).toLocaleString('tr-TR')
   var teslim = (teklif.teslimSuresi || '2 hafta').trim()
 
@@ -115,6 +115,7 @@ function teklifItemsHtml(items, start) {
 
 function teklifHtmlDocument(teklif, elev, options) {
   var data = teklifVerisi(teklif, elev)
+  var hasSecondPage = data.itemsSecond.length > 0
   var preview = !!(options && options.preview)
   var autoPrint = !!(options && options.autoPrint)
   var title = escapeHtml((options && options.title) || 'Teklif')
@@ -124,43 +125,9 @@ function teklifHtmlDocument(teklif, elev, options) {
   var pageWidth = preview ? 'min(920px, calc(100vw - 20px))' : '210mm'
   var pageMargin = preview ? '0 auto 18px' : '0 auto'
   var pageShadow = preview ? '0 16px 40px rgba(16,24,40,.12)' : 'none'
-  var pagePadding = preview ? '32px 36px 42px' : '32mm 20mm 21mm'
+  var pagePadding = preview ? '30px 36px 38px' : '26mm 20mm 20mm'
   var script = autoPrint ? '<script>window.onload=function(){window.focus();};<\/script>' : ''
-
-  return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
-    '<title>' + title + '</title>' +
-    '<style>' +
-    'body{margin:0;background:' + bodyBg + ';padding:' + bodyPadding + ';font-family:Verdana,Arial,sans-serif;color:#111;}' +
-    '.page{width:' + pageWidth + ';min-height:297mm;margin:' + pageMargin + ';background:#fff;padding:' + pagePadding + ';box-shadow:' + pageShadow + ';box-sizing:border-box;}' +
-    '.header{width:100%;display:block;border-bottom:1px solid #d0d5dd;padding-bottom:8px;margin-bottom:34px;}' +
-    '.p{margin:0 0 4px;font-size:18px;line-height:1.6;}' +
-    '.right{text-align:right;font-weight:700;}' +
-    '.indent{margin-left:82px;}' +
-    '.items{margin:0 0 14px 114px;font-size:18px;line-height:1.6;}' +
-    '.items li{margin-bottom:8px;}' +
-    '.recipient-line{margin:0 0 22px;font-size:18px;font-weight:700;text-align:center;}' +
-    '.price{margin-left:28px;font-weight:700;color:#1f4e79;}' +
-    '.company{font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:700;}' +
-    '.signatures{display:flex;gap:28px;margin-top:38px;}' +
-    '.sig{flex:1;border-top:1px solid #667085;padding-top:12px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:18px;font-weight:700;}' +
-    '.page-two{display:flex;flex-direction:column;}' +
-    '.bottom-block{margin-top:auto;}' +
-    '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
-    '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
-    '</style></head><body>' +
-    '<section class="page">' +
-    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
-    '<p class="p right">' + escapeHtml(data.date) + '</p>' +
-    '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.intro2) + '</p>' +
-    '<p class="p indent"><strong>' + escapeHtml(data.title) + '</strong></p>' +
-    teklifItemsHtml(data.itemsFirst, 1) +
-    '</section>' +
-    '<section class="page page-two">' +
-    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
-    (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
+  var bottomBlockHtml =
     '<div class="bottom-block">' +
     '<p class="p price">' + escapeHtml(data.price) + '</p>' +
     '<p class="p indent">' + escapeHtml(data.delivery1) + '</p>' +
@@ -170,7 +137,46 @@ function teklifHtmlDocument(teklif, elev, options) {
     '<p class="p indent company">' + escapeHtml(data.company3) + '</p>' +
     '<p class="p indent company">' + escapeHtml(data.company4) + '</p>' +
     '<div class="signatures"><div class="sig">' + escapeHtml(data.signLeft) + '</div><div class="sig">' + escapeHtml(data.signRight) + '</div></div>' +
-    '</div></section>' +
+    '</div>'
+
+  return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
+    '<title>' + title + '</title>' +
+    '<style>' +
+    'body{margin:0;background:' + bodyBg + ';padding:' + bodyPadding + ';font-family:Verdana,Arial,sans-serif;color:#111;}' +
+    '.page{width:' + pageWidth + ';min-height:297mm;margin:' + pageMargin + ';background:#fff;padding:' + pagePadding + ';box-shadow:' + pageShadow + ';box-sizing:border-box;}' +
+    '.header{width:100%;display:block;border-bottom:1px solid #d0d5dd;padding-bottom:8px;margin-bottom:26px;}' +
+    '.p{margin:0 0 4px;font-size:18px;line-height:1.6;}' +
+    '.right{text-align:right;font-weight:700;}' +
+    '.indent{margin-left:82px;}' +
+    '.items{margin:0 0 14px 114px;font-size:18px;line-height:1.5;}' +
+    '.items li{margin-bottom:5px;}' +
+    '.recipient-line{margin:0 0 18px;font-size:18px;font-weight:700;text-align:center;}' +
+    '.price{margin-left:28px;font-weight:700;color:#1f4e79;}' +
+    '.company{font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:700;}' +
+    '.signatures{display:flex;gap:28px;margin-top:38px;}' +
+    '.sig{flex:1;border-top:1px solid #667085;padding-top:12px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:18px;font-weight:700;}' +
+    '.page-two{display:flex;flex-direction:column;}' +
+    '.bottom-block{margin-top:auto;}' +
+    '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
+    '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
+    '</style></head><body>' +
+    '<section class="' + (hasSecondPage ? 'page' : 'page page-two') + '">' +
+    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
+    '<p class="p right">' + escapeHtml(data.date) + '</p>' +
+    '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
+    '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
+    '<p class="p indent">' + escapeHtml(data.intro2) + '</p>' +
+    '<p class="p indent"><strong>' + escapeHtml(data.title) + '</strong></p>' +
+    teklifItemsHtml(data.itemsFirst, 1) +
+    (hasSecondPage ? '' : bottomBlockHtml) +
+    '</section>' +
+    (hasSecondPage ?
+    '<section class="page page-two">' +
+    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
+    (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
+    bottomBlockHtml +
+    '</section>' : '') +
     script +
     '</body></html>'
 }
@@ -227,43 +233,6 @@ function teklifNumaraliParagraf(docx, index, text) {
   })
 }
 
-function teklifImzaTablosu(docx, leftText, rightText) {
-  return new docx.Table({
-    width: { size: cmToTwip(16.2), type: docx.WidthType.DXA },
-    layout: docx.TableLayoutType.FIXED,
-    borders: teklifBosHucresizBorders(docx),
-    rows: [
-      new docx.TableRow({
-        children: [leftText, rightText].map(function(text) {
-          return new docx.TableCell({
-            width: { size: cmToTwip(8.1), type: docx.WidthType.DXA },
-            borders: {
-              top: { style: docx.BorderStyle.SINGLE, color: '667085', size: 8 },
-              left: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' },
-              right: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' },
-              bottom: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' }
-            },
-            children: [
-              new docx.Paragraph({
-                alignment: docx.AlignmentType.CENTER,
-                spacing: { before: 120 },
-                children: [
-                  new docx.TextRun({
-                    text: text,
-                    bold: true,
-                    font: 'Calibri',
-                    size: 24
-                  })
-                ]
-              })
-            ]
-          })
-        })
-      })
-    ]
-  })
-}
-
 function teklifRecipientParagraf(docx, recipient) {
   return new docx.Paragraph({
     alignment: docx.AlignmentType.CENTER,
@@ -302,12 +271,56 @@ function waitForImages(root) {
   }))
 }
 
+function teklifHeaderParagraf(docx, headerBytes) {
+  return new docx.Paragraph({
+    border: {
+      bottom: { style: docx.BorderStyle.SINGLE, color: 'D0D5DD', size: 6 }
+    },
+    spacing: { after: 360 },
+    children: [
+      new docx.ImageRun({
+        data: headerBytes,
+        transformation: { width: 560, height: 65 }
+      })
+    ]
+  })
+}
+
+function teklifImzaParagraflari(docx, leftText, rightText) {
+  return [
+    new docx.Paragraph({
+      alignment: docx.AlignmentType.CENTER,
+      spacing: { before: 240, after: 80 },
+      children: [
+        new docx.TextRun({
+          text: '__________________________        __________________________',
+          font: 'Calibri',
+          size: 22
+        })
+      ]
+    }),
+    new docx.Paragraph({
+      alignment: docx.AlignmentType.CENTER,
+      spacing: { after: 0 },
+      children: [
+        new docx.TextRun({
+          text: leftText + '        ' + rightText,
+          bold: true,
+          font: 'Calibri',
+          size: 22
+        })
+      ]
+    })
+  ]
+}
+
 async function downloadWord(teklif, elev) {
   var data = teklifVerisi(teklif, elev)
   var docx = await import('docx')
   var headerBytes = await getTeklifHeaderBytes()
 
   var children = [
+    teklifHeaderParagraf(docx, headerBytes),
     teklifParagraf(docx, data.date, { align: docx.AlignmentType.RIGHT, bold: true, afterPt: 4 }),
     teklifRecipientParagraf(docx, data.recipient),
     teklifParagraf(docx, '', { afterPt: 22 }),
@@ -320,13 +333,17 @@ async function downloadWord(teklif, elev) {
     children.push(teklifNumaraliParagraf(docx, index + 1, item))
   })
 
-  children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
+  if (data.itemsSecond.length) {
+    children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
+    children.push(teklifHeaderParagraf(docx, headerBytes))
+    data.itemsSecond.forEach(function(item, index) {
+      children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
+    })
+    children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
+  } else {
+    children = children.concat(teklifBoslukParagraflari(docx, data.itemsFirst.length))
+  }
 
-  data.itemsSecond.forEach(function(item, index) {
-    children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
-  })
-
-  children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
   children.push(teklifParagraf(docx, data.price, { leftCm: 0.8, bold: true, color: '1F4E79', afterPt: 12 }))
   children.push(teklifParagraf(docx, data.delivery1, { leftCm: 2.2, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.delivery2, { leftCm: 2.2, afterPt: 16 }))
@@ -334,38 +351,19 @@ async function downloadWord(teklif, elev) {
   children.push(teklifParagraf(docx, data.company2, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.company3, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.company4, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 30 }))
-  children.push(teklifImzaTablosu(docx, data.signLeft, data.signRight))
+  children = children.concat(teklifImzaParagraflari(docx, data.signLeft, data.signRight))
 
   var doc = new docx.Document({
     sections: [{
       properties: {
         page: {
           margin: {
-            top: cmToTwip(4.1),
+            top: cmToTwip(1.4),
             right: cmToTwip(2.0),
             bottom: cmToTwip(2.1),
             left: cmToTwip(2.0)
           }
         }
-      },
-      headers: {
-        default: new docx.Header({
-          children: [
-            new docx.Paragraph({
-              border: {
-                bottom: { style: docx.BorderStyle.SINGLE, color: 'D0D5DD', size: 6 }
-              },
-              spacing: { after: 40 },
-              children: [
-                new docx.ImageRun({
-                  type: 'png',
-                  data: headerBytes,
-                  transformation: { width: 652, height: 76 }
-                })
-              ]
-            })
-          ]
-        })
       },
       children: children
     }]

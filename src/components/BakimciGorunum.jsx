@@ -77,7 +77,11 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     });
   },[tamamlananBakimlarTum,seciliTarihStr]);
 
-  const atananArizalar=useMemo(()=>faults.filter(f=>f.bakimciAtandi),[faults]);
+  const atananArizalar=useMemo(()=>faults.filter(function(f){
+    if(!f.bakimciAtandi) return false;
+    if(aktifBakimci&&f.bakimciId&&f.bakimciId!==aktifBakimci.id) return false;
+    return true;
+  }),[faults,aktifBakimci]);
 
   const kaydetOdeme=()=>{
     const {elev,maint}=odemeModal;

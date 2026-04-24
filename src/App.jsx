@@ -1212,7 +1212,11 @@ function App(){
   if(rol===null) return React.createElement(LoginScreen, { onLogin: (r,bk)=>{setRol(r);setAktifBakimci(bk||null);setTab(r==="bakimci"?2:0);}, bakimcilar:bakimcilar,});
 
   const atanmayanCount=elevs.filter(e=>{const kayitlar=mMonth.filter(m=>m.asansorId===e.id);return kayitlar.length===0||!kayitlar.some(m=>m.planlanmis);}).length;
-  const atananArizaCount=faults.filter(f=>f.bakimciAtandi&&f.durum!=="Çözüldü").length;
+  const atananArizaCount=faults.filter(function(f){
+    if(!f.bakimciAtandi||f.durum==="Çözüldü") return false;
+    if(rol==="bakimci"&&aktifBakimci&&f.bakimciId&&f.bakimciId!==aktifBakimci.id) return false;
+    return true;
+  }).length;
 
   return(
     React.createElement('div', { style: {fontFamily:"-apple-system,'SF Pro Display',sans-serif",background:"var(--bg-root)",minHeight:"100vh",color:"var(--text)"},}
@@ -1633,7 +1637,7 @@ function App(){
 
 /* ARIZALAR - YÖNETİCİ */
 , tab===3&&(
-  React.createElement(ArizaYonetimiAdmin, { faults: faults, setFaults: setFaults, elevs: elevs, eName: eName, oAdd: oAdd, oEdit: oEdit, del: del,})
+  React.createElement(ArizaYonetimiAdmin, { faults: faults, setFaults: setFaults, elevs: elevs, eName: eName, oAdd: oAdd, oEdit: oEdit, del: del, bakimcilar: bakimcilar,})
 )
 
 /* GÜNLÜK İŞLER */
