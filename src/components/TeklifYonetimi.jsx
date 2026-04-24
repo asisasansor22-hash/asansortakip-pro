@@ -82,7 +82,6 @@ function teklifVerisi(teklif, elev) {
   var itemsFirst = items.slice(0, 8)
   var itemsSecond = items.slice(8)
   var tutar = (+teklif.tutar || 0).toLocaleString('tr-TR')
-  var teslim = (teklif.teslimSuresi || '2 hafta').trim()
 
   return {
     date: formatTarihTR(teklif.tarih),
@@ -94,8 +93,6 @@ function teklifVerisi(teklif, elev) {
     itemsSecond: itemsSecond,
     secondStart: itemsFirst.length + 1,
     price: "FİYATIMIZ YUKARIDAKİ BİR ADET ASANSÖR İÇİN TOPLAM TUTAR " + tutar + " TL'DİR.",
-    delivery1: 'ASANSÖR SÖZLEŞME YAPILDIĞI TARİHTEN İTİBAREN ' + turkceBuyut(teslim) + ' İÇİNDE',
-    delivery2: 'BİTİRİLİP UYGUNLUK ETİKETİ ALINACAKTIR.',
     company1: 'Asis Asansör Sistemleri',
     company2: 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL',
     company3: 'Tel: 0212-703-20-52',
@@ -115,7 +112,6 @@ function teklifItemsHtml(items, start) {
 
 function teklifHtmlDocument(teklif, elev, options) {
   var data = teklifVerisi(teklif, elev)
-  var hasSecondPage = data.itemsSecond.length > 0
   var preview = !!(options && options.preview)
   var autoPrint = !!(options && options.autoPrint)
   var title = escapeHtml((options && options.title) || 'Teklif')
@@ -130,8 +126,6 @@ function teklifHtmlDocument(teklif, elev, options) {
   var bottomBlockHtml =
     '<div class="bottom-block">' +
     '<p class="p price">' + escapeHtml(data.price) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.delivery1) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.delivery2) + '</p>' +
     '<p class="p indent company">' + escapeHtml(data.company1) + '</p>' +
     '<p class="p indent company">' + escapeHtml(data.company2) + '</p>' +
     '<p class="p indent company">' + escapeHtml(data.company3) + '</p>' +
@@ -161,7 +155,7 @@ function teklifHtmlDocument(teklif, elev, options) {
     '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
     '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
     '</style></head><body>' +
-    '<section class="' + (hasSecondPage ? 'page' : 'page page-two') + '">' +
+    '<section class="page">' +
     '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
     '<p class="p right">' + escapeHtml(data.date) + '</p>' +
     '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
@@ -169,14 +163,12 @@ function teklifHtmlDocument(teklif, elev, options) {
     '<p class="p indent">' + escapeHtml(data.intro2) + '</p>' +
     '<p class="p indent"><strong>' + escapeHtml(data.title) + '</strong></p>' +
     teklifItemsHtml(data.itemsFirst, 1) +
-    (hasSecondPage ? '' : bottomBlockHtml) +
     '</section>' +
-    (hasSecondPage ?
     '<section class="page page-two">' +
     '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
     (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
     bottomBlockHtml +
-    '</section>' : '') +
+    '</section>' +
     script +
     '</body></html>'
 }
@@ -279,6 +271,7 @@ function teklifHeaderParagraf(docx, headerBytes) {
     spacing: { after: 360 },
     children: [
       new docx.ImageRun({
+        type: 'png',
         data: headerBytes,
         transformation: { width: 560, height: 65 }
       })
@@ -333,20 +326,14 @@ async function downloadWord(teklif, elev) {
     children.push(teklifNumaraliParagraf(docx, index + 1, item))
   })
 
-  if (data.itemsSecond.length) {
-    children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
-    children.push(teklifHeaderParagraf(docx, headerBytes))
-    data.itemsSecond.forEach(function(item, index) {
-      children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
-    })
-    children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
-  } else {
-    children = children.concat(teklifBoslukParagraflari(docx, data.itemsFirst.length))
-  }
+  children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
+  children.push(teklifHeaderParagraf(docx, headerBytes))
+  data.itemsSecond.forEach(function(item, index) {
+    children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
+  })
+  children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
 
   children.push(teklifParagraf(docx, data.price, { leftCm: 0.8, bold: true, color: '1F4E79', afterPt: 12 }))
-  children.push(teklifParagraf(docx, data.delivery1, { leftCm: 2.2, afterPt: 2 }))
-  children.push(teklifParagraf(docx, data.delivery2, { leftCm: 2.2, afterPt: 16 }))
   children.push(teklifParagraf(docx, data.company1, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.company2, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
   children.push(teklifParagraf(docx, data.company3, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
@@ -543,14 +530,10 @@ function TeklifModal(props) {
               <textarea value={form.yapilacakIsler || ''} onChange={function(e) { F('yapilacakIsler', e.target.value) }} rows={10} placeholder="Her maddeyi alt alta yazin..." style={{ width: '100%', resize: 'vertical', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text)', boxSizing: 'border-box', lineHeight: 1.5 }} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: darAlan ? '1fr' : (darModal ? '1fr 1fr' : '1fr 1fr 1fr'), gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: darAlan ? '1fr' : '1fr 1fr', gap: 10 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 5 }}>Tutar (TL)</label>
                 <input type="number" value={form.tutar || ''} onChange={function(e) { F('tutar', e.target.value) }} style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text)', boxSizing: 'border-box' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 5 }}>Teslim Suresi</label>
-                <input value={form.teslimSuresi || ''} onChange={function(e) { F('teslimSuresi', e.target.value) }} style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text)', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 5 }}>Onay Tarihi</label>
@@ -602,7 +585,7 @@ export default function TeklifYonetimi(props) {
   var _useState2 = useState(null), edit = _useState2[0], setEdit = _useState2[1]
   var _useState3 = useState('Tümü'), filtreIlce = _useState3[0], setFiltreIlce = _useState3[1]
   var _useState4 = useState(''), arama = _useState4[0], setArama = _useState4[1]
-  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', teslimSuresi: '2 hafta', onayTarihi: '', ilce: '' }), form = _useState5[0], setForm = _useState5[1]
+  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '' }), form = _useState5[0], setForm = _useState5[1]
   var _useState6 = useState(typeof window !== 'undefined' ? window.innerWidth : 1280), viewportWidth = _useState6[0], setViewportWidth = _useState6[1]
 
   var darModal = viewportWidth < 1100
@@ -668,13 +651,13 @@ export default function TeklifYonetimi(props) {
 
   function openAdd() {
     setEdit(null)
-    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', teslimSuresi: '2 hafta', onayTarihi: '', ilce: '' })
+    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '' })
     setModal(true)
   }
 
   function openEdit(teklif) {
     setEdit(teklif)
-    setForm(Object.assign({ teslimSuresi: '2 hafta', ilce: '' }, teklif))
+    setForm(Object.assign({ ilce: '' }, teklif))
     setModal(true)
   }
 
