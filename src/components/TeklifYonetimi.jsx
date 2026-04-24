@@ -366,6 +366,7 @@ async function downloadWord(teklif, elev) {
               spacing: { after: 40 },
               children: [
                 new docx.ImageRun({
+                  type: 'png',
                   data: headerBytes,
                   transformation: { width: 652, height: 76 }
                 })
