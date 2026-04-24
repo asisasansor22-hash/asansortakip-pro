@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, firebaseLogout, firebaseLogin } from './firebase.js'
+import { dbGet, dbSet, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getUserProfile, isSuperAdmin } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -8,6 +8,8 @@ import {
   S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal
 } from './utils/constants.js'
 import LoginScreen from './components/LoginScreen.jsx'
+import FirmaKoduGate from './components/FirmaKoduGate.jsx'
+import FirmalarPaneli from './components/FirmalarPaneli.jsx'
 import InstallBanner from './components/InstallBanner.jsx'
 import KontrolListesi from './components/KontrolListesi.jsx'
 import BakimAtamaPaneli from './components/BakimAtamaPaneli.jsx'
@@ -482,6 +484,15 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
+  // ---- Çoklu firma (tenant) durumu ----
+  const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
+  const [tenantConfig,setTenantConfig]=useState(null);
+  const [subscription,setSubscription]=useState(null);
+  const [isSuper,setIsSuper]=useState(false);
+  const [userProfile,setUserProfile]=useState(null);
+  const [firmalarAcik,setFirmalarAcik]=useState(false);
+  function handleFirmaKodu(slug, cfg){ setTenantIdState(slug); setTenantConfig(cfg||null); }
+  function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
   // Tema uygula
@@ -493,16 +504,23 @@ function App(){
   const aylikKapamaRef=React.useRef([]); // aylikKapamalar'ın her zaman güncel kopyası
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
 
-  // Bakımcıları hemen yükle (public read — login ekranı için)
+  // Bakımcıları ve tenant config'i yükle (tenant kodu seçildikten sonra, login ekranı için)
   useEffect(function(){
-    async function yukBakimci(){
+    if(!tenantId) return;
+    async function yukTenant(){
       try{
         var r=await dbGet("at_bakimcilar");
         if(r){var d=Array.isArray(r)?r:(typeof r==='string'?JSON.parse(r):null);if(Array.isArray(d)&&d.length>0){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}
       }catch(e){}
+      try{
+        var cfg=await getTenantConfig(tenantId);
+        if(cfg) setTenantConfig(cfg);
+        var sub=await getTenantSubscription(tenantId);
+        if(sub) setSubscription(sub);
+      }catch(e){}
     }
-    yukBakimci();
-  },[]);
+    yukTenant();
+  },[tenantId]);
 
   // Login sonrası veri yükle (auth token gerekli)
   useEffect(function(){
@@ -1204,12 +1222,44 @@ function App(){
   }).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
-  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON = isSuper ? TABS_YON_BASE.concat(["🏭 Firmalar"]) : TABS_YON_BASE;
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
-  const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+  const tabIdx=rol==="bakimci"?[2,5,8,9]:TABS_YON.map(function(_,i){return i;});
 
-  if(rol===null) return React.createElement(LoginScreen, { onLogin: (r,bk)=>{setRol(r);setAktifBakimci(bk||null);setTab(r==="bakimci"?2:0);}, bakimcilar:bakimcilar,});
+  if(!tenantId) return React.createElement(FirmaKoduGate, { onReady: handleFirmaKodu });
+
+  if(rol===null) return React.createElement(LoginScreen, {
+    onLogin: async (r,bk)=>{
+      // Giriş sonrası: süper-admin ve user profil kontrolü
+      try{
+        var uid = auth && auth.currentUser ? auth.currentUser.uid : null;
+        if(uid){
+          var sup = await isSuperAdmin(uid);
+          setIsSuper(!!sup);
+          var prof = await getUserProfile(uid);
+          setUserProfile(prof||null);
+          // Abonelik kontrolü (süper-admin bypass)
+          if(!sup){
+            var sub = await getTenantSubscription(tenantId);
+            setSubscription(sub||null);
+            var bitis = sub && sub.bitis ? new Date(sub.bitis) : null;
+            var durum = sub && sub.status ? sub.status : "active";
+            var gecmis = bitis && bitis.getTime() < Date.now();
+            if(durum !== "active" || gecmis){
+              alert("Firmanızın aboneliği aktif değil. Lütfen Asis Asansör ile iletişime geçin.");
+              firebaseLogout(); setRol(null); return;
+            }
+          }
+        }
+      }catch(e){}
+      setRol(r); setAktifBakimci(bk||null); setTab(r==="bakimci"?2:0);
+    },
+    bakimcilar: bakimcilar,
+    tenantConfig: tenantConfig,
+    onFarkliFirma: farkliFirma,
+  });
 
   const atanmayanCount=elevs.filter(e=>{const kayitlar=mMonth.filter(m=>m.asansorId===e.id);return kayitlar.length===0||!kayitlar.some(m=>m.planlanmis);}).length;
   const atananArizaCount=faults.filter(function(f){
@@ -2693,6 +2743,13 @@ function App(){
 , tab===14&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar})
+  )
+)
+
+/* FIRMALAR (süper-admin) */
+, tab===15&&rol==="yonetici"&&isSuper&&(
+  React.createElement('div', {className:"ios-animate"},
+    React.createElement(FirmalarPaneli, { currentTenantId: tenantId })
   )
 )
 

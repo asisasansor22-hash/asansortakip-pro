@@ -131,11 +131,57 @@ export function onAuthChange(cb) {
 
 export { auth };
 
-// Database - REST API (artık auth token ile)
+// ------- Tenant (çoklu firma) ----------------------------------------------
+// Her kiracı firma kendi verisini /asansor/tenants/{tenantId}/ altında tutar.
+// Asis (süper-admin) için tenantId = "asis".
+var currentTenantId = null;
+try {
+  if (typeof localStorage !== "undefined") {
+    currentTenantId = localStorage.getItem("at_tenant_id") || null;
+  }
+} catch(e) {}
+
+export function setTenantId(tid) {
+  currentTenantId = tid || null;
+  try {
+    if (typeof localStorage !== "undefined") {
+      if (tid) localStorage.setItem("at_tenant_id", tid);
+      else localStorage.removeItem("at_tenant_id");
+    }
+  } catch(e) {}
+}
+
+export function getTenantId() { return currentTenantId; }
+
+function tenantKeyPath(key) {
+  // Eğer key zaten "tenants/" veya "users/" gibi mutlaksa olduğu gibi kullan
+  if (key.indexOf("/") >= 0) return key;
+  if (!currentTenantId) {
+    // Tenant seçilmemişse eski konuma düşme — bilinçli olarak null dönecek
+    return null;
+  }
+  return "tenants/" + currentTenantId + "/" + key;
+}
+
+// ------- Database: tenant-aware --------------------------------------------
 export async function dbGet(key) {
+  var p = tenantKeyPath(key);
+  if (p === null) return null;
+  return dbGetRaw(p);
+}
+
+export async function dbSet(key, value) {
+  var p = tenantKeyPath(key);
+  if (p === null) return;
+  return dbSetRaw(p, value);
+}
+
+// ------- Database: raw (tenant-bypass, global yollar için) -----------------
+// Örn: users/{uid}, superadmins/{uid}, tenants (liste), tenants/{tid}/config
+export async function dbGetRaw(path) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
     if (token) url += "?auth=" + token;
     var controller = new AbortController();
     var timer = setTimeout(function(){ controller.abort(); }, 8000);
@@ -147,10 +193,10 @@ export async function dbGet(key) {
   } catch(e) { return null; }
 }
 
-export async function dbSet(key, value) {
+export async function dbSetRaw(path, value) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
     if (token) url += "?auth=" + token;
     await fetch(url, {
       method: "PUT",
@@ -158,4 +204,53 @@ export async function dbSet(key, value) {
       body: JSON.stringify(value)
     });
   } catch(e) {}
+}
+
+export async function dbDeleteRaw(path) {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
+    if (token) url += "?auth=" + token;
+    await fetch(url, { method: "DELETE" });
+  } catch(e) {}
+}
+
+// ------- Kullanıcı / süper-admin profil yardımcıları ------------------------
+export async function getUserProfile(uid) {
+  if (!uid) return null;
+  return dbGetRaw("users/" + uid);
+}
+
+export async function setUserProfile(uid, profile) {
+  if (!uid) return;
+  return dbSetRaw("users/" + uid, profile);
+}
+
+export async function isSuperAdmin(uid) {
+  if (!uid) return false;
+  var v = await dbGetRaw("superadmins/" + uid);
+  return v === true;
+}
+
+export async function getTenantConfig(tid) {
+  if (!tid) return null;
+  return dbGetRaw("tenants/" + tid + "/config");
+}
+
+export async function getTenantSubscription(tid) {
+  if (!tid) return null;
+  return dbGetRaw("tenants/" + tid + "/subscription");
+}
+
+export async function listTenants() {
+  // Süper-admin için tüm tenant özetlerini getir
+  var all = await dbGetRaw("tenants");
+  if (!all || typeof all !== "object") return [];
+  var out = [];
+  for (var tid in all) {
+    if (!Object.prototype.hasOwnProperty.call(all, tid)) continue;
+    var t = all[tid] || {};
+    out.push({ id: tid, config: t.config || null, subscription: t.subscription || null });
+  }
+  return out;
 }

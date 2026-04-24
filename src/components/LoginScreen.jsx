@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { S } from '../utils/constants.js'
 import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
-import { firebaseLogin } from '../firebase.js'
+import { firebaseLogin, getTenantId } from '../firebase.js'
 
-function LoginScreen({ onLogin, bakimcilar }) {
+function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
+  const tenantId = getTenantId() || "asis";
+  const isAsis = tenantId === "asis";
   const [sifre, setSifre] = useState("");
   const [hata, setHata] = useState("");
   const [sifreAcik, setSifreAcik] = useState(false);
@@ -15,28 +17,34 @@ function LoginScreen({ onLogin, bakimcilar }) {
   const [bakimciHata, setBakimciHata] = useState("");
   const [listAcik, setListAcik] = useState(false);
 
-  // E-posta oluştur (bakimci adından veya rol'den)
+  // E-posta oluştur — Asis için eski format (geriye uyumluluk), diğer firmalar için tenant-prefix'li
   function makeEmail(rol, bakimci) {
-    if (rol === "yonetici") return "yonetici@asistakip.app";
+    var prefix = isAsis ? "" : (tenantId + "_");
+    if (rol === "yonetici") {
+      return isAsis ? "yonetici@asistakip.app" : ("yonetici_" + tenantId + "@asistakip.app");
+    }
     if (bakimci && bakimci.ad) {
       var safe = bakimci.ad.toLowerCase()
         .replace(/ş/g,"s").replace(/ç/g,"c").replace(/ğ/g,"g")
         .replace(/ı/g,"i").replace(/ö/g,"o").replace(/ü/g,"u")
         .replace(/[^a-z0-9]/g,"");
-      return "bakimci_" + safe + "@asistakip.app";
+      return "bakimci_" + prefix + safe + "@asistakip.app";
     }
-    return "bakimci@asistakip.app";
+    return "bakimci_" + prefix + "genel@asistakip.app";
   }
 
   const yoneticiGiris = async () => {
-    if (sifre !== "asis94") {
+    // Asis için eski davranış korunur (hardcoded şifre "asis94").
+    // Diğer firmalar kullanıcı-girilen şifreyi doğrudan Firebase Auth'a gönderir.
+    if (isAsis && sifre !== "asis94") {
       setHata("Şifre hatalı!");
       setSifre("");
       return;
     }
     setYukleniyor(true);
     setHata("");
-    var res = await firebaseLogin(makeEmail("yonetici"), "asis94");
+    var firebasePass = isAsis ? "asis94" : sifre;
+    var res = await firebaseLogin(makeEmail("yonetici"), firebasePass);
     setYukleniyor(false);
     if (res.success) {
       onLogin("yonetici");
@@ -91,7 +99,10 @@ function LoginScreen({ onLogin, bakimcilar }) {
         React.createElement('div', { style: { textAlign: "center", marginBottom: 44 } },
           React.createElement('img', { src: ASIS_LOGO_B64, alt: "Asis", className: "asis-logo-img", style: { height: "70px", objectFit: "contain", marginBottom: "8px" } }),
           React.createElement('div', { style: { fontWeight: 800, fontSize: 30, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, "AsansörTakip"),
-          React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Pro")
+          React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Pro"),
+          tenantConfig && tenantConfig.ad && React.createElement('div', {
+            style: { marginTop: 14, fontSize: 13, fontWeight: 700, color: "var(--accent)", padding: "6px 14px", background: "rgba(0,122,255,0.10)", borderRadius: 10, display: "inline-block" }
+          }, tenantConfig.ad)
         ),
 
         yukleniyor
@@ -194,7 +205,7 @@ function LoginScreen({ onLogin, bakimcilar }) {
             : React.createElement('button', {
               onClick: async () => {
                 setYukleniyor(true);
-                var res = await firebaseLogin("bakimci@asistakip.app", "bakimci_genel");
+                var res = await firebaseLogin(makeEmail("bakimci", null), "bakimci_genel_" + tenantId);
                 setYukleniyor(false);
                 if (res.success) onLogin("bakimci", null);
               },
@@ -245,7 +256,13 @@ function LoginScreen({ onLogin, bakimcilar }) {
                 }, "\uD83D\uDEAB " + hata)
               )
             )
-          )
+          ),
+
+          /* -- FARKLI FIRMA -- */
+          onFarkliFirma && React.createElement('button', {
+            onClick: onFarkliFirma,
+            style: { marginTop: 16, padding: "8px 12px", background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", textDecoration: "underline" }
+          }, "Farklı firma kodu gir")
         )
       )
     )
