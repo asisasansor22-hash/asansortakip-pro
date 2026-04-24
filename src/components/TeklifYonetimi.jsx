@@ -118,6 +118,7 @@ function teklifHtmlDocument(teklif, elev, options) {
   var preview = !!(options && options.preview)
   var autoPrint = !!(options && options.autoPrint)
   var title = escapeHtml((options && options.title) || 'Teklif')
+  var headerSrc = (options && options.headerSrc) || TEKLIF_HEADER_SRC
   var bodyBg = preview ? '#eef2f6' : '#ffffff'
   var bodyPadding = preview ? '18px 0' : '0'
   var pageWidth = preview ? 'min(920px, calc(100vw - 20px))' : '210mm'
@@ -149,7 +150,7 @@ function teklifHtmlDocument(teklif, elev, options) {
     '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
     '</style></head><body>' +
     '<section class="page">' +
-    '<img class="header" src="' + TEKLIF_HEADER_SRC + '" alt="Asis header" />' +
+    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
     '<p class="p right">' + escapeHtml(data.date) + '</p>' +
     '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
     '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
@@ -158,7 +159,7 @@ function teklifHtmlDocument(teklif, elev, options) {
     teklifItemsHtml(data.itemsFirst, 1) +
     '</section>' +
     '<section class="page page-two">' +
-    '<img class="header" src="' + TEKLIF_HEADER_SRC + '" alt="Asis header" />' +
+    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
     (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
     '<div class="bottom-block">' +
     '<p class="p price">' + escapeHtml(data.price) + '</p>' +
@@ -290,24 +291,15 @@ function teklifBoslukParagraflari(docx, itemCount) {
   return lines
 }
 
-function pdfAddHeader(doc, imageData) {
-  var pageWidth = doc.internal.pageSize.getWidth()
-  doc.addImage(imageData, 'PNG', 12, 10, pageWidth - 24, 19.3)
-  doc.setDrawColor(208, 213, 221)
-  doc.setLineWidth(0.25)
-  doc.line(12, 31, pageWidth - 12, 31)
-  return 43
-}
-
-function pdfWriteText(doc, text, x, y, width, options) {
-  var opts = options || {}
-  var lines = Array.isArray(text) ? text : doc.splitTextToSize(String(text || ''), width)
-  doc.setFont(opts.font || 'helvetica', opts.bold ? 'bold' : 'normal')
-  doc.setFontSize(opts.size || 11)
-  if (opts.color) doc.setTextColor(opts.color[0], opts.color[1], opts.color[2])
-  else doc.setTextColor(17, 17, 17)
-  doc.text(lines, x, y, { align: opts.align || 'left' })
-  return y + (lines.length * (opts.lineHeight || 5.8))
+function waitForImages(root) {
+  var imgs = Array.prototype.slice.call(root.querySelectorAll('img'))
+  return Promise.all(imgs.map(function(img) {
+    if (img.complete && img.naturalHeight > 0) return Promise.resolve()
+    return new Promise(function(resolve) {
+      img.addEventListener('load', resolve, { once: true })
+      img.addEventListener('error', resolve, { once: true })
+    })
+  }))
 }
 
 async function downloadWord(teklif, elev) {
@@ -390,70 +382,58 @@ async function downloadWord(teklif, elev) {
   URL.revokeObjectURL(url)
 }
 
-function downloadPdf(teklif, elev) {
-  return (async function() {
-    var data = teklifVerisi(teklif, elev)
-    var _jspdf = await import('jspdf')
-    var jsPDF = _jspdf.jsPDF
-    var imageData = await getTeklifHeaderDataUrl()
-    var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
-    var pageWidth = doc.internal.pageSize.getWidth()
-    var pageHeight = doc.internal.pageSize.getHeight()
+async function downloadPdf(teklif, elev) {
+  var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
+  var headerDataUrl = await getTeklifHeaderDataUrl()
+  var html = teklifHtmlDocument(teklif, elev, { title: dosyaAdi, headerSrc: headerDataUrl })
 
-    function renderItems(items, start, y) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(11)
-      doc.setTextColor(17, 17, 17)
-      items.forEach(function(item, index) {
-        var lines = doc.splitTextToSize((start + index) + '. ' + item, 146)
-        doc.text(lines, 22, y)
-        y += (lines.length * 6.1) + 1.2
+  var iframe = document.createElement('iframe')
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.style.cssText = 'position:fixed;left:0;top:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;z-index:-9999;'
+  document.body.appendChild(iframe)
+
+  try {
+    await new Promise(function(resolve) {
+      iframe.addEventListener('load', resolve, { once: true })
+      iframe.srcdoc = html
+    })
+
+    var idoc = iframe.contentDocument
+    if (!idoc) throw new Error('PDF onizleme penceresi olusturulamadi.')
+
+    await waitForImages(idoc)
+    if (idoc.fonts && idoc.fonts.ready) {
+      try { await idoc.fonts.ready } catch (_) {}
+    }
+
+    var html2canvasMod = await import('html2canvas')
+    var html2canvas = html2canvasMod.default || html2canvasMod
+    var jspdfMod = await import('jspdf')
+    var jsPDF = jspdfMod.jsPDF
+
+    var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true })
+    var pageWidthMm = pdf.internal.pageSize.getWidth()
+    var pageHeightMm = pdf.internal.pageSize.getHeight()
+    var pages = idoc.querySelectorAll('.page')
+
+    for (var i = 0; i < pages.length; i += 1) {
+      var canvas = await html2canvas(pages[i], {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: pages[i].scrollWidth,
+        windowHeight: pages[i].scrollHeight
       })
-      return y
+      var imgData = canvas.toDataURL('image/jpeg', 0.95)
+      if (i > 0) pdf.addPage()
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, pageHeightMm, undefined, 'FAST')
     }
 
-    var y = pdfAddHeader(doc, imageData)
-    y = pdfWriteText(doc, data.date, pageWidth - 12, y, 40, { bold: true, align: 'right', size: 12 })
-    y += 3
-    y = pdfWriteText(doc, 'SN. ' + data.recipient, pageWidth / 2, y, 160, { bold: true, align: 'center', size: 12 })
-    y += 4
-    y = pdfWriteText(doc, data.intro1, 12, y, 176, { size: 11 })
-    y = pdfWriteText(doc, data.intro2, 12, y, 176, { size: 11 })
-    y += 2
-    y = pdfWriteText(doc, data.title, 12, y, 100, { bold: true, size: 11.5 })
-    y += 2
-    y = renderItems(data.itemsFirst, 1, y)
-
-    doc.addPage()
-    y = pdfAddHeader(doc, imageData)
-    if (data.itemsSecond.length) {
-      y = renderItems(data.itemsSecond, data.secondStart, y)
-    }
-
-    var bottomY = Math.max(y + 10, 214)
-    bottomY = pdfWriteText(doc, data.price, 18, bottomY, 170, { bold: true, size: 12, color: [31, 78, 121] })
-    bottomY += 4
-    bottomY = pdfWriteText(doc, data.delivery1, 12, bottomY, 176, { size: 11 })
-    bottomY = pdfWriteText(doc, data.delivery2, 12, bottomY, 176, { size: 11 })
-    bottomY += 6
-    bottomY = pdfWriteText(doc, data.company1, 12, bottomY, 176, { bold: true, size: 11 })
-    bottomY = pdfWriteText(doc, data.company2, 12, bottomY, 176, { bold: true, size: 11 })
-    bottomY = pdfWriteText(doc, data.company3, 12, bottomY, 176, { bold: true, size: 11 })
-    bottomY = pdfWriteText(doc, data.company4, 12, bottomY, 176, { bold: true, size: 11 })
-
-    var imzaY = Math.max(bottomY + 16, pageHeight - 24)
-    doc.setDrawColor(102, 112, 133)
-    doc.setLineWidth(0.3)
-    doc.line(18, imzaY, 92, imzaY)
-    doc.line(118, imzaY, 192, imzaY)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(17, 17, 17)
-    doc.text(data.signLeft, 55, imzaY + 7, { align: 'center' })
-    doc.text(data.signRight, 155, imzaY + 7, { align: 'center' })
-
-    doc.save(teklifDosyaAdi(teklif, elev, 'pdf'))
-  })()
+    pdf.save(dosyaAdi)
+  } finally {
+    document.body.removeChild(iframe)
+  }
 }
 
 function TeklifKart(props) {
