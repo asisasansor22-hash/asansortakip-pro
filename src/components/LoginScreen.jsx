@@ -21,7 +21,7 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
   function makeEmail(rol, bakimci) {
     var prefix = isAsis ? "" : (tenantId + "_");
     if (rol === "yonetici") {
-      return isAsis ? "yonetici@asistakip.app" : ("yonetici_" + tenantId + "@asistakip.app");
+      return isAsis ? "yonetici@asistakip.app" : ((tenantConfig && tenantConfig.adminEmail) || ("yonetici_" + tenantId + "@asistakip.app"));
     }
     if (bakimci && bakimci.ad) {
       var safe = bakimci.ad.toLowerCase()
@@ -41,9 +41,15 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
       setSifre("");
       return;
     }
+    var beklenenSifre = tenantConfig && tenantConfig.yoneticiSifre;
+    if (!isAsis && beklenenSifre && sifre !== beklenenSifre) {
+      setHata("Åifre hatalÄ±!");
+      setSifre("");
+      return;
+    }
     setYukleniyor(true);
     setHata("");
-    var firebasePass = isAsis ? "asis94" : sifre;
+    var firebasePass = isAsis ? "asis94" : (beklenenSifre || sifre);
     var res = await firebaseLogin(makeEmail("yonetici"), firebasePass);
     setYukleniyor(false);
     if (res.success) {
