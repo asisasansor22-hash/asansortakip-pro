@@ -507,6 +507,13 @@ function App(){
   // Bakımcıları ve tenant config'i yükle (tenant kodu seçildikten sonra, login ekranı için)
   useEffect(function(){
     if(!tenantId) return;
+    // Tenant değiştiğinde önceki tenant'ın localStorage cache'lerini temizle (cross-tenant sızıntıyı önler)
+    var lastTenant=lsGet("ls_last_tenant");
+    if(lastTenant && lastTenant!==tenantId){
+      ["ls_elevs","ls_maints","ls_aylik","ls_sonodemeler","ls_bakimcilar"].forEach(function(k){lsSet(k,null);});
+      setBakimcilar([]);
+    }
+    lsSet("ls_last_tenant",tenantId);
     async function yukTenant(){
       try{
         var r=await dbGet("at_bakimcilar");
@@ -567,20 +574,24 @@ function App(){
               } else {
                 // Firebase boş/geçersiz döndü — yedekten yükle
                 if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-                else{ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
+                else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
+                else{ setElevs([]); }
               }
             }catch(e){
               if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-              else{ setElevs(EXCEL_ELEVS); }
+              else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); }
+              else{ setElevs([]); }
             }
           } else {
             // Firebase erişilemedi (null) — asla EXCEL_ELEVS yazma, yedekten yükle
             if(lsBak&&lsBak.length>0){
               setElevs(lsBak);
-            } else {
-              // İlk açılış: Firebase da yok, yedek de yok → Excel ile başlat
+            } else if(tenantId==="asis") {
+              // İlk açılış: Firebase da yok, yedek de yok → Excel ile başlat (sadece Asis)
               setElevs(EXCEL_ELEVS);
               dbSet("at_elevs",EXCEL_ELEVS);
+            } else {
+              setElevs([]);
             }
           }
         })();
