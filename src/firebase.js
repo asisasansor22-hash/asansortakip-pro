@@ -100,7 +100,10 @@ async function getToken() {
   if (!user) return null;
   try {
     return await user.getIdToken();
-  } catch (e) { return null; }
+  } catch (e) {
+    try { console.warn("[auth] token alınamadı:", e && (e.code || e.message)); } catch(_){}
+    return null;
+  }
 }
 
 // Firebase Auth ile giriş yap.
@@ -118,15 +121,19 @@ export async function firebaseLogin(email, password, opts) {
         var result2 = await createUserWithEmailAndPassword(auth, email, password);
         return { success: true, user: result2.user };
       } catch (e2) {
+        try { console.warn("[auth] hesap oluşturma hatası:", email, e2 && (e2.code || e2.message)); } catch(_){}
         return { success: false, error: e2.message };
       }
     }
+    try { console.warn("[auth] giriş hatası:", email, e && (e.code || e.message)); } catch(_){}
     return { success: false, error: e.message };
   }
 }
 
 export async function firebaseLogout() {
-  try { await signOut(auth); } catch (e) {}
+  try { await signOut(auth); } catch (e) {
+    try { console.warn("[auth] çıkış hatası:", e && (e.code || e.message)); } catch(_){}
+  }
 }
 
 // İkincil Firebase app — süper-admin yeni firma yöneticisi oluştururken
@@ -167,7 +174,9 @@ export async function createTenantAdmin(email, password) {
     }
   }
   // İkincil oturumu kapat ki sızıntı olmasın
-  try { await signOut(sec); } catch (_) {}
+  try { await signOut(sec); } catch (e3) {
+    try { console.warn("[auth] ikincil oturum kapatılamadı:", e3 && (e3.code || e3.message)); } catch(_){}
+  }
   if (uid) return { success: true, user: { uid: uid } };
   return { success: false, error: error };
 }
