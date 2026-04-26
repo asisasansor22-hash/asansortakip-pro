@@ -205,6 +205,7 @@ function tenantKeyPath(key) {
   if (key.indexOf("/") >= 0) return key;
   if (!currentTenantId) {
     // Tenant seçilmemişse eski konuma düşme — bilinçli olarak null dönecek
+    try { console.warn("[firebase] tenant yok, anahtar atlandı:", key); } catch(_){}
     return null;
   }
   return "tenants/" + currentTenantId + "/" + key;
@@ -234,10 +235,16 @@ export async function dbGetRaw(path) {
     var timer = setTimeout(function(){ controller.abort(); }, 8000);
     var res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
-    if(!res.ok) return null;
+    if(!res.ok) {
+      try { console.warn("[firebase] read reddedildi:", path, res.status); } catch(_){}
+      return null;
+    }
     var data = await res.json();
     return (data !== null && data !== undefined) ? data : null;
-  } catch(e) { return null; }
+  } catch(e) {
+    try { console.warn("[firebase] read hatası:", path, e && e.message); } catch(_){}
+    return null;
+  }
 }
 
 export async function dbSetRaw(path, value) {
@@ -245,12 +252,20 @@ export async function dbSetRaw(path, value) {
     var token = await getToken();
     var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
     if (token) url += "?auth=" + token;
-    await fetch(url, {
+    var res = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value)
     });
-  } catch(e) {}
+    if (!res.ok) {
+      try { console.error("[firebase] write reddedildi:", path, res.status); } catch(_){}
+      return false;
+    }
+    return true;
+  } catch(e) {
+    try { console.error("[firebase] write hatası:", path, e && e.message); } catch(_){}
+    return false;
+  }
 }
 
 export async function dbDeleteRaw(path) {
@@ -258,8 +273,16 @@ export async function dbDeleteRaw(path) {
     var token = await getToken();
     var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
     if (token) url += "?auth=" + token;
-    await fetch(url, { method: "DELETE" });
-  } catch(e) {}
+    var res = await fetch(url, { method: "DELETE" });
+    if (!res.ok) {
+      try { console.error("[firebase] delete reddedildi:", path, res.status); } catch(_){}
+      return false;
+    }
+    return true;
+  } catch(e) {
+    try { console.error("[firebase] delete hatası:", path, e && e.message); } catch(_){}
+    return false;
+  }
 }
 
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------
