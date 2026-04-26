@@ -1253,6 +1253,12 @@ function App(){
           setUserProfile(prof||null);
           // Abonelik kontrolü (süper-admin bypass)
           if(!sup){
+            // Profil/tenant eşleşmesi: yanlışsa rules tüm write'ları reddeder ve
+            // veriler sessizce kaybolur. Kullanıcıyı doğrudan uyar.
+            if(r==="yonetici" && (!prof || prof.tenantId !== tenantId || prof.active === false)){
+              alert("Yönetici hesabınız bu firma için yapılandırılmamış görünüyor. Süper-admin panelinden firma kaydını 'Düzenle → Güncelle' ile yenilemeniz gerekiyor.");
+              firebaseLogout(); setRol(null); return;
+            }
             var sub = await getTenantSubscription(tenantId);
             setSubscription(sub||null);
             var bitis = sub && sub.bitis ? new Date(sub.bitis) : null;

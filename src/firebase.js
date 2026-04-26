@@ -103,13 +103,17 @@ async function getToken() {
   } catch (e) { return null; }
 }
 
-// Firebase Auth ile giriş yap (yoksa hesap oluştur)
-export async function firebaseLogin(email, password) {
+// Firebase Auth ile giriş yap.
+// opts.noCreate === true ise yok olan kullanıcı için yeni hesap açmaz.
+// Bu, yönetici girişinde profilsiz hayalet UID üretilmesini engeller
+// (profil sadece süper-admin tarafından FirmalarPaneli üzerinden yazılabilir).
+export async function firebaseLogin(email, password, opts) {
+  var allowCreate = !opts || opts.noCreate !== true;
   try {
     var result = await signInWithEmailAndPassword(auth, email, password);
     return { success: true, user: result.user };
   } catch (e) {
-    if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
+    if (allowCreate && (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential")) {
       try {
         var result2 = await createUserWithEmailAndPassword(auth, email, password);
         return { success: true, user: result2.user };

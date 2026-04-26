@@ -41,6 +41,13 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
       setSifre("");
       return;
     }
+    // Non-asis: tenantConfig (ve adminEmail'i) yüklenmeden giriş yapılamaz.
+    // Aksi halde fallback bir email ile yeni profilsiz Auth hesabı oluşturulur
+    // ve rules tüm yazma isteklerini sessizce reddeder (veri kaydedilemez).
+    if (!isAsis && (!tenantConfig || !tenantConfig.adminEmail)) {
+      setHata("Firma bilgileri henüz yüklenmedi, 1-2 saniye sonra tekrar deneyin.");
+      return;
+    }
     var beklenenSifre = tenantConfig && tenantConfig.yoneticiSifre;
     if (!isAsis && beklenenSifre && sifre !== beklenenSifre) {
       setHata("Åifre hatalÄ±!");
@@ -50,7 +57,9 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
     setYukleniyor(true);
     setHata("");
     var firebasePass = isAsis ? "asis94" : (beklenenSifre || sifre);
-    var res = await firebaseLogin(makeEmail("yonetici"), firebasePass);
+    // Tenant yöneticisi hesabı sadece süper-admin paneli üzerinden açılmalıdır.
+    // Asis (ilk kurulum) için auto-create açık, diğer firmalar için kapalı.
+    var res = await firebaseLogin(makeEmail("yonetici"), firebasePass, { noCreate: !isAsis });
     setYukleniyor(false);
     if (res.success) {
       onLogin("yonetici");
