@@ -541,6 +541,14 @@ function App(){
     if(rol===null) return; // henüz giriş yapılmadı
     if(!tenantId) return; // tenant context yoksa yazma açma — race koruması
     async function yukle(){
+      // Önceki tenant/session'a ait state kalıntılarını temizle.
+      // Aksi halde yeni tenant'ın DB'sinde veri yoksa eski tenant'ın verisi
+      // dashboard'da görünür kalıyor (tenant switch sonrası F5 gerektiriyordu).
+      // ilkYukleme.current=true olduğu için save useEffect'leri tetiklenmez.
+      setElevs([]); setMaints([]); setFaults([]); setTasks([]);
+      setSozlesmeler([]); setHesapKayitlari([]); setHaftalikKapamalar([]);
+      setAylikKapamalar([]); setSonOdemeler([]); setGiderler([]); setGiderHaftaArsiv([]);
+      setNotlar([]); setEkstraIsler([]); setTeklifler([]); setMuayeneler([]); setBakimcilar([]);
       try{
         // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
         // kullanıcı değişiklik yaparsa kayıt atlanıyordu (race condition). Paralel
