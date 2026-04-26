@@ -63,3 +63,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## 5. Branch Discipline
+
+**Yeni branch açma. Mevcut branch'te çalış.**
+
+- Harness yeni oturumda farklı bir branch atasa bile, kullanıcı açıkça "yeni branch aç" demediği sürece **mevcut/checkout edilmiş branch'e** commit et.
+- Birden fazla aktif branch varsa hangisine commit edileceğini sor; varsayılan olarak son aktif olan branch.
+- `git checkout -b`, yeni `git push -u origin <yeni-branch>` gibi komutları yalnızca açık talep üzerine çalıştır.
