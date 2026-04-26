@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
@@ -123,6 +123,49 @@ export async function firebaseLogin(email, password) {
 
 export async function firebaseLogout() {
   try { await signOut(auth); } catch (e) {}
+}
+
+// İkincil Firebase app — süper-admin yeni firma yöneticisi oluştururken
+// kullanılır. createUserWithEmailAndPassword ana session'ı yeni kullanıcıya
+// geçirdiği için süper-admin oturumu yok olur ve users/{uid} yazma izni
+// rules tarafından reddedilirdi. İkincil app ile birincil oturum korunur.
+function getSecondaryAuth() {
+  var name = "admin-create";
+  var app2;
+  if (getApps().some(function(a){ return a.name === name; })) {
+    app2 = getApp(name);
+  } else {
+    app2 = initializeApp(firebaseConfig, name);
+  }
+  return getAuth(app2);
+}
+
+// Bir tenant yöneticisi için Firebase Auth hesabı oluşturur veya günceller.
+// Süper-admin'in birincil oturumunu bozmaz.
+// Dönüş: { success: bool, user: { uid }, error?: string }
+export async function createTenantAdmin(email, password) {
+  var sec = getSecondaryAuth();
+  var uid = null;
+  var error = null;
+  try {
+    var existing = await signInWithEmailAndPassword(sec, email, password);
+    uid = existing.user.uid;
+  } catch (e) {
+    if (e && (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential" || e.code === "auth/wrong-password")) {
+      try {
+        var created = await createUserWithEmailAndPassword(sec, email, password);
+        uid = created.user.uid;
+      } catch (e2) {
+        error = (e2 && e2.message) || "yonetici hesabi olusturulamadi";
+      }
+    } else {
+      error = (e && e.message) || "yonetici hesabi olusturulamadi";
+    }
+  }
+  // İkincil oturumu kapat ki sızıntı olmasın
+  try { await signOut(sec); } catch (_) {}
+  if (uid) return { success: true, user: { uid: uid } };
+  return { success: false, error: error };
 }
 
 export function onAuthChange(cb) {

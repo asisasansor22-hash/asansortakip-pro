@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listTenants, dbSetRaw, dbGetRaw, dbDeleteRaw, setUserProfile, firebaseLogin } from '../firebase.js'
+import { listTenants, dbSetRaw, dbGetRaw, dbDeleteRaw, setUserProfile, createTenantAdmin } from '../firebase.js'
 
 function slugify(value){
   return String(value||"")
@@ -56,7 +56,9 @@ function FirmalarPaneli({ currentTenantId }) {
 
   async function adminHesabiKur(slug, sifre, eskiUid){
     var email = uniqueAdminEmail(slug);
-    var res = await firebaseLogin(email, sifre);
+    // İkincil auth instance kullan — süper-admin oturumu korunsun ki
+    // setUserProfile çağrıları rules tarafından kabul edilsin.
+    var res = await createTenantAdmin(email, sifre);
     if (!res.success || !res.user) {
       return { success: false, error: res.error || "yonetici hesabi olusturulamadi" };
     }
