@@ -518,7 +518,12 @@ function App(){
     var lastTenant=lsGet("ls_last_tenant");
     if(lastTenant && lastTenant!==tenantId){
       ["ls_elevs","ls_maints","ls_aylik","ls_sonodemeler","ls_bakimcilar"].forEach(function(k){lsSet(k,null);});
-      setBakimcilar([]);
+      // State'i hemen temizle: yukle() rol set edilmeden çalışmadığı için
+      // login öncesi dashboard render'ı eski tenant verisini gösteriyordu.
+      setElevs([]); setMaints([]); setFaults([]); setTasks([]);
+      setSozlesmeler([]); setHesapKayitlari([]); setHaftalikKapamalar([]);
+      setAylikKapamalar([]); setSonOdemeler([]); setGiderler([]); setGiderHaftaArsiv([]);
+      setNotlar([]); setEkstraIsler([]); setTeklifler([]); setMuayeneler([]); setBakimcilar([]);
     }
     lsSet("ls_last_tenant",tenantId);
     async function yukTenant(){
