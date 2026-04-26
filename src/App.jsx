@@ -492,7 +492,14 @@ function App(){
   const [userProfile,setUserProfile]=useState(null);
   const [firmalarAcik,setFirmalarAcik]=useState(false);
   function handleFirmaKodu(slug, cfg){ setTenantIdState(slug); setTenantConfig(cfg||null); }
-  function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
+  function farkliFirma(){
+    // Yeni firma seçilmeden önce yazma'yı kilitle, eski session profilini temizle.
+    // Aksi halde state setter'lar yanlış tenant'a yazmaya çalışır.
+    ilkYukleme.current=true;
+    setUserProfile(null); setSubscription(null); setIsSuper(false);
+    setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null);
+    firebaseLogout();
+  }
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
   // Tema uygula
@@ -532,6 +539,7 @@ function App(){
   // Login sonrası veri yükle (auth token gerekli)
   useEffect(function(){
     if(rol===null) return; // henüz giriş yapılmadı
+    if(!tenantId) return; // tenant context yoksa yazma açma — race koruması
     async function yukle(){
       try{
         // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
@@ -615,10 +623,12 @@ function App(){
         if(r15){try{var d=fb(r15);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
         if(r16){try{var d=fb(r16);if(Array.isArray(d))setBakimcilar(d);}catch(e){}}
       }catch(e){}
-      ilkYukleme.current=false;
+      // Sadece tenant hâlâ geçerliyse yazma'yı aç. Aksi halde mid-load logout
+      // veya farkliFirma sonrası eski state setter'lar yeni tenant'a sızabilir.
+      if(tenantId) ilkYukleme.current=false;
     }
     yukle();
-  },[rol]);
+  },[rol,tenantId]);
 
   // Veri değişince Firebase'e kaydet (ilk yüklemede tetiklenmez)
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_elevs",elevs);if(elevs.length>0)lsSet("ls_elevs",elevs);}},[elevs]);
@@ -1339,7 +1349,7 @@ function App(){
               transition:"background 0.18s"
             }},tema==="acik"?"🌙":"☀️"),
             React.createElement('button', {
-              onClick:()=>{firebaseLogout();setRol(null);setTab(0);},
+              onClick:()=>{ilkYukleme.current=true;setUserProfile(null);setSubscription(null);setIsSuper(false);firebaseLogout();setRol(null);setTab(0);},
               style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.50)",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "←")
           )
