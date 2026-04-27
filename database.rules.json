@@ -1,0 +1,49 @@
+{
+  "rules": {
+    "asansor": {
+      "tenants": {
+        ".read": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        "$tenantId": {
+          "config": { ".read": true },
+          "subscription": { ".read": true },
+          ".read": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId)",
+          ".write": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId && root.child('asansor').child('tenants').child($tenantId).child('subscription').child('status').val() === 'active'))"
+        }
+      },
+      "users": {
+        ".read": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+          ".write": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
+        }
+      },
+      "superadmins": {
+        ".read": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid"
+        }
+      },
+      "at_bakimcilar":  { ".read": true,            ".write": "auth != null" },
+      "at_elevs":       { ".read": "auth != null", ".write": "auth != null" },
+      "at_maints":      { ".read": "auth != null", ".write": "auth != null" },
+      "at_faults":      { ".read": "auth != null", ".write": "auth != null" },
+      "at_tasks":       { ".read": "auth != null", ".write": "auth != null" },
+      "at_sozlesme":    { ".read": "auth != null", ".write": "auth != null" },
+      "at_hesapkayit":  { ".read": "auth != null", ".write": "auth != null" },
+      "at_haftalik":    { ".read": "auth != null", ".write": "auth != null" },
+      "at_aylik":       { ".read": "auth != null", ".write": "auth != null" },
+      "at_sonodemeler": { ".read": "auth != null", ".write": "auth != null" },
+      "at_giderler":    { ".read": "auth != null", ".write": "auth != null" },
+      "at_giderhafta":  { ".read": "auth != null", ".write": "auth != null" },
+      "at_notlar":      { ".read": "auth != null", ".write": "auth != null" },
+      "at_ekstraisler": { ".read": "auth != null", ".write": "auth != null" },
+      "at_muayeneler":  { ".read": "auth != null", ".write": "auth != null" },
+      "$other": {
+        ".read": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
+        ".write": "auth != null && (auth.uid === 'EvlX8xBEhuNDh5sHfuFP85Mb3L73' || auth.uid === '0jKeX2HwY8O0DEZDUA0tdyEMkwj2' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
+      }
+    }
+  }
+}
