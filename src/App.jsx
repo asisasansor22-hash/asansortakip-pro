@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getUserProfile, isSuperAdmin } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -486,12 +486,14 @@ function App(){
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
   // ---- Çoklu firma (tenant) durumu ----
   const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
+  // tenantConfig: login öncesi public (ad, adminEmail), login sonrası full config ile zenginleştirilir
   const [tenantConfig,setTenantConfig]=useState(null);
   const [subscription,setSubscription]=useState(null);
   const [isSuper,setIsSuper]=useState(false);
   const [userProfile,setUserProfile]=useState(null);
   const [firmalarAcik,setFirmalarAcik]=useState(false);
-  function handleFirmaKodu(slug, cfg){ setTenantIdState(slug); setTenantConfig(cfg||null); }
+  // FirmaKoduGate'den gelen public bilgi (ad, adminEmail) — şifre içermez
+  function handleFirmaKodu(slug, pub){ setTenantIdState(slug); setTenantConfig(pub||null); }
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
@@ -504,7 +506,7 @@ function App(){
   const aylikKapamaRef=React.useRef([]); // aylikKapamalar'ın her zaman güncel kopyası
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
 
-  // Bakımcıları ve tenant config'i yükle (tenant kodu seçildikten sonra, login ekranı için)
+  // Login öncesi pre-auth yükleme: public bilgiler + bakımcı listesi (public/bakimcilar, şifresiz)
   useEffect(function(){
     if(!tenantId) return;
     // Tenant değiştiğinde önceki tenant'ın localStorage cache'lerini temizle (cross-tenant sızıntıyı önler)
@@ -514,19 +516,21 @@ function App(){
       setBakimcilar([]);
     }
     lsSet("ls_last_tenant",tenantId);
-    async function yukTenant(){
+    async function yukPublic(){
       try{
-        var r=await dbGet("at_bakimcilar");
-        if(r){var d=Array.isArray(r)?r:(typeof r==='string'?JSON.parse(r):null);if(Array.isArray(d)&&d.length>0){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}
-      }catch(e){}
-      try{
-        var cfg=await getTenantConfig(tenantId);
-        if(cfg) setTenantConfig(cfg);
-        var sub=await getTenantSubscription(tenantId);
-        if(sub) setSubscription(sub);
+        // public/bakimcilar: [{id, ad, renk, hasSifre}] — şifre içermez, auth gerektirmez
+        var pub=await getTenantPublic(tenantId);
+        if(pub){
+          if(pub.bakimcilar && Array.isArray(pub.bakimcilar) && pub.bakimcilar.length>0){
+            setBakimcilar(pub.bakimcilar);
+            lsSet("ls_bakimcilar",pub.bakimcilar);
+          }
+          // tenantConfig henüz null ise public ile doldur (FirmaKoduGate zaten doldurmuş olabilir)
+          if(!tenantConfig) setTenantConfig(pub);
+        }
       }catch(e){}
     }
-    yukTenant();
+    yukPublic();
   },[tenantId]);
 
   // Login sonrası veri yükle (auth token gerekli)
@@ -613,7 +617,14 @@ function App(){
         if(r13){try{var d=fb(r13);if(Array.isArray(d))setEkstraIsler(d);}catch(e){}}
         if(r14){try{var d=fb(r14);if(Array.isArray(d))setTeklifler(d);}catch(e){}}
         if(r15){try{var d=fb(r15);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
-        if(r16){try{var d=fb(r16);if(Array.isArray(d))setBakimcilar(d);}catch(e){}}
+        if(r16){try{var d=fb(r16);if(Array.isArray(d)){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}catch(e){}}
+        // Login sonrası tam config + subscription yükle (auth gerektirir)
+        try{
+          var cfg=await getTenantConfig(tenantId);
+          if(cfg) setTenantConfig(function(prev){ return Object.assign({},prev||{},cfg); });
+          var sub=await getTenantSubscription(tenantId);
+          if(sub) setSubscription(sub);
+        }catch(e){}
       }catch(e){}
       ilkYukleme.current=false;
     }
@@ -636,7 +647,17 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_teklifler",teklifler);}},[teklifler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_bakimcilar",bakimcilar);lsSet("ls_bakimcilar",bakimcilar);}},[bakimcilar]);
+  useEffect(function(){
+    if(!ilkYukleme.current){
+      dbSet("at_bakimcilar",bakimcilar);
+      lsSet("ls_bakimcilar",bakimcilar);
+      // Login öncesi login ekranı için public özet (şifre içermez)
+      if(tenantId){
+        var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
+        setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
+      }
+    }
+  },[bakimcilar]);
 
   // Yükleme ekranı
 
@@ -1241,6 +1262,11 @@ function App(){
 
   if(!tenantId) return React.createElement(FirmaKoduGate, { onReady: handleFirmaKodu });
 
+  // Yönetici yeni bakımcı eklerken Firebase Auth + users profili oluşturur
+  async function handleBakimciEkle(bakimci){
+    return await createBakimciUser(tenantId, bakimci);
+  }
+
   if(rol===null) return React.createElement(LoginScreen, {
     onLogin: async (r,bk)=>{
       // Giriş sonrası: süper-admin ve user profil kontrolü
@@ -1253,10 +1279,14 @@ function App(){
           setUserProfile(prof||null);
           // Abonelik kontrolü (süper-admin bypass)
           if(!sup){
-            // Profil/tenant eşleşmesi: yanlışsa rules tüm write'ları reddeder ve
-            // veriler sessizce kaybolur. Kullanıcıyı doğrudan uyar.
+            // Yönetici: profil + tenant eşleşmesi zorunlu
             if(r==="yonetici" && (!prof || prof.tenantId !== tenantId || prof.active === false)){
               alert("Yönetici hesabınız bu firma için yapılandırılmamış görünüyor. Süper-admin panelinden firma kaydını 'Düzenle → Güncelle' ile yenilemeniz gerekiyor.");
+              firebaseLogout(); setRol(null); return;
+            }
+            // Bakımcı: profil varsa ve yanlış tenanta bağlıysa reddet
+            if(r==="bakimci" && prof && prof.tenantId && prof.tenantId !== tenantId){
+              alert("Bu bakımcı hesabı başka bir firmaya kayıtlı.");
               firebaseLogout(); setRol(null); return;
             }
             var sub = await getTenantSubscription(tenantId);
@@ -1274,7 +1304,7 @@ function App(){
       setRol(r); setAktifBakimci(bk||null); setTab(r==="bakimci"?2:0);
     },
     bakimcilar: bakimcilar,
-    tenantConfig: tenantConfig,
+    tenantPublic: tenantConfig,
     onFarkliFirma: farkliFirma,
   });
 
@@ -2759,7 +2789,7 @@ function App(){
 /* BAKIMCI YÖNETİMİ */
 , tab===14&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar})
+    React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar,onBakimciEkle:handleBakimciEkle})
   )
 )
 

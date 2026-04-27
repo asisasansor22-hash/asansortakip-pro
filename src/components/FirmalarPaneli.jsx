@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listTenants, dbSetRaw, dbGetRaw, dbDeleteRaw, setUserProfile, createTenantAdmin } from '../firebase.js'
+import { listTenants, dbSetRaw, dbGetRaw, dbDeleteRaw, setUserProfile, createTenantAdmin, setTenantPublic } from '../firebase.js'
 
 function slugify(value){
   return String(value||"")
@@ -24,6 +24,9 @@ function emptyForm(){
     aktif: true
   };
 }
+
+// Şifre güvenli mi? Firebase Auth min 6 karakter zorunlu kılar.
+function sifreGecerli(s) { return typeof s === "string" && s.length >= 6; }
 
 function uniqueAdminEmail(slug){
   return "yonetici_" + slug + "_" + Date.now() + "@asistakip.app";
@@ -101,6 +104,12 @@ function FirmalarPaneli({ currentTenantId }) {
       adminUid = admin.uid;
     }
 
+    // Gizli olmayan ve login öncesi gereken alanlar public yolda saklanır.
+    // Şifre, adminUid gibi hassas alanlar config'de kalır ve auth gerektirir.
+    await setTenantPublic(slug, {
+      ad: form.ad.trim(),
+      adminEmail: adminEmail
+    });
     await dbSetRaw("tenants/" + slug + "/config", {
       ad: form.ad.trim(),
       yetkili: form.yetkili.trim(),
@@ -108,7 +117,6 @@ function FirmalarPaneli({ currentTenantId }) {
       email: form.email.trim(),
       adminEmail: adminEmail,
       adminUid: adminUid,
-      yoneticiSifre: form.yoneticiSifre || existing.yoneticiSifre || "",
       updatedAt: new Date().toISOString()
     });
     await dbSetRaw("tenants/" + slug + "/subscription", {
@@ -136,7 +144,7 @@ function FirmalarPaneli({ currentTenantId }) {
       email: cfg.email || "",
       aylikUcret: sub.aylikUcret || "",
       bitis: sub.bitis || "",
-      yoneticiSifre: cfg.yoneticiSifre || "",
+      yoneticiSifre: "",
       aktif: (sub.status || "active") === "active"
     });
     setMesaj("");
@@ -174,7 +182,7 @@ function FirmalarPaneli({ currentTenantId }) {
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Firma Adi *"), React.createElement('input', { style: inp, value: form.ad, onChange: e => F("ad", e.target.value), placeholder: "Onkas Asansor" })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Yetkili Ismi"), React.createElement('input', { style: inp, value: form.yetkili, onChange: e => F("yetkili", e.target.value) })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Telefon"), React.createElement('input', { style: inp, value: form.tel, onChange: e => F("tel", e.target.value) })),
-      React.createElement('div', null, React.createElement('div', { style: lbl }, "Yonetici Modulu Sifresi *"), React.createElement('input', { type: "text", style: inp, value: form.yoneticiSifre, onChange: e => F("yoneticiSifre", e.target.value), placeholder: "en az 6 karakter" })),
+      React.createElement('div', null, React.createElement('div', { style: lbl }, editId ? "Yeni Sifre (degistirmek icin doldur)" : "Yonetici Giris Sifresi *"), React.createElement('input', { type: "password", style: inp, value: form.yoneticiSifre, onChange: e => F("yoneticiSifre", e.target.value), placeholder: "en az 6 karakter" })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Abonelik Bitis"), React.createElement('input', { type: "date", style: inp, value: form.bitis, onChange: e => F("bitis", e.target.value) })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Aylik Ucret"), React.createElement('input', { type: "number", style: inp, value: form.aylikUcret, onChange: e => F("aylikUcret", e.target.value) })),
       React.createElement('label', { style: { display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 13, paddingTop: 22 } },
@@ -206,8 +214,7 @@ function FirmalarPaneli({ currentTenantId }) {
                   React.createElement('div', { style: { fontWeight: 800, fontSize: 16, color: "var(--text)" } }, cfg.ad || t.id),
                   React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Kod: " + t.id + " · Bitis: " + (sub.bitis || "-") + " · " + (sub.aylikUcret || 0) + " TL/ay"),
                   cfg.yetkili && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Yetkili: " + cfg.yetkili),
-                  cfg.tel && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Tel: " + cfg.tel),
-                  cfg.yoneticiSifre && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Yonetici sifresi: " + cfg.yoneticiSifre)
+                  cfg.tel && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Tel: " + cfg.tel)
                 ),
                 React.createElement('div', { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
                   React.createElement('span', {

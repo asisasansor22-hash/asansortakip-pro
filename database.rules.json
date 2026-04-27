@@ -1,39 +1,46 @@
 {
   "rules": {
     "asansor": {
+
       "tenants": {
         ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+
         "$tenantId": {
-          "config": {
+          "public": {
             ".read": true
           },
-          "subscription": {
-            ".read": true
-          },
+
           ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId)",
+
           ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId && root.child('asansor').child('tenants').child($tenantId).child('subscription').child('status').val() === 'active'))"
         }
       },
+
       "users": {
+        ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+
         "$uid": {
           ".read": "auth != null && (auth.uid === $uid || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
-          ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
+
+          ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || (root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === newData.child('tenantId').val() && newData.child('role').val() === 'bakimci'))"
         }
       },
+
       "superadmins": {
+        ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+
         "$uid": {
           ".read": "auth != null && auth.uid === $uid"
-        },
-        ".write": false
+        }
       },
-      "at_bakimcilar": {
-        ".read": true,
-        ".write": "auth != null"
-      },
+
       "$other": {
         ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
         ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
       }
+
     }
   }
 }
