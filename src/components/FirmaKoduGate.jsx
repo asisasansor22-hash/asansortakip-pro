@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { S } from '../utils/constants.js'
 import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
-import { setTenantId, getTenantConfig } from '../firebase.js'
+import { setTenantId, getTenantPublic } from '../firebase.js'
 
 // İlk açılışta firma kodu sorar, doğrulanınca localStorage'a yazıp üst bileşene haber verir.
 // Kod localStorage'da olduğu sürece bu ekran tekrar gösterilmez.
@@ -19,15 +19,15 @@ function FirmaKoduGate({ onReady }) {
     setYukleniyor(true);
     setHata("");
     try {
-      var cfg = await getTenantConfig(slug);
-      if (!cfg || !cfg.ad) {
+      var pub = await getTenantPublic(slug);
+      if (!pub || !pub.ad) {
         setYukleniyor(false);
         setHata("Firma bulunamadı. Kodu kontrol edin.");
         return;
       }
       setTenantId(slug);
       setYukleniyor(false);
-      onReady(slug, cfg);
+      onReady(slug, pub);
     } catch (e) {
       setYukleniyor(false);
       setHata("Bağlantı hatası. İnternetinizi kontrol edin.");

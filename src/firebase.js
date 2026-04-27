@@ -301,3 +301,68 @@ export async function listTenants() {
   }
   return out;
 }
+
+// ------- Tenant public (login öncesi okunabilir minimal veri) ---------------
+// tenants/{tid}/public → { ad, adminEmail, bakimcilar: [{id,ad,renk,hasSifre}] }
+// .read: true olduğu için auth gerektirmez; gizli alan içermez.
+export async function getTenantPublic(tid) {
+  if (!tid) return null;
+  return dbGetRaw("tenants/" + tid + "/public");
+}
+
+export async function setTenantPublic(tid, data) {
+  if (!tid) return;
+  return dbSetRaw("tenants/" + tid + "/public", data);
+}
+
+// ------- Bakımcı e-posta üreteci -------------------------------------------
+// Asis için geriye dönük uyumluluk: tenant prefix'siz format korunur.
+// Diğer tenantlar: bakimci_{tenantId}_{safe_ad}@asistakip.app
+export function makeBakimciEmail(tenantId, ad) {
+  var safe = (ad || "genel").toLowerCase()
+    .replace(/ş/g,"s").replace(/ç/g,"c").replace(/ğ/g,"g")
+    .replace(/ı/g,"i").replace(/ö/g,"o").replace(/ü/g,"u")
+    .replace(/[^a-z0-9]/g,"");
+  var prefix = (tenantId === "asis") ? "" : (tenantId + "_");
+  return "bakimci_" + prefix + safe + "@asistakip.app";
+}
+
+// ------- Bakımcı kullanıcı oluştur -----------------------------------------
+// Yönetici bakımcı eklerken çağrılır. İkincil auth ile Firebase Auth hesabı
+// açar ve users/{uid} profilini yazar. Bakımcı login'de aynı email+şifre
+// kullanılır. Mevcut hesap varsa sign-in ile uid alınır.
+export async function createBakimciUser(tenantId, bakimci) {
+  if (!tenantId || !bakimci || !bakimci.ad) return { success: false, error: "eksik bilgi" };
+  var sec = getSecondaryAuth();
+  var email = makeBakimciEmail(tenantId, bakimci.ad);
+  var password = bakimci.sifre || ("bakimci_" + (bakimci.id || Date.now()));
+  var uid = null;
+  var error = null;
+  try {
+    var ex = await signInWithEmailAndPassword(sec, email, password);
+    uid = ex.user.uid;
+  } catch (e) {
+    if (e && (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential" || e.code === "auth/wrong-password")) {
+      try {
+        var cr = await createUserWithEmailAndPassword(sec, email, password);
+        uid = cr.user.uid;
+      } catch (e2) {
+        error = (e2 && e2.message) || "hesap olusturulamadi";
+      }
+    } else {
+      error = (e && e.message) || "hesap olusturulamadi";
+    }
+  }
+  try { await signOut(sec); } catch (_) {}
+  if (uid) {
+    await setUserProfile(uid, {
+      tenantId: tenantId,
+      role: "bakimci",
+      ad: bakimci.ad,
+      active: true,
+      createdAt: new Date().toISOString()
+    });
+    return { success: true, uid: uid, email: email };
+  }
+  return { success: false, error: error };
+}

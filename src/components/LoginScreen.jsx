@@ -1,9 +1,18 @@
 import React, { useState } from 'react'
 import { S } from '../utils/constants.js'
 import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
-import { firebaseLogin, getTenantId } from '../firebase.js'
+import { firebaseLogin, getTenantId, makeBakimciEmail } from '../firebase.js'
 
-function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
+function fbHata(e) {
+  if (!e) return "Giriş başarısız";
+  var msg = typeof e === "string" ? e : (e.message || "");
+  if (msg.indexOf("wrong-password") >= 0 || msg.indexOf("invalid-credential") >= 0) return "Şifre hatalı!";
+  if (msg.indexOf("user-not-found") >= 0) return "Kullanıcı bulunamadı";
+  if (msg.indexOf("too-many-requests") >= 0) return "Çok fazla hatalı giriş. Lütfen bekleyin.";
+  return "Giriş hatası";
+}
+
+function LoginScreen({ onLogin, bakimcilar, tenantPublic, onFarkliFirma }) {
   const tenantId = getTenantId() || "asis";
   const isAsis = tenantId === "asis";
   const [sifre, setSifre] = useState("");
@@ -11,60 +20,41 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
   const [sifreAcik, setSifreAcik] = useState(false);
   const [yukleniyor, setYukleniyor] = useState(false);
 
-  // Bireysel bakimci login
   const [bakimciSec, setBakimciSec] = useState(null);
   const [bakimciSifre, setBakimciSifre] = useState("");
   const [bakimciHata, setBakimciHata] = useState("");
   const [listAcik, setListAcik] = useState(false);
 
-  // E-posta oluştur — Asis için eski format (geriye uyumluluk), diğer firmalar için tenant-prefix'li
-  function makeEmail(rol, bakimci) {
-    var prefix = isAsis ? "" : (tenantId + "_");
-    if (rol === "yonetici") {
-      return isAsis ? "yonetici@asistakip.app" : ((tenantConfig && tenantConfig.adminEmail) || ("yonetici_" + tenantId + "@asistakip.app"));
-    }
-    if (bakimci && bakimci.ad) {
-      var safe = bakimci.ad.toLowerCase()
-        .replace(/ş/g,"s").replace(/ç/g,"c").replace(/ğ/g,"g")
-        .replace(/ı/g,"i").replace(/ö/g,"o").replace(/ü/g,"u")
-        .replace(/[^a-z0-9]/g,"");
-      return "bakimci_" + prefix + safe + "@asistakip.app";
-    }
-    return "bakimci_" + prefix + "genel@asistakip.app";
+  // tenantPublic: { ad, adminEmail } veya null (pre-login yüklemesinden gelir)
+  // tenantConfig (eski ad) yerine tenantPublic kullanılır — hassas alan içermez.
+  const adminEmail = (tenantPublic && tenantPublic.adminEmail) || null;
+
+  function makeYoneticiEmail() {
+    if (isAsis) return "yonetici@asistakip.app";
+    return adminEmail || ("yonetici_" + tenantId + "@asistakip.app");
   }
 
   const yoneticiGiris = async () => {
-    // Asis için eski davranış korunur (hardcoded şifre "asis94").
-    // Diğer firmalar kullanıcı-girilen şifreyi doğrudan Firebase Auth'a gönderir.
     if (isAsis && sifre !== "asis94") {
       setHata("Şifre hatalı!");
       setSifre("");
       return;
     }
-    // Non-asis: tenantConfig (ve adminEmail'i) yüklenmeden giriş yapılamaz.
-    // Aksi halde fallback bir email ile yeni profilsiz Auth hesabı oluşturulur
-    // ve rules tüm yazma isteklerini sessizce reddeder (veri kaydedilemez).
-    if (!isAsis && (!tenantConfig || !tenantConfig.adminEmail)) {
+    // Diğer firmalar: adminEmail yüklenmediyse bekle
+    if (!isAsis && !adminEmail) {
       setHata("Firma bilgileri henüz yüklenmedi, 1-2 saniye sonra tekrar deneyin.");
-      return;
-    }
-    var beklenenSifre = tenantConfig && tenantConfig.yoneticiSifre;
-    if (!isAsis && beklenenSifre && sifre !== beklenenSifre) {
-      setHata("Åifre hatalÄ±!");
-      setSifre("");
       return;
     }
     setYukleniyor(true);
     setHata("");
-    var firebasePass = isAsis ? "asis94" : (beklenenSifre || sifre);
-    // Tenant yöneticisi hesabı sadece süper-admin paneli üzerinden açılmalıdır.
-    // Asis (ilk kurulum) için auto-create açık, diğer firmalar için kapalı.
-    var res = await firebaseLogin(makeEmail("yonetici"), firebasePass, { noCreate: !isAsis });
+    // Şifreyi doğrudan Firebase Auth'a gönder — yerel karşılaştırma yapılmaz
+    var res = await firebaseLogin(makeYoneticiEmail(), sifre, { noCreate: !isAsis });
     setYukleniyor(false);
     if (res.success) {
       onLogin("yonetici");
     } else {
-      setHata("Firebase giriş hatası: " + res.error);
+      setHata(fbHata(res.error));
+      setSifre("");
     }
   };
 
@@ -72,35 +62,33 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
     setBakimciSec(b);
     setBakimciSifre("");
     setBakimciHata("");
-    // Sifresi yoksa direkt giris
-    if (!b.sifre) {
+    if (!b.hasSifre) {
       setYukleniyor(true);
+      var email = makeBakimciEmail(tenantId, b.ad);
       var pw = "bakimci_" + (b.id || "nosifre");
-      var res = await firebaseLogin(makeEmail("bakimci", b), pw);
+      var res = await firebaseLogin(email, pw);
       setYukleniyor(false);
       if (res.success) {
         onLogin("bakimci", b);
       } else {
-        setBakimciHata("Firebase giriş hatası");
+        setBakimciHata(fbHata(res.error));
+        setBakimciSec(null);
       }
     }
   };
 
   const bakimciGiris = async () => {
     if (!bakimciSec) return;
-    if (bakimciSifre !== bakimciSec.sifre) {
-      setBakimciHata("Şifre hatalı!");
-      setBakimciSifre("");
-      return;
-    }
     setYukleniyor(true);
     setBakimciHata("");
-    var res = await firebaseLogin(makeEmail("bakimci", bakimciSec), bakimciSec.sifre);
+    var email = makeBakimciEmail(tenantId, bakimciSec.ad);
+    var res = await firebaseLogin(email, bakimciSifre);
     setYukleniyor(false);
     if (res.success) {
       onLogin("bakimci", bakimciSec);
     } else {
-      setBakimciHata("Firebase giriş hatası: " + res.error);
+      setBakimciHata(fbHata(res.error));
+      setBakimciSifre("");
     }
   };
 
@@ -110,24 +98,23 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
     React.createElement('div', { className: "login-wrap ios-fade" },
       React.createElement('div', { style: { width: "100%", maxWidth: 380 } },
 
-        /* Logo & Baslik */
         React.createElement('div', { style: { textAlign: "center", marginBottom: 44 } },
           React.createElement('img', { src: ASIS_LOGO_B64, alt: "Asis", className: "asis-logo-img", style: { height: "70px", objectFit: "contain", marginBottom: "8px" } }),
           React.createElement('div', { style: { fontWeight: 800, fontSize: 30, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, "AsansörTakip"),
           React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Pro"),
-          tenantConfig && tenantConfig.ad && React.createElement('div', {
+          tenantPublic && tenantPublic.ad && React.createElement('div', {
             style: { marginTop: 14, fontSize: 13, fontWeight: 700, color: "var(--accent)", padding: "6px 14px", background: "rgba(0,122,255,0.10)", borderRadius: 10, display: "inline-block" }
-          }, tenantConfig.ad)
+          }, tenantPublic.ad)
         ),
 
         yukleniyor
           ? React.createElement('div', { style: { textAlign: "center", padding: 40 } },
-              React.createElement('div', { style: { fontSize: 28, marginBottom: 12 } }, "\u23F3"),
+              React.createElement('div', { style: { fontSize: 28, marginBottom: 12 } }, "⏳"),
               React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Giriş yapılıyor...")
             )
           : React.createElement('div', { style: { display: "flex", flexDirection: "column", gap: 10 } },
 
-          /* -- BAKIMCI BOLUMU -- */
+          /* -- BAKIMCI BÖLÜMÜ -- */
           hasBakimcilar
             ? React.createElement('div', { style: { background: "var(--bg-panel)", border: "0.5px solid var(--border)", borderRadius: 20, overflow: "hidden", boxShadow: "var(--shadow-sm)" } },
 
@@ -136,18 +123,18 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
                 style: { width: "100%", padding: "18px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }
               },
                 React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 14 } },
-                  React.createElement('div', { style: { background: "rgba(52,199,89,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "\uD83D\uDD27"),
+                  React.createElement('div', { style: { background: "rgba(52,199,89,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "🔧"),
                   React.createElement('div', { style: { flex: 1 } },
                     React.createElement('div', { style: { fontWeight: 700, fontSize: 17, color: "var(--text)", marginBottom: 2 } }, "Bakımcı Girişi"),
                     React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)" } }, bakimcilar.length + " bakımcı kayıtlı")
                   ),
-                  React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, listAcik ? "\u2303" : "\u203A")
+                  React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, listAcik ? "⌃" : "›")
                 )
               ),
 
               listAcik && React.createElement('div', { style: { borderTop: "0.5px solid var(--border-soft)", padding: "8px 12px 12px" } },
 
-                bakimciSec && bakimciSec.sifre
+                bakimciSec && bakimciSec.hasSifre
                   ? React.createElement('div', { style: { padding: "8px 4px" } },
                     React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 12 } },
                       React.createElement('div', {
@@ -165,7 +152,7 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
                       React.createElement('button', {
                         onClick: () => { setBakimciSec(null); setBakimciHata(""); },
                         style: { background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 18, padding: 4 }
-                      }, "\u2190")
+                      }, "←")
                     ),
                     React.createElement('div', { style: { display: "flex", gap: 8 } },
                       React.createElement('input', {
@@ -182,7 +169,7 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
                     ),
                     bakimciHata && React.createElement('div', {
                       style: { marginTop: 10, fontSize: 13, color: "var(--ios-red)", padding: "8px 12px", background: "rgba(255,59,48,0.1)", borderRadius: 10 }
-                    }, "\uD83D\uDEAB " + bakimciHata)
+                    }, "🚫 " + bakimciHata)
                   )
 
                   : React.createElement('div', null,
@@ -208,9 +195,9 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
                         }, (b.ad || "?")[0].toUpperCase()),
                         React.createElement('div', { style: { flex: 1 } },
                           React.createElement('div', { style: { fontWeight: 700, fontSize: 14, color: "var(--text)" } }, b.ad),
-                          React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)" } }, b.sifre ? "\uD83D\uDD12 Şifre gerekli" : "\uD83D\uDD13 Şifresiz giriş")
+                          React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)" } }, b.hasSifre ? "🔒 Şifre gerekli" : "🔓 Şifresiz giriş")
                         ),
-                        React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 16 } }, "\u203A")
+                        React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 16 } }, "›")
                       )
                     )
                   )
@@ -220,35 +207,36 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
             : React.createElement('button', {
               onClick: async () => {
                 setYukleniyor(true);
-                var res = await firebaseLogin(makeEmail("bakimci", null), "bakimci_genel_" + tenantId);
+                var email = makeBakimciEmail(tenantId, "genel");
+                var res = await firebaseLogin(email, "bakimci_genel_" + tenantId);
                 setYukleniyor(false);
                 if (res.success) onLogin("bakimci", null);
               },
               style: { padding: "18px 20px", background: "var(--bg-panel)", border: "0.5px solid var(--border)", borderRadius: 20, cursor: "pointer", textAlign: "left", transition: "transform 0.15s, box-shadow 0.15s", boxShadow: "var(--shadow-sm)" }
             },
               React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 14 } },
-                React.createElement('div', { style: { background: "rgba(52,199,89,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "\uD83D\uDD27"),
+                React.createElement('div', { style: { background: "rgba(52,199,89,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "🔧"),
                 React.createElement('div', { style: { flex: 1 } },
                   React.createElement('div', { style: { fontWeight: 700, fontSize: 17, color: "var(--text)", marginBottom: 2 } }, "Bakımcı Girişi"),
                   React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)" } }, "Atanan bakım ve arızaları gör")
                 ),
-                React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, "\u203A")
+                React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, "›")
               )
             ),
 
-          /* -- YONETICI KARTI -- */
+          /* -- YÖNETİCİ KARTI -- */
           React.createElement('div', { className: "login-card" },
             React.createElement('button', {
               onClick: () => { setSifreAcik(!sifreAcik); setHata(""); setSifre(""); },
               style: { width: "100%", padding: "18px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }
             },
               React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 14 } },
-                React.createElement('div', { style: { background: "rgba(0,122,255,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "\uD83D\uDC54"),
+                React.createElement('div', { style: { background: "rgba(0,122,255,0.15)", borderRadius: 14, width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 } }, "👔"),
                 React.createElement('div', { style: { flex: 1 } },
                   React.createElement('div', { style: { fontWeight: 700, fontSize: 17, color: "var(--text)", marginBottom: 2 } }, "Yönetici Girişi"),
                   React.createElement('div', { style: { fontSize: 13, color: "var(--text-muted)" } }, "Tam yönetim · Şifre gerekli")
                 ),
-                React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, sifreAcik ? "\u2303" : "\uD83D\uDD12")
+                React.createElement('div', { style: { color: "var(--text-dim)", fontSize: 18 } }, sifreAcik ? "⌃" : "🔒")
               )
             ),
             sifreAcik && (
@@ -268,12 +256,12 @@ function LoginScreen({ onLogin, bakimcilar, tenantConfig, onFarkliFirma }) {
                 ),
                 hata && React.createElement('div', {
                   style: { marginTop: 10, fontSize: 13, color: "var(--ios-red)", padding: "8px 12px", background: "rgba(255,59,48,0.1)", borderRadius: 10 }
-                }, "\uD83D\uDEAB " + hata)
+                }, "🚫 " + hata)
               )
             )
           ),
 
-          /* -- FARKLI FIRMA -- */
+          /* -- FARKLI FİRMA -- */
           onFarkliFirma && React.createElement('button', {
             onClick: onFarkliFirma,
             style: { marginTop: 16, padding: "8px 12px", background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", textDecoration: "underline" }

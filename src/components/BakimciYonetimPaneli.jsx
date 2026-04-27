@@ -7,29 +7,47 @@ const RENKLER = [
   "#ec4899","#14b8a6"
 ];
 
-function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
+// onBakimciEkle(bakimciData) → async, Firebase Auth + users/{uid} oluşturur.
+// Geri dönüş: { uid } veya null (hata durumunda)
+function BakimciYonetimPaneli({ bakimcilar, setBakimcilar, onBakimciEkle }) {
   const [form, setForm] = useState({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
   const [editId, setEditId] = useState(null);
   const [silOnay, setSilOnay] = useState(null);
   const [sifreGoster, setSifreGoster] = useState({});
+  const [kaydediliyor, setKaydediliyor] = useState(false);
+  const [ekleHata, setEkleHata] = useState("");
 
   const F = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const kaydet = () => {
+  const kaydet = async () => {
     if (!form.ad.trim()) return;
+    setEkleHata("");
     if (editId) {
       setBakimcilar(p => p.map(b => b.id === editId ? { ...b, ...form, ad: form.ad.trim() } : b));
       setEditId(null);
-    } else {
-      setBakimcilar(p => [...p, {
-        id: Date.now(),
-        ad: form.ad.trim(),
-        tel: form.tel.trim(),
-        sifre: form.sifre,
-        renk: form.renk,
-        aktif: true
-      }]);
+      setForm({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
+      return;
     }
+    // Yeni bakımcı: Firebase Auth + users profili oluştur
+    var yeni = {
+      id: Date.now(),
+      ad: form.ad.trim(),
+      tel: form.tel.trim(),
+      sifre: form.sifre,
+      renk: form.renk,
+      aktif: true
+    };
+    if (onBakimciEkle) {
+      setKaydediliyor(true);
+      var res = await onBakimciEkle(yeni);
+      setKaydediliyor(false);
+      if (!res || !res.success) {
+        setEkleHata("Hesap oluşturulamadı: " + ((res && res.error) || "bilinmeyen hata"));
+        return;
+      }
+      yeni.uid = res.uid;
+    }
+    setBakimcilar(p => [...p, yeni]);
     setForm({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
   };
 
@@ -124,13 +142,18 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar }) {
           }, "İptal"),
           React.createElement('button', {
             onClick: kaydet,
+            disabled: kaydediliyor,
             style: {
               flex: 1, padding: "12px", background: "var(--accent)",
               border: "none", borderRadius: 12, color: "#fff",
-              cursor: "pointer", fontWeight: 700, fontSize: 15
+              cursor: kaydediliyor ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 15,
+              opacity: kaydediliyor ? 0.7 : 1
             }
-          }, editId ? "💾 Güncelle" : "✅ Ekle")
-        )
+          }, kaydediliyor ? "⏳ Kaydediliyor..." : (editId ? "💾 Güncelle" : "✅ Ekle"))
+        ),
+        ekleHata && React.createElement('div', {
+          style: { marginTop: 8, fontSize: 13, color: "var(--ios-red)", padding: "8px 12px", background: "rgba(255,59,48,0.08)", borderRadius: 10 }
+        }, "🚫 " + ekleHata)
       ),
 
       /* ── LİSTE ── */
