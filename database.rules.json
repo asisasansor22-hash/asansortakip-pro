@@ -86,8 +86,8 @@
       },
 
       "$legacyKey": {
-        ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
-        ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
+        ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === 'asis')",
+        ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === 'asis' && root.child('asansor').child('users').child(auth.uid).child('active').val() === true && ((root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && ($legacyKey === 'at_elevs' || $legacyKey === 'at_maints' || $legacyKey === 'at_faults' || $legacyKey === 'at_tasks' || $legacyKey === 'at_sozlesme' || $legacyKey === 'at_hesapkayit' || $legacyKey === 'at_haftalik' || $legacyKey === 'at_aylik' || $legacyKey === 'at_sonodemeler' || $legacyKey === 'at_giderler' || $legacyKey === 'at_giderhafta' || $legacyKey === 'at_notlar' || $legacyKey === 'at_ekstraisler' || $legacyKey === 'at_teklifler' || $legacyKey === 'at_muayeneler' || $legacyKey === 'at_bakimcilar')) || (root.child('asansor').child('users').child(auth.uid).child('role').val() === 'bakimci' && ($legacyKey === 'at_elevs' || $legacyKey === 'at_maints' || $legacyKey === 'at_faults' || $legacyKey === 'at_sonodemeler' || $legacyKey === 'at_notlar' || $legacyKey === 'at_ekstraisler')))))"
       }
     }
   }
