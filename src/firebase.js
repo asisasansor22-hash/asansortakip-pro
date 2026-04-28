@@ -215,13 +215,11 @@ export function getTenantId() { return currentTenantId; }
 
 function tenantKeyPath(key) {
   var safeKey = cleanDbPath(key);
-  // Sadece bilinen global koleksiyonlar tenant dışından okunup yazılabilir.
-  // Slash içeren iş verileri de tenant altında kalır.
+  // Global koleksiyonlar (tenants, users, superadmins) tenant wrapper'ı almaz.
   if (isGlobalPath(safeKey)) return safeKey;
-  if (!currentTenantId) {
-    // Tenant seçilmemişse eski konuma düşme — bilinçli olarak null dönecek
-    return null;
-  }
+  if (!currentTenantId) return null;
+  // "asis" süper-admin tenant'ı eski flat path'lerini korur (/asansor/at_elevs vb.).
+  if (currentTenantId === "asis") return safeKey;
   return "tenants/" + cleanDbPath(currentTenantId) + "/" + safeKey;
 }
 
@@ -399,3 +397,4 @@ export async function createBakimciUser(tenantId, bakimci) {
   }
   return { success: false, error: error };
 }
+

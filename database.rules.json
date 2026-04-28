@@ -83,6 +83,11 @@
           ".read": "auth != null && (auth.uid === $uid || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
           ".validate": "newData.isBoolean()"
         }
+      },
+
+      "$legacyKey": {
+        ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+        ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
       }
     }
   }
