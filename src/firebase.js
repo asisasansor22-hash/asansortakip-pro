@@ -398,9 +398,9 @@ export async function createBakimciUser(tenantId, bakimci) {
   return { success: false, error: error };
 }
 
-// ------- Asis tenant path consolidation ------------------------------------
-// Bazı veriler çoklu-tenant geçişinde tenants/asis/ altına yazıldı.
-// Bu fonksiyon bir kez çalışır, her iki path'teki veriyi flat path'te birleştirir.
+// ------- Asis tenant path migration (tek seferlik) -------------------------
+// Çoklu-tenant geçişinde tenants/asis/ altına yazılan veriler flat path'e taşınır.
+// Sonrasında uygulama yalnızca flat path'ten okur/yazar.
 var ASIS_KEYS = [
   "at_elevs","at_maints","at_faults","at_tasks","at_sozlesme",
   "at_hesapkayit","at_haftalik","at_aylik","at_sonodemeler",
@@ -409,29 +409,14 @@ var ASIS_KEYS = [
 ];
 
 export async function consolidateAsisData() {
-  var flag = "at_asis_consolidated";
+  var flag = "at_asis_v2_done";
   try { if (localStorage.getItem(flag)) return; } catch(e) {}
   for (var i = 0; i < ASIS_KEYS.length; i++) {
     var key = ASIS_KEYS[i];
     try {
-      var flatData  = await dbGetRaw(key);
       var tenantData = await dbGetRaw("tenants/asis/" + key);
-      if (!tenantData) continue; // tenant path boş, gerek yok
-      var merged;
-      if (Array.isArray(tenantData) && Array.isArray(flatData)) {
-        // id'ye göre birleştir, tenant kayıt daha yeni sayılır
-        var map = {};
-        flatData.forEach(function(r){ if(r && r.id) map[r.id] = r; });
-        tenantData.forEach(function(r){ if(r && r.id) map[r.id] = r; });
-        merged = Object.values(map);
-      } else if (Array.isArray(tenantData)) {
-        merged = tenantData;
-      } else if (tenantData && typeof tenantData === "object") {
-        merged = Object.assign({}, flatData || {}, tenantData);
-      } else {
-        merged = tenantData;
-      }
-      await dbSetRaw(key, merged);
+      if (tenantData === null || tenantData === undefined) continue;
+      await dbSetRaw(key, tenantData);
     } catch(e) {}
   }
   try { localStorage.setItem(flag, "1"); } catch(e) {}
