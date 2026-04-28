@@ -184,16 +184,29 @@ export { auth };
 var currentTenantId = null;
 try {
   if (typeof localStorage !== "undefined") {
-    currentTenantId = localStorage.getItem("at_tenant_id") || null;
+    currentTenantId = localStorage.getItem("at_tenant_id") || localStorage.getItem("at_active_company") || null;
   }
 } catch(e) {}
+
+function cleanDbPath(path) {
+  return String(path || "").replace(/^\/+|\/+$/g, "");
+}
+
+function isGlobalPath(path) {
+  return /^(tenants|users|superadmins)(\/|$)/.test(path);
+}
 
 export function setTenantId(tid) {
   currentTenantId = tid || null;
   try {
     if (typeof localStorage !== "undefined") {
-      if (tid) localStorage.setItem("at_tenant_id", tid);
-      else localStorage.removeItem("at_tenant_id");
+      if (tid) {
+        localStorage.setItem("at_tenant_id", tid);
+        localStorage.setItem("at_active_company", tid);
+      } else {
+        localStorage.removeItem("at_tenant_id");
+        localStorage.removeItem("at_active_company");
+      }
     }
   } catch(e) {}
 }
@@ -201,13 +214,15 @@ export function setTenantId(tid) {
 export function getTenantId() { return currentTenantId; }
 
 function tenantKeyPath(key) {
-  // Eğer key zaten "tenants/" veya "users/" gibi mutlaksa olduğu gibi kullan
-  if (key.indexOf("/") >= 0) return key;
+  var safeKey = cleanDbPath(key);
+  // Sadece bilinen global koleksiyonlar tenant dışından okunup yazılabilir.
+  // Slash içeren iş verileri de tenant altında kalır.
+  if (isGlobalPath(safeKey)) return safeKey;
   if (!currentTenantId) {
     // Tenant seçilmemişse eski konuma düşme — bilinçli olarak null dönecek
     return null;
   }
-  return "tenants/" + currentTenantId + "/" + key;
+  return "tenants/" + cleanDbPath(currentTenantId) + "/" + safeKey;
 }
 
 // ------- Database: tenant-aware --------------------------------------------
@@ -228,7 +243,7 @@ export async function dbSet(key, value) {
 export async function dbGetRaw(path) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
     if (token) url += "?auth=" + token;
     var controller = new AbortController();
     var timer = setTimeout(function(){ controller.abort(); }, 8000);
@@ -243,23 +258,25 @@ export async function dbGetRaw(path) {
 export async function dbSetRaw(path, value) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
     if (token) url += "?auth=" + token;
-    await fetch(url, {
+    var res = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value)
     });
-  } catch(e) {}
+    return res.ok;
+  } catch(e) { return false; }
 }
 
 export async function dbDeleteRaw(path) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + path + ".json";
+    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
     if (token) url += "?auth=" + token;
-    await fetch(url, { method: "DELETE" });
-  } catch(e) {}
+    var res = await fetch(url, { method: "DELETE" });
+    return res.ok;
+  } catch(e) { return false; }
 }
 
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------
@@ -312,7 +329,23 @@ export async function getTenantPublic(tid) {
 
 export async function setTenantPublic(tid, data) {
   if (!tid) return;
-  return dbSetRaw("tenants/" + tid + "/public", data);
+  var pub = data || {};
+  if (!pub.ad || !pub.adminEmail) {
+    var existing = await getTenantPublic(tid);
+    if (existing) pub = Object.assign({}, existing, pub);
+  }
+  return dbSetRaw("tenants/" + tid + "/public", {
+    ad: pub.ad || "",
+    adminEmail: pub.adminEmail || "",
+    bakimcilar: Array.isArray(pub.bakimcilar) ? pub.bakimcilar.map(function(b){
+      return {
+        id: b.id || "",
+        ad: b.ad || "",
+        renk: b.renk || "#3b82f6",
+        hasSifre: !!b.hasSifre
+      };
+    }) : []
+  });
 }
 
 // ------- Bakımcı e-posta üreteci -------------------------------------------

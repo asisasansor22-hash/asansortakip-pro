@@ -1,9 +1,9 @@
 // localStorage yardimcilari
 
-const DEFAULT_TENANT_ID = "asis-asansor";
+const DEFAULT_TENANT_ID = "asis";
 
 function activeTenantId(){
-  try{return localStorage.getItem("at_active_company")||DEFAULT_TENANT_ID;}catch(e){return DEFAULT_TENANT_ID;}
+  try{return localStorage.getItem("at_tenant_id")||localStorage.getItem("at_active_company")||DEFAULT_TENANT_ID;}catch(e){return DEFAULT_TENANT_ID;}
 }
 
 function scopedKey(key){
