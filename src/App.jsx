@@ -518,15 +518,21 @@ function App(){
     lsSet("ls_last_tenant",tenantId);
     async function yukPublic(){
       try{
-        // public/bakimcilar: [{id, ad, renk, hasSifre}] — şifre içermez, auth gerektirmez
         var pub=await getTenantPublic(tenantId);
+        var bakList=null;
         if(pub){
-          if(pub.bakimcilar && Array.isArray(pub.bakimcilar) && pub.bakimcilar.length>0){
-            setBakimcilar(pub.bakimcilar);
-            lsSet("ls_bakimcilar",pub.bakimcilar);
-          }
-          // tenantConfig henüz null ise public ile doldur (FirmaKoduGate zaten doldurmuş olabilir)
+          if(pub.bakimcilar && Array.isArray(pub.bakimcilar) && pub.bakimcilar.length>0)
+            bakList=pub.bakimcilar;
           if(!tenantConfig) setTenantConfig(pub);
+        }
+        // Asis için yedek: public yoksa at_bakimcilar_pub flat path'inden oku (auth gerektirmez)
+        if(!bakList && tenantId==="asis"){
+          var pubRaw=await import('./firebase.js').then(function(m){return m.dbGetRaw("at_bakimcilar_pub");});
+          if(Array.isArray(pubRaw) && pubRaw.length>0) bakList=pubRaw;
+        }
+        if(bakList){
+          setBakimcilar(bakList);
+          lsSet("ls_bakimcilar",bakList);
         }
       }catch(e){}
     }
@@ -651,10 +657,11 @@ function App(){
     if(!ilkYukleme.current){
       dbSet("at_bakimcilar",bakimcilar);
       lsSet("ls_bakimcilar",bakimcilar);
-      // Login öncesi login ekranı için public özet (şifre içermez)
       if(tenantId){
         var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
         setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
+        // Asis için auth gerektirmeyen yedek public path'e de yaz
+        if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
       }
     }
   },[bakimcilar]);

@@ -69,6 +69,11 @@
         }
       },
 
+      "at_bakimcilar_pub": {
+        ".read": true,
+        ".write": "auth != null && (auth.token.email === 'yonetici@asistakip.app' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
+      },
+
       "$legacyKey": {
         ".read": "auth != null && auth.token.email.endsWith('@asistakip.app')",
         ".write": "auth != null && (auth.token.email === 'yonetici@asistakip.app' || (auth.token.email.beginsWith('bakimci_') && auth.token.email.endsWith('@asistakip.app') && ($legacyKey === 'at_elevs' || $legacyKey === 'at_maints' || $legacyKey === 'at_faults' || $legacyKey === 'at_sonodemeler' || $legacyKey === 'at_notlar' || $legacyKey === 'at_ekstraisler')) || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
