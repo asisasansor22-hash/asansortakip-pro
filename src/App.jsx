@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, consolidateAsisData } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -538,6 +538,8 @@ function App(){
     if(rol===null) return; // henüz giriş yapılmadı
     async function yukle(){
       try{
+        // Asis tenant: tenants/asis/ altında kalan verileri flat path'e taşı (tek seferlik)
+        if(isSuper && tenantId === "asis") await consolidateAsisData();
         // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
         // kullanıcı değişiklik yaparsa kayıt atlanıyordu (race condition). Paralel
         // sorgu ile yükleme süresi tek istek kadar kısalır.
