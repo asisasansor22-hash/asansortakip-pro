@@ -8,6 +8,7 @@ function EkstraIsEkrani(props) {
   var setEkstraIsler = props.setEkstraIsler;
   var setElevs = props.setElevs;
   var rol = props.rol;
+  var aktifBakimci = props.aktifBakimci || null;
   var ilceler = props.ilceler;
   var today = props.today;
   var _fs=useState({ilce:"",binaId:"",isAdi:"",tutar:"",tarih:today||"",not:"",odendi:false});
@@ -23,12 +24,16 @@ function EkstraIsEkrani(props) {
     if(!form.binaId) return null;
     return elevs.find(function(e){return e.id===Number(form.binaId);});
   },[form.binaId,elevs]);
+  var gorunenIsler=useMemo(function(){
+    if(rol==="bakimci"&&aktifBakimci) return ekstraIsler.filter(function(k){return k.bakimciId===aktifBakimci.id;});
+    return ekstraIsler;
+  },[ekstraIsler,rol,aktifBakimci]);
   var sonKayitlar=useMemo(function(){
-    return ekstraIsler.slice().sort(function(a,b){return (b.tarih+(b.saat||"")).localeCompare(a.tarih+(a.saat||""));});
-  },[ekstraIsler]);
-  var toplamIs=ekstraIsler.length;
-  var devirdekiTutar=ekstraIsler.filter(function(k){return !k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
-  var odenenTutar=ekstraIsler.filter(function(k){return !!k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
+    return gorunenIsler.slice().sort(function(a,b){return (b.tarih+(b.saat||"")).localeCompare(a.tarih+(a.saat||""));});
+  },[gorunenIsler]);
+  var toplamIs=gorunenIsler.length;
+  var devirdekiTutar=gorunenIsler.filter(function(k){return !k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
+  var odenenTutar=gorunenIsler.filter(function(k){return !!k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
   function kaydet(){
     var binaId=Number(form.binaId);
     var tutar=parseFloat(form.tutar)||0;
@@ -38,7 +43,7 @@ function EkstraIsEkrani(props) {
     var simdi=new Date();
     var saat=simdi.getHours().toString().padStart(2,"0")+":"+simdi.getMinutes().toString().padStart(2,"0");
     var bina=elevs.find(function(e){return e.id===binaId;});
-    var yeniKayit={id:Date.now(),binaId:binaId,binaAd:bina?bina.ad:"?",ilce:bina?bina.ilce:"",isAdi:form.isAdi.trim(),tutar:tutar,tarih:form.tarih||today,saat:saat,not:form.not||"",rol:rol,odendi:!!form.odendi};
+    var yeniKayit={id:Date.now(),binaId:binaId,binaAd:bina?bina.ad:"?",ilce:bina?bina.ilce:"",isAdi:form.isAdi.trim(),tutar:tutar,tarih:form.tarih||today,saat:saat,not:form.not||"",rol:rol,odendi:!!form.odendi,bakimciId:aktifBakimci?aktifBakimci.id:null};
     setEkstraIsler(function(p){return p.concat([yeniKayit]);});
     if(!form.odendi){
       setElevs(function(p){return p.map(function(e){if(e.id===binaId){return Object.assign({},e,{bakiyeDevir:(e.bakiyeDevir||0)+tutar});}return e;});});

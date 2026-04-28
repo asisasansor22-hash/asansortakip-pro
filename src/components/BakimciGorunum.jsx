@@ -54,9 +54,8 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     if(!m.planlanmis) return false;
     var elev=elevs.find(e=>e.id===m.asansorId);
     if(!elev) return false;
-    // Kayıtta bakimciId varsa ve aktifBakimci farklıysa filtrele
-    // Kayıtta bakimciId yoksa (eski kayıt) herkese göster
-    if(aktifBakimci&&m.bakimciId&&m.bakimciId!==aktifBakimci.id) return false;
+    // Sadece bu bakımcıya atanmış kayıtları göster
+    if(aktifBakimci&&m.bakimciId!==aktifBakimci.id) return false;
     // İlçe filtresi: bakımcının atanmış ilçeleri varsa sadece o ilçelerin asansörlerini göster
     if(aktifBakimci&&aktifBakimci.ilceler&&aktifBakimci.ilceler.length>0){
       if(!aktifBakimci.ilceler.includes(elev.ilce)) return false;
@@ -79,7 +78,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
 
   const atananArizalar=useMemo(()=>faults.filter(function(f){
     if(!f.bakimciAtandi) return false;
-    if(aktifBakimci&&f.bakimciId&&f.bakimciId!==aktifBakimci.id) return false;
+    if(aktifBakimci&&f.bakimciId!==aktifBakimci.id) return false;
     return true;
   }),[faults,aktifBakimci]);
 

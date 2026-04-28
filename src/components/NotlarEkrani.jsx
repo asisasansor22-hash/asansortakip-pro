@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, MONTHS } from '../utils/constants.js'
 
-function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
+function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler,aktifBakimci}){
   var [yeniIlce,setYeniIlce]=useState("");
   var [yeniBina,setYeniBina]=useState("");
   var [yeniNot,setYeniNot]=useState("");
@@ -12,7 +12,10 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
   var yeniBinaListesi=elevs.filter(function(e){return (e.ilce||"Diğer")===yeniIlce;});
   var seciliBinaObj=elevs.find(function(e){return String(e.id)===String(yeniBina);});
 
-  var tumNotlar=notlar.slice().sort(function(a,b){return String(b.tarihSaat).localeCompare(String(a.tarihSaat));});
+  var tumNotlar=notlar.slice().sort(function(a,b){return String(b.tarihSaat).localeCompare(String(a.tarihSaat));}).filter(function(n){
+    if(rol==="bakimci"&&aktifBakimci) return n.bakimciId===aktifBakimci.id;
+    return true;
+  });
   var gorunenNotlar=filtreBina==="tumu"?tumNotlar:tumNotlar.filter(function(n){return String(n.asansorId)===String(filtreBina);});
 
   // Binalar: not olan binalar (filtre için)
@@ -27,7 +30,7 @@ function NotlarEkrani({elevs,notlar,setNotlar,rol,ilceler}){
 
   function notEkle(){
     if(!yeniNot.trim()||!yeniBina) return;
-    var yeni={id:Date.now(),asansorId:Number(yeniBina),metin:yeniNot.trim(),tarihSaat:simdiStr(),rol:rol};
+    var yeni={id:Date.now(),asansorId:Number(yeniBina),metin:yeniNot.trim(),tarihSaat:simdiStr(),rol:rol,bakimciId:aktifBakimci?aktifBakimci.id:null};
     setNotlar(function(p){return p.concat([yeni]);});
     setYeniNot("");
     setYeniIlce("");

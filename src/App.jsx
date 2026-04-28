@@ -1318,7 +1318,7 @@ function App(){
   const atanmayanCount=elevs.filter(e=>{const kayitlar=mMonth.filter(m=>m.asansorId===e.id);return kayitlar.length===0||!kayitlar.some(m=>m.planlanmis);}).length;
   const atananArizaCount=faults.filter(function(f){
     if(!f.bakimciAtandi||f.durum==="Çözüldü") return false;
-    if(rol==="bakimci"&&aktifBakimci&&f.bakimciId&&f.bakimciId!==aktifBakimci.id) return false;
+    if(rol==="bakimci"&&aktifBakimci&&f.bakimciId!==aktifBakimci.id) return false;
     return true;
   }).length;
 
@@ -2749,20 +2749,20 @@ function App(){
 /* NOTLAR - YÖNETİCİ */
 , tab===8&&rol==="yonetici"&&(
   React.createElement('div', null,
-    React.createElement(NotlarEkrani, {elevs:elevs,notlar:notlar,setNotlar:setNotlar,rol:"yonetici",ilceler:ilceler})
+    React.createElement(NotlarEkrani, {elevs:elevs,notlar:notlar,setNotlar:setNotlar,rol:"yonetici",ilceler:ilceler,aktifBakimci:aktifBakimci})
   )
 )
 
 /* NOTLAR - BAKIMCI */
 , tab===8&&rol==="bakimci"&&(
   React.createElement('div', null,
-    React.createElement(NotlarEkrani, {elevs:elevs,notlar:notlar,setNotlar:setNotlar,rol:"bakimci",ilceler:ilceler})
+    React.createElement(NotlarEkrani, {elevs:elevs,notlar:notlar,setNotlar:setNotlar,rol:"bakimci",ilceler:ilceler,aktifBakimci:aktifBakimci})
   )
 )
 
 /* EKSTRA İŞ - her iki rol de tab===9 kullanır */
 , tab===9&&(
-  React.createElement(EkstraIsEkrani, {elevs:elevs,ekstraIsler:ekstraIsler,setEkstraIsler:setEkstraIsler,setElevs:setElevs,rol:rol,ilceler:ilceler,today:today})
+  React.createElement(EkstraIsEkrani, {elevs:elevs,ekstraIsler:ekstraIsler,setEkstraIsler:setEkstraIsler,setElevs:setElevs,rol:rol,ilceler:ilceler,today:today,aktifBakimci:aktifBakimci})
 )
 
 /* PERİYODİK MUAYENE TAKİBİ */
