@@ -5,8 +5,8 @@
       ".write": false,
 
       "tenants": {
-        ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
-        ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
+        ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
+        ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
 
         "$tenantId": {
           ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId)",
