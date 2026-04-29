@@ -35,7 +35,7 @@ function LoginScreen({ onLogin, bakimcilar, tenantPublic, onFarkliFirma }) {
   }
 
   const yoneticiGiris = async () => {
-    if (isAsis && sifre !== "asis94") {
+    if (isAsis && sifre !== "brt194") {
       setHata("Şifre hatalı!");
       setSifre("");
       return;
