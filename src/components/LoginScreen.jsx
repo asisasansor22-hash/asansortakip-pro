@@ -35,11 +35,6 @@ function LoginScreen({ onLogin, bakimcilar, tenantPublic, onFarkliFirma }) {
   }
 
   const yoneticiGiris = async () => {
-    if (isAsis && sifre !== "brt194") {
-      setHata("Şifre hatalı!");
-      setSifre("");
-      return;
-    }
     // Diğer firmalar: adminEmail yüklenmediyse bekle
     if (!isAsis && !adminEmail) {
       setHata("Firma bilgileri henüz yüklenmedi, 1-2 saniye sonra tekrar deneyin.");
@@ -48,7 +43,7 @@ function LoginScreen({ onLogin, bakimcilar, tenantPublic, onFarkliFirma }) {
     setYukleniyor(true);
     setHata("");
     // Şifreyi doğrudan Firebase Auth'a gönder — yerel karşılaştırma yapılmaz
-    var res = await firebaseLogin(makeYoneticiEmail(), sifre, { noCreate: !isAsis });
+    var res = await firebaseLogin(makeYoneticiEmail(), sifre, { noCreate: true });
     setYukleniyor(false);
     if (res.success) {
       onLogin("yonetici");

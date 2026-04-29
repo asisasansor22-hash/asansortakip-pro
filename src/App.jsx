@@ -3220,14 +3220,14 @@ function App(){
             ),
             React.createElement('div', { className:"ios-modal-body"},
               React.createElement('input', { type: "password", value: sifreInput, onChange: e=>{setSifreInput(e.target.value);setSifreHata("");},
-                onKeyDown: e=>{if(e.key==="Enter"){if(sifreInput==="brt194"){firebaseLogin("yonetici@asistakip.app","brt194").then(()=>{setRol("yonetici");setTab(0);setSifreModal(false);});}else{setSifreHata("Hatalı şifre!");setSifreInput("")}}},
+                onKeyDown: e=>{if(e.key==="Enter"){firebaseLogin("yonetici@asistakip.app",sifreInput,{noCreate:true}).then(function(res){if(res.success){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("");}});}},
                 placeholder: "Şifre girin", autoFocus: true,
                 style: {...S.inp,fontSize:16,marginBottom:sifreHata?10:0}}),
               sifreHata&&React.createElement('div', { style: {fontSize:13,color:"var(--ios-red)",background:"rgba(255,59,48,0.1)",borderRadius:10,padding:"8px 12px"}}, "🚫 " , sifreHata)
             ),
             React.createElement('div', { style: {padding:"8px 18px 10px",display:"flex",gap:10}},
               React.createElement('button', { onClick: ()=>setSifreModal(false), style: {flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}}, "İptal"),
-              React.createElement('button', { onClick: ()=>{if(sifreInput==="brt194"){firebaseLogin("yonetici@asistakip.app","brt194").then(()=>{setRol("yonetici");setTab(0);setSifreModal(false);});}else{setSifreHata("Hatalı şifre!");setSifreInput("");}},
+              React.createElement('button', { onClick: ()=>{firebaseLogin("yonetici@asistakip.app",sifreInput,{noCreate:true}).then(function(res){if(res.success){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("");}});},
                 style: {flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}, "Giriş")
             )
           )
