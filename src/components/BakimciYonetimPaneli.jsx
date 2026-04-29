@@ -9,9 +9,10 @@ const RENKLER = [
 
 // onBakimciEkle(bakimciData) → async, Firebase Auth + users/{uid} oluşturur.
 // Geri dönüş: { uid } veya null (hata durumunda)
-function BakimciYonetimPaneli({ bakimcilar, setBakimcilar, onBakimciEkle }) {
+function BakimciYonetimPaneli({ bakimcilar, setBakimcilar, onBakimciEkle, onBakimciGuncelle }) {
   const [form, setForm] = useState({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
   const [editId, setEditId] = useState(null);
+  const [editEskiSifre, setEditEskiSifre] = useState(""); // düzenleme başlarken eski şifre
   const [silOnay, setSilOnay] = useState(null);
   const [sifreGoster, setSifreGoster] = useState({});
   const [kaydediliyor, setKaydediliyor] = useState(false);
@@ -23,8 +24,20 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar, onBakimciEkle }) {
     if (!form.ad.trim()) return;
     setEkleHata("");
     if (editId) {
+      // Şifre değiştiyse Firebase Auth'u da güncelle
+      var sifreDegistu = form.sifre && form.sifre !== editEskiSifre;
+      if (sifreDegistu && onBakimciGuncelle) {
+        setKaydediliyor(true);
+        var guncRes = await onBakimciGuncelle({ ...bakimcilar.find(function(b){return b.id===editId;}), ...form, ad: form.ad.trim() }, editEskiSifre);
+        setKaydediliyor(false);
+        if (!guncRes || !guncRes.success) {
+          setEkleHata("Firebase şifresi güncellenemedi: " + ((guncRes && guncRes.error) || "bilinmeyen hata"));
+          return;
+        }
+      }
       setBakimcilar(p => p.map(b => b.id === editId ? { ...b, ...form, ad: form.ad.trim() } : b));
       setEditId(null);
+      setEditEskiSifre("");
       setForm({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
       return;
     }
@@ -54,11 +67,13 @@ function BakimciYonetimPaneli({ bakimcilar, setBakimcilar, onBakimciEkle }) {
   const duzenle = (b) => {
     setForm({ ad: b.ad, tel: b.tel || "", sifre: b.sifre || "", renk: b.renk || "#3b82f6" });
     setEditId(b.id);
+    setEditEskiSifre(b.sifre || ""); // eski şifreyi sakla
     setSilOnay(null);
   };
 
   const iptal = () => {
     setEditId(null);
+    setEditEskiSifre("");
     setForm({ ad: "", tel: "", sifre: "", renk: "#3b82f6" });
   };
 

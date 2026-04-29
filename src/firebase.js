@@ -1,5 +1,5 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAWU95hhLKUKc_bTX5fqlLjDyPtOJ8w5r4",
@@ -356,6 +356,47 @@ export function makeBakimciEmail(tenantId, ad) {
     .replace(/[^a-z0-9]/g,"");
   var prefix = (tenantId === "asis") ? "" : (tenantId + "_");
   return "bakimci_" + prefix + safe + "@asistakip.app";
+}
+
+// ------- Bakımcı şifre güncelle --------------------------------------------
+// Yönetici mevcut bakımcının şifresini değiştirirken çağrılır.
+// eskiSifre: mevcut Firebase Auth şifresi (yoksa derived pattern kullanılır)
+// bakimci.sifre: yeni şifre
+export async function updateBakimciUser(tenantId, bakimci, eskiSifre) {
+  if (!tenantId || !bakimci || !bakimci.ad) return { success: false, error: "eksik bilgi" };
+  if (!bakimci.sifre) return { success: true }; // şifre kaldırılmış, güncelleme gerekmez
+  var sec = getSecondaryAuth();
+  var email = makeBakimciEmail(tenantId, bakimci.ad);
+  var oldPw = eskiSifre || ("bakimci_" + (bakimci.id || "nosifre"));
+  var newPw = bakimci.sifre;
+  if (oldPw === newPw) return { success: true }; // değişmemiş
+  var uid = null;
+  var error = null;
+  try {
+    var ex = await signInWithEmailAndPassword(sec, email, oldPw);
+    await updatePassword(ex.user, newPw);
+    uid = ex.user.uid;
+  } catch (e) {
+    // Eski şifre tutmadı — belki zaten yeni şifreyle kayıtlı
+    try {
+      var ex2 = await signInWithEmailAndPassword(sec, email, newPw);
+      uid = ex2.user.uid;
+    } catch (e2) {
+      // Hesap yok, oluştur
+      try {
+        var cr = await createUserWithEmailAndPassword(sec, email, newPw);
+        uid = cr.user.uid;
+      } catch (e3) {
+        error = (e3 && e3.message) || "şifre güncellenemedi";
+      }
+    }
+  }
+  try { await signOut(sec); } catch (_) {}
+  if (uid) {
+    await setUserProfile(uid, { tenantId: tenantId, role: "bakimci", ad: bakimci.ad, active: true });
+    return { success: true, uid: uid };
+  }
+  return { success: false, error: error };
 }
 
 // ------- Bakımcı kullanıcı oluştur -----------------------------------------

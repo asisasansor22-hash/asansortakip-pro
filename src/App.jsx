@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -1272,6 +1272,11 @@ function App(){
   // Yönetici yeni bakımcı eklerken Firebase Auth + users profili oluşturur
   async function handleBakimciEkle(bakimci){
     return await createBakimciUser(tenantId, bakimci);
+  }
+
+  // Yönetici mevcut bakımcının şifresini değiştirirken Firebase Auth günceller
+  async function handleBakimciGuncelle(bakimci, eskiSifre){
+    return await updateBakimciUser(tenantId, bakimci, eskiSifre);
   }
 
   if(rol===null) return React.createElement(LoginScreen, {
@@ -2796,7 +2801,7 @@ function App(){
 /* BAKIMCI YÖNETİMİ */
 , tab===14&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar,onBakimciEkle:handleBakimciEkle})
+    React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar,onBakimciEkle:handleBakimciEkle,onBakimciGuncelle:handleBakimciGuncelle})
   )
 )
 
