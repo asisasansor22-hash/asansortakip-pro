@@ -1750,12 +1750,12 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci,})
+  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi,})
 )
 
 /* ARIZALAR - YÖNETİCİ */
 , tab===3&&(
-  React.createElement(ArizaYonetimiAdmin, { faults: faults, setFaults: setFaults, elevs: elevs, eName: eName, oAdd: oAdd, oEdit: oEdit, del: del, bakimcilar: bakimcilar,})
+  React.createElement(ArizaYonetimiAdmin, { faults: faults, setFaults: setFaults, elevs: elevs, eName: eName, oAdd: oAdd, oEdit: oEdit, del: del, bakimcilar: bakimcilar, firmaAdi: firmaAdi,})
 )
 
 /* GÜNLÜK İŞLER */

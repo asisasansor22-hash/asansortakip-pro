@@ -4,7 +4,8 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci}){
+function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
+  var _firmaAdi=firmaAdi||"Şirketimiz";
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
   const [odemeModal,setOdemeModal]=useState(null);
@@ -328,7 +329,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                             var toplamBorc=devir+(elev.aylikUcret||0)-alinan;
                             var mesaj=
                               "Sayın "+elev.ad+" Yönetimi,\n\n"+
-                              "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
+                              _firmaAdi+" olarak duyduğunuz güven için teşekkür ederiz.\n\n"+
                               "Binanızda bulunan asansörünüzün aylık periyodik bakımı"+(tarihStr?" "+tarihStr+" tarihinde":"")+
                               " teknik ekibimiz tarafından eksiksiz olarak gerçekleştirilmiştir."+
                               (m.odendi&&alinan>0
@@ -338,7 +339,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                               "Asansörünüz bakımlı ve güvenli şekilde kullanıma hazırdır.\n\n"+
                               "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
                               "Saygılarımızla,\n"+
-                              "Asis Asansör Bakım ve Servis Hizmetleri";
+                              _firmaAdi;
                             window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                           },
                           style:{padding:"8px 12px",background:"#0d2518",border:"1px solid #25d36644",borderRadius:8,color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
@@ -393,11 +394,11 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                           tel=tel.replace(/^\+/,"");
                           var mesaj=
                             "Sayın "+elev.ad+" Yönetimi,\n\n"+
-                            "Şirketimize duyduğunuz güven ve anlayışınız için teşekkür ederiz.\n\n"+
+                            _firmaAdi+" olarak duyduğunuz güven ve anlayışınız için teşekkür ederiz.\n\n"+
                             "Binanızda tespit edilen asansör arızası teknik ekibimiz tarafından başarıyla giderilmiş olup asansörünüz güvenli bir şekilde kullanıma hazır hale getirilmiştir.\n\n"+
                             "Herhangi bir sorunuz veya farklı bir arıza durumunda bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
                             "Saygılarımızla,\n"+
-                            "Asis Asansör Bakım ve Servis Hizmetleri";
+                            _firmaAdi;
                           window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                         },
                         style:{padding:"6px 10px",borderRadius:7,background:"#0d2518",border:"1px solid #25d36644",color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}

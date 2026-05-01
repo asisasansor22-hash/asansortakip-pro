@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, FF, AdresFF, FS, Modal } from '../utils/constants.js'
 
-function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del,bakimcilar}){
+function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del,bakimcilar,firmaAdi}){
+  var _firmaAdi=firmaAdi||"Şirketimiz";
   const [atamaModal,setAtamaModal]=useState(null);
   const kayitliBakimcilar=Array.isArray(bakimcilar)?bakimcilar:[];
   const bakimciAdi=function(f){
@@ -95,11 +96,11 @@ function ArizaYonetimiAdmin({faults,setFaults,elevs,eName,oAdd,oEdit,del,bakimci
                           tel=tel.replace(/^\+/,"");
                           var mesaj=
                             "Sayın "+elev.ad+" Yönetimi,\n\n"+
-                            "Şirketimize duyduğunuz güven ve anlayışınız için teşekkür ederiz.\n\n"+
+                            _firmaAdi+" olarak duyduğunuz güven ve anlayışınız için teşekkür ederiz.\n\n"+
                             "Binanızda tespit edilen asansör arızası ("+f.aciklama+") teknik ekibimiz tarafından başarıyla giderilmiş olup asansörünüz güvenli bir şekilde kullanıma hazır hale getirilmiştir.\n\n"+
                             "Herhangi bir sorunuz veya farklı bir arıza durumunda bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
                             "Saygılarımızla,\n"+
-                            "Asis Asansör Bakım ve Servis Hizmetleri";
+                            _firmaAdi;
                           window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                         },
                         style:{padding:"6px 10px",borderRadius:8,background:"#0d2518",border:"1px solid #25d36644",color:"#25d366",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
