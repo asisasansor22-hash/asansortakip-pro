@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -492,6 +492,9 @@ function App(){
   const [isSuper,setIsSuper]=useState(false);
   const [userProfile,setUserProfile]=useState(null);
   const [firmalarAcik,setFirmalarAcik]=useState(false);
+  const [firmaAyarlariAcik,setFirmaAyarlariAcik]=useState(false);
+  const [firmaAyarlariForm,setFirmaAyarlariForm]=useState({});
+  const [firmaAyarlariKaydediliyor,setFirmaAyarlariKaydediliyor]=useState(false);
   // FirmaKoduGate'den gelen public bilgi (ad, adminEmail) — şifre içermez
   function handleFirmaKodu(slug, pub){ setTenantIdState(slug); setTenantConfig(pub||null); }
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
@@ -1123,15 +1126,16 @@ function App(){
     else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
     return tel.replace(/^\+/,"");
   };
+  const firmaAdi=(tenantConfig&&tenantConfig.ad)||"Şirketimiz";
   const borcWhatsappMesaji=(e,borc)=>{
     var tutar=(borc||0).toLocaleString("tr-TR")+" ₺";
     return "Sayın "+e.ad+" Yönetimi,\n\n"+
-      "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
+      firmaAdi+" olarak binanıza sunduğumuz hizmet için teşekkür ederiz.\n\n"+
       "Bilginize sunmak istediğimiz husus; binanızın asansörüne ait aylık periyodik bakımlar tarafımızca düzenli ve eksiksiz olarak gerçekleştirilmektedir.\n\n"+
       "Güncel hesap durumunuza göre toplam bakım borcunuz *"+tutar+"* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz.\n\n"+
       "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten çekinmeyiniz.\n\n"+
       "Saygılarımızla,\n"+
-      "Asis Asansör Bakım ve Servis Hizmetleri";
+      firmaAdi;
   };
   const borcWhatsappGonder=(e)=>{
     if(!e||!e.tel) return;
@@ -1369,6 +1373,11 @@ function App(){
           ),
           /* Sağ: tema + çıkış */
           React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
+            rol==="yonetici"&&!isSuper&&React.createElement('button', {
+              onClick:()=>{setFirmaAyarlariForm({ad:tenantConfig&&tenantConfig.ad||"",adres:tenantConfig&&tenantConfig.adres||"",tel:tenantConfig&&tenantConfig.tel||"",tel2:tenantConfig&&tenantConfig.tel2||"",tel3:tenantConfig&&tenantConfig.tel3||"",email:tenantConfig&&tenantConfig.email||"",email2:tenantConfig&&tenantConfig.email2||"",logoUrl:tenantConfig&&tenantConfig.logoUrl||""});setFirmaAyarlariAcik(true);},
+              title:"Firma Ayarları",
+              style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
+            }, "🏢"),
             rol==="bakimci"&&React.createElement('button', {
               onClick:()=>{setSifreModal(true);setSifreInput("");setSifreHata("");},
               style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"var(--accent)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
@@ -1695,12 +1704,12 @@ function App(){
                         tel=tel.replace(/^\+/,"");
                         var mesaj=
                           "Sayın "+e.ad+" Yönetimi,\n\n"+
-                          "Şirketimize duyduğunuz güven için teşekkür ederiz.\n\n"+
+                          firmaAdi+" olarak binanıza sunduğumuz hizmet için teşekkür ederiz.\n\n"+
                           "Bilginize sunmak istediğimiz husus; binanızın asansörüne ait aylık periyodik bakımlar tarafımızca düzenli ve eksiksiz olarak gerçekleştirilmektedir.\n\n"+
                           "Güncel hesap durumunuza göre toplam bakım borcunuz *"+tutar+"* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz.\n\n"+
                           "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten çekinmeyiniz.\n\n"+
                           "Saygılarımızla,\n"+
-                          "Asis Asansör Bakım ve Servis Hizmetleri";
+                          firmaAdi;
                         window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
                       },
                       style:{padding:"5px 8px",borderRadius:8,background:"#0d2518",border:"1px solid #25d36633",color:"#25d366",fontSize:14,cursor:"pointer",lineHeight:1}
@@ -2773,7 +2782,7 @@ function App(){
 /* PERİYODİK MUAYENE TAKİBİ */
 , tab===10&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler})
+    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig})
   )
 )
 
@@ -3235,6 +3244,82 @@ function App(){
               React.createElement('button', { onClick: ()=>{firebaseLogin("yonetici@asistakip.app",sifreInput,{noCreate:true}).then(function(res){if(res.success){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("");}});},
                 style: {flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}, "Giriş")
             )
+          )
+        )
+      )
+
+      /* FIRMA AYARLARI MODAL */
+      , firmaAyarlariAcik&&React.createElement('div',{
+          style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+        },
+        React.createElement('div',{
+          style:{width:"min(480px,100%)",background:"var(--bg-panel)",borderRadius:20,border:"1px solid var(--border)",boxShadow:"0 24px 64px rgba(0,0,0,0.5)",overflowY:"auto",maxHeight:"90vh"}
+        },
+          React.createElement('div',{style:{padding:"16px 20px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:"var(--bg-panel)",zIndex:1}},
+            React.createElement('div',{style:{fontWeight:800,fontSize:16,color:"var(--accent)"}}, "🏢 Firma Bilgileri"),
+            React.createElement('button',{onClick:()=>setFirmaAyarlariAcik(false),style:{background:"none",border:"none",color:"var(--text-muted)",fontSize:22,cursor:"pointer",lineHeight:1}}, "×")
+          ),
+          React.createElement('div',{style:{padding:"16px 20px",display:"flex",flexDirection:"column",gap:12}},
+            React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",background:"var(--bg-elevated)",borderRadius:10,padding:"10px 14px",lineHeight:1.5}},
+              "Bu bilgiler WhatsApp mesajlarında, teklif belgelerinde ve makbuzlarda otomatik olarak kullanılır."
+            ),
+            (function(){
+              var inp=function(label,key,placeholder,hint){
+                return React.createElement('div',null,
+                  React.createElement('label',{style:{display:"block",fontSize:11,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},label),
+                  React.createElement('input',{
+                    value:firmaAyarlariForm[key]||"",
+                    onChange:function(e){setFirmaAyarlariForm(function(p){var n=Object.assign({},p);n[key]=e.target.value;return n;});},
+                    placeholder:placeholder||"",
+                    style:{width:"100%",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:10,padding:"10px 12px",color:"var(--text)",fontSize:13,boxSizing:"border-box",outline:"none"}
+                  }),
+                  hint&&React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)",marginTop:3}},hint)
+                );
+              };
+              return React.createElement(React.Fragment,null,
+                inp("Firma Adı *","ad","Çakır Asansör Sistemleri"),
+                inp("Adres","adres","Mahalle, Sokak No, İlçe / Şehir"),
+                inp("Telefon 1","tel","0212 000 00 00"),
+                inp("Telefon 2 (Cep)","tel2","0532 000 00 00"),
+                inp("Telefon 3 (Cep)","tel3","0543 000 00 00"),
+                inp("E-posta 1","email","info@firmaadi.com"),
+                inp("E-posta 2","email2",""),
+                inp("Logo URL","logoUrl","https://... veya boş bırakın","Teklif belgelerinde başlık görseli olarak kullanılır. Doğrudan erişilebilir bir resim adresi (PNG/JPG) girin. Boş bırakırsanız varsayılan logo kullanılır.")
+              );
+            })()
+          ),
+          React.createElement('div',{style:{padding:"0 20px 20px",display:"flex",gap:10}},
+            React.createElement('button',{
+              onClick:()=>setFirmaAyarlariAcik(false),
+              style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
+            },"İptal"),
+            React.createElement('button',{
+              disabled:firmaAyarlariKaydediliyor||!firmaAyarlariForm.ad,
+              onClick:async function(){
+                if(!firmaAyarlariForm.ad){alert("Firma adı zorunludur.");return;}
+                setFirmaAyarlariKaydediliyor(true);
+                var fields={
+                  ad:firmaAyarlariForm.ad.trim(),
+                  adres:(firmaAyarlariForm.adres||"").trim(),
+                  tel:(firmaAyarlariForm.tel||"").trim(),
+                  tel2:(firmaAyarlariForm.tel2||"").trim(),
+                  tel3:(firmaAyarlariForm.tel3||"").trim(),
+                  email:(firmaAyarlariForm.email||"").trim(),
+                  email2:(firmaAyarlariForm.email2||"").trim(),
+                  logoUrl:(firmaAyarlariForm.logoUrl||"").trim()
+                };
+                var ok=await saveTenantConfig(tenantId,fields);
+                setFirmaAyarlariKaydediliyor(false);
+                if(ok){
+                  setTenantConfig(function(prev){return Object.assign({},prev||{},fields);});
+                  setFirmaAyarlariAcik(false);
+                  alert("Firma bilgileri kaydedildi.");
+                } else {
+                  alert("Kaydedilemedi. Bağlantınızı kontrol edin.");
+                }
+              },
+              style:{flex:2,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:14,opacity:firmaAyarlariKaydediliyor?0.6:1}
+            }, firmaAyarlariKaydediliyor?"Kaydediliyor...":"Kaydet")
           )
         )
       )

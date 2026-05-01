@@ -21,31 +21,41 @@ var TEKLIF_HEADER_SRC = '/teklif-header.png'
 var teklifHeaderBytesPromise = null
 var teklifHeaderDataUrlPromise = null
 
-function getTeklifHeaderBytes() {
-  if (!teklifHeaderBytesPromise) {
-    teklifHeaderBytesPromise = fetch(TEKLIF_HEADER_SRC).then(function(res) {
-      if (!res.ok) throw new Error('Teklif başlığı yüklenemedi.')
-      return res.arrayBuffer()
+function fetchImageBytes(url) {
+  return fetch(url).then(function(res) {
+    if (!res.ok) throw new Error('Gorsel yuklenemedi: ' + url)
+    return res.arrayBuffer()
+  })
+}
+
+function fetchImageDataUrl(url) {
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('Gorsel yuklenemedi: ' + url)
+      return res.blob()
     })
+    .then(function(blob) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader()
+        reader.onload = function() { resolve(String(reader.result || '')) }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+    })
+}
+
+function getTeklifHeaderBytes(customUrl) {
+  if (customUrl) return fetchImageBytes(customUrl)
+  if (!teklifHeaderBytesPromise) {
+    teklifHeaderBytesPromise = fetchImageBytes(TEKLIF_HEADER_SRC)
   }
   return teklifHeaderBytesPromise
 }
 
-function getTeklifHeaderDataUrl() {
+function getTeklifHeaderDataUrl(customUrl) {
+  if (customUrl) return fetchImageDataUrl(customUrl)
   if (!teklifHeaderDataUrlPromise) {
-    teklifHeaderDataUrlPromise = fetch(TEKLIF_HEADER_SRC)
-      .then(function(res) {
-        if (!res.ok) throw new Error('Teklif basligi yuklenemedi.')
-        return res.blob()
-      })
-      .then(function(blob) {
-        return new Promise(function(resolve, reject) {
-          var reader = new FileReader()
-          reader.onload = function() { resolve(String(reader.result || '')) }
-          reader.onerror = reject
-          reader.readAsDataURL(blob)
-        })
-      })
+    teklifHeaderDataUrlPromise = fetchImageDataUrl(TEKLIF_HEADER_SRC)
   }
   return teklifHeaderDataUrlPromise
 }
@@ -74,7 +84,7 @@ function islerPreview(value) {
   }).join('\n')
 }
 
-function teklifVerisi(teklif, elev) {
+function teklifVerisi(teklif, elev, config) {
   var apartmanHam = (teklif.apartmanAdi || (elev && elev.ad) || '').trim()
   var recipientCore = apartmanHam || 'APARTMAN'
   if (!/YÖNETİMİ$/i.test(recipientCore)) recipientCore += ' YÖNETİMİ'
@@ -82,6 +92,18 @@ function teklifVerisi(teklif, elev) {
   var itemsFirst = items.slice(0, 8)
   var itemsSecond = items.slice(8)
   var tutar = (+teklif.tutar || 0).toLocaleString('tr-TR')
+
+  var cfg = config || {}
+  var company1 = (cfg.ad || '').trim() || 'Asis Asansör Sistemleri'
+  var company2 = (cfg.adres || '').trim() || 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL'
+  var tel1 = (cfg.tel || '').trim()
+  var tel2 = (cfg.tel2 || '').trim()
+  var tel3 = (cfg.tel3 || '').trim()
+  var company3 = tel1 ? ('Tel: ' + tel1) : 'Tel: 0212-703-20-52'
+  var company4Parts = []
+  if (tel2) company4Parts.push('Cep Tel: ' + tel2)
+  if (tel3) company4Parts.push(tel3)
+  var company4 = company4Parts.length ? company4Parts.join('   ') : 'Cep Tel: 0536-565-92-23   0543-507-07-94'
 
   return {
     date: formatTarihTR(teklif.tarih),
@@ -93,10 +115,10 @@ function teklifVerisi(teklif, elev) {
     itemsSecond: itemsSecond,
     secondStart: itemsFirst.length + 1,
     price: "FİYATIMIZ YUKARIDAKİ BİR ADET ASANSÖR İÇİN TOPLAM TUTAR " + tutar + " TL'DİR.",
-    company1: 'Asis Asansör Sistemleri',
-    company2: 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL',
-    company3: 'Tel: 0212-703-20-52',
-    company4: 'Cep Tel: 0536-565-92-23   0543-507-07-94',
+    company1: company1,
+    company2: company2,
+    company3: company3,
+    company4: company4,
     signLeft: 'Sözleşme Onay Tarihi',
     signRight: 'Kaşe / İmza'
   }
@@ -110,8 +132,8 @@ function teklifItemsHtml(items, start) {
   }).join('') + '</ol>'
 }
 
-function teklifHtmlDocument(teklif, elev, options) {
-  var data = teklifVerisi(teklif, elev)
+function teklifHtmlDocument(teklif, elev, options, config) {
+  var data = teklifVerisi(teklif, elev, config)
   var preview = !!(options && options.preview)
   var autoPrint = !!(options && options.autoPrint)
   var title = escapeHtml((options && options.title) || 'Teklif')
@@ -307,10 +329,11 @@ function teklifImzaParagraflari(docx, leftText, rightText) {
   ]
 }
 
-async function downloadWord(teklif, elev) {
-  var data = teklifVerisi(teklif, elev)
+async function downloadWord(teklif, elev, config) {
+  var data = teklifVerisi(teklif, elev, config)
   var docx = await import('docx')
-  var headerBytes = await getTeklifHeaderBytes()
+  var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
+  var headerBytes = await getTeklifHeaderBytes(customLogoUrl || null)
 
   var children = [
     teklifHeaderParagraf(docx, headerBytes),
@@ -367,10 +390,11 @@ async function downloadWord(teklif, elev) {
   URL.revokeObjectURL(url)
 }
 
-async function downloadPdf(teklif, elev) {
+async function downloadPdf(teklif, elev, config) {
   var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
-  var headerDataUrl = await getTeklifHeaderDataUrl()
-  var html = teklifHtmlDocument(teklif, elev, { title: dosyaAdi, headerSrc: headerDataUrl })
+  var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
+  var headerDataUrl = await getTeklifHeaderDataUrl(customLogoUrl || null)
+  var html = teklifHtmlDocument(teklif, elev, { title: dosyaAdi, headerSrc: headerDataUrl }, config)
 
   var iframe = document.createElement('iframe')
   iframe.setAttribute('aria-hidden', 'true')
@@ -466,6 +490,7 @@ function TeklifModal(props) {
   var elevs = props.elevs
   var ilceler = props.ilceler
   var filteredElevs = props.filteredElevs
+  var tenantConfig = props.tenantConfig || null
   var filtreIlce = props.filtreIlce
   var closeModal = props.closeModal
   var save = props.save
@@ -474,7 +499,8 @@ function TeklifModal(props) {
   var darAlan = props.darAlan
 
   var seciliElev = elevs.find(function(e) { return e.id === (+form.asansorId || form.asansorId) })
-  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true })
+  var customLogoUrl = tenantConfig && tenantConfig.logoUrl ? tenantConfig.logoUrl.trim() : ''
+  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: customLogoUrl || TEKLIF_HEADER_SRC }, tenantConfig)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000000b8', zIndex: 2000, display: 'flex', alignItems: darModal ? 'flex-start' : 'center', justifyContent: 'center', padding: darAlan ? 8 : 16, overflowY: 'auto' }}>
@@ -561,8 +587,8 @@ function TeklifModal(props) {
 
         <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={function() { downloadWord(form, seciliElev).catch(function(err) { console.error(err); alert('Word çıktısı hazırlanamadı.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Olarak Indir</button>
-            <button onClick={function() { downloadPdf(form, seciliElev).catch(function(err) { console.error(err); alert('PDF ciktisi hazirlanamadi.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
+            <button onClick={function() { downloadWord(form, seciliElev, tenantConfig).catch(function(err) { console.error(err); alert('Word çıktısı hazırlanamadı.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Olarak Indir</button>
+            <button onClick={function() { downloadPdf(form, seciliElev, tenantConfig).catch(function(err) { console.error(err); alert('PDF ciktisi hazirlanamadi.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button onClick={closeModal} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>Iptal</button>
@@ -579,6 +605,7 @@ export default function TeklifYonetimi(props) {
   var teklifler = props.teklifler
   var setTeklifler = props.setTeklifler
   var ilceler = props.ilceler
+  var tenantConfig = props.tenantConfig || null
   var today = new Date().toISOString().split('T')[0]
 
   var _useState = useState(false), modal = _useState[0], setModal = _useState[1]
@@ -723,6 +750,7 @@ export default function TeklifYonetimi(props) {
           syncElevatorFields={syncElevatorFields}
           darModal={darModal}
           darAlan={darAlan}
+          tenantConfig={tenantConfig}
         />,
         document.body
       )
@@ -764,13 +792,13 @@ export default function TeklifYonetimi(props) {
               onEdit={openEdit}
               onDelete={remove}
               onWord={function(item) {
-                downloadWord(item, elevs.find(function(e) { return e.id === item.asansorId })).catch(function(err) {
+                downloadWord(item, elevs.find(function(e) { return e.id === item.asansorId }), tenantConfig).catch(function(err) {
                   console.error(err)
                   alert('Word çıktısı hazırlanamadı.')
                 })
               }}
               onPdf={function(item) {
-                downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId })).catch(function(err) {
+                downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId }), tenantConfig).catch(function(err) {
                   console.error(err)
                   alert('PDF ciktisi hazirlanamadi.')
                 })

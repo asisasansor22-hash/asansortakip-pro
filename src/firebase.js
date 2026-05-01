@@ -299,6 +299,13 @@ export async function getTenantConfig(tid) {
   return dbGetRaw("tenants/" + tid + "/config");
 }
 
+export async function saveTenantConfig(tid, fields) {
+  if (!tid || !fields) return false;
+  var existing = await dbGetRaw("tenants/" + tid + "/config");
+  var merged = Object.assign({}, existing || {}, fields, { updatedAt: new Date().toISOString() });
+  return dbSetRaw("tenants/" + tid + "/config", merged);
+}
+
 export async function getTenantSubscription(tid) {
   if (!tid) return null;
   return dbGetRaw("tenants/" + tid + "/subscription");
