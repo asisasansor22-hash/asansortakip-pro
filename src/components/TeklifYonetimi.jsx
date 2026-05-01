@@ -138,7 +138,10 @@ function teklifHtmlDocument(teklif, elev, options, config) {
   var preview = !!(options && options.preview)
   var autoPrint = !!(options && options.autoPrint)
   var title = escapeHtml((options && options.title) || 'Teklif')
-  var headerSrc = (options && options.headerSrc) || TEKLIF_HEADER_SRC
+  var headerSrc = (options && options.headerSrc) || null
+  var showHeader = !!(headerSrc)
+  var headerHtml = showHeader ? ('<img class="header" src="' + headerSrc + '" alt="logo" />') : ''
+  var headerStyle = showHeader ? '.header{width:100%;display:block;border-bottom:1px solid #d0d5dd;padding-bottom:8px;margin-bottom:26px;}' : ''
   var bodyBg = preview ? '#eef2f6' : '#ffffff'
   var bodyPadding = preview ? '18px 0' : '0'
   var pageWidth = preview ? 'min(920px, calc(100vw - 20px))' : '210mm'
@@ -146,13 +149,15 @@ function teklifHtmlDocument(teklif, elev, options, config) {
   var pageShadow = preview ? '0 16px 40px rgba(16,24,40,.12)' : 'none'
   var pagePadding = preview ? '30px 36px 38px' : '26mm 20mm 20mm'
   var script = autoPrint ? '<script>window.onload=function(){window.focus();};<\/script>' : ''
+  var companyLines =
+    (data.company1 ? '<p class="p indent company">' + escapeHtml(data.company1) + '</p>' : '') +
+    (data.company2 ? '<p class="p indent company">' + escapeHtml(data.company2) + '</p>' : '') +
+    (data.company3 ? '<p class="p indent company">' + escapeHtml(data.company3) + '</p>' : '') +
+    (data.company4 ? '<p class="p indent company">' + escapeHtml(data.company4) + '</p>' : '')
   var bottomBlockHtml =
     '<div class="bottom-block">' +
     '<p class="p price">' + escapeHtml(data.price) + '</p>' +
-    '<p class="p indent company">' + escapeHtml(data.company1) + '</p>' +
-    '<p class="p indent company">' + escapeHtml(data.company2) + '</p>' +
-    '<p class="p indent company">' + escapeHtml(data.company3) + '</p>' +
-    '<p class="p indent company">' + escapeHtml(data.company4) + '</p>' +
+    companyLines +
     '<div class="signatures"><div class="sig">' + escapeHtml(data.signLeft) + '</div><div class="sig">' + escapeHtml(data.signRight) + '</div></div>' +
     '</div>'
 
@@ -162,7 +167,7 @@ function teklifHtmlDocument(teklif, elev, options, config) {
     '<style>' +
     'body{margin:0;background:' + bodyBg + ';padding:' + bodyPadding + ';font-family:Verdana,Arial,sans-serif;color:#111;}' +
     '.page{width:' + pageWidth + ';min-height:297mm;margin:' + pageMargin + ';background:#fff;padding:' + pagePadding + ';box-shadow:' + pageShadow + ';box-sizing:border-box;}' +
-    '.header{width:100%;display:block;border-bottom:1px solid #d0d5dd;padding-bottom:8px;margin-bottom:26px;}' +
+    headerStyle +
     '.p{margin:0 0 4px;font-size:18px;line-height:1.6;}' +
     '.right{text-align:right;font-weight:700;}' +
     '.indent{margin-left:82px;}' +
@@ -179,7 +184,7 @@ function teklifHtmlDocument(teklif, elev, options, config) {
     '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
     '</style></head><body>' +
     '<section class="page">' +
-    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
+    headerHtml +
     '<p class="p right">' + escapeHtml(data.date) + '</p>' +
     '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
     '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
@@ -188,7 +193,7 @@ function teklifHtmlDocument(teklif, elev, options, config) {
     teklifItemsHtml(data.itemsFirst, 1) +
     '</section>' +
     '<section class="page page-two">' +
-    '<img class="header" src="' + headerSrc + '" alt="Asis header" />' +
+    headerHtml +
     (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
     bottomBlockHtml +
     '</section>' +
@@ -334,34 +339,35 @@ async function downloadWord(teklif, elev, config) {
   var data = teklifVerisi(teklif, elev, config)
   var docx = await import('docx')
   var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
-  var headerBytes = await getTeklifHeaderBytes(customLogoUrl || null)
+  var resolvedLogoUrl = customLogoUrl || (config && config._isAsis ? TEKLIF_HEADER_SRC : '')
+  var hasLogo = !!(resolvedLogoUrl)
+  var headerBytes = hasLogo ? await getTeklifHeaderBytes(resolvedLogoUrl) : null
 
-  var children = [
-    teklifHeaderParagraf(docx, headerBytes),
-    teklifParagraf(docx, data.date, { align: docx.AlignmentType.RIGHT, bold: true, afterPt: 4 }),
-    teklifRecipientParagraf(docx, data.recipient),
-    teklifParagraf(docx, '', { afterPt: 22 }),
-    teklifParagraf(docx, data.intro1, { leftCm: 2.2, afterPt: 2 }),
-    teklifParagraf(docx, data.intro2, { leftCm: 2.2, afterPt: 14 }),
-    teklifParagraf(docx, data.title, { leftCm: 2.2, bold: true, afterPt: 8 })
-  ]
+  var children = []
+  if (hasLogo) children.push(teklifHeaderParagraf(docx, headerBytes))
+  children.push(teklifParagraf(docx, data.date, { align: docx.AlignmentType.RIGHT, bold: true, afterPt: 4 }))
+  children.push(teklifRecipientParagraf(docx, data.recipient))
+  children.push(teklifParagraf(docx, '', { afterPt: 22 }))
+  children.push(teklifParagraf(docx, data.intro1, { leftCm: 2.2, afterPt: 2 }))
+  children.push(teklifParagraf(docx, data.intro2, { leftCm: 2.2, afterPt: 14 }))
+  children.push(teklifParagraf(docx, data.title, { leftCm: 2.2, bold: true, afterPt: 8 }))
 
   data.itemsFirst.forEach(function(item, index) {
     children.push(teklifNumaraliParagraf(docx, index + 1, item))
   })
 
   children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
-  children.push(teklifHeaderParagraf(docx, headerBytes))
+  if (hasLogo) children.push(teklifHeaderParagraf(docx, headerBytes))
   data.itemsSecond.forEach(function(item, index) {
     children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
   })
   children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
 
   children.push(teklifParagraf(docx, data.price, { leftCm: 0.8, bold: true, color: '1F4E79', afterPt: 12 }))
-  children.push(teklifParagraf(docx, data.company1, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  children.push(teklifParagraf(docx, data.company2, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  children.push(teklifParagraf(docx, data.company3, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  children.push(teklifParagraf(docx, data.company4, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 30 }))
+  if (data.company1) children.push(teklifParagraf(docx, data.company1, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
+  if (data.company2) children.push(teklifParagraf(docx, data.company2, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
+  if (data.company3) children.push(teklifParagraf(docx, data.company3, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
+  if (data.company4) children.push(teklifParagraf(docx, data.company4, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 30 }))
   children = children.concat(teklifImzaParagraflari(docx, data.signLeft, data.signRight))
 
   var doc = new docx.Document({
@@ -394,7 +400,8 @@ async function downloadWord(teklif, elev, config) {
 async function downloadPdf(teklif, elev, config) {
   var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
   var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
-  var headerDataUrl = await getTeklifHeaderDataUrl(customLogoUrl || null)
+  var resolvedLogoUrl = customLogoUrl || (config && config._isAsis ? TEKLIF_HEADER_SRC : '')
+  var headerDataUrl = resolvedLogoUrl ? await getTeklifHeaderDataUrl(resolvedLogoUrl) : null
   var html = teklifHtmlDocument(teklif, elev, { title: dosyaAdi, headerSrc: headerDataUrl }, config)
 
   var iframe = document.createElement('iframe')
@@ -501,7 +508,8 @@ function TeklifModal(props) {
 
   var seciliElev = elevs.find(function(e) { return e.id === (+form.asansorId || form.asansorId) })
   var customLogoUrl = tenantConfig && tenantConfig.logoUrl ? tenantConfig.logoUrl.trim() : ''
-  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: customLogoUrl || TEKLIF_HEADER_SRC }, tenantConfig)
+  var resolvedLogoUrl = customLogoUrl || (tenantConfig && tenantConfig._isAsis ? TEKLIF_HEADER_SRC : null)
+  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: resolvedLogoUrl }, tenantConfig)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000000b8', zIndex: 2000, display: 'flex', alignItems: darModal ? 'flex-start' : 'center', justifyContent: 'center', padding: darAlan ? 8 : 16, overflowY: 'auto' }}>
