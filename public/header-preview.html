@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Teklif Header Önizleme</title>
+<style>
+  body { margin: 0; background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 24px; min-height: 100vh; }
+  h1 { font-size: 20px; margin: 0 0 6px; color: #3b82f6; }
+  p { font-size: 13px; color: #94a3b8; margin: 0 0 20px; }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 20px; margin-bottom: 24px; }
+  .card h2 { font-size: 14px; color: #94a3b8; margin: 0 0 14px; font-weight: 600; }
+  label.upload { display: inline-block; padding: 10px 18px; background: #3b82f6; color: #fff; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 700; }
+  label.upload:hover { background: #2563eb; }
+  input[type=file] { display: none; }
+  .note { font-size: 11px; color: #64748b; margin-top: 8px; }
+  canvas { display: block; max-width: 100%; border: 1px solid #334155; border-radius: 8px; margin-top: 14px; background: #fff; }
+  .doc-preview { background: #fff; border-radius: 8px; padding: 28px 32px 20px; margin-top: 14px; border: 1px solid #334155; }
+  .doc-header-area { border-bottom: 1px solid #d0d5dd; padding-bottom: 8px; margin-bottom: 20px; }
+  .doc-header-area img { max-height: 80px; width: auto; max-width: 100%; display: block; }
+  .doc-date { text-align: right; font-family: Verdana, sans-serif; font-size: 14px; font-weight: 700; color: #111; margin-bottom: 12px; }
+  .doc-recipient { text-align: center; font-family: Verdana, sans-serif; font-size: 14px; font-weight: 700; color: #111; margin-bottom: 10px; }
+  .doc-body { font-family: Verdana, sans-serif; font-size: 12px; color: #444; line-height: 1.6; }
+  .doc-body p { margin: 0 0 6px 48px; }
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:700px) { .comparison { grid-template-columns: 1fr; } }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; }
+  .tag.asis { background: rgba(59,130,246,.2); color: #60a5fa; }
+  .tag.cakir { background: rgba(16,185,129,.2); color: #34d399; }
+  #status { font-size: 12px; color: #64748b; margin-top: 10px; min-height: 18px; }
+  #status.ok { color: #34d399; }
+  #status.err { color: #f87171; }
+</style>
+</head>
+<body>
+
+<h1>Teklif Header Önizleme</h1>
+<p>Çakır Asansör logosunu seçin — teklif belgesinde nasıl görüneceğini hemen görebilirsiniz.</p>
+
+<div class="card">
+  <h2>Logo Dosyası Seç</h2>
+  <label class="upload">📂 PNG / JPG Seç<input type="file" id="logoInput" accept="image/png,image/jpeg,image/jpg"></label>
+  <div id="status"></div>
+</div>
+
+<div class="card">
+  <h2>Üretilen Header (A4 belge genişliğinde, 130px yükseklik)</h2>
+  <canvas id="headerCanvas" width="1120" height="130"></canvas>
+</div>
+
+<div class="comparison">
+  <div class="card">
+    <h2>Belge Önizleme — Çakır Asansör</h2>
+    <span class="tag cakir">YENİ</span>
+    <div class="doc-preview">
+      <div class="doc-header-area" id="cakir-header-area">
+        <div style="color:#94a3b8;font-size:12px;font-style:italic;">← Logo seçince burada görünür</div>
+      </div>
+      <div class="doc-date">01.05.2026</div>
+      <div class="doc-recipient">SN. ÖRNEK APARTMAN YÖNETİMİ</div>
+      <div class="doc-body">
+        <p>Binanızda bulunan 1 adet asansörün firmamız tarafından yapılan</p>
+        <p>incelemede belirlenen eksikler aşağıda belirtilmiştir.</p>
+        <p><strong>YAPILACAK İŞLEMLER</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Belge Önizleme — Asis Asansör</h2>
+    <span class="tag asis">MEVCUT (DEĞİŞMEYECEK)</span>
+    <div class="doc-preview">
+      <div class="doc-header-area">
+        <img src="/teklif-header.png" alt="Asis header" style="width:100%;" onerror="this.style.display='none';this.nextSibling.style.display='block'">
+        <div style="display:none;color:#94a3b8;font-size:11px;">(teklif-header.png bulunamadı)</div>
+      </div>
+      <div class="doc-date">01.05.2026</div>
+      <div class="doc-recipient">SN. ÖRNEK APARTMAN YÖNETİMİ</div>
+      <div class="doc-body">
+        <p>Binanızda bulunan 1 adet asansörün firmamız tarafından yapılan</p>
+        <p>incelemede belirlenen eksikler aşağıda belirtilmiştir.</p>
+        <p><strong>YAPILACAK İŞLEMLER</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var canvas = document.getElementById('headerCanvas');
+  var ctx = canvas.getContext('2d');
+
+  // Başlangıç: boş arka plan
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, 1120, 130);
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.beginPath(); ctx.moveTo(0, 128); ctx.lineTo(1120, 128); ctx.stroke();
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '16px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Logo seçince header burada üretilecek', 560, 72);
+
+  document.getElementById('logoInput').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var status = document.getElementById('status');
+    status.className = '';
+    status.textContent = 'Yükleniyor…';
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        // Header canvas'ı oluştur
+        ctx.clearRect(0, 0, 1120, 130);
+
+        // Beyaz arka plan
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1120, 130);
+
+        // Logoyu sola yerleştir — maks 640px geniş, 110px yüksek
+        var maxW = 640, maxH = 110;
+        var ratio = Math.min(maxW / img.width, maxH / img.height);
+        var w = img.width * ratio;
+        var h = img.height * ratio;
+        var x = 14;
+        var y = (130 - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
+
+        // Alt çizgi (Asis header ile aynı)
+        ctx.strokeStyle = '#d0d5dd';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, 129); ctx.lineTo(1120, 129); ctx.stroke();
+
+        status.className = 'ok';
+        status.textContent = '✓ Header üretildi — ' + Math.round(w) + '×' + Math.round(h) + 'px logo, 1120×130 header';
+
+        // Belge önizlemesini güncelle
+        var dataUrl = canvas.toDataURL('image/png');
+        var area = document.getElementById('cakir-header-area');
+        area.innerHTML = '<img src="' + dataUrl + '" style="max-height:80px;width:auto;max-width:100%;display:block;">';
+      };
+      img.onerror = function() {
+        document.getElementById('status').className = 'err';
+        document.getElementById('status').textContent = 'Görsel yüklenemedi.';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+</script>
+</body>
+</html>
