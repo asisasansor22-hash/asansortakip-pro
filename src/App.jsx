@@ -3284,7 +3284,24 @@ function App(){
                 inp("Telefon 3 (Cep)","tel3","0543 000 00 00"),
                 inp("E-posta 1","email","info@firmaadi.com"),
                 inp("E-posta 2","email2",""),
-                inp("Logo URL","logoUrl","https://... veya boş bırakın","Teklif belgelerinde başlık görseli olarak kullanılır. Doğrudan erişilebilir bir resim adresi (PNG/JPG) girin. Boş bırakırsanız varsayılan logo kullanılır.")
+                React.createElement('div',null,
+                  React.createElement('label',{style:{display:"block",fontSize:11,fontWeight:700,color:"var(--text-muted)",marginBottom:4}},"Firma Logosu (PNG/JPG — teklif başlık görseli)"),
+                  React.createElement('input',{
+                    type:"file",
+                    accept:"image/png,image/jpeg,image/jpg",
+                    style:{display:"block",marginBottom:6,color:"var(--text)",fontSize:13,width:"100%"},
+                    onChange:function(e){
+                      var file=e.target.files&&e.target.files[0];
+                      if(!file)return;
+                      var reader=new FileReader();
+                      reader.onload=function(ev){setFirmaAyarlariForm(function(p){return Object.assign({},p,{logoUrl:ev.target.result});});};
+                      reader.readAsDataURL(file);
+                    }
+                  }),
+                  firmaAyarlariForm.logoUrl
+                    ? React.createElement('img',{src:firmaAyarlariForm.logoUrl,alt:"logo",style:{maxHeight:50,maxWidth:260,borderRadius:6,border:"1px solid var(--border)",display:"block"}})
+                    : React.createElement('div',{style:{fontSize:10,color:"var(--text-muted)"}},"Logo seçilmedi — boş bırakılırsa teklif çıktısında başlık görseli olmaz.")
+                )
               );
             })()
           ),
@@ -3306,7 +3323,7 @@ function App(){
                   tel3:(firmaAyarlariForm.tel3||"").trim(),
                   email:(firmaAyarlariForm.email||"").trim(),
                   email2:(firmaAyarlariForm.email2||"").trim(),
-                  logoUrl:(firmaAyarlariForm.logoUrl||"").trim()
+                  logoUrl:(firmaAyarlariForm.logoUrl||"")
                 };
                 var ok=await saveTenantConfig(tenantId,fields);
                 setFirmaAyarlariKaydediliyor(false);

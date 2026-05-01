@@ -124,7 +124,7 @@ function FirmalarPaneli({ currentTenantId }) {
       email: (form.email||"").trim(),
       email2: (form.email2||"").trim(),
       adres: (form.adres||"").trim(),
-      logoUrl: (form.logoUrl||"").trim(),
+      logoUrl: (form.logoUrl||""),
       adminEmail: adminEmail,
       adminUid: adminUid,
       updatedAt: new Date().toISOString()
@@ -203,9 +203,22 @@ function FirmalarPaneli({ currentTenantId }) {
       React.createElement('div', null, React.createElement('div', { style: lbl }, "E-posta 2"), React.createElement('input', { style: inp, value: form.email2, onChange: e => F("email2", e.target.value) })),
       React.createElement('div', { style: { gridColumn: "1/-1" } }, React.createElement('div', { style: lbl }, "Firma Adresi (Teklif belgelerinde gorunur)"), React.createElement('input', { style: inp, value: form.adres, onChange: e => F("adres", e.target.value), placeholder: "Mahalle, Sokak No, Ilce / Sehir" })),
       React.createElement('div', { style: { gridColumn: "1/-1" } },
-        React.createElement('div', { style: lbl }, "Logo URL (Teklif baslik gorseli — PNG/JPG, bos birakilabilir)"),
-        React.createElement('input', { style: inp, value: form.logoUrl, onChange: e => F("logoUrl", e.target.value), placeholder: "https://..." }),
-        form.logoUrl && React.createElement('img', { src: form.logoUrl, alt: "logo onizleme", style: { marginTop: 8, maxHeight: 60, maxWidth: 300, borderRadius: 6, border: "1px solid var(--border)", display: "block" }, onError: function(e){ e.target.style.display="none"; } })
+        React.createElement('div', { style: lbl }, "Firma Logosu (Teklif baslik gorseli — PNG/JPG)"),
+        React.createElement('input', {
+          type: "file",
+          accept: "image/png,image/jpeg,image/jpg",
+          style: { display: "block", marginBottom: 6, color: "var(--text)", fontSize: 13 },
+          onChange: function(e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev) { F("logoUrl", ev.target.result); };
+            reader.readAsDataURL(file);
+          }
+        }),
+        form.logoUrl
+          ? React.createElement('img', { src: form.logoUrl, alt: "logo onizleme", style: { maxHeight: 60, maxWidth: 300, borderRadius: 6, border: "1px solid var(--border)", display: "block" } })
+          : React.createElement('div', { style: { fontSize: 11, color: "var(--text-muted)" } }, "Logo secilmedi — teklif ciktisinda baslik gorseli olmaz.")
       ),
       React.createElement('div', null, React.createElement('div', { style: lbl }, editId ? "Yeni Sifre (degistirmek icin doldur)" : "Yonetici Giris Sifresi *"), React.createElement('input', { type: "password", style: inp, value: form.yoneticiSifre, onChange: e => F("yoneticiSifre", e.target.value), placeholder: "en az 6 karakter" })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Abonelik Bitis"), React.createElement('input', { type: "date", style: inp, value: form.bitis, onChange: e => F("bitis", e.target.value) })),
