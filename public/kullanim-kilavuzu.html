@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asis Asansör Takip Pro – Kullanım Kılavuzu</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:   #1237A6;
+      --blue:   #3694FF;
+      --sky:    #8EE7FF;
+      --green:  #31CFA0;
+      --amber:  #F59E0B;
+      --red:    #EF4444;
+      --purple: #8B5CF6;
+      --bg:     #F0F5FF;
+      --card:   #FFFFFF;
+      --text:   #0F172A;
+      --muted:  #64748B;
+      --border: #CBD5E1;
+      --r:      14px;
+      --shadow: 0 4px 24px rgba(18,55,166,.10);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    /* ── Typography ───────────────────────────────────────────── */
+    h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; line-height: 1.2; }
+    h2 { font-size: clamp(1.3rem, 3vw, 1.8rem); font-weight: 700; }
+    h3 { font-size: 1.1rem; font-weight: 700; }
+    p  { color: var(--muted); }
+
+    /* ── Layout Helpers ───────────────────────────────────────── */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .flex    { display: flex; }
+    .items-center { align-items: center; }
+    .gap-12 { gap: 12px; }
+    .gap-8  { gap: 8px; }
+
+    /* ── Hero / Cover ─────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #0A235A 0%, #1237A6 45%, #2563EB 100%);
+      color: white;
+      padding: 80px 20px 90px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 80% 20%, rgba(142,231,255,.18) 0%, transparent 60%),
+                  radial-gradient(ellipse at 10% 90%, rgba(49,207,160,.12) 0%, transparent 50%);
+    }
+    .hero-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 40px; flex-wrap: wrap; }
+    .hero-logo {
+      width: 100px; height: 100px; flex-shrink: 0;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,.35));
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15); backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 100px; padding: 4px 14px;
+      font-size: 12px; font-weight: 600; letter-spacing: .04em;
+      margin-bottom: 12px; color: var(--sky);
+    }
+    .hero-subtitle { color: rgba(255,255,255,.72); font-size: 1.05rem; margin-top: 8px; }
+
+    /* ── Table of Contents ───────────────────────────────────── */
+    .toc {
+      background: var(--card);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 var(--r) var(--r) 0;
+      padding: 24px 28px;
+      box-shadow: var(--shadow);
+      margin: 40px 0;
+    }
+    .toc h3 { color: var(--navy); margin-bottom: 14px; font-size: 1rem; text-transform: uppercase; letter-spacing: .06em; }
+    .toc ol { padding-left: 20px; }
+    .toc li { margin: 6px 0; }
+    .toc a { color: var(--blue); text-decoration: none; font-weight: 500; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── Section Headers ─────────────────────────────────────── */
+    .section { padding: 60px 0 40px; }
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+    .section-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .section-header h2 { color: var(--navy); }
+    .section-divider { border: none; border-top: 2px solid var(--border); margin: 48px 0; }
+
+    /* ── Cards ───────────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: var(--r);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(18,55,166,.06);
+    }
+    .card-accent { border-top: 3px solid var(--blue); }
+
+    /* ── Feature Cards ───────────────────────────────────────── */
+    .feature-card {
+      background: var(--card);
+      border-radius: var(--r);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(18,55,166,.07);
+      transition: transform .15s, box-shadow .15s;
+    }
+    .feature-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(18,55,166,.14); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 14px;
+    }
+    .feature-card h3 { color: var(--navy); margin-bottom: 6px; }
+    .feature-card p  { font-size: 13.5px; }
+
+    /* ── Steps ───────────────────────────────────────────────── */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step  { display: flex; gap: 20px; position: relative; }
+    .step:not(:last-child)::before {
+      content: "";
+      position: absolute; left: 19px; top: 48px;
+      width: 2px; bottom: 0;
+      background: linear-gradient(to bottom, var(--blue), transparent);
+    }
+    .step-num {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--navy));
+      color: white; font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; box-shadow: 0 4px 12px rgba(54,148,255,.35);
+    }
+    .step-body { padding-bottom: 32px; flex: 1; }
+    .step-body h3 { color: var(--navy); margin-bottom: 6px; }
+
+    /* ── Role Badge ──────────────────────────────────────────── */
+    .role-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    }
+    .role-admin   { background: rgba(18,55,166,.1);  color: var(--navy); }
+    .role-tech    { background: rgba(49,207,160,.12); color: #0D7C5F; }
+
+    /* ── Tip / Warning / Info Boxes ──────────────────────────── */
+    .tip, .warn, .info, .success {
+      display: flex; gap: 12px; align-items: flex-start;
+      border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+      font-size: 14px;
+    }
+    .tip     { background: rgba(54,148,255,.08); border-left: 4px solid var(--blue); }
+    .warn    { background: rgba(245,158,11,.08);  border-left: 4px solid var(--amber); }
+    .info    { background: rgba(139,92,246,.08);  border-left: 4px solid var(--purple); }
+    .success { background: rgba(49,207,160,.08);  border-left: 4px solid var(--green); }
+    .tip p, .warn p, .info p, .success p { color: var(--text); }
+    .tip-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+
+    /* ── Screenshot Mockup ───────────────────────────────────── */
+    .screen-mock {
+      background: linear-gradient(135deg, #0A235A 0%, #1237A6 100%);
+      border-radius: var(--r);
+      padding: 24px 20px;
+      color: white;
+      font-size: 13px;
+      box-shadow: 0 12px 40px rgba(18,55,166,.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .screen-mock::before {
+      content: ""; position: absolute; top: -40px; right: -40px;
+      width: 180px; height: 180px; border-radius: 50%;
+      background: rgba(142,231,255,.08);
+    }
+    .screen-bar {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 16px;
+    }
+    .screen-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mock-row {
+      background: rgba(255,255,255,.08); border-radius: 8px;
+      padding: 10px 14px; margin: 6px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .mock-row.active { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.2); }
+    .mock-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 600;
+    }
+    .tag-green  { background: rgba(49,207,160,.25); color: #31CFA0; }
+    .tag-amber  { background: rgba(245,158,11,.25);  color: #F59E0B; }
+    .tag-red    { background: rgba(239,68,68,.25);   color: #EF4444; }
+    .tag-blue   { background: rgba(142,231,255,.2);  color: var(--sky); }
+
+    /* ── Tab Navigation Visual ───────────────────────────────── */
+    .tab-visual {
+      background: rgba(255,255,255,.06); border-radius: 10px;
+      padding: 6px; display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0;
+    }
+    .tab-item {
+      background: rgba(255,255,255,.08); border-radius: 7px;
+      padding: 6px 12px; font-size: 12px; white-space: nowrap;
+      color: rgba(255,255,255,.7);
+    }
+    .tab-item.active {
+      background: rgba(255,255,255,.9); color: var(--navy); font-weight: 600;
+    }
+
+    /* ── Quick Action Cards ──────────────────────────────────── */
+    .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .action-item {
+      background: var(--card); border-radius: 12px;
+      padding: 16px 12px; text-align: center;
+      box-shadow: var(--shadow); border: 1px solid rgba(18,55,166,.07);
+      cursor: default;
+    }
+    .action-item .ico { font-size: 28px; margin-bottom: 8px; }
+    .action-item span { font-size: 12px; font-weight: 600; color: var(--navy); display: block; }
+
+    /* ── Checklist ───────────────────────────────────────────── */
+    .checklist { list-style: none; }
+    .checklist li { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; font-size: 14.5px; }
+    .checklist li::before {
+      content: "✓"; width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(49,207,160,.15); color: var(--green);
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+
+    /* ── Keyboard Shortcuts ──────────────────────────────────── */
+    kbd {
+      background: var(--bg); border: 1px solid var(--border);
+      border-bottom: 3px solid var(--border); border-radius: 5px;
+      padding: 2px 8px; font-size: 12px; font-family: monospace;
+      color: var(--text);
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .footer {
+      background: linear-gradient(135deg, #0A235A, #1237A6);
+      color: rgba(255,255,255,.75); text-align: center;
+      padding: 48px 20px;
+    }
+    .footer strong { color: white; }
+    .footer p { font-size: 13.5px; margin-top: 6px; }
+    .footer-logo { width: 56px; height: 56px; margin: 0 auto 16px; }
+
+    /* ── Print ───────────────────────────────────────────────── */
+    @media print {
+      .hero { background: #1237A6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .screen-mock { background: #1237A6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .hero-inner { flex-direction: column; gap: 20px; }
+      .hero-logo  { width: 72px; height: 72px; }
+      .section    { padding: 40px 0 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <svg class="hero-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <defs>
+          <linearGradient id="bg" x1="86" y1="56" x2="424" y2="466" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#8EE7FF"/><stop offset=".44" stop-color="#3694FF"/><stop offset="1" stop-color="#1237A6"/>
+          </linearGradient>
+          <linearGradient id="glass" x1="150" y1="120" x2="348" y2="388" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D8E9FF"/>
+          </linearGradient>
+          <linearGradient id="door" x1="204" y1="164" x2="306" y2="344" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#FDFEFF"/><stop offset="1" stop-color="#D4E5FF"/>
+          </linearGradient>
+          <filter id="shadow" x="104" y="74" width="304" height="364" filterUnits="userSpaceOnUse">
+            <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0A245D" flood-opacity=".28"/>
+          </filter>
+        </defs>
+        <rect width="512" height="512" rx="118" fill="url(#bg)"/>
+        <circle cx="130" cy="108" r="170" fill="rgba(255,255,255,.3)"/>
+        <path d="M72 398C134 340 196 314 266 314C344 314 415 350 468 406V512H72V398Z" fill="#08235D" opacity=".16"/>
+        <g filter="url(#shadow)">
+          <rect x="150" y="106" width="212" height="300" rx="58" fill="url(#glass)"/>
+          <rect x="182" y="146" width="148" height="214" rx="36" fill="url(#door)"/>
+          <rect x="253" y="146" width="6" height="214" rx="3" fill="#296BEE" opacity=".95"/>
+          <rect x="196" y="126" width="120" height="24" rx="12" fill="#E9F3FF"/>
+          <path d="M224 150L242 124L260 150H247V156H237V150H224Z" fill="#2B76FF"/>
+          <path d="M288 124L270 150L252 124H265V118H275V124H288Z" fill="#31CFA0"/>
+          <rect x="214" y="210" width="18" height="84" rx="9" fill="#8CB7F7"/>
+          <rect x="280" y="210" width="18" height="84" rx="9" fill="#8CB7F7"/>
+          <rect x="184" y="378" width="144" height="16" rx="8" fill="#9FC1FF"/>
+        </g>
+      </svg>
+      <div>
+        <div class="hero-badge">📘 Resmi Kullanım Kılavuzu · v6.0</div>
+        <h1 style="color:white">Asis Asansör<br>Takip Pro</h1>
+        <p class="hero-subtitle">Asansör bakım, arıza ve finans yönetimini tek platformda birleştiren<br>profesyonel takip sistemi — kurulum ve kullanım rehberi</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     TOC
+══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="toc">
+    <h3>📋 İçindekiler</h3>
+    <ol>
+      <li><a href="#sistem-gereksinimleri">Sistem Gereksinimleri</a></li>
+      <li><a href="#kurulum">Uygulama Kurulumu (PWA)</a></li>
+      <li><a href="#giris">Giriş ve Kullanıcı Rolleri</a></li>
+      <li><a href="#dashboard">Yönetici Paneli – Dashboard</a></li>
+      <li><a href="#modul-asansor">Asansör Yönetimi</a></li>
+      <li><a href="#modul-bakim">Bakım Atama ve Takibi</a></li>
+      <li><a href="#modul-ariza">Arıza Yönetimi</a></li>
+      <li><a href="#modul-rota">Rota Optimizasyonu</a></li>
+      <li><a href="#modul-finans">Finans ve Tahsilat</a></li>
+      <li><a href="#modul-muayene">Muayene Takibi</a></li>
+      <li><a href="#modul-sozlesme">Sözleşme Yönetimi</a></li>
+      <li><a href="#modul-bakimci">Bakımcı Paneli</a></li>
+      <li><a href="#tema-ayar">Tema ve Ayarlar</a></li>
+      <li><a href="#cevrimdisi">Çevrimdışı Kullanım</a></li>
+      <li><a href="#sss">Sık Sorulan Sorular</a></li>
+    </ol>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     1. SİSTEM GEREKSİNİMLERİ
+══════════════════════════════════════════════════ -->
+<div class="container">
+  <div class="section" id="sistem-gereksinimleri">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(54,148,255,.12)">💻</div>
+      <div><h2>1. Sistem Gereksinimleri</h2><p>Uygulamayı çalıştırmadan önce bu gereksinimleri kontrol edin</p></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card card-accent">
+        <h3 style="color:var(--navy);margin-bottom:14px">🖥️ Masaüstü / Dizüstü</h3>
+        <ul class="checklist">
+          <li>Windows 10/11, macOS 12+, Ubuntu 20.04+</li>
+          <li>Chrome 90+, Edge 90+, Firefox 90+ veya Safari 14+</li>
+          <li>İnternet bağlantısı (ilk kullanım zorunlu)</li>
+          <li>Minimum 4 GB RAM, 2 GB disk alanı</li>
+        </ul>
+      </div>
+      <div class="card card-accent">
+        <h3 style="color:var(--navy);margin-bottom:14px">📱 Mobil Cihaz</h3>
+        <ul class="checklist">
+          <li>iOS 14+ (iPhone/iPad) – Safari tarayıcısı</li>
+          <li>Android 8+ – Chrome tarayıcısı</li>
+          <li>İnternet bağlantısı (ilk açılışta gerekli)</li>
+          <li>PWA kurulumu için Ana Ekrana Ekle özelliği</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tip" style="margin-top:20px">
+      <span class="tip-icon">💡</span>
+      <p><strong>Tavsiye:</strong> En iyi deneyim için <strong>Google Chrome</strong> veya <strong>Microsoft Edge</strong> kullanmanızı öneririz. Uygulama mobil öncelikli tasarlanmıştır; telefon veya tablet ile rahatça kullanabilirsiniz.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       2. KURULUM
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="kurulum">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(49,207,160,.12)">📲</div>
+      <div><h2>2. Uygulama Kurulumu (PWA)</h2><p>Asis Asansör Takip Pro, uygulama mağazası gerektirmez — doğrudan tarayıcıdan kurulur</p></div>
+    </div>
+
+    <!-- Android -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="flex items-center gap-12" style="margin-bottom:18px">
+        <span style="font-size:28px">🤖</span>
+        <h3 style="color:var(--navy)">Android (Chrome) Kurulumu</h3>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Uygulamayı açın</h3>
+            <p>Chrome tarayıcısını açın ve yöneticinizin size verdiği uygulama adresini adres çubuğuna yazın.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Kurulum Banner'ını Görün</h3>
+            <p>Sayfanın altında veya üstünde <strong>"Ana Ekrana Ekle"</strong> veya <strong>"Uygulamayı Yükle"</strong> yazısı çıkar. Bu banner'a dokunun.</p>
+            <div class="success" style="margin-top:10px">
+              <span class="tip-icon">✅</span>
+              <p>Banner görünmezse: Chrome menüsünü (<strong>⋮</strong>) açın → <strong>"Ana ekrana ekle"</strong> seçeneğine dokunun.</p>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Kurulumu Onaylayın</h3>
+            <p>Açılan diyalogda <strong>"Ekle"</strong> butonuna dokunun. Uygulama ana ekranınıza ve uygulama çekmecenize eklenir.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>İlk Açılış</h3>
+            <p>Ana ekrandaki <strong>Asis Asansör</strong> ikonuna dokunarak uygulamayı başlatın. Uygulama tam ekran, bağımsız bir uygulama gibi açılır.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- iOS -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="flex items-center gap-12" style="margin-bottom:18px">
+        <span style="font-size:28px">🍎</span>
+        <h3 style="color:var(--navy)">iOS (iPhone / iPad) Kurulumu</h3>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Safari ile Açın</h3>
+            <p>Uygulamayı <strong>Safari</strong> tarayıcısında açın (iOS'ta Chrome ile PWA kurulumu yapılamaz).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Paylaş Düğmesine Dokunun</h3>
+            <p>Alt kısımdaki araç çubuğunda <strong>Paylaş</strong> ikonuna (<span style="font-size:16px">⬆️</span>) dokunun.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>"Ana Ekrana Ekle" Seçin</h3>
+            <p>Paylaşma menüsünü aşağı kaydırarak <strong>"Ana Ekrana Ekle"</strong> seçeneğine dokunun.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Ekle Butonuna Dokunun</h3>
+            <p>Sağ üst köşedeki <strong>"Ekle"</strong> butonuna dokunun. Uygulama ana ekranınıza eklenir.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop -->
+    <div class="card">
+      <div class="flex items-center gap-12" style="margin-bottom:18px">
+        <span style="font-size:28px">🖥️</span>
+        <h3 style="color:var(--navy)">Masaüstü Kurulumu (Chrome / Edge)</h3>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Tarayıcıda Açın</h3>
+            <p>Chrome veya Edge tarayıcısıyla uygulamayı açın.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Kurulum İkonunu Tıklayın</h3>
+            <p>Adres çubuğunun sağında beliren <strong>⊕</strong> (Yükle / Install) ikonuna tıklayın.</p>
+            <div class="tip" style="margin-top:8px">
+              <span class="tip-icon">💡</span>
+              <p>İkon görünmüyorsa: tarayıcı menüsü → <strong>"Uygulamayı Yükle"</strong> veya <strong>"Bu siteyi uygulama olarak yükle"</strong></p>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Kurulumu Tamamlayın</h3>
+            <p><strong>"Yükle"</strong> butonuna tıklayın. Uygulama masaüstünüze ve başlat menüsüne eklenir.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       3. GİRİŞ
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="giris">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(139,92,246,.12)">🔐</div>
+      <div><h2>3. Giriş ve Kullanıcı Rolleri</h2><p>İki farklı kullanıcı rolü ile güvenli erişim</p></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot" style="background:#FF5F56"></div>
+          <div class="screen-dot" style="background:#FEBC2E"></div>
+          <div class="screen-dot" style="background:#27C93F"></div>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Giriş Ekranı</span>
+        </div>
+        <div style="text-align:center;padding:16px 0 8px">
+          <div style="font-size:36px;margin-bottom:8px">🏢</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">Asis Asansör Takip</div>
+          <div style="color:rgba(255,255,255,.5);font-size:12px">Sisteme giriş yapın</div>
+        </div>
+        <div style="margin:16px 0">
+          <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px;color:rgba(255,255,255,.6)">📧 E-posta adresi</div>
+          <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:rgba(255,255,255,.6)">🔒 Şifre</div>
+          <div style="background:linear-gradient(135deg,#3694FF,#1237A6);border-radius:8px;padding:11px;text-align:center;font-weight:700;font-size:14px">Giriş Yap →</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="flex items-center gap-12" style="margin-bottom:12px">
+            <span style="font-size:24px">👔</span>
+            <div>
+              <h3 style="color:var(--navy)">Yönetici (Admin)</h3>
+              <span class="role-badge role-admin">TAM YETKİ</span>
+            </div>
+          </div>
+          <p style="font-size:14px">Tüm modüllere erişim: asansör ekleme/düzenleme, bakım atama, finans, sözleşme, rota, muayene ve sistem ayarları.</p>
+        </div>
+        <div class="card">
+          <div class="flex items-center gap-12" style="margin-bottom:12px">
+            <span style="font-size:24px">🔧</span>
+            <div>
+              <h3 style="color:var(--navy)">Bakımcı (Teknisyen)</h3>
+              <span class="role-badge role-tech">SINIRLI ERİŞİM</span>
+            </div>
+          </div>
+          <p style="font-size:14px">Bakım takibi, arıza kaydı, günlük rota görüntüleme, not ekleme ve ekstra iş bildirimi modüllerine erişim.</p>
+        </div>
+        <div class="warn" style="margin-top:16px">
+          <span class="tip-icon">⚠️</span>
+          <p>Giriş bilgilerinizi yöneticinizden alın. Şifrenizi kimseyle paylaşmayın.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       4. DASHBOARD
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="dashboard">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(18,55,166,.1)">📊</div>
+      <div><h2>4. Yönetici Paneli – Dashboard</h2><p>Tüm operasyonun anlık özeti tek ekranda</p></div>
+    </div>
+
+    <div class="screen-mock" style="margin-bottom:24px">
+      <div class="screen-bar">
+        <div class="screen-dot" style="background:#FF5F56"></div>
+        <div class="screen-dot" style="background:#FEBC2E"></div>
+        <div class="screen-dot" style="background:#27C93F"></div>
+        <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Dashboard – Anlık Özet</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#8EE7FF">142</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">Toplam Asansör</div>
+        </div>
+        <div style="background:rgba(49,207,160,.15);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#31CFA0">%87</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">Bakım Tamamlama</div>
+        </div>
+        <div style="background:rgba(245,158,11,.12);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:20px;font-weight:800;color:#F59E0B">5</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.5)">Açık Arıza</div>
+        </div>
+      </div>
+      <div class="mock-row"><span>💰 Bu Ay Tahsilat</span><span class="mock-tag tag-green">₺48.500</span></div>
+      <div class="mock-row active"><span>⚠️ Vadesi Yaklaşan Muayene</span><span class="mock-tag tag-amber">3 Asansör</span></div>
+      <div class="mock-row"><span>📄 Sözleşme Bitiş Uyarısı</span><span class="mock-tag tag-red">2 Adet</span></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(54,148,255,.1)">📈</div>
+        <h3>Aylık Performans</h3>
+        <p>Bakım tamamlama oranını, tahsilat rakamlarını ve hedef karşılaştırmasını anlık görüntüleyin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(245,158,11,.1)">🗺️</div>
+        <h3>İlçe Yoğunluk Haritası</h3>
+        <p>Hangi ilçelerde ne kadar operasyon yürüttüğünüzü görsel ısı haritası üzerinden takip edin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(239,68,68,.1)">🔔</div>
+        <h3>Uyarı Merkezi</h3>
+        <p>Muayene tarihleri, sözleşme yenileme uyarıları ve gecikmiş bakımlar tek yerde görüntülenir.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(49,207,160,.1)">👷</div>
+        <h3>Teknisyen Performansı</h3>
+        <p>Her bakımcının aylık tamamladığı iş sayısını ve puanlamasını karşılaştırmalı görün.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(139,92,246,.1)">📉</div>
+        <h3>Arıza Trend Grafiği</h3>
+        <p>Son 6 aylık arıza sayılarını grafik üzerinde görüntüleyerek trend analizi yapın.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(18,55,166,.1)">💳</div>
+        <h3>Bakiye Özeti</h3>
+        <p>Toplam alacak, tahsil edilen ve bekleyen bakiye rakamlarını anlık takip edin.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       5. ASANSÖR YÖNETİMİ
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-asansor">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(54,148,255,.1)">🛗</div>
+      <div><h2>5. Asansör Yönetimi</h2><p>Tüm asansörlerin envanter ve detay takibi</p></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px">
+      <div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h3>Yeni Asansör Ekle</h3>
+              <p><strong>"+ Yeni Asansör"</strong> butonuna tıklayın. Aşağıdaki bilgileri girin:</p>
+              <ul class="checklist" style="margin-top:8px">
+                <li>Bina adı ve tam adresi (ilçe dahil)</li>
+                <li>Yönetici adı ve telefon numarası</li>
+                <li>Marka, model, yıl, asansör tipi</li>
+                <li>Kapı numarası ve aylık bakım ücreti</li>
+              </ul>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h3>Asansör Ara / Filtrele</h3>
+              <p>Üst kısımdaki arama çubuğuna asansör adı veya adres yazarak arama yapın. İlçe filtresi ile bölgesel listeleme yapabilirsiniz.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h3>Düzenle veya Sil</h3>
+              <p>Listede asansöre tıklayarak düzenleme formunu açın. Silme işlemi için onay gerekir.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h3>Excel'e Aktar</h3>
+              <p><strong>"Excel"</strong> butonuna tıklayarak tüm asansör listesini .xlsx formatında indirin.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot" style="background:#FF5F56"></div>
+          <div class="screen-dot" style="background:#FEBC2E"></div>
+          <div class="screen-dot" style="background:#27C93F"></div>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Asansörler Listesi</span>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;margin-bottom:8px;display:flex;gap:8px;align-items:center">
+          <span style="color:rgba(255,255,255,.4);font-size:12px">🔍</span>
+          <span style="color:rgba(255,255,255,.3);font-size:12px">Asansör veya adres ara...</span>
+        </div>
+        <div class="mock-row active">
+          <div>
+            <div style="font-size:13px;font-weight:600">Yıldız Apartmanı</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Kadıköy · Kırel Mah.</div>
+          </div>
+          <span class="mock-tag tag-green">Aktif</span>
+        </div>
+        <div class="mock-row">
+          <div>
+            <div style="font-size:13px;font-weight:600">Güneş Sitesi – B Blok</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Üsküdar · Sultantepe</div>
+          </div>
+          <span class="mock-tag tag-amber">Bakım Bekliyor</span>
+        </div>
+        <div class="mock-row">
+          <div>
+            <div style="font-size:13px;font-weight:600">Çınar Residence</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Maltepe · Bağlarbaşı</div>
+          </div>
+          <span class="mock-tag tag-red">Arıza Var</span>
+        </div>
+        <div class="mock-row">
+          <div>
+            <div style="font-size:13px;font-weight:600">Beyaz Kule – 3. Asansör</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Ataşehir · İçerenköy</div>
+          </div>
+          <span class="mock-tag tag-green">Aktif</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       6. BAKIM ATAMA
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-bakim">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(49,207,160,.12)">🔧</div>
+      <div><h2>6. Bakım Atama ve Takibi</h2><p>Aylık bakımları planlayın ve teknisyenlere atayın</p></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <h3 style="color:var(--navy);margin-bottom:16px">Bakım Atama Adımları</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Ay ve İlçe Seçin</h3>
+            <p>Bakım Atama sekmesinde <strong>ay</strong> ve <strong>ilçe</strong> filtrelerini ayarlayın. Atanmamış asansör sayısı otomatik gösterilir.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Bakımcı Atayın</h3>
+            <p>Her asansörün yanındaki açılır menüden teknisyen seçin. Toplu atama için birden fazla asansörü işaretleyip grup ataması yapabilirsiniz.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Bakım Durumunu Güncelleyin</h3>
+            <p>Teknisyen bakımı tamamladığında <strong>"Yapıldı"</strong> butonuna basarak tamamlama işlemini kaydedin. Tahsilat tutarını ve ödeme durumunu da girebilirsiniz.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="info">
+        <span class="tip-icon">📋</span>
+        <div>
+          <strong>Kontrol Listesi</strong>
+          <p style="margin-top:4px">Her bakım kaydına <strong>5 kategorili</strong> kontrol listesi ekleyebilirsiniz: Mekanik, Elektrik, Kabin, Kapı ve Güvenlik kontrolleri.</p>
+        </div>
+      </div>
+      <div class="success">
+        <span class="tip-icon">💰</span>
+        <div>
+          <strong>Tahsilat Takibi</strong>
+          <p style="margin-top:4px">Bakım sırasında alınan ödeme miktarını doğrudan bakım kaydına işleyebilirsiniz. Bu kayıt otomatik olarak Finans modülüne yansır.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       7. ARIZA YÖNETİMİ
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-ariza">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(239,68,68,.1)">⚠️</div>
+      <div><h2>7. Arıza Yönetimi</h2><p>Arızaları kaydedin, atayın ve takip edin</p></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <h3 style="color:var(--navy);margin-bottom:14px">Yeni Arıza Kaydı</h3>
+        <ul class="checklist">
+          <li>Arızalı asansörü listeden seçin</li>
+          <li>Arıza açıklamasını detaylı girin</li>
+          <li>Öncelik seviyesi belirleyin (Yüksek / Orta / Düşük)</li>
+          <li>Sorumlu teknisyeni atayın</li>
+          <li><strong>Kaydet</strong> butonuna basın</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--navy);margin-bottom:14px">Arıza Durumları</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-red" style="font-size:12px;padding:4px 12px">Açık</span>
+            <span style="font-size:14px;color:var(--muted)">Henüz müdahale edilmemiş</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-amber" style="font-size:12px;padding:4px 12px">Devam Ediyor</span>
+            <span style="font-size:14px;color:var(--muted)">Teknisyen müdahale ediyor</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-green" style="font-size:12px;padding:4px 12px">Çözüldü</span>
+            <span style="font-size:14px;color:var(--muted)">Arıza giderildi</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="warn">
+      <span class="tip-icon">⚠️</span>
+      <p>Yüksek öncelikli arızalar Dashboard'da kırmızı uyarı olarak görünür ve ilgili teknisyene atama yapılana kadar gösterilmeye devam eder.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       8. ROTA OPTİMİZASYONU
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-rota">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(245,158,11,.1)">🗺️</div>
+      <div><h2>8. Rota Optimizasyonu</h2><p>En kısa rotayı otomatik hesaplayın, yakıt ve zaman tasarrufu yapın</p></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h3>Başlangıç Noktasını Seçin</h3>
+              <p>Rota sekmesinde <strong>başlangıç adresini</strong> girin. Adres önerileri otomatik çıkar, uygun olanı seçin.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h3>Asansörleri Seçin</h3>
+              <p>Rota oluşturulacak asansörleri listeden işaretleyin. Tek tıkla tüm gün atamalarını seçebilirsiniz.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h3>Rotayı Oluşturun</h3>
+              <p><strong>"Rota Oluştur"</strong> butonuna basın. Sistem, mesafe matrisini hesaplayarak en kısa sıralamayı otomatik belirler.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <h3>Rotayı Kullanın</h3>
+              <p>Optimize edilen rota sırasıyla gösterilir. Her adres için <strong>Google Maps'te Aç</strong> seçeneği mevcuttur.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot" style="background:#FF5F56"></div>
+          <div class="screen-dot" style="background:#FEBC2E"></div>
+          <div class="screen-dot" style="background:#27C93F"></div>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Optimize Rota</span>
+        </div>
+        <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px">
+          <span style="color:rgba(255,255,255,.5)">Başlangıç:</span>
+          <span style="font-weight:600;margin-left:6px">Kadıköy Meydanı</span>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Optimize Sıra</div>
+        <div class="mock-row"><span style="color:var(--sky);font-size:12px;font-weight:700">1.</span>&nbsp; Yıldız Apt. – Kadıköy &nbsp;<span style="color:rgba(255,255,255,.4);font-size:11px">1.2 km</span></div>
+        <div class="mock-row"><span style="color:var(--sky);font-size:12px;font-weight:700">2.</span>&nbsp; Güneş Sitesi – Üsküdar &nbsp;<span style="color:rgba(255,255,255,.4);font-size:11px">3.8 km</span></div>
+        <div class="mock-row"><span style="color:var(--sky);font-size:12px;font-weight:700">3.</span>&nbsp; Çınar Res. – Maltepe &nbsp;<span style="color:rgba(255,255,255,.4);font-size:11px">6.1 km</span></div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.5)">
+          <span>Toplam: <strong style="color:var(--sky)">11.1 km</strong></span>
+          <span>~<strong style="color:#31CFA0">38 dk</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <p><strong>Adres Düzenleme:</strong> Sistemdeki adresi kullanmak yerine özel bir adres tanımlamak isterseniz, her asansör satırındaki kalem ikonuna tıklayarak rotaya özel adres girişi yapabilirsiniz. Bu ayar kaydedilir ve bir sonraki rotada da kullanılır.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       9. FİNANS
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-finans">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(49,207,160,.12)">💰</div>
+      <div><h2>9. Finans ve Tahsilat</h2><p>Gelirleri, giderleri ve bakiyeleri tek yerden yönetin</p></div>
+    </div>
+
+    <div class="grid-3" style="margin-bottom:24px">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(49,207,160,.1)">💵</div>
+        <h3>Ödeme Girişi</h3>
+        <p>Manuel ödeme kaydı açın. Asansörü seçin, tutarı ve ödeme tarihini girerek kaydedin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(54,148,255,.1)">📆</div>
+        <h3>Haftalık Kapama</h3>
+        <p>Her Cumartesi saat 16:00'dan itibaren haftalık kapama yapılabilir. Bu işlem o haftanın ödemelerini arşivler.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(139,92,246,.1)">🗓️</div>
+        <h3>Aylık Kapama</h3>
+        <p>Her ayın 1'inde aylık kapama tetiklenir. Önceki ay bakiyeleri otomatik devir olarak bir sonraki aya aktarılır.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(245,158,11,.1)">📊</div>
+        <h3>Bakiye Takibi</h3>
+        <p>Her asansör için güncel bakiye, aylık ücret ve tahsilat durumu anlık güncellenir.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(239,68,68,.1)">💸</div>
+        <h3>Gider Yönetimi</h3>
+        <p>Malzeme, yakıt ve diğer giderleri kategorilere göre kaydedin ve haftalık arşivleyin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(18,55,166,.1)">🧾</div>
+        <h3>Makbuz / Fiş</h3>
+        <p>Ödeme alındığında otomatik PDF makbuz oluşturabilir ve müşteriye gönderebilirsiniz.</p>
+      </div>
+    </div>
+
+    <div class="info">
+      <span class="tip-icon">ℹ️</span>
+      <p><strong>Devir Sistemi:</strong> Aylık kapama sırasında ödenmemiş bakiyeler otomatik olarak "devir" olarak bir sonraki aya aktarılır. Bu işlemi manuel olarak tekrar yapmaya gerek yoktur.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       10. MUAYENE
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-muayene">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(139,92,246,.12)">🔍</div>
+      <div><h2>10. Muayene Takibi</h2><p>Yasal muayene tarihlerini kaçırmayın</p></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color:var(--navy);margin-bottom:14px">Muayene Ekleme</h3>
+        <ul class="checklist">
+          <li>Asansörü seçin</li>
+          <li>Son muayene tarihini girin</li>
+          <li>Bir sonraki muayene tarihi otomatik hesaplanır</li>
+          <li>Muayene belgesi notlarını ekleyin</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--navy);margin-bottom:14px">Uyarı Sistemi</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-red" style="font-size:12px;padding:4px 12px">Gecikmiş</span>
+            <span style="font-size:14px;color:var(--muted)">Muayene tarihi geçmiş</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-amber" style="font-size:12px;padding:4px 12px">30 Gün İçinde</span>
+            <span style="font-size:14px;color:var(--muted)">Yaklaşan muayene</span>
+          </div>
+          <div class="flex items-center gap-8">
+            <span class="mock-tag tag-green" style="font-size:12px;padding:4px 12px">Güncel</span>
+            <span style="font-size:14px;color:var(--muted)">Muayene tamam</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="warn" style="margin-top:20px">
+      <span class="tip-icon">⚠️</span>
+      <p>Muayenesi gecikmiş asansörler Dashboard'da kırmızı uyarı kartı olarak görünür. Bu uyarı muayene yapılana kadar kaybolmaz.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       11. SÖZLEŞME YÖNETİMİ
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-sozlesme">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(54,148,255,.12)">📄</div>
+      <div><h2>11. Sözleşme Yönetimi</h2><p>Bakım sözleşmelerini takip edin, yenileme tarihlerini kaçırmayın</p></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Yeni Sözleşme Ekle</h3>
+            <p>Asansörü seçin, sözleşme başlangıç ve bitiş tarihlerini girin. Sözleşme tutarını ve notlarını ekleyebilirsiniz.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Bitiş Uyarılarını Takip Edin</h3>
+            <p>30 gün ve 7 gün kala Dashboard'da otomatik uyarı gösterilir. Süresi dolmak üzere olan sözleşmeler amber rengiyle işaretlenir.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Sözleşmeyi Yenile</h3>
+            <p>Mevcut sözleşmeyi düzenleyerek yeni bitiş tarihini girin veya yeni bir sözleşme kaydı oluşturun.</p>
+          </div>
+        </div>
+      </div>
+      <div class="screen-mock">
+        <div class="screen-bar">
+          <div class="screen-dot" style="background:#FF5F56"></div>
+          <div class="screen-dot" style="background:#FEBC2E"></div>
+          <div class="screen-dot" style="background:#27C93F"></div>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Sözleşmeler</span>
+        </div>
+        <div class="mock-row">
+          <div>
+            <div style="font-size:13px;font-weight:600">Yıldız Apt.</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Bitiş: 15.08.2026</div>
+          </div>
+          <span class="mock-tag tag-green">Aktif</span>
+        </div>
+        <div class="mock-row active">
+          <div>
+            <div style="font-size:13px;font-weight:600">Güneş Sitesi</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Bitiş: 12.06.2026</div>
+          </div>
+          <span class="mock-tag tag-amber">41 Gün</span>
+        </div>
+        <div class="mock-row">
+          <div>
+            <div style="font-size:13px;font-weight:600">Çınar Residence</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.5)">Bitiş: 03.05.2026</div>
+          </div>
+          <span class="mock-tag tag-red">2 Gün</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       12. BAKIMCI PANELİ
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="modul-bakimci">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(49,207,160,.12)">👷</div>
+      <div><h2>12. Bakımcı (Teknisyen) Paneli</h2><p>Teknisyenlere özel basit ve hızlı arayüz</p></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="screen-mock" style="margin-bottom:18px">
+        <div class="screen-bar">
+          <div class="screen-dot" style="background:#FF5F56"></div>
+          <div class="screen-dot" style="background:#FEBC2E"></div>
+          <div class="screen-dot" style="background:#27C93F"></div>
+          <span style="color:rgba(255,255,255,.4);font-size:11px;margin-left:8px">Bakımcı Görünümü – Sekmeler</span>
+        </div>
+        <div class="tab-visual">
+          <div class="tab-item active">🔧 Bakım & Arıza</div>
+          <div class="tab-item">🗺️ Rota</div>
+          <div class="tab-item">📝 Notlar</div>
+          <div class="tab-item">🔩 Ekstra İş</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(49,207,160,.1)">🔧</div>
+        <h3>Bakım &amp; Arıza Görünümü</h3>
+        <p>Size atanan o günkü bakımları görüntüleyin. Bakımı tamamlayın, not ekleyin ve arıza kaydı oluşturun.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(245,158,11,.1)">🗺️</div>
+        <h3>Rota Görüntüleme</h3>
+        <p>Yönetici tarafından oluşturulan günlük rotanızı görüntüleyin ve her adres için harita yönlendirmesini açın.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(54,148,255,.1)">📝</div>
+        <h3>Not Ekleme</h3>
+        <p>Asansöre ait önemli notları sisteme girin. Notlar yönetici tarafından da görüntülenebilir.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(139,92,246,.1)">🔩</div>
+        <h3>Ekstra İş Bildirimi</h3>
+        <p>Planlı bakım dışında yaptığınız ek işleri kaydedin; yönetici onayına sunun ve faturalama sürecini başlatın.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       13. TEMA VE AYARLAR
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="tema-ayar">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(18,55,166,.1)">⚙️</div>
+      <div><h2>13. Tema ve Ayarlar</h2><p>Arayüzü tercihlerinize göre özelleştirin</p></div>
+    </div>
+
+    <div class="action-grid" style="margin-bottom:20px">
+      <div class="action-item">
+        <div class="ico">☀️</div>
+        <span>Açık Tema</span>
+      </div>
+      <div class="action-item">
+        <div class="ico">🌙</div>
+        <span>Gece Teması</span>
+      </div>
+      <div class="action-item">
+        <div class="ico">🔔</div>
+        <span>Bildirimler</span>
+      </div>
+      <div class="action-item">
+        <div class="ico">📥</div>
+        <span>Excel Aktar</span>
+      </div>
+      <div class="action-item">
+        <div class="ico">🚪</div>
+        <span>Çıkış Yap</span>
+      </div>
+    </div>
+
+    <div class="tip">
+      <span class="tip-icon">🌙</span>
+      <p><strong>Gece Modu:</strong> Sağ üst köşedeki tema ikonu ile açık ve gece temaları arasında geçiş yapabilirsiniz. Seçiminiz tarayıcıya kaydedilir, bir sonraki açılışta otomatik uygulanır.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       14. ÇEVRİMDIŞI KULLANIM
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="cevrimdisi">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(49,207,160,.12)">📶</div>
+      <div><h2>14. Çevrimdışı Kullanım</h2><p>İnternet olmadan da temel verilere erişin</p></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="success">
+        <span class="tip-icon">✅</span>
+        <div>
+          <strong>Çevrimdışı Çalışır</strong>
+          <ul class="checklist" style="margin-top:8px">
+            <li>Asansör listesi görüntüleme</li>
+            <li>Bakım kayıtlarına erişim</li>
+            <li>Önceden yüklenen rota bilgileri</li>
+            <li>Not okuma</li>
+          </ul>
+        </div>
+      </div>
+      <div class="warn">
+        <span class="tip-icon">⚠️</span>
+        <div>
+          <strong>İnternet Bağlantısı Gerekir</strong>
+          <ul class="checklist" style="margin-top:8px">
+            <li>Yeni bakım kaydı kaydetme</li>
+            <li>Ödeme girişi yapma</li>
+            <li>Rota optimizasyonu oluşturma</li>
+            <li>Arıza kaydı oluşturma</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="info" style="margin-top:16px">
+      <span class="tip-icon">🔄</span>
+      <p>Uygulama arka planda her <strong>60 saniyede bir</strong> güncelleme kontrolü yapar. Yeni sürüm mevcutsa ekranın üstünde güncelleme bildirimi görünür — <strong>"Güncelle"</strong> butonuna tıklayarak en son sürüme geçebilirsiniz.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- ══════════════════════════════════════════════════
+       15. SSS
+  ══════════════════════════════════════════════════ -->
+  <div class="section" id="sss">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(139,92,246,.12)">❓</div>
+      <div><h2>15. Sık Sorulan Sorular</h2></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:32px">
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Şifremi unuttum, ne yapmalıyım?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          Şifrenizi yöneticinizle iletişime geçerek sıfırlatabilirsiniz. Giriş ekranında "Şifremi Unuttum" seçeneği henüz aktif değilse sistem yöneticisi Firebase konsolundan şifre sıfırlama e-postası gönderebilir.
+        </div>
+      </details>
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Uygulama açılmıyor, ne yapmalıyım?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          1. İnternet bağlantınızı kontrol edin.<br>
+          2. Tarayıcı önbelleğini temizleyin (Ctrl+Shift+R veya Cmd+Shift+R).<br>
+          3. PWA olarak kurduysanız uygulamayı kaldırıp yeniden kurun.<br>
+          4. Sorun devam ediyorsa yöneticinize bildirin.
+        </div>
+      </details>
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Rota oluşturulmuyor veya hata veriyor?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          Rota oluşturma internet bağlantısı gerektirir. Bağlantınız iyiyse adres bilgilerini kontrol edin — adres eksik veya yanlış olan asansörler için "Adres Düzenle" özelliğini kullanın.
+        </div>
+      </details>
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Birden fazla cihazdan aynı anda giriş yapılabilir mi?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          Evet. Her yönetici veya bakımcı, birden fazla cihazdan aynı anda sisteme bağlanabilir. Veriler gerçek zamanlı olarak tüm cihazlarda güncellenir.
+        </div>
+      </details>
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Verilerim güvende mi?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          Tüm veriler <strong>Google Firebase</strong> altyapısında şifreli olarak saklanır. Sunucular Avrupa bölgesinde (europe-west1) konumlandırılmıştır. Kimlik doğrulama için Firebase Authentication kullanılmakta, yetkisiz erişimler engellenmektedir.
+        </div>
+      </details>
+
+      <details style="background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border:1px solid rgba(18,55,166,.07);overflow:hidden">
+        <summary style="padding:18px 22px;font-weight:600;color:var(--navy);cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center">
+          Excel export nasıl yapılır?
+          <span style="color:var(--blue);font-size:18px">+</span>
+        </summary>
+        <div style="padding:0 22px 18px;color:var(--muted);font-size:14.5px">
+          Asansörler ve Finans sekmelerinde <strong>"Excel"</strong> butonuna tıklayın. İndirilen .xlsx dosyasını Microsoft Excel, Google Sheets veya LibreOffice Calc ile açabilirsiniz.
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════════════ -->
+<footer class="footer">
+  <svg class="footer-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <defs>
+      <linearGradient id="bg2" x1="86" y1="56" x2="424" y2="466" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#8EE7FF"/><stop offset=".44" stop-color="#3694FF"/><stop offset="1" stop-color="#1237A6"/>
+      </linearGradient>
+    </defs>
+    <rect width="512" height="512" rx="118" fill="url(#bg2)"/>
+    <rect x="150" y="106" width="212" height="300" rx="58" fill="rgba(255,255,255,.85)"/>
+    <rect x="182" y="146" width="148" height="214" rx="36" fill="rgba(255,255,255,.95)"/>
+    <rect x="253" y="146" width="6" height="214" rx="3" fill="#296BEE" opacity=".9"/>
+    <path d="M224 150L242 124L260 150H247V156H237V150H224Z" fill="#2B76FF"/>
+    <path d="M288 124L270 150L252 124H265V118H275V124H288Z" fill="#31CFA0"/>
+  </svg>
+  <strong>Asis Asansör Takip Pro</strong>
+  <p>Kullanım Kılavuzu · Versiyon 6.0 · © 2026</p>
+  <p style="margin-top:10px;font-size:12px;opacity:.5">Bu kılavuz Asis Asansör Takip Pro kullanıcıları için hazırlanmıştır.</p>
+</footer>
+
+</body>
+</html>
