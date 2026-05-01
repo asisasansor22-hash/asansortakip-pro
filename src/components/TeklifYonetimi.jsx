@@ -94,16 +94,17 @@ function teklifVerisi(teklif, elev, config) {
   var tutar = (+teklif.tutar || 0).toLocaleString('tr-TR')
 
   var cfg = config || {}
-  var company1 = (cfg.ad || '').trim() || 'Asis Asansör Sistemleri'
-  var company2 = (cfg.adres || '').trim() || 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL'
+  var isAsis = !!(cfg._isAsis)
+  var company1 = (cfg.ad || '').trim() || (isAsis ? 'Asis Asansör Sistemleri' : '')
+  var company2 = (cfg.adres || '').trim() || (isAsis ? 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL' : '')
   var tel1 = (cfg.tel || '').trim()
   var tel2 = (cfg.tel2 || '').trim()
   var tel3 = (cfg.tel3 || '').trim()
-  var company3 = tel1 ? ('Tel: ' + tel1) : 'Tel: 0212-703-20-52'
+  var company3 = tel1 ? ('Tel: ' + tel1) : (isAsis ? 'Tel: 0212-703-20-52' : '')
   var company4Parts = []
   if (tel2) company4Parts.push('Cep Tel: ' + tel2)
   if (tel3) company4Parts.push(tel3)
-  var company4 = company4Parts.length ? company4Parts.join('   ') : 'Cep Tel: 0536-565-92-23   0543-507-07-94'
+  var company4 = company4Parts.length ? company4Parts.join('   ') : (isAsis ? 'Cep Tel: 0536-565-92-23   0543-507-07-94' : '')
 
   return {
     date: formatTarihTR(teklif.tarih),

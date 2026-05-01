@@ -2782,7 +2782,7 @@ function App(){
 /* PERİYODİK MUAYENE TAKİBİ */
 , tab===10&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig})
+    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig?Object.assign({},tenantConfig,{_isAsis:isSuper}):null})
   )
 )
 
