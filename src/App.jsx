@@ -1126,7 +1126,7 @@ function App(){
     else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
     return tel.replace(/^\+/,"");
   };
-  const firmaAdi=(tenantConfig&&tenantConfig.ad)||"Şirketimiz";
+  const firmaAdi=(tenantConfig&&tenantConfig.ad)||(isSuper?"Asis Asansör Bakım ve Servis Hizmetleri":"Şirketimiz");
   const borcWhatsappMesaji=(e,borc)=>{
     var tutar=(borc||0).toLocaleString("tr-TR")+" ₺";
     return "Sayın "+e.ad+" Yönetimi,\n\n"+
