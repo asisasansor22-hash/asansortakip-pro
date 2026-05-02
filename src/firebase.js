@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
 const firebaseConfig = {
@@ -13,6 +14,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const auth = getAuth(app);
 
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
@@ -52,7 +54,7 @@ export function onAuthChange(cb) {
   return onAuthStateChanged(auth, cb);
 }
 
-export { auth };
+export { auth, analytics };
 
 // Database - REST API (artık auth token ile)
 export async function dbGet(key) {
