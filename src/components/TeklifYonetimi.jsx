@@ -60,6 +60,78 @@ function getTeklifHeaderDataUrl(customUrl) {
   return teklifHeaderDataUrlPromise
 }
 
+function generateTenantHeaderDataUrl(logoDataUrl) {
+  return new Promise(function(resolve, reject) {
+    var canvas = document.createElement('canvas')
+    canvas.width = 1120
+    canvas.height = 130
+    var ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 1120, 130)
+
+    var img = new Image()
+    img.onload = function() {
+      // Logo — sertifika alanı için sağda 220px boşluk bırak
+      var maxW = 1120 - 240, maxH = 110
+      var ratio = Math.min(maxW / img.width, maxH / img.height)
+      var w = img.width * ratio, h = img.height * ratio
+      ctx.drawImage(img, 14, (130 - h) / 2, w, h)
+
+      // CE mark
+      ctx.save()
+      ctx.fillStyle = '#2a2a2a'
+      ctx.font = 'bold 56px Arial'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('CE', 972, 65)
+      ctx.restore()
+
+      // ISO 9001 rozeti
+      var isoX = 1074, isoY = 65, isoR = 38
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(isoX, isoY, isoR, 0, Math.PI * 2)
+      ctx.strokeStyle = '#3a3a3a'
+      ctx.lineWidth = 2.5
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(isoX, isoY, isoR - 6, 0, Math.PI * 2)
+      ctx.strokeStyle = '#3a3a3a'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.fillStyle = '#2a2a2a'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.font = 'bold 13px Arial'
+      ctx.fillText('ISO', isoX, isoY - 10)
+      ctx.font = 'bold 15px Arial'
+      ctx.fillText('9001', isoX, isoY + 5)
+      ctx.restore()
+
+      // Alt çizgi
+      ctx.strokeStyle = '#d0d5dd'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(0, 129)
+      ctx.lineTo(1120, 129)
+      ctx.stroke()
+
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = reject
+    img.src = logoDataUrl
+  })
+}
+
+async function generateTenantHeaderBytes(logoDataUrl) {
+  var dataUrl = await generateTenantHeaderDataUrl(logoDataUrl)
+  var base64 = dataUrl.split(',')[1]
+  var binary = atob(base64)
+  var bytes = new Uint8Array(binary.length)
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes.buffer
+}
+
 function cmToTwip(value) {
   return Math.round(value * 567)
 }
@@ -341,7 +413,10 @@ async function downloadWord(teklif, elev, config) {
   var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
   var resolvedLogoUrl = customLogoUrl || (config && config._isAsis ? TEKLIF_HEADER_SRC : '')
   var hasLogo = !!(resolvedLogoUrl)
-  var headerBytes = hasLogo ? await getTeklifHeaderBytes(resolvedLogoUrl) : null
+  var isTenantLogo = hasLogo && resolvedLogoUrl.startsWith('data:')
+  var headerBytes = hasLogo
+    ? (isTenantLogo ? await generateTenantHeaderBytes(resolvedLogoUrl) : await getTeklifHeaderBytes(resolvedLogoUrl))
+    : null
 
   var children = []
   if (hasLogo) children.push(teklifHeaderParagraf(docx, headerBytes))
@@ -401,7 +476,9 @@ async function downloadPdf(teklif, elev, config) {
   var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
   var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
   var resolvedLogoUrl = customLogoUrl || (config && config._isAsis ? TEKLIF_HEADER_SRC : '')
-  var headerDataUrl = resolvedLogoUrl ? await getTeklifHeaderDataUrl(resolvedLogoUrl) : null
+  var headerDataUrl = resolvedLogoUrl
+    ? (resolvedLogoUrl.startsWith('data:') ? await generateTenantHeaderDataUrl(resolvedLogoUrl) : await getTeklifHeaderDataUrl(resolvedLogoUrl))
+    : null
   var html = teklifHtmlDocument(teklif, elev, { title: dosyaAdi, headerSrc: headerDataUrl }, config)
 
   var iframe = document.createElement('iframe')
@@ -508,8 +585,20 @@ function TeklifModal(props) {
 
   var seciliElev = elevs.find(function(e) { return e.id === (+form.asansorId || form.asansorId) })
   var customLogoUrl = tenantConfig && tenantConfig.logoUrl ? tenantConfig.logoUrl.trim() : ''
-  var resolvedLogoUrl = customLogoUrl || (tenantConfig && tenantConfig._isAsis ? TEKLIF_HEADER_SRC : null)
-  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: resolvedLogoUrl }, tenantConfig)
+  var rawLogoUrl = customLogoUrl || (tenantConfig && tenantConfig._isAsis ? TEKLIF_HEADER_SRC : null)
+
+  var _useStateH = useState(null), previewHeaderSrc = _useStateH[0], setPreviewHeaderSrc = _useStateH[1]
+
+  useEffect(function() {
+    if (!rawLogoUrl) { setPreviewHeaderSrc(null); return }
+    if (rawLogoUrl.startsWith('data:')) {
+      generateTenantHeaderDataUrl(rawLogoUrl).then(setPreviewHeaderSrc).catch(function() { setPreviewHeaderSrc(rawLogoUrl) })
+    } else {
+      setPreviewHeaderSrc(rawLogoUrl)
+    }
+  }, [rawLogoUrl])
+
+  var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: previewHeaderSrc }, tenantConfig)
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000000b8', zIndex: 2000, display: 'flex', alignItems: darModal ? 'flex-start' : 'center', justifyContent: 'center', padding: darAlan ? 8 : 16, overflowY: 'auto' }}>

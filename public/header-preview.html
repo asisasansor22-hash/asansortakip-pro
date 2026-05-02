@@ -99,6 +99,67 @@
   ctx.textAlign = 'center';
   ctx.fillText('Logo seçince header burada üretilecek', 560, 72);
 
+  function drawCertMarks(c) {
+    var W = c.width, H = c.height;
+    var cx = c.getContext('2d');
+
+    // --- CE mark ---
+    var ceX = W - 148, ceY = H / 2;
+    cx.save();
+    cx.fillStyle = '#2a2a2a';
+    cx.font = 'bold 56px Arial';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.fillText('CE', ceX, ceY);
+    cx.restore();
+
+    // --- ISO 9001 yuvarlak rozet ---
+    var isoX = W - 46, isoY = H / 2, isoR = 38;
+    cx.save();
+    // dış çember
+    cx.beginPath();
+    cx.arc(isoX, isoY, isoR, 0, Math.PI * 2);
+    cx.strokeStyle = '#3a3a3a';
+    cx.lineWidth = 2.5;
+    cx.stroke();
+    // iç çember
+    cx.beginPath();
+    cx.arc(isoX, isoY, isoR - 6, 0, Math.PI * 2);
+    cx.strokeStyle = '#3a3a3a';
+    cx.lineWidth = 1;
+    cx.stroke();
+    // metin
+    cx.fillStyle = '#2a2a2a';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.font = 'bold 13px Arial';
+    cx.fillText('ISO', isoX, isoY - 10);
+    cx.font = 'bold 15px Arial';
+    cx.fillText('9001', isoX, isoY + 5);
+    cx.restore();
+  }
+
+  function buildHeader(c, img) {
+    var cx = c.getContext('2d');
+    cx.clearRect(0, 0, c.width, c.height);
+    cx.fillStyle = '#ffffff';
+    cx.fillRect(0, 0, c.width, c.height);
+
+    // Logo — sola, sertifika alanı için 220px boşluk bırak
+    var maxW = c.width - 240, maxH = 110;
+    var ratio = Math.min(maxW / img.width, maxH / img.height);
+    var w = img.width * ratio, h = img.height * ratio;
+    cx.drawImage(img, 14, (c.height - h) / 2, w, h);
+
+    // CE + ISO
+    drawCertMarks(c);
+
+    // Alt çizgi
+    cx.strokeStyle = '#d0d5dd';
+    cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(0, c.height - 1); cx.lineTo(c.width, c.height - 1); cx.stroke();
+  }
+
   document.getElementById('logoInput').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -110,31 +171,11 @@
     reader.onload = function(ev) {
       var img = new Image();
       img.onload = function() {
-        // Header canvas'ı oluştur
-        ctx.clearRect(0, 0, 1120, 130);
-
-        // Beyaz arka plan
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 1120, 130);
-
-        // Logoyu sola yerleştir — maks 640px geniş, 110px yüksek
-        var maxW = 640, maxH = 110;
-        var ratio = Math.min(maxW / img.width, maxH / img.height);
-        var w = img.width * ratio;
-        var h = img.height * ratio;
-        var x = 14;
-        var y = (130 - h) / 2;
-        ctx.drawImage(img, x, y, w, h);
-
-        // Alt çizgi (Asis header ile aynı)
-        ctx.strokeStyle = '#d0d5dd';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(0, 129); ctx.lineTo(1120, 129); ctx.stroke();
+        buildHeader(canvas, img);
 
         status.className = 'ok';
-        status.textContent = '✓ Header üretildi — ' + Math.round(w) + '×' + Math.round(h) + 'px logo, 1120×130 header';
+        status.textContent = '✓ Header üretildi — 1120×130, CE + ISO dahil';
 
-        // Belge önizlemesini güncelle
         var dataUrl = canvas.toDataURL('image/png');
         var area = document.getElementById('cakir-header-area');
         area.innerHTML = '<img src="' + dataUrl + '" style="max-height:80px;width:auto;max-width:100%;display:block;">';
