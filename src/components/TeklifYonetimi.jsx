@@ -71,42 +71,10 @@ function generateTenantHeaderDataUrl(logoDataUrl) {
 
     var img = new Image()
     img.onload = function() {
-      // Logo — sertifika alanı için sağda 220px boşluk bırak
-      var maxW = 1120 - 240, maxH = 110
+      var maxW = 1120 - 28, maxH = 110
       var ratio = Math.min(maxW / img.width, maxH / img.height)
       var w = img.width * ratio, h = img.height * ratio
       ctx.drawImage(img, 14, (130 - h) / 2, w, h)
-
-      // CE mark
-      ctx.save()
-      ctx.fillStyle = '#2a2a2a'
-      ctx.font = 'bold 56px Arial'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('CE', 972, 65)
-      ctx.restore()
-
-      // ISO 9001 rozeti
-      var isoX = 1074, isoY = 65, isoR = 38
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(isoX, isoY, isoR, 0, Math.PI * 2)
-      ctx.strokeStyle = '#3a3a3a'
-      ctx.lineWidth = 2.5
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.arc(isoX, isoY, isoR - 6, 0, Math.PI * 2)
-      ctx.strokeStyle = '#3a3a3a'
-      ctx.lineWidth = 1
-      ctx.stroke()
-      ctx.fillStyle = '#2a2a2a'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.font = 'bold 13px Arial'
-      ctx.fillText('ISO', isoX, isoY - 10)
-      ctx.font = 'bold 15px Arial'
-      ctx.fillText('9001', isoX, isoY + 5)
-      ctx.restore()
 
       // Alt çizgi
       ctx.strokeStyle = '#d0d5dd'

@@ -99,60 +99,16 @@
   ctx.textAlign = 'center';
   ctx.fillText('Logo seçince header burada üretilecek', 560, 72);
 
-  function drawCertMarks(c) {
-    var W = c.width, H = c.height;
-    var cx = c.getContext('2d');
-
-    // --- CE mark ---
-    var ceX = W - 148, ceY = H / 2;
-    cx.save();
-    cx.fillStyle = '#2a2a2a';
-    cx.font = 'bold 56px Arial';
-    cx.textAlign = 'center';
-    cx.textBaseline = 'middle';
-    cx.fillText('CE', ceX, ceY);
-    cx.restore();
-
-    // --- ISO 9001 yuvarlak rozet ---
-    var isoX = W - 46, isoY = H / 2, isoR = 38;
-    cx.save();
-    // dış çember
-    cx.beginPath();
-    cx.arc(isoX, isoY, isoR, 0, Math.PI * 2);
-    cx.strokeStyle = '#3a3a3a';
-    cx.lineWidth = 2.5;
-    cx.stroke();
-    // iç çember
-    cx.beginPath();
-    cx.arc(isoX, isoY, isoR - 6, 0, Math.PI * 2);
-    cx.strokeStyle = '#3a3a3a';
-    cx.lineWidth = 1;
-    cx.stroke();
-    // metin
-    cx.fillStyle = '#2a2a2a';
-    cx.textAlign = 'center';
-    cx.textBaseline = 'middle';
-    cx.font = 'bold 13px Arial';
-    cx.fillText('ISO', isoX, isoY - 10);
-    cx.font = 'bold 15px Arial';
-    cx.fillText('9001', isoX, isoY + 5);
-    cx.restore();
-  }
-
   function buildHeader(c, img) {
     var cx = c.getContext('2d');
     cx.clearRect(0, 0, c.width, c.height);
     cx.fillStyle = '#ffffff';
     cx.fillRect(0, 0, c.width, c.height);
 
-    // Logo — sola, sertifika alanı için 220px boşluk bırak
-    var maxW = c.width - 240, maxH = 110;
+    var maxW = c.width - 28, maxH = 110;
     var ratio = Math.min(maxW / img.width, maxH / img.height);
     var w = img.width * ratio, h = img.height * ratio;
     cx.drawImage(img, 14, (c.height - h) / 2, w, h);
-
-    // CE + ISO
-    drawCertMarks(c);
 
     // Alt çizgi
     cx.strokeStyle = '#d0d5dd';
