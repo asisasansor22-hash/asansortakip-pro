@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Fiyatlar — Asis Asansör Takip Pro</title>
+<style>
+  :root {
+    --bg: #080e1c;
+    --surface: #0f1829;
+    --card: #131e32;
+    --card-hover: #19253e;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(59,130,246,0.4);
+    --text: #e8edf5;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --blue: #3b82f6;
+    --blue-dark: #1d4ed8;
+    --blue-glow: rgba(59,130,246,0.18);
+    --green: #10b981;
+    --green-glow: rgba(16,185,129,0.15);
+    --purple: #8b5cf6;
+    --gold: #f59e0b;
+    --radius: 20px;
+    --radius-sm: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8,14,28,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .nav-logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg,#1d4ed8,#3b82f6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    box-shadow: 0 0 16px rgba(59,130,246,0.4);
+  }
+  .nav-logo-text { font-weight: 800; font-size: 15px; color: var(--text); line-height: 1.2; }
+  .nav-logo-sub { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .nav-cta {
+    padding: 8px 18px; background: var(--blue); color: #fff;
+    border: none; border-radius: 10px; font-weight: 700; font-size: 13px;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    transition: background .2s, transform .15s;
+  }
+  .nav-cta:hover { background: #2563eb; transform: translateY(-1px); }
+
+  /* ── HERO ── */
+  .hero {
+    text-align: center;
+    padding: 90px 24px 70px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 100px;
+    background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3);
+    font-size: 12px; font-weight: 700; color: #93c5fd;
+    margin-bottom: 24px; letter-spacing: .5px;
+  }
+  .hero h1 {
+    font-size: clamp(32px,6vw,58px); font-weight: 900; line-height: 1.1;
+    letter-spacing: -1.5px; margin-bottom: 18px;
+    background: linear-gradient(135deg, #e8edf5 30%, #93c5fd 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    font-size: clamp(15px,2.5vw,19px); color: var(--text-dim);
+    max-width: 560px; margin: 0 auto 36px; line-height: 1.7;
+  }
+  .hero-toggle {
+    display: inline-flex; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 100px; padding: 5px; gap: 4px;
+  }
+  .toggle-btn {
+    padding: 8px 22px; border-radius: 100px; font-size: 13px; font-weight: 700;
+    border: none; cursor: pointer; transition: all .2s;
+    color: var(--text-muted); background: transparent;
+  }
+  .toggle-btn.active {
+    background: var(--blue); color: #fff;
+    box-shadow: 0 0 16px rgba(59,130,246,0.35);
+  }
+  .save-badge {
+    display: inline-block; margin-left: 8px;
+    background: rgba(16,185,129,0.18); color: #34d399;
+    font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px;
+  }
+
+  /* ── PLANS ── */
+  .plans-section { padding: 20px 24px 80px; max-width: 1160px; margin: 0 auto; }
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px; align-items: start;
+  }
+
+  .plan-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    position: relative;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+  }
+  .plan-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.14);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+  }
+  .plan-card.featured {
+    background: linear-gradient(160deg, #0f1f3d 0%, #111e36 100%);
+    border-color: var(--border-bright);
+    box-shadow: 0 0 0 1px rgba(59,130,246,0.2), 0 32px 80px rgba(59,130,246,0.12);
+    transform: scale(1.03);
+  }
+  .plan-card.featured:hover { transform: scale(1.03) translateY(-4px); }
+
+  .featured-badge {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(90deg,#2563eb,#3b82f6);
+    color: #fff; font-size: 11px; font-weight: 800;
+    padding: 4px 18px; border-radius: 100px; white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.45); letter-spacing: .5px;
+  }
+
+  .plan-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 18px;
+  }
+  .plan-icon.blue { background: rgba(59,130,246,0.15); }
+  .plan-icon.green { background: rgba(16,185,129,0.15); }
+  .plan-icon.purple { background: rgba(139,92,246,0.15); }
+
+  .plan-name { font-size: 13px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .plan-name.blue { color: #60a5fa; }
+  .plan-name.green { color: #34d399; }
+  .plan-name.purple { color: #a78bfa; }
+
+  .plan-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.5; }
+
+  .plan-price {
+    margin-bottom: 8px;
+  }
+  .plan-price-amount {
+    font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -2px;
+    color: var(--text);
+  }
+  .plan-price-currency { font-size: 22px; font-weight: 700; vertical-align: super; margin-right: 2px; color: var(--text-dim); }
+  .plan-price-period { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+  .plan-price-note { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .plan-price-annual {
+    font-size: 13px; color: #34d399; font-weight: 700;
+    background: rgba(16,185,129,0.1); display: inline-block;
+    padding: 3px 10px; border-radius: 8px; margin-bottom: 24px;
+  }
+
+  .plan-divider {
+    height: 1px; background: var(--border); margin: 20px 0;
+  }
+
+  .plan-cta {
+    display: block; width: 100%; padding: 14px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 800;
+    text-align: center; cursor: pointer; border: none;
+    text-decoration: none; transition: all .2s; margin-bottom: 28px;
+  }
+  .plan-cta.blue {
+    background: rgba(59,130,246,0.12); color: #60a5fa;
+    border: 1px solid rgba(59,130,246,0.3);
+  }
+  .plan-cta.blue:hover { background: rgba(59,130,246,0.22); }
+  .plan-cta.featured-cta {
+    background: linear-gradient(135deg,#2563eb,#3b82f6);
+    color: #fff; box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+  }
+  .plan-cta.featured-cta:hover { box-shadow: 0 12px 32px rgba(59,130,246,0.5); transform: translateY(-1px); }
+  .plan-cta.purple {
+    background: rgba(139,92,246,0.1); color: #a78bfa;
+    border: 1px solid rgba(139,92,246,0.3);
+  }
+  .plan-cta.purple:hover { background: rgba(139,92,246,0.2); }
+
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .plan-features li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13.5px; color: var(--text-dim); line-height: 1.4;
+  }
+  .plan-features li .check {
+    width: 18px; height: 18px; border-radius: 6px; flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+  }
+  .check.yes { background: rgba(16,185,129,0.15); color: #34d399; }
+  .check.no { background: rgba(255,255,255,0.05); color: var(--text-muted); opacity: .5; }
+  .plan-features li strong { color: var(--text); }
+
+  .plan-limit {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; padding: 4px 10px;
+    border-radius: 8px; margin-bottom: 16px;
+  }
+  .plan-limit.blue { background: rgba(59,130,246,0.1); color: #60a5fa; }
+  .plan-limit.green { background: rgba(16,185,129,0.1); color: #34d399; }
+  .plan-limit.purple { background: rgba(139,92,246,0.1); color: #a78bfa; }
+
+  /* ── COMPARE TABLE ── */
+  .compare-section { padding: 20px 24px 80px; max-width: 940px; margin: 0 auto; }
+  .compare-section h2 {
+    font-size: 28px; font-weight: 900; text-align: center;
+    margin-bottom: 8px; letter-spacing: -.5px;
+  }
+  .compare-section .sub { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 36px; }
+
+  .compare-table { width: 100%; border-collapse: collapse; }
+  .compare-table th {
+    padding: 12px 16px; font-size: 12px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .compare-table th:first-child { text-align: left; }
+  .compare-table th:not(:first-child) { text-align: center; }
+  .compare-table td {
+    padding: 12px 16px; font-size: 13.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-dim);
+  }
+  .compare-table td:first-child { color: var(--text); font-weight: 500; }
+  .compare-table td:not(:first-child) { text-align: center; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .compare-table .section-row td {
+    padding: 18px 16px 6px; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 1px; color: #3b82f6;
+    border-bottom: none; background: none;
+  }
+  .compare-table .featured-col { background: rgba(59,130,246,0.05); }
+  .tick { color: #34d399; font-size: 16px; }
+  .cross { color: rgba(100,116,139,0.4); font-size: 15px; }
+
+  /* ── FAQ ── */
+  .faq-section { padding: 20px 24px 80px; max-width: 720px; margin: 0 auto; }
+  .faq-section h2 { font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 8px; }
+  .faq-section .sub { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 36px; }
+  .faq-item {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden;
+  }
+  .faq-q {
+    width: 100%; text-align: left; padding: 18px 20px;
+    background: none; border: none; color: var(--text);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .faq-q:hover { color: #93c5fd; }
+  .faq-arrow { font-size: 18px; transition: transform .25s; color: var(--text-muted); flex-shrink: 0; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-a {
+    padding: 0 20px; max-height: 0; overflow: hidden;
+    transition: max-height .3s ease, padding .3s ease;
+    font-size: 13.5px; color: var(--text-muted); line-height: 1.7;
+  }
+  .faq-item.open .faq-a { max-height: 300px; padding: 0 20px 18px; }
+
+  /* ── CTA BAND ── */
+  .cta-band {
+    margin: 0 24px 80px;
+    background: linear-gradient(135deg, #0f1f3d 0%, #0d1829 100%);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 24px; padding: 56px 32px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .cta-band::before {
+    content: '';
+    position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 500px; height: 300px;
+    background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-band h2 { font-size: clamp(22px,4vw,36px); font-weight: 900; margin-bottom: 12px; }
+  .cta-band p { color: var(--text-muted); font-size: 15px; margin-bottom: 32px; max-width: 480px; margin-left: auto; margin-right: auto; }
+  .cta-buttons { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 14px 28px;
+    background: linear-gradient(135deg,#2563eb,#3b82f6);
+    color: #fff; border: none; border-radius: 12px;
+    font-size: 14px; font-weight: 800; cursor: pointer; text-decoration: none;
+    box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary:hover { box-shadow: 0 12px 32px rgba(59,130,246,0.5); transform: translateY(-2px); }
+  .btn-secondary {
+    padding: 14px 28px;
+    background: rgba(255,255,255,0.06); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none;
+    transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 24px; text-align: center;
+    font-size: 13px; color: var(--text-muted);
+  }
+  footer a { color: var(--blue); text-decoration: none; }
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:900px){
+    .plan-card.featured { transform: none; }
+    .plan-card.featured:hover { transform: translateY(-4px); }
+    .compare-section { overflow-x: auto; }
+    .compare-table { min-width: 540px; }
+  }
+  @media(max-width:600px){
+    .plans-grid { grid-template-columns: 1fr; }
+    .hero { padding: 60px 16px 48px; }
+    .cta-band { margin: 0 12px 60px; padding: 40px 20px; }
+    .plans-section, .compare-section, .faq-section { padding-left: 12px; padding-right: 12px; }
+  }
+
+  /* ── HIDDEN in annual/monthly toggle ── */
+  [data-period="annual"] { display: none; }
+  body.annual [data-period="monthly"] { display: none; }
+  body.annual [data-period="annual"] { display: block; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">🛗</div>
+    <div>
+      <div class="nav-logo-text">Asis Asansör</div>
+      <div class="nav-logo-sub">Takip Pro</div>
+    </div>
+  </a>
+  <a href="https://wa.me/905365659223" target="_blank" class="nav-cta">Hemen Başla</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">💎 Şeffaf Fiyatlandırma</div>
+  <h1>Asansör firmanız için<br>güçlü bir yazılım</h1>
+  <p>Bakım takibinden teklif oluşturmaya, arıza yönetiminden finansal raporlamaya — her şey tek platformda.</p>
+  <div class="hero-toggle">
+    <button class="toggle-btn active" id="btn-monthly" onclick="setPeriod('monthly')">Aylık</button>
+    <button class="toggle-btn" id="btn-annual" onclick="setPeriod('annual')">
+      Yıllık <span class="save-badge">2 AY BEDAVA</span>
+    </button>
+  </div>
+</section>
+
+<!-- PLANS -->
+<section class="plans-section">
+  <div class="plans-grid">
+
+    <!-- Başlangıç -->
+    <div class="plan-card">
+      <div class="plan-icon blue">🚀</div>
+      <div class="plan-name blue">Başlangıç</div>
+      <p class="plan-desc">Küçük ve orta ölçekli asansör bakım firmaları için ideal başlangıç noktası.</p>
+      <div class="plan-limit blue">🏢 250 asansöre kadar &nbsp;·&nbsp; 👤 3 kullanıcı</div>
+
+      <div class="plan-price">
+        <span class="plan-price-currency">₺</span>
+        <span class="plan-price-amount" data-period="monthly">1.490</span>
+        <span class="plan-price-amount" data-period="annual">1.242</span>
+        <span class="plan-price-period"> / ay + KDV</span>
+      </div>
+      <div class="plan-price-note" data-period="monthly">&nbsp;</div>
+      <div class="plan-price-annual" data-period="annual">Yıllık 14.900 ₺ — 2 ay bedava</div>
+
+      <a href="https://wa.me/905365659223?text=Başlangıç%20paketi%20hakkında%20bilgi%20almak%20istiyorum" target="_blank" class="plan-cta blue">Ücretsiz Dene →</a>
+
+      <ul class="plan-features">
+        <li><span class="check yes">✓</span><span><strong>250</strong> asansör kaydı</span></li>
+        <li><span class="check yes">✓</span><span><strong>3</strong> kullanıcı hesabı</span></li>
+        <li><span class="check yes">✓</span><span>Bina ve asansör kayıtları</span></li>
+        <li><span class="check yes">✓</span><span>Aylık bakım takibi</span></li>
+        <li><span class="check yes">✓</span><span>Arıza kaydı ve yönetimi</span></li>
+        <li><span class="check yes">✓</span><span>Teknisyen atama</span></li>
+        <li><span class="check yes">✓</span><span>WhatsApp mesaj şablonları</span></li>
+        <li><span class="check yes">✓</span><span>Temel raporlar</span></li>
+        <li><span class="check yes">✓</span><span>PWA — telefona uygulama gibi</span></li>
+        <li><span class="check no">—</span><span style="opacity:.45">Finans & tahsilat takibi</span></li>
+        <li><span class="check no">—</span><span style="opacity:.45">Teklif PDF / Word çıktısı</span></li>
+        <li><span class="check no">—</span><span style="opacity:.45">Firma markalaması</span></li>
+      </ul>
+    </div>
+
+    <!-- Profesyonel -->
+    <div class="plan-card featured">
+      <div class="featured-badge">⭐ EN ÇOK TERCİH EDİLEN</div>
+      <div class="plan-icon green">⚡</div>
+      <div class="plan-name green">Profesyonel</div>
+      <p class="plan-desc">Büyüyen firmalar için tam donanımlı platform. Tüm özellikler, sınırsız verim.</p>
+      <div class="plan-limit green">🏢 1.000 asansöre kadar &nbsp;·&nbsp; 👤 10 kullanıcı</div>
+
+      <div class="plan-price">
+        <span class="plan-price-currency">₺</span>
+        <span class="plan-price-amount" data-period="monthly">2.490</span>
+        <span class="plan-price-amount" data-period="annual">2.075</span>
+        <span class="plan-price-period"> / ay + KDV</span>
+      </div>
+      <div class="plan-price-note" data-period="monthly">&nbsp;</div>
+      <div class="plan-price-annual" data-period="annual">Yıllık 24.900 ₺ — 2 ay bedava</div>
+
+      <a href="https://wa.me/905365659223?text=Profesyonel%20paketi%20hakkında%20bilgi%20almak%20istiyorum" target="_blank" class="plan-cta featured-cta">Hemen Başla →</a>
+
+      <ul class="plan-features">
+        <li><span class="check yes">✓</span><span><strong>1.000</strong> asansör kaydı</span></li>
+        <li><span class="check yes">✓</span><span><strong>10</strong> kullanıcı hesabı</span></li>
+        <li><span class="check yes">✓</span><span>Bina ve asansör kayıtları</span></li>
+        <li><span class="check yes">✓</span><span>Aylık bakım takibi</span></li>
+        <li><span class="check yes">✓</span><span>Arıza kaydı ve yönetimi</span></li>
+        <li><span class="check yes">✓</span><span>Teknisyen atama & rota</span></li>
+        <li><span class="check yes">✓</span><span>WhatsApp mesaj şablonları</span></li>
+        <li><span class="check yes">✓</span><span>Finans & tahsilat takibi</span></li>
+        <li><span class="check yes">✓</span><span>Devir & bakiye takibi</span></li>
+        <li><span class="check yes">✓</span><span>Teklif PDF / Word çıktısı</span></li>
+        <li><span class="check yes">✓</span><span>Firma adı & logo markalaması</span></li>
+        <li><span class="check yes">✓</span><span>Gelişmiş raporlar & istatistikler</span></li>
+        <li><span class="check yes">✓</span><span>PWA — telefona uygulama gibi</span></li>
+        <li><span class="check yes">✓</span><span>WhatsApp öncelikli destek</span></li>
+      </ul>
+    </div>
+
+    <!-- Kurumsal -->
+    <div class="plan-card">
+      <div class="plan-icon purple">🏛️</div>
+      <div class="plan-name purple">Kurumsal</div>
+      <p class="plan-desc">Büyük filolar ve çok şubeli firmalar için özelleştirilebilir kurumsal çözüm.</p>
+      <div class="plan-limit purple">🏢 1.000+ asansör &nbsp;·&nbsp; 👤 Sınırsız kullanıcı</div>
+
+      <div class="plan-price">
+        <span class="plan-price-currency">₺</span>
+        <span class="plan-price-amount" data-period="monthly">4.500</span>
+        <span class="plan-price-amount" data-period="annual">3.750</span>
+        <span class="plan-price-period"> / ay + KDV'den</span>
+      </div>
+      <div class="plan-price-note" data-period="monthly">&nbsp;</div>
+      <div class="plan-price-annual" data-period="annual">Yıllık 45.000 ₺'den — özel teklif</div>
+
+      <a href="https://wa.me/905365659223?text=Kurumsal%20paket%20hakkında%20bilgi%20almak%20istiyorum" target="_blank" class="plan-cta purple">Teklif Al →</a>
+
+      <ul class="plan-features">
+        <li><span class="check yes">✓</span><span>Sınırsız asansör kaydı</span></li>
+        <li><span class="check yes">✓</span><span>Sınırsız kullanıcı hesabı</span></li>
+        <li><span class="check yes">✓</span><span>Profesyonel paketin tümü</span></li>
+        <li><span class="check yes">✓</span><span>Firma özel kurulum & yapılandırma</span></li>
+        <li><span class="check yes">✓</span><span>Özel alan adı / alt alan adı</span></li>
+        <li><span class="check yes">✓</span><span>Gelişmiş yetkilendirme rolleri</span></li>
+        <li><span class="check yes">✓</span><span>Özel rapor şablonları</span></li>
+        <li><span class="check yes">✓</span><span>Öncelikli teknik destek</span></li>
+        <li><span class="check yes">✓</span><span>İsteğe bağlı özel geliştirme</span></li>
+        <li><span class="check yes">✓</span><span>SLA güvencesi</span></li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- COMPARE TABLE -->
+<section class="compare-section">
+  <h2>Paket karşılaştırması</h2>
+  <p class="sub">Hangi paketin size uygun olduğunu hızlıca görün</p>
+  <div style="overflow-x:auto;">
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th style="width:42%">Özellik</th>
+        <th>Başlangıç</th>
+        <th class="featured-col" style="color:#60a5fa">Profesyonel</th>
+        <th>Kurumsal</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-row"><td colspan="4">Kapasite</td></tr>
+      <tr><td>Asansör limiti</td><td>250</td><td class="featured-col">1.000</td><td>Sınırsız</td></tr>
+      <tr><td>Kullanıcı sayısı</td><td>3</td><td class="featured-col">10</td><td>Sınırsız</td></tr>
+
+      <tr class="section-row"><td colspan="4">Temel Özellikler</td></tr>
+      <tr><td>Bina & asansör kayıtları</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Aylık bakım takibi</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Arıza kaydı & yönetimi</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Teknisyen atama</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>WhatsApp mesaj şablonları</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>PWA mobil uygulama</td><td><span class="tick">✓</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+
+      <tr class="section-row"><td colspan="4">Gelişmiş Özellikler</td></tr>
+      <tr><td>Finans & tahsilat takibi</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Devir & bakiye takibi</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Teklif PDF / Word çıktısı</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Rota planlama</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Firma adı & logo markalaması</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Gelişmiş raporlar</td><td><span class="cross">—</span></td><td class="featured-col"><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+
+      <tr class="section-row"><td colspan="4">Kurumsal</td></tr>
+      <tr><td>Özel alan adı</td><td><span class="cross">—</span></td><td class="featured-col"><span class="cross">—</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>Özel rapor şablonları</td><td><span class="cross">—</span></td><td class="featured-col"><span class="cross">—</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>İsteğe bağlı geliştirme</td><td><span class="cross">—</span></td><td class="featured-col"><span class="cross">—</span></td><td><span class="tick">✓</span></td></tr>
+      <tr><td>SLA güvencesi</td><td><span class="cross">—</span></td><td class="featured-col"><span class="cross">—</span></td><td><span class="tick">✓</span></td></tr>
+
+      <tr class="section-row"><td colspan="4">Destek</td></tr>
+      <tr><td>WhatsApp destek</td><td>Standart</td><td class="featured-col">Öncelikli</td><td>Özel hat</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <h2>Sık sorulan sorular</h2>
+  <p class="sub">Aklınızdaki soruların cevapları burada</p>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Deneme süresi var mı?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Evet. WhatsApp üzerinden iletişime geçin, sistemi canlı demo ile gösteriyor ve 15 günlük ücretsiz deneme imkânı sunuyoruz. Kredi kartı gerekmez.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Uygulama Play Store veya App Store'da mı?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Hayır — bu bir PWA (Progressive Web App) uygulamasıdır. Tarayıcıdan "Ana Ekrana Ekle" diyerek telefona uygulama gibi kurulur. Mağaza onayı beklenmez, güncelleme otomatik gelir.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Verilerim güvende mi?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Tüm veriler Google Firebase altyapısında, Avrupa veri merkezlerinde şifreli olarak saklanır. Verileriniz yalnızca size aittir, hiçbir üçüncü tarafla paylaşılmaz.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Paketi sonradan değiştirebilir miyim?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Evet, istediğiniz zaman üst pakete geçebilirsiniz. Geçiş anında aktif olur, mevcut verileriniz korunur. Alt pakete geçiş ise dönem sonunda uygulanır.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Ödeme nasıl yapılıyor?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Aylık veya yıllık banka havalesi / EFT ile ödeme alınmaktadır. Fatura (e-Arşiv fatura) her ay düzenli olarak iletilir.</div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-q" onclick="toggleFaq(this)">
+      Mevcut asansör verilerimi aktarabilir miyim?
+      <span class="faq-arrow">▾</span>
+    </button>
+    <div class="faq-a">Evet. Excel dosyanızı paylaşmanız yeterli; verilerinizi sisteme aktarıyoruz. Bu hizmet tüm paketlerde ücretsizdir.</div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<div class="cta-band">
+  <h2>Hemen başlayın, 15 gün ücretsiz deneyin</h2>
+  <p>Kurulum yok, indirme yok. Tarayıcınızdan açın ve dakikalar içinde kullanmaya başlayın.</p>
+  <div class="cta-buttons">
+    <a href="https://wa.me/905365659223?text=Asis%20Asansör%20Takip%20Pro%20hakkında%20bilgi%20almak%20istiyorum" target="_blank" class="btn-primary">
+      <span>💬</span> WhatsApp ile İletişim
+    </a>
+    <a href="/" class="btn-secondary">
+      <span>🛗</span> Uygulamaya Git
+    </a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2026 Asis Asansör Takip Pro &nbsp;·&nbsp; Tüm hakları saklıdır &nbsp;·&nbsp;
+  <a href="/">Uygulamaya Dön</a></p>
+</footer>
+
+<script>
+  function setPeriod(period) {
+    if (period === 'annual') {
+      document.body.classList.add('annual');
+      document.getElementById('btn-annual').classList.add('active');
+      document.getElementById('btn-monthly').classList.remove('active');
+    } else {
+      document.body.classList.remove('annual');
+      document.getElementById('btn-monthly').classList.add('active');
+      document.getElementById('btn-annual').classList.remove('active');
+    }
+  }
+
+  function toggleFaq(btn) {
+    var item = btn.parentElement;
+    var isOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(function(el) { el.classList.remove('open'); });
+    if (!isOpen) item.classList.add('open');
+  }
+</script>
+</body>
+</html>
