@@ -1265,11 +1265,33 @@ function App(){
   }).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
+  // ---- Plan bazlı kısıtlamalar ----
+  const tenantPlan = (subscription && subscription.plan) || "baslangic";
+  const planLimits = {
+    baslangic:   { ad:"Başlangıç",   elevLimit:250,      userLimit:3,        finans:false, teklif:false, sozlesme:false, marka:false },
+    profesyonel: { ad:"Profesyonel", elevLimit:1000,     userLimit:10,       finans:true,  teklif:true,  sozlesme:true,  marka:true  },
+    kurumsal:    { ad:"Kurumsal",    elevLimit:Infinity, userLimit:Infinity, finans:true,  teklif:true,  sozlesme:true,  marka:true  }
+  };
+  const limits = isSuper ? planLimits.kurumsal : (planLimits[tenantPlan] || planLimits.baslangic);
+  const [kilitModal,setKilitModal]=useState(null); // {ozellik:"Finans", gerekenPlan:"Profesyonel"}
+  const planAdi = isSuper ? "Asis (Sınırsız)" : (planLimits[tenantPlan] || planLimits.baslangic).ad;
+
   const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
   const TABS_YON = isSuper ? TABS_YON_BASE.concat(["🏭 Firmalar"]) : TABS_YON_BASE;
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
   const tabIdx=rol==="bakimci"?[2,5,8,9]:TABS_YON.map(function(_,i){return i;});
+
+  // Hangi tab indeksi hangi özelliğe karşılık geliyor (yönetici için)
+  // 6:Finans, 7:Giderler, 10:Teklif, 12:Sözleşmeler
+  function tabKilitliMi(idx){
+    if(rol!=="yonetici"||isSuper) return null;
+    if(idx===6 && !limits.finans) return {ozellik:"Finans Yönetimi", gerekenPlan:"Profesyonel"};
+    if(idx===7 && !limits.finans) return {ozellik:"Giderler", gerekenPlan:"Profesyonel"};
+    if(idx===10 && !limits.teklif) return {ozellik:"Teklif Oluşturma", gerekenPlan:"Profesyonel"};
+    if(idx===12 && !limits.sozlesme) return {ozellik:"Sözleşmeler", gerekenPlan:"Profesyonel"};
+    return null;
+  }
 
   if(!tenantId) return React.createElement(FirmaKoduGate, { onReady: handleFirmaKodu });
 
@@ -1398,7 +1420,17 @@ function App(){
         React.createElement('div', { className:"header-tabs"},
           visibleTabs.map((t,i)=>{
             const realIdx=tabIdx[i];
-            return React.createElement('button', { key: i, onClick: ()=>setTab(realIdx), className:"header-tab "+(tab===realIdx?"aktif":""),}, t);
+            const kilit=tabKilitliMi(realIdx);
+            const tabLabel = kilit ? (t+" 🔒") : t;
+            return React.createElement('button', {
+              key: i,
+              onClick: ()=>{
+                if(kilit){ setKilitModal(kilit); return; }
+                setTab(realIdx);
+              },
+              className:"header-tab "+(tab===realIdx?"aktif":""),
+              style: kilit ? {opacity:0.6} : undefined
+            }, tabLabel);
           })
         )
       )
@@ -1409,6 +1441,32 @@ function App(){
 , tab===0&&(
   React.createElement('div', { className:"ios-animate"}
     , React.createElement('div', { style: {fontSize:28,fontWeight:800,letterSpacing:-1,marginBottom:16,marginTop:4}}, "Genel Bakış" )
+    /* PLAN KULLANIM BADGE'i */
+    , rol==="yonetici"&&!isSuper&&(function(){
+        var oran = limits.elevLimit===Infinity ? 0 : (elevs.length / limits.elevLimit);
+        var renk = oran>=1 ? "#ef4444" : (oran>=0.8 ? "#f59e0b" : "#3b82f6");
+        var bg = oran>=1 ? "rgba(239,68,68,0.1)" : (oran>=0.8 ? "rgba(245,158,11,0.1)" : "rgba(59,130,246,0.1)");
+        var ikon = tenantPlan==="kurumsal"?"🏛️":(tenantPlan==="profesyonel"?"⚡":"🚀");
+        return React.createElement('div',{
+          style:{background:bg,border:"1px solid "+renk+"55",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}
+        },
+          React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+            React.createElement('span',{style:{fontSize:20}}, ikon),
+            React.createElement('div',null,
+              React.createElement('div',{style:{fontSize:13,fontWeight:800,color:renk}}, planAdi+" Paketi"),
+              React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
+                limits.elevLimit===Infinity ? (elevs.length+" asansör · sınırsız") : (elevs.length+" / "+limits.elevLimit+" asansör")
+              )
+            )
+          ),
+          oran>=0.8 && React.createElement('a',{
+            href:"https://wa.me/905435070794?text="+encodeURIComponent("Paketimi yükseltmek istiyorum"),
+            target:"_blank",
+            rel:"noreferrer",
+            style:{padding:"7px 14px",background:renk,color:"#fff",borderRadius:9,fontSize:12,fontWeight:800,textDecoration:"none",whiteSpace:"nowrap"}
+          }, "Yükselt →")
+        );
+      })()
     /* BENTO GRID - Ana istatistikler */
     , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10},}
       , React.createElement(Stat, { icon: "🛗", label: "Toplam Asansör", value: elevs.length, color: "var(--accent)",})
@@ -2107,7 +2165,7 @@ function App(){
 )
 
 /* FİNANS */
-, tab===6&&(
+, tab===6&&(rol!=="yonetici"||isSuper||limits.finans)&&(
   React.createElement('div', null
     , React.createElement('h2', {style:{fontSize:18,fontWeight:900,marginBottom:14,marginTop:0}}, "💰 Finansal Durum")
 
@@ -2553,7 +2611,7 @@ function App(){
   )
 )
 /* GİDERLER */
-, tab===7&&(
+, tab===7&&(rol!=="yonetici"||isSuper||limits.finans)&&(
   React.createElement('div', null
     , React.createElement('h2', {style:{fontSize:18,fontWeight:900,marginBottom:14,marginTop:0}}, "💸 Gider Takibi")
 
@@ -2780,7 +2838,7 @@ function App(){
 )
 
 /* PERİYODİK MUAYENE TAKİBİ */
-, tab===10&&rol==="yonetici"&&(
+, tab===10&&rol==="yonetici"&&(isSuper||limits.teklif)&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig?Object.assign({},tenantConfig,{_isAsis:isSuper}):null})
   )
@@ -2794,7 +2852,7 @@ function App(){
 )
 
 /* SÃ–ZLEÅME YÃ–NETÄ°MÄ° */
-, tab===12&&rol==="yonetici"&&(
+, tab===12&&rol==="yonetici"&&(isSuper||limits.sozlesme)&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(SozlesmeYonetimi, {elevs:elevs,sozlesmeler:sozlesmeler,setSozlesmeler:setSozlesmeler})
   )
@@ -3245,6 +3303,39 @@ function App(){
                 style: {flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}, "Giriş")
             )
           )
+        )
+      )
+
+      /* PLAN KİLİT MODAL */
+      , kilitModal&&React.createElement('div',{
+          style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:3100,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
+          onClick:()=>setKilitModal(null)
+        },
+        React.createElement('div',{
+          onClick:(e)=>e.stopPropagation(),
+          style:{width:"min(440px,100%)",background:"var(--bg-panel)",borderRadius:20,border:"1px solid var(--border)",boxShadow:"0 24px 64px rgba(0,0,0,0.5)",padding:"32px 28px",textAlign:"center"}
+        },
+          React.createElement('div',{style:{fontSize:48,marginBottom:14}},"🔒"),
+          React.createElement('div',{style:{fontWeight:900,fontSize:18,color:"var(--text)",marginBottom:8}}, kilitModal.ozellik),
+          React.createElement('div',{style:{fontSize:14,color:"var(--text-muted)",marginBottom:18,lineHeight:1.6}},
+            "Bu özellik ",
+            React.createElement('b',{style:{color:"#3b82f6"}}, kilitModal.gerekenPlan),
+            " paketinde kullanılabilir."
+          ),
+          React.createElement('div',{style:{background:"var(--bg-elevated)",borderRadius:12,padding:"12px 14px",marginBottom:18,fontSize:13,color:"var(--text-dim)"}},
+            "Mevcut paketiniz: ",
+            React.createElement('b',{style:{color:"var(--text)"}}, planAdi)
+          ),
+          React.createElement('a',{
+            href:"https://wa.me/905435070794?text="+encodeURIComponent("Paketimi yükseltmek istiyorum: "+kilitModal.gerekenPlan),
+            target:"_blank",
+            rel:"noreferrer",
+            style:{display:"block",padding:"13px 20px",background:"linear-gradient(135deg,#2563eb,#3b82f6)",color:"#fff",borderRadius:12,fontWeight:800,fontSize:14,textDecoration:"none",marginBottom:10}
+          }, "💬 WhatsApp ile Yükselt"),
+          React.createElement('button',{
+            onClick:()=>setKilitModal(null),
+            style:{display:"block",width:"100%",padding:"11px 20px",background:"transparent",border:"1px solid var(--border)",borderRadius:12,color:"var(--text-muted)",fontSize:13,fontWeight:700,cursor:"pointer"}
+          }, "Kapat")
         )
       )
 

@@ -26,7 +26,8 @@ function emptyForm(){
     aylikUcret: "",
     bitis: "",
     yoneticiSifre: "",
-    aktif: true
+    aktif: true,
+    plan: "baslangic"
   };
 }
 
@@ -129,12 +130,14 @@ function FirmalarPaneli({ currentTenantId }) {
       adminUid: adminUid,
       updatedAt: new Date().toISOString()
     });
+    var existingSub = await dbGetRaw("tenants/" + slug + "/subscription") || {};
     await dbSetRaw("tenants/" + slug + "/subscription", {
       status: form.aktif === false ? "suspended" : "active",
+      plan: form.plan || "baslangic",
       aylikUcret: Number(form.aylikUcret) || 0,
-      baslangic: (existing.baslangic || new Date().toISOString().slice(0,10)),
+      baslangic: (existingSub.baslangic || new Date().toISOString().slice(0,10)),
       bitis: form.bitis || "",
-      sonOdeme: ""
+      sonOdeme: existingSub.sonOdeme || ""
     });
 
     setMesaj(editId ? "Firma guncellendi." : "Firma olusturuldu. Kod: " + slug);
@@ -160,7 +163,8 @@ function FirmalarPaneli({ currentTenantId }) {
       aylikUcret: sub.aylikUcret || "",
       bitis: sub.bitis || "",
       yoneticiSifre: "",
-      aktif: (sub.status || "active") === "active"
+      aktif: (sub.status || "active") === "active",
+      plan: sub.plan || "baslangic"
     });
     setMesaj("");
   }
@@ -220,6 +224,18 @@ function FirmalarPaneli({ currentTenantId }) {
           ? React.createElement('img', { src: form.logoUrl, alt: "logo onizleme", style: { maxHeight: 60, maxWidth: 300, borderRadius: 6, border: "1px solid var(--border)", display: "block" } })
           : React.createElement('div', { style: { fontSize: 11, color: "var(--text-muted)" } }, "Logo secilmedi — teklif ciktisinda baslik gorseli olmaz.")
       ),
+      React.createElement('div', { style: { gridColumn: "1/-1" } },
+        React.createElement('div', { style: lbl }, "Abonelik Paketi *"),
+        React.createElement('select', {
+          style: inp,
+          value: form.plan || "baslangic",
+          onChange: e => F("plan", e.target.value)
+        },
+          React.createElement('option', { value: "baslangic" }, "🚀 Başlangıç — 250 asansör, 3 kullanıcı (Finans/Teklif/Sözleşme yok)"),
+          React.createElement('option', { value: "profesyonel" }, "⚡ Profesyonel — 1.000 asansör, 10 kullanıcı (Tüm özellikler)"),
+          React.createElement('option', { value: "kurumsal" }, "🏛️ Kurumsal — Sınırsız asansör/kullanıcı (Özel destek)")
+        )
+      ),
       React.createElement('div', null, React.createElement('div', { style: lbl }, editId ? "Yeni Sifre (degistirmek icin doldur)" : "Yonetici Giris Sifresi *"), React.createElement('input', { type: "password", style: inp, value: form.yoneticiSifre, onChange: e => F("yoneticiSifre", e.target.value), placeholder: "en az 6 karakter" })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Abonelik Bitis"), React.createElement('input', { type: "date", style: inp, value: form.bitis, onChange: e => F("bitis", e.target.value) })),
       React.createElement('div', null, React.createElement('div', { style: lbl }, "Aylik Ucret"), React.createElement('input', { type: "number", style: inp, value: form.aylikUcret, onChange: e => F("aylikUcret", e.target.value) })),
@@ -244,12 +260,18 @@ function FirmalarPaneli({ currentTenantId }) {
               var sub = t.subscription || {};
               var durum = sub.status || "unknown";
               var aktif = durum === "active";
+              var planKey = sub.plan || "baslangic";
+              var planLabel = planKey==="kurumsal" ? "🏛️ Kurumsal" : (planKey==="profesyonel" ? "⚡ Profesyonel" : "🚀 Başlangıç");
+              var planRenk = planKey==="kurumsal" ? "#a78bfa" : (planKey==="profesyonel" ? "#34d399" : "#60a5fa");
               return React.createElement('div', {
                 key: t.id,
                 style: { background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: 14, padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }
               },
                 React.createElement('div', null,
-                  React.createElement('div', { style: { fontWeight: 800, fontSize: 16, color: "var(--text)" } }, cfg.ad || t.id),
+                  React.createElement('div', { style: { display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" } },
+                    React.createElement('div', { style: { fontWeight: 800, fontSize: 16, color: "var(--text)" } }, cfg.ad || t.id),
+                    t.id!=="asis" && React.createElement('span', { style: { fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 20, background: planRenk+"22", color: planRenk } }, planLabel)
+                  ),
                   React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Kod: " + t.id + " · Bitis: " + (sub.bitis || "-") + " · " + (sub.aylikUcret || 0) + " TL/ay"),
                   cfg.yetkili && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Yetkili: " + cfg.yetkili),
                   cfg.tel && React.createElement('div', { style: { fontSize: 12, color: "var(--text-muted)", marginTop: 2 } }, "Tel: " + cfg.tel)
