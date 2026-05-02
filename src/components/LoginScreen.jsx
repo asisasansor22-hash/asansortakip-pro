@@ -96,7 +96,13 @@ function LoginScreen({ onLogin, bakimcilar, tenantPublic, onFarkliFirma }) {
         React.createElement('div', { style: { textAlign: "center", marginBottom: 44 } },
           React.createElement('img', { src: ASIS_LOGO_B64, alt: "Asis", className: "asis-logo-img", style: { height: "70px", objectFit: "contain", marginBottom: "8px" } }),
           React.createElement('div', { style: { fontWeight: 800, fontSize: 30, color: "var(--text)", marginBottom: 6, letterSpacing: -1 } }, "AsansörTakip"),
-          React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } }, "Pro"),
+          React.createElement('div', { style: { fontSize: 14, color: "var(--text-muted)" } },
+            isAsis ? "SuperAdmin" :
+            (tenantPublic && tenantPublic.plan === "kurumsal") ? "🏛️ Kurumsal" :
+            (tenantPublic && tenantPublic.plan === "profesyonel") ? "⚡ Profesyonel" :
+            (tenantPublic && tenantPublic.plan === "baslangic") ? "🚀 Başlangıç" :
+            "Pro"
+          ),
           tenantPublic && tenantPublic.ad && React.createElement('div', {
             style: { marginTop: 14, fontSize: 13, fontWeight: 700, color: "var(--accent)", padding: "6px 14px", background: "rgba(0,122,255,0.10)", borderRadius: 10, display: "inline-block" }
           }, tenantPublic.ad)

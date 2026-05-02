@@ -114,7 +114,8 @@ function FirmalarPaneli({ currentTenantId }) {
     // Şifre, adminUid gibi hassas alanlar config'de kalır ve auth gerektirir.
     await setTenantPublic(slug, {
       ad: form.ad.trim(),
-      adminEmail: adminEmail
+      adminEmail: adminEmail,
+      plan: form.plan || "baslangic"
     });
     await dbSetRaw("tenants/" + slug + "/config", {
       ad: form.ad.trim(),

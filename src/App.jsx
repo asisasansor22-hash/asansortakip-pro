@@ -1244,7 +1244,7 @@ function App(){
     if(arama.trim()) list=list.filter(e=>e.ad.toUpperCase().includes(arama.toUpperCase())||e.adres.toUpperCase().includes(arama.toUpperCase())||e.yonetici.toUpperCase().includes(arama.toUpperCase()));
     return list;
   },[elevs,fIlce,arama]);
-  const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},[]),[filteredElevs]);
+  const filteredByIlce=useMemo(()=>filteredElevs.reduce((a,e)=>{if(!a[e.ilce])a[e.ilce]=[];a[e.ilce].push(e);return a;},{}),[filteredElevs]);
 
   const rotaPool=rotaIlce==="Tümü"?elevs:elevs.filter(e=>e.ilce===rotaIlce);
   const rotaOrder=rotaOtomatikIds.length===rotaSec.length?rotaOtomatikIds:rotaSec;
@@ -1373,7 +1373,9 @@ function App(){
               React.createElement('div', { style:{fontWeight:800,fontSize:14,color:"var(--text)",letterSpacing:-0.5,lineHeight:1.2}}, "AsansörTakip Pro"),
               React.createElement('div', { style:{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}},
                 React.createElement('span', { style:{fontSize:10,color:rol==="bakimci"?"var(--ios-green)":"rgba(255,255,255,0.40)",fontWeight:600,letterSpacing:0.2}},
-                  rol==="bakimci" ? ("● " + (aktifBakimci ? aktifBakimci.ad : "Bakımcı")) : "● Yönetici · "+elevs.length+" asansör"
+                  rol==="bakimci" ? ("● " + (aktifBakimci ? aktifBakimci.ad : "Bakımcı")) :
+                  isSuper ? "● SuperAdmin · "+elevs.length+" asansör" :
+                  "● "+planAdi+" · "+elevs.length+" asansör"
                 ),
                 rol==="yonetici"&&atanmayanCount>0&&React.createElement('span', {style:{
                   fontSize:9,fontWeight:800,padding:"1px 6px",borderRadius:20,

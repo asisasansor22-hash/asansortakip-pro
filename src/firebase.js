@@ -339,7 +339,7 @@ export async function setTenantPublic(tid, data) {
     var existing = await getTenantPublic(tid);
     if (existing) pub = Object.assign({}, existing, pub);
   }
-  return dbSetRaw("tenants/" + tid + "/public", {
+  var obj = {
     ad: pub.ad || "",
     adminEmail: pub.adminEmail || "",
     bakimcilar: Array.isArray(pub.bakimcilar) ? pub.bakimcilar.map(function(b){
@@ -350,7 +350,9 @@ export async function setTenantPublic(tid, data) {
         hasSifre: !!b.hasSifre
       };
     }) : []
-  });
+  };
+  if (pub.plan) obj.plan = pub.plan;
+  return dbSetRaw("tenants/" + tid + "/public", obj);
 }
 
 // ------- Bakımcı e-posta üreteci -------------------------------------------

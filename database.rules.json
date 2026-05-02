@@ -18,6 +18,7 @@
             ".validate": "newData.hasChildren(['ad', 'adminEmail']) && (!newData.child('ad').exists() || newData.child('ad').isString()) && (!newData.child('adminEmail').exists() || newData.child('adminEmail').isString()) && !newData.child('adminUid').exists() && !newData.child('yoneticiSifre').exists() && !newData.child('sifre').exists()",
             "ad": { ".validate": "newData.isString()" },
             "adminEmail": { ".validate": "newData.isString()" },
+            "plan": { ".validate": "!newData.exists() || newData.isString()" },
             "bakimcilar": {
               "$idx": {
                 ".validate": "newData.hasChildren(['id', 'ad']) && newData.child('id').isString() && newData.child('ad').isString() && (!newData.child('renk').exists() || newData.child('renk').isString()) && (!newData.child('hasSifre').exists() || newData.child('hasSifre').isBoolean()) && !newData.child('sifre').exists()",
