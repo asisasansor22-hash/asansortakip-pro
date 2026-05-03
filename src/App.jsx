@@ -2214,7 +2214,7 @@ function App(){
           , React.createElement(Stat, {icon:"💰", label:"Bu Ayki Tahsilat ("+ayAd+")", value:buAyTahsilat.toLocaleString("tr-TR")+" ₺", color:"#10b981"})
           , React.createElement(Stat, {icon:"📅", label:"Bu Hafta ("+haftaBasStr+" - "+haftaSonStr+")", value:buHaftaTahsilat.toLocaleString("tr-TR")+" ₺", color:"#3b82f6"})
           , React.createElement(Stat, {icon:"☀️", label:"Bugün ("+gunler[simdi.getDay()]+")", value:bugunTahsilat.toLocaleString("tr-TR")+" ₺", color:"#f59e0b"})
-          , React.createElement(Stat, {icon:"🗓️", label:"Haftalık Kapama", value:haftalikKapamalar.length+" / 5", color:"#8b5cf6"})
+          , React.createElement(Stat, {icon:"🗓️", label:"Haftalık Kapama", value:haftalikKapamalar.length+" / 26", color:"#8b5cf6"})
         );
       })()
 
@@ -2501,7 +2501,7 @@ function App(){
         , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}
           , React.createElement('div', null
             , React.createElement('div', {style:{fontWeight:700,fontSize:13}}, "📅 Haftalık Kapamalar")
-            , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:2}}, "Her Cumartesi 16:00 · Son 5 hafta")
+            , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:2}}, "Her Cumartesi 16:00 · Son 26 hafta")
           )
           , (function(){var s=new Date();var g=s.getDay();var sc=g===6?0:(6-g);return React.createElement('div',{style:{fontSize:10,color:"#64748b",background:"#141824",padding:"4px 9px",borderRadius:6,border:"1px solid #2a3050"}},g===6&&s.getHours()>=16?"🟢 Bugün kapandı":sc===0?"⏰ Bugün kapama günü":"⏳ "+sc+" gün sonra Cmt");})()
         )
@@ -2543,7 +2543,7 @@ function App(){
         , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}
           , React.createElement('div', null
             , React.createElement('div', {style:{fontWeight:700,fontSize:13}}, "📆 Aylık Kapamalar")
-            , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:2}}, "Ayın son günü 18:00 · Son 2 ay")
+            , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:2}}, "Her ayın 1'i · Son 12 ay")
           )
           , (function(){var s=new Date();var son=new Date(s.getFullYear(),s.getMonth()+1,0).getDate();var kalan=son-s.getDate();return React.createElement('div',{style:{fontSize:10,color:"#64748b",background:"#141824",padding:"4px 9px",borderRadius:6,border:"1px solid #2a3050"}},s.getDate()===son&&s.getHours()>=18?"🟢 Bugün kapandı":kalan===0?"⏰ Bugün kapama günü":"⏳ "+kalan+" gün sonra");})()
         )
