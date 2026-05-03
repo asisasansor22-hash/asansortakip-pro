@@ -508,6 +508,8 @@ function App(){
   const kapamaTetiklendi=React.useRef({haftalik:false,aylik:false});
   const aylikKapamaRef=React.useRef([]); // aylikKapamalar'ın her zaman güncel kopyası
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
+  const haftalikKapamaRef=React.useRef([]);
+  useEffect(function(){haftalikKapamaRef.current=haftalikKapamalar;},[haftalikKapamalar]);
 
   // Login öncesi pre-auth yükleme: public bilgiler + bakımcı listesi (public/bakimcilar, şifresiz)
   useEffect(function(){
@@ -684,13 +686,23 @@ function App(){
       var hafta=getISOWeek(simdi);
       var yil=simdi.getFullYear();
       var kapamaKey="H"+yil+"-W"+hafta;
+      var lsKey="kapama_"+kapamaKey;
+      var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
+      if(zatenKapandi) return;
+      var baslangic=new Date(simdi);
+      baslangic.setDate(simdi.getDate()-6);
+      baslangic.setHours(0,0,0,0);
+      var bitis=new Date(simdi);
+      bitis.setHours(23,59,59,999);
+      var donemOdemeleri=sonOdemeler.filter(function(o){
+        var d=new Date(o.tarih);
+        return !isNaN(d)&&d>=baslangic&&d<=bitis;
+      });
       setHaftalikKapamalar(function(prev){
         var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
         if(zatenVar) return prev;
-        var baslangic=new Date(simdi);
-        baslangic.setDate(simdi.getDate()-6);
         var basStr=baslangic.toLocaleDateString("tr-TR");
-        var bitStr=simdi.toLocaleDateString("tr-TR");
+        var bitStr=bitis.toLocaleDateString("tr-TR");
         var snap={
           id:Date.now(),
           kapamaKey:kapamaKey,
@@ -698,14 +710,15 @@ function App(){
           baslarken:basStr,
           biterken:bitStr,
           kapamaZamani:simdi.toLocaleString("tr-TR"),
-          odemeler:sonOdemeler.slice(),
-          toplam:sonOdemeler.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
-          odemeAdedi:sonOdemeler.length
+          odemeler:donemOdemeleri.slice(),
+          toplam:donemOdemeleri.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
+          odemeAdedi:donemOdemeleri.length
         };
         var yeni=[snap,...prev];
-        if(yeni.length>5) yeni=yeni.slice(0,5);
+        if(yeni.length>26) yeni=yeni.slice(0,26);
         return yeni;
       });
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
     }
 
     function yapAylikKapama(){
@@ -719,6 +732,12 @@ function App(){
       // Çift çalışma koruması: localStorage (Firebase gecikmesine karşı) + ref (stale closure'a karşı)
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||aylikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
+      var ayBaslangic=new Date(yil,ay,1);ayBaslangic.setHours(0,0,0,0);
+      var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
+      var donemOdemeleri=sonOdemeler.filter(function(o){
+        var d=new Date(o.tarih);
+        return !isNaN(d)&&d>=ayBaslangic&&d<=aySon;
+      });
       setAylikKapamalar(function(prev){
         var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
         if(zatenVar) return prev;
@@ -729,12 +748,12 @@ function App(){
           ay:MONTHS[ay],
           yil:yil,
           kapamaZamani:simdi.toLocaleString("tr-TR"),
-          odemeler:sonOdemeler.slice(),
-          toplam:sonOdemeler.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
-          odemeAdedi:sonOdemeler.length
+          odemeler:donemOdemeleri.slice(),
+          toplam:donemOdemeleri.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
+          odemeAdedi:donemOdemeleri.length
         };
         var yeni=[snap,...prev];
-        if(yeni.length>2) yeni=yeni.slice(0,2);
+        if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
       // Devir hesabı zaten yapıldıysa tekrar yapma
@@ -742,8 +761,6 @@ function App(){
       // localStorage'a hemen kaydet — Firebase yazılmadan sayfa yenilenirse tekrar çalışmasın
       try{localStorage.setItem(lsKey,"1");}catch(e){}
       /* Ay kapanışında: her asansör için yeniDevir → bakiyeDevir olarak geçir */
-      var ayBaslangic=new Date(yil,ay,1);ayBaslangic.setHours(0,0,0,0);
-      var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
           var eskiDevir=ev.bakiyeDevir||0;
