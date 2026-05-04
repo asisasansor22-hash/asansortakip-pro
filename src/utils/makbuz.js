@@ -12,15 +12,16 @@ export function makbuzBakimYazdir(maint, elev) {
   var makbuzNo = String(yil)+ay+gun+simdi.getHours().toString().padStart(2,"0")+simdi.getMinutes().toString().padStart(2,"0");
   var adres = elev ? ((elev.semt ? elev.semt+" Mah., " : "")+(elev.adres||"")) : "";
   var ilce = elev ? (elev.ilce||"") : "";
-  var aylikUcret = (elev ? (elev.aylikUcret||0) : (maint.tutar||0)).toLocaleString("tr-TR");
-  var alinan = (maint.alinanTutar||0).toLocaleString("tr-TR");
+  var aylikUcretSayi0 = elev ? (Number(elev.aylikUcret)||0) : (Number(maint.tutar)||0);
+  var alinanSayi = Number(maint.alinanTutar)||0;
+  var aylikUcret = aylikUcretSayi0.toLocaleString("tr-TR");
+  var alinan = alinanSayi.toLocaleString("tr-TR");
   var bakimTarih = maint.yapildiSaat ? String(maint.yapildiSaat).split(" ")[0] : (maint.tarih||"");
   var bakimSaat = maint.yapildiSaat ? (String(maint.yapildiSaat).split(" ")[1]||"").substring(0,5) : "";
   var odendi = maint.odendi ? "✓ Ödendi" : "✗ Ödenmedi";
   var odendiRenk = maint.odendi ? "#10b981" : "#ef4444";
-  var aylikUcretSayi = elev ? (elev.aylikUcret||0) : (maint.tutar||0);
-  var eskiDevir = elev ? (elev.bakiyeDevir||0) : 0;
-  var kalanDevir = Math.max(0, eskiDevir + aylikUcretSayi - (maint.alinanTutar||0));
+  var eskiDevir = elev ? (Number(elev.bakiyeDevir)||0) : 0;
+  var kalanDevir = Math.max(0, eskiDevir + aylikUcretSayi0 - alinanSayi);
   var eskiDevirStr = eskiDevir.toLocaleString("tr-TR");
   var kalanDevirStr = kalanDevir.toLocaleString("tr-TR");
   var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : "#10b981";
@@ -83,7 +84,7 @@ export function makbuzBakimYazdir(maint, elev) {
     '<div class="bolum">Devir &amp; \u00d6deme</div>' +
     '<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Eski Devir</span><span class="dg" style="color:#ef4444;">' + eskiDevirStr + ' \u20ba</span></div>' +
     '<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Bak\u0131m \u00dccreti</span><span class="dg">' + aylikUcret + ' \u20ba</span></div>' +
-    ((maint.alinanTutar||0)>0?'<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Al\u0131nan</span><span class="dg" style="color:#10b981;">'+alinan+' \u20ba</span></div>':'') +
+    (alinanSayi>0?'<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Al\u0131nan</span><span class="dg" style="color:#10b981;">'+alinan+' \u20ba</span></div>':'') +
     '<div class="kutu">' +
     '<div class="kutu-l">Kalan Devir</div>' +
     '<div class="kutu-t" style="color:' + kalanDevirRenk + '">' + kalanDevirStr + ' \u20ba</div>' +

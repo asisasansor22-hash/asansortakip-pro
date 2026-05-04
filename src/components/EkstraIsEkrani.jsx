@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { makbuzEkstraYazdir } from '../utils/makbuz.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal, MONTHS, getIlceRenk } from '../utils/constants.js'
 
+function ekstraTutar(v){ var n=Number(v); return isNaN(n)?0:n; }
+
 function EkstraIsEkrani(props) {
   var elevs = props.elevs;
   var ekstraIsler = props.ekstraIsler;
@@ -32,8 +34,8 @@ function EkstraIsEkrani(props) {
     return gorunenIsler.slice().sort(function(a,b){return (b.tarih+(b.saat||"")).localeCompare(a.tarih+(a.saat||""));});
   },[gorunenIsler]);
   var toplamIs=gorunenIsler.length;
-  var devirdekiTutar=gorunenIsler.filter(function(k){return !k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
-  var odenenTutar=gorunenIsler.filter(function(k){return !!k.odendi;}).reduce(function(s,k){return s+(k.tutar||0);},0);
+  var devirdekiTutar=gorunenIsler.filter(function(k){return !k.odendi;}).reduce(function(s,k){return s+ekstraTutar(k.tutar);},0);
+  var odenenTutar=gorunenIsler.filter(function(k){return !!k.odendi;}).reduce(function(s,k){return s+ekstraTutar(k.tutar);},0);
   function kaydet(){
     var binaId=Number(form.binaId);
     var tutar=parseFloat(form.tutar)||0;
@@ -46,7 +48,7 @@ function EkstraIsEkrani(props) {
     var yeniKayit={id:Date.now(),binaId:binaId,binaAd:bina?bina.ad:"?",ilce:bina?bina.ilce:"",isAdi:form.isAdi.trim(),tutar:tutar,tarih:form.tarih||today,saat:saat,not:form.not||"",rol:rol,odendi:!!form.odendi,bakimciId:aktifBakimci?aktifBakimci.id:null};
     setEkstraIsler(function(p){return p.concat([yeniKayit]);});
     if(!form.odendi){
-      setElevs(function(p){return p.map(function(e){if(e.id===binaId){return Object.assign({},e,{bakiyeDevir:(e.bakiyeDevir||0)+tutar});}return e;});});
+      setElevs(function(p){return p.map(function(e){if(Number(e.id)===Number(binaId)){return Object.assign({},e,{bakiyeDevir:(e.bakiyeDevir||0)+tutar});}return e;});});
       alert("Ekstra iş kaydedildi ve devir bakiyeye eklendi.");
     } else {
       alert("Ekstra iş kaydedildi. (Ödendi — devir etkilenmedi.)");
@@ -57,7 +59,8 @@ function EkstraIsEkrani(props) {
     var kayit=ekstraIsler.find(function(k){return k.id===id;});
     if(!kayit) return;
     if(!kayit.odendi){
-      setElevs(function(p){return p.map(function(e){if(e.id===kayit.binaId){return Object.assign({},e,{bakiyeDevir:(e.bakiyeDevir||0)-kayit.tutar});}return e;});});
+      var silTutar=ekstraTutar(kayit.tutar);
+      setElevs(function(p){return p.map(function(e){if(Number(e.id)===Number(kayit.binaId)){return Object.assign({},e,{bakiyeDevir:(e.bakiyeDevir||0)-silTutar});}return e;});});
     }
     setEkstraIsler(function(p){return p.filter(function(k){return k.id!==id;});});
     setSilOnay(null);
@@ -150,7 +153,7 @@ function EkstraIsEkrani(props) {
                   React.createElement("div",{style:{fontSize:10,color:"#475569",marginTop:2}},"\uD83D\uDCC5 "+k.tarih+" "+(k.saat||"")+(k.not?" \u00b7 "+k.not:""))
                 ),
                 React.createElement("div",{style:{textAlign:"right",flexShrink:0,marginLeft:8}},
-                  React.createElement("div",{style:{fontSize:16,fontWeight:900,color:k.odendi?"#10b981":"#f59e0b",marginBottom:4}},"+"+(k.tutar||0).toLocaleString("tr-TR")+" \u20ba"),
+                  React.createElement("div",{style:{fontSize:16,fontWeight:900,color:k.odendi?"#10b981":"#f59e0b",marginBottom:4}},"+"+ekstraTutar(k.tutar).toLocaleString("tr-TR")+" \u20ba"),
                   React.createElement("div",{style:{fontSize:9,fontWeight:700,color:k.odendi?"#10b981":"#f59e0b",background:k.odendi?"#1e3a2e":"#2a1e00",padding:"2px 6px",borderRadius:4,marginBottom:4}},k.odendi?"\u2705 \u00d6dendi":"\u23f3 Devire eklendi"),
                   React.createElement("button",{
                     onClick:function(){var bina=elevs.find(function(e){return e.id===k.binaId;});makbuzEkstraYazdir(k,bina||null);},
@@ -169,7 +172,7 @@ function EkstraIsEkrani(props) {
     silOnay&&React.createElement("div",{style:{position:"fixed",inset:0,background:"#000000cc",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
       React.createElement("div",{style:{background:"#1a1f2e",borderRadius:16,border:"1px solid #ef444444",padding:24,maxWidth:320,width:"100%"}},
         React.createElement("div",{style:{fontSize:15,fontWeight:800,color:"#ef4444",marginBottom:8}},"\u26a0\ufe0f Kay\u0131t Silinecek"),
-        React.createElement("div",{style:{fontSize:12,color:"#94a3b8",marginBottom:16}},"Bu i\u015flem geri al\u0131namaz."+(ekstraIsler.find(function(k){return k.id===silOnay;})&&!ekstraIsler.find(function(k){return k.id===silOnay;}).odendi?" Devir bakiyeden de d\u00fc\u015f\u00fclecek.":"")),
+        React.createElement("div",{style:{fontSize:12,color:"#94a3b8",marginBottom:16}},"Bu i\u015flem geri al\u0131namaz."+(function(){var sk=ekstraIsler.find(function(k){return k.id===silOnay;});return sk&&!sk.odendi?" Devir bakiyeden de d\u00fc\u015f\u00fclecek.":"";})()),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement("button",{onClick:function(){setSilOnay(null);},style:{flex:1,padding:"10px",background:"#2a3050",border:"none",borderRadius:8,color:"#94a3b8",cursor:"pointer",fontWeight:600}},"\u0130ptal"),
           React.createElement("button",{onClick:function(){silKayit(silOnay);},style:{flex:1,padding:"10px",background:"#ef4444",border:"none",borderRadius:8,color:"#fff",cursor:"pointer",fontWeight:800}},"Evet, Sil")

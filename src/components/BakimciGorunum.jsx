@@ -4,7 +4,7 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
+function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
   var _firmaAdi=firmaAdi||"Şirketimiz";
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
@@ -41,7 +41,9 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
   };
 
   const mMonth=useMemo(()=>maints.filter(m=>{const d=new Date(m.tarih);return d.getMonth()===fMonth&&d.getFullYear()===new Date().getFullYear();}),[maints,fMonth]);
-  const buAyToplamAlinan=(elevId)=>{
+  /** App.jsx ile aynı: son ödemeler + bakımda olup listede olmayan tahsilat. Yoksa eski davranış (sadece sonOdemeler) yanlış “yeni devir” önizlemesi verirdi. */
+  const buAyTahsil=function(elevId){
+    if(typeof buAyToplamAlinan==="function") return buAyToplamAlinan(elevId);
     var simdi=new Date();
     var ayBaslangic=new Date(simdi.getFullYear(),simdi.getMonth(),1);
     var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);
@@ -126,7 +128,9 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     var elev=odemeSorModal.elev;
     var yapildiSaat=odemeSorModal.yapildiSaat;
     // Bakım kaydına tamamlandı + ödeme bilgisi ekle
-    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:true}):x;});});
+    var beklenen=Number(m.tutar)||Number(elev.aylikUcret)||0;
+    var odendiTam=tutar>=beklenen;
+    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:odendiTam}):x;});});
     // Son ödemeler listesine ekle
     var parts=yapildiSaat.split(" ");
     var tarih=parts[0]||"";
@@ -488,7 +492,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                       , React.createElement('button', {
                           onClick:function(){
                             var o=odemeSorModal;
-                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat}):x;});});
+                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
@@ -524,7 +528,7 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
                         if(!elev) return null;
                         var eskiDevir=elev.bakiyeDevir||0;
                         var aylikUcret=elev.aylikUcret||0;
-                        var mevcutAyOdemesi=buAyToplamAlinan(elev.id);
+                        var mevcutAyOdemesi=buAyTahsil(elev.id);
                         var alinan=parseFloat(odemeMiktar)||0;
                         var yeniD=eskiDevir+aylikUcret-(mevcutAyOdemesi+alinan);
                         var renk=yeniD>0?"#f97316":yeniD===0?"#94a3b8":"#34d399";
