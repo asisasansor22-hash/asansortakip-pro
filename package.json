@@ -6,9 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "firebase:login": "npx -y firebase-tools@latest login --no-localhost",
+    "firebase:use": "npx -y firebase-tools@latest use",
+    "emulators:start": "npx -y firebase-tools@latest emulators:start",
+    "emulators:start:import": "npx -y firebase-tools@latest emulators:start --import=.firebase/emulator-data --export-on-exit",
+    "emulators:export": "npx -y firebase-tools@latest emulators:export .firebase/emulator-data"
   },
   "dependencies": {
+    "@sentry/react": "^10.51.0",
     "docx": "^9.6.1",
     "firebase": "^12.12.0",
     "html2canvas": "^1.4.1",
