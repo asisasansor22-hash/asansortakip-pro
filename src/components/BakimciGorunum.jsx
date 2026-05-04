@@ -58,7 +58,9 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
     // Sadece bu bakımcıya atanmış kayıtları göster
     if(aktifBakimci&&m.bakimciId!==aktifBakimci.id) return false;
     // İlçe filtresi: bakımcının atanmış ilçeleri varsa sadece o ilçelerin asansörlerini göster
-    if(aktifBakimci&&aktifBakimci.ilceler&&aktifBakimci.ilceler.length>0){
+    // Ancak kayıt bu bakımcıya özellikle atanmışsa (bakimciId eşleşiyor) ilçe filtresini atla
+    var ozelAtanmis=aktifBakimci&&m.bakimciId&&m.bakimciId===aktifBakimci.id;
+    if(!ozelAtanmis&&aktifBakimci&&aktifBakimci.ilceler&&aktifBakimci.ilceler.length>0){
       if(!aktifBakimci.ilceler.includes(elev.ilce)) return false;
     }
     return true;
@@ -86,11 +88,17 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,ilceler,tod
   const kaydetOdeme=()=>{
     const {elev,maint}=odemeModal;
     const alinan=parseFloat(odemeForm.alinan)||0;
-    const simdi=new Date().toLocaleString("tr-TR");
+    const now=new Date();
+    const simdi=now.toLocaleString("tr-TR");
+    const tarih=now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0")+"-"+now.getDate().toString().padStart(2,"0");
+    const saat=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
     if(maint){
       setMaints(p=>p.map(m=>m.id===maint.id?{...m,alinanTutar:alinan,notlar:odemeForm.not||m.notlar,yapildi:true,yapildiSaat:simdi,odendi:alinan>=m.tutar}:m));
     } else {
       setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{}}]);
+    }
+    if(alinan>0){
+      setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||""}]);});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };

@@ -775,10 +775,19 @@ function App(){
           if(ev.yeniDevirManuel!==undefined&&ev.yeniDevirManuel!==null&&ev.yeniDevirManuel!==""){
             yeniDevirHesap=Number(ev.yeniDevirManuel);
           } else {
-            var toplamAlinan=sonOdemeler.filter(function(o){
+            var sonOdemelerAlinan=sonOdemeler.filter(function(o){
               var od=new Date(o.tarih);
               return Number(o.aid)===Number(ev.id)&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
             }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
+            // sonOdemeler'de kayıt yoksa maints.alinanTutar'a fallback yap (eski kayıtlar için)
+            var ekstraAlinan=0;
+            if(sonOdemelerAlinan===0){
+              ekstraAlinan=maints.filter(function(m){
+                var md=new Date(m.tarih);
+                return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&m.odendi&&md>=ayBaslangic&&md<=aySon;
+              }).reduce(function(s,m){return s+(m.alinanTutar||m.tutar||0);},0);
+            }
+            var toplamAlinan=sonOdemelerAlinan+ekstraAlinan;
             yeniDevirHesap=eskiDevir+aylikUcret-toplamAlinan;
           }
           // yeniDevirManuel sıfırla — bir sonraki ay otomatik hesaba döner
@@ -1100,11 +1109,16 @@ function App(){
     const ayBaslangic=new Date(simdi.getFullYear(),simdi.getMonth(),1);
     const aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);
     aySon.setHours(23,59,59,999);
-    return sonOdemeler.filter(function(o){
+    const soAlinan=sonOdemeler.filter(function(o){
       var od=new Date(o.tarih);
       var ayniAsansor=Number(o.aid)===Number(id);
       return ayniAsansor&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
     }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
+    // sonOdemeler'de kayıt yoksa maints.alinanTutar'a fallback yap (eski kayıtlar için)
+    if(soAlinan===0){
+      return mMonth.filter(function(m){return Number(m.asansorId)===Number(id)&&m.yapildi&&m.odendi;}).reduce(function(s,m){return s+(m.alinanTutar||m.tutar||0);},0);
+    }
+    return soAlinan;
   };
 
   const bal=(id)=>{
