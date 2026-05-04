@@ -476,6 +476,7 @@ function App(){
   const [aktifHaftalik,setAktifHaftalik]=useState(null);
   const [aktifAylik,setAktifAylik]=useState(null);
   const [finansTab,setFinansTab]=useState(0);
+  const [finansYenileniyor,setFinansYenileniyor]=useState(false);
   const [giderler,setGiderler]=useState([]);
   const [giderForm,setGiderForm]=useState({tarih:"",aciklama:"",tutar:""});
   const [giderFormAcik,setGiderFormAcik]=useState(false);
@@ -670,6 +671,24 @@ function App(){
       }
     }
   },[bakimcilar]);
+
+  // Finans sekmesi için canlı yenileme
+  const finansYenile=React.useCallback(async function(){
+    setFinansYenileniyor(true);
+    try{
+      var [rO,rM]=await Promise.all([dbGet("at_sonodemeler"),dbGet("at_maints")]);
+      if(rO){var d=Array.isArray(rO)?rO:(typeof rO==='string'?JSON.parse(rO):null);if(Array.isArray(d)){setSonOdemeler(d);lsSet("ls_sonodemeler",d);}}
+      if(rM){var d2=Array.isArray(rM)?rM:(typeof rM==='string'?JSON.parse(rM):null);if(Array.isArray(d2)){setMaints(d2);lsSet("ls_maints",d2);}}
+    }catch(e){}
+    setFinansYenileniyor(false);
+  },[]);
+
+  // Finans sekmesinde otomatik 2 dakikada bir yenile
+  React.useEffect(function(){
+    if(tab!==6||rol!=="yonetici") return;
+    var t=setInterval(finansYenile,120000);
+    return function(){clearInterval(t);};
+  },[tab,rol,finansYenile]);
 
   // Yükleme ekranı
 
@@ -2200,7 +2219,17 @@ function App(){
 /* FİNANS */
 , tab===6&&(rol!=="yonetici"||isSuper||limits.finans)&&(
   React.createElement('div', null
-    , React.createElement('h2', {style:{fontSize:18,fontWeight:900,marginBottom:14,marginTop:0}}, "💰 Finansal Durum")
+    , React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}
+        , React.createElement('h2', {style:{fontSize:18,fontWeight:900,margin:0}}, "💰 Finansal Durum")
+        , React.createElement('button',{
+            onClick:finansYenile,
+            disabled:finansYenileniyor,
+            style:{padding:"7px 14px",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:9,color:finansYenileniyor?"#475569":"#3b82f6",fontSize:12,fontWeight:700,cursor:finansYenileniyor?"default":"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .2s"}
+          }
+          , React.createElement('span',{style:{display:"inline-block",animation:finansYenileniyor?"spin 1s linear infinite":"none"}},"🔄")
+          , finansYenileniyor?"Yenileniyor...":"Yenile"
+        )
+      )
 
     /* Özet İstatistikler */
     , (function(){
