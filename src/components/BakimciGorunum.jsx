@@ -95,12 +95,12 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamA
     const tarih=now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0")+"-"+now.getDate().toString().padStart(2,"0");
     const saat=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
     if(maint){
-      setMaints(p=>p.map(m=>m.id===maint.id?{...m,alinanTutar:alinan,notlar:odemeForm.not||m.notlar,yapildi:true,yapildiSaat:simdi,odendi:alinan>=m.tutar}:m));
+      setMaints(p=>p.map(m=>m.id===maint.id?{...m,alinanTutar:alinan,notlar:odemeForm.not||m.notlar,yapildi:true,yapildiSaat:simdi,odendi:alinan>=m.tutar,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}:m));
     } else {
-      setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{}}]);
+      setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{},tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}]);
     }
     if(alinan>0){
-      setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||""}]);});
+      setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -130,12 +130,12 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamA
     // Bakım kaydına tamamlandı + ödeme bilgisi ekle
     var beklenen=Number(m.tutar)||Number(elev.aylikUcret)||0;
     var odendiTam=tutar>=beklenen;
-    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:odendiTam}):x;});});
+    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:odendiTam,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}):x;});});
     // Son ödemeler listesine ekle
     var parts=yapildiSaat.split(" ");
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
-    setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||""}]);});
+    setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
     // NOT: bakiyeDevir burada değiştirilmez — ay kapanışında yeniDevir → bakiyeDevir geçer
     setMakbuzSonBakim({m:odemeSorModal.m,elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
