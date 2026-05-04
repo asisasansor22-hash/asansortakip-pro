@@ -2286,6 +2286,7 @@ function App(){
         var bugunSon=new Date(simdi.getFullYear(),simdi.getMonth(),simdi.getDate(),23,59,59,999);
         var gunler=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
         var bugunOdemeler=sonOdemeler.filter(function(o){var od=new Date(o.tarih);return od>=bugunBas&&od<=bugunSon;}).slice().reverse();
+        maints.filter(function(m){var amt=m.alinanTutar||m.tutar||0;if(!m.yapildi||amt<=0) return false;var od=new Date(m.tarih);if(od<bugunBas||od>bugunSon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&o.aid===m.asansorId&&(o.alinanTutar||0)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};bugunOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:m.saat||"--:--",alinanTutar:m.alinanTutar||m.tutar||0,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var bugunToplam=bugunOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
         var bugunAdet=bugunOdemeler.filter(function(o){return !o.iptal;}).length;
         return React.createElement('div', null
@@ -2330,9 +2331,14 @@ function App(){
                           , React.createElement('div', {style:{fontSize:17,fontWeight:900,color:iptal?"#64748b":"#10b981",textDecoration:iptal?"line-through":"none"}}, (o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")
                           , !iptal&&React.createElement('button', {
                               onClick:function(){
-                                if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
-                                setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                if(o._fromMaint){
+                                  if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
+                                  setMaints(function(p){return p.map(function(m){return "maint_"+m.id===o.id?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                } else {
+                                  if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
+                                  setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                  setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                }
                               },
                               style:{marginTop:4,padding:"3px 8px",background:"#3a1e1e",border:"1px solid #ef444444",borderRadius:5,color:"#ef4444",fontSize:10,fontWeight:700,cursor:"pointer"}
                             }, "↩ Geri Al")
@@ -2352,6 +2358,7 @@ function App(){
         var haftaBas=new Date(simdi);haftaBas.setDate(simdi.getDate()+pazartesiFark);haftaBas.setHours(0,0,0,0);
         var haftaSon=new Date(haftaBas);haftaSon.setDate(haftaBas.getDate()+6);haftaSon.setHours(23,59,59,999);
         var haftaOdemeler=sonOdemeler.filter(function(o){var od=new Date(o.tarih);return od>=haftaBas&&od<=haftaSon;});
+        maints.filter(function(m){var amt=m.alinanTutar||m.tutar||0;if(!m.yapildi||amt<=0) return false;var od=new Date(m.tarih);if(od<haftaBas||od>haftaSon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&o.aid===m.asansorId&&(o.alinanTutar||0)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};haftaOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:m.saat||"--:--",alinanTutar:m.alinanTutar||m.tutar||0,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var haftaToplam=haftaOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
         var haftaAdet=haftaOdemeler.filter(function(o){return !o.iptal;}).length;
         var gunAdlari=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
@@ -2414,9 +2421,14 @@ function App(){
                                   , React.createElement('div', {style:{fontSize:14,fontWeight:900,color:iptal?"#475569":"#10b981",textDecoration:iptal?"line-through":"none"}}, (o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")
                                   , !iptal&&React.createElement('button', {
                                       onClick:function(){
-                                        if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
-                                        setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                        setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                        if(o._fromMaint){
+                                          if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
+                                          setMaints(function(p){return p.map(function(m){return "maint_"+m.id===o.id?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                        } else {
+                                          if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
+                                          setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                          setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                        }
                                       },
                                       style:{fontSize:9,padding:"2px 6px",background:"#3a1e1e",border:"1px solid #ef444433",borderRadius:4,color:"#ef4444",fontWeight:700,cursor:"pointer",marginTop:2}
                                     }, "↩")
@@ -2437,6 +2449,7 @@ function App(){
         var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
         var ayAd=MONTHS[simdi.getMonth()];
         var ayOdemeler=sonOdemeler.filter(function(o){var od=new Date(o.tarih);return od>=ayBas&&od<=aySon;}).slice().reverse();
+        maints.filter(function(m){var amt=m.alinanTutar||m.tutar||0;if(!m.yapildi||amt<=0) return false;var od=new Date(m.tarih);if(od<ayBas||od>aySon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&o.aid===m.asansorId&&(o.alinanTutar||0)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};ayOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:m.saat||"--:--",alinanTutar:m.alinanTutar||m.tutar||0,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var ayToplam=ayOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
         var ayHedef=elevs.reduce(function(s,e){return s+(e.aylikUcret||0);},0);
         var ayIptalToplam=ayOdemeler.filter(function(o){return o.iptal;}).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
@@ -2520,9 +2533,14 @@ function App(){
                                 ? null
                                 : React.createElement('button',{
                                     onClick:function(){
-                                      if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
-                                      setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                      setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                      if(o._fromMaint){
+                                        if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
+                                        setMaints(function(p){return p.map(function(m){return "maint_"+m.id===o.id?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                      } else {
+                                        if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
+                                        setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                        setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&(m.alinanTutar||m.tutar||0)===(o.alinanTutar||0)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
+                                      }
                                     },
                                     style:{padding:"3px 8px",background:"#3a1e1e",border:"1px solid #ef444433",borderRadius:5,color:"#ef4444",fontSize:10,fontWeight:700,cursor:"pointer"}
                                   },"↩")
