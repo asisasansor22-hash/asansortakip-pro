@@ -82,11 +82,33 @@ function maintTahsilatNotInSonOdemeler(sonOdemeler,maints,ayBas,aySon){
     if(!m.yapildi||amt<=0) return false;
     var od=parseFinansDate(m.tarih);
     if(!od||od<ayBas||od>aySon) return false;
-    return !sonOdemeler.some(function(o){
-      if(o.iptal) return false;
-      return Number(o.aid)===Number(m.asansorId)&&finansTutar(o.alinanTutar)===amt;
-    });
+    return !hasSonOdemeMatchForMaint(sonOdemeler,m,ayBas,aySon,amt);
   }).reduce(function(s,m){ return s+finansMaintAlinan(m); },0);
+}
+function hasSonOdemeMatchForMaint(sonOdemeler,m,bas,son,amt){
+  function dateKeyFromAny(v){
+    var d=parseFinansDate(v);
+    if(!d) return "";
+    var y=d.getFullYear();
+    var mo=String(d.getMonth()+1).padStart(2,"0");
+    var da=String(d.getDate()).padStart(2,"0");
+    return y+"-"+mo+"-"+da;
+  }
+  var maintDateKey=dateKeyFromAny(m&&m.yapildiSaat)||dateKeyFromAny(m&&m.tarih);
+  return (sonOdemeler||[]).some(function(o){
+    if(!o||o.iptal) return false;
+    if(Number(o.aid)!==Number(m.asansorId)) return false;
+    if(finansTutar(o.alinanTutar)!==finansTutar(amt)) return false;
+    var od=parseFinansDate(o.tarih);
+    if(!od) return false;
+    if(bas&&od<bas) return false;
+    if(son&&od>son) return false;
+    // Aynı asansörde aynı tutar tekrar edebildiği için günü de eşleştir.
+    // Böylece farklı günlerdeki kısmi tahsilatlar yanlışlıkla "zaten var" sayılıp düşmez.
+    var odemeDateKey=dateKeyFromAny(o.tarih);
+    if(maintDateKey&&odemeDateKey&&maintDateKey!==odemeDateKey) return false;
+    return true;
+  });
 }
 
 var DASHBOARD_CARD_SIZES=["small","medium","full"];
@@ -1255,10 +1277,7 @@ function App(){
       if(Number(m.asansorId)!==Number(id)||!m.yapildi||amt<=0) return false;
       var od=parseFinansDate(m.tarih);
       if(!od||od<ayBaslangic||od>aySon) return false;
-      return !sonOdemeler.some(function(o){
-        if(o.iptal) return false;
-        return Number(o.aid)===Number(m.asansorId)&&finansTutar(o.alinanTutar)===amt;
-      });
+      return !hasSonOdemeMatchForMaint(sonOdemeler,m,ayBaslangic,aySon,amt);
     }).reduce(function(s,m){return s+finansMaintAlinan(m);},0);
     return soAlinan+maintEk;
   };
@@ -2551,7 +2570,7 @@ function App(){
         var bugunSon=new Date(simdi.getFullYear(),simdi.getMonth(),simdi.getDate(),23,59,59,999);
         var gunler=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
         var bugunOdemeler=sonOdemeler.filter(function(o){var od=parseFinansDate(o.tarih);return od&&od>=bugunBas&&od<=bugunSon;}).slice().reverse();
-        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<bugunBas||od>bugunSon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&Number(o.aid)===Number(m.asansorId)&&finansTutar(o.alinanTutar)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};bugunOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
+        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<bugunBas||od>bugunSon) return false;return !hasSonOdemeMatchForMaint(sonOdemeler,m,bugunBas,bugunSon,amt);}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};bugunOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var bugunToplam=bugunOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
         var bugunAdet=bugunOdemeler.filter(function(o){return !o.iptal;}).length;
         return React.createElement('div', null
@@ -2623,7 +2642,7 @@ function App(){
         var haftaBas=new Date(simdi);haftaBas.setDate(simdi.getDate()+pazartesiFark);haftaBas.setHours(0,0,0,0);
         var haftaSon=new Date(haftaBas);haftaSon.setDate(haftaBas.getDate()+6);haftaSon.setHours(23,59,59,999);
         var haftaOdemeler=sonOdemeler.filter(function(o){var od=parseFinansDate(o.tarih);return od&&od>=haftaBas&&od<=haftaSon;});
-        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<haftaBas||od>haftaSon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&Number(o.aid)===Number(m.asansorId)&&finansTutar(o.alinanTutar)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};haftaOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
+        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<haftaBas||od>haftaSon) return false;return !hasSonOdemeMatchForMaint(sonOdemeler,m,haftaBas,haftaSon,amt);}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};haftaOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var haftaToplam=haftaOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
         var haftaAdet=haftaOdemeler.filter(function(o){return !o.iptal;}).length;
         var gunAdlari=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
@@ -2714,7 +2733,7 @@ function App(){
         var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
         var ayAd=MONTHS[simdi.getMonth()];
         var ayOdemeler=sonOdemeler.filter(function(o){var od=parseFinansDate(o.tarih);return od&&od>=ayBas&&od<=aySon;}).slice().reverse();
-        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<ayBas||od>aySon) return false;return !sonOdemeler.some(function(o){return !o.iptal&&Number(o.aid)===Number(m.asansorId)&&finansTutar(o.alinanTutar)===amt;});}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};ayOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
+        maints.filter(function(m){var amt=finansMaintAlinan(m);if(!m.yapildi||amt<=0) return false;var od=parseFinansDate(m.tarih);if(!od||od<ayBas||od>aySon) return false;return !hasSonOdemeMatchForMaint(sonOdemeler,m,ayBas,aySon,amt);}).forEach(function(m){var elev=elevs.find(function(e){return e.id===m.asansorId;})||{};ayOdemeler.push({id:"maint_"+m.id,aid:m.asansorId,tarih:m.tarih,saat:finansSaatFromMaint(m),alinanTutar:finansMaintAlinan(m),not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",_fromMaint:true});});
         var ayToplam=ayOdemeler.filter(function(o){return !o.iptal;}).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
         var ayHedef=elevs.reduce(function(s,e){return s+(e.aylikUcret||0);},0);
         var ayIptalToplam=ayOdemeler.filter(function(o){return o.iptal;}).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
