@@ -592,6 +592,7 @@ function App(){
   const [firmaAyarlariKaydediliyor,setFirmaAyarlariKaydediliyor]=useState(false);
   const [dashboardEditorAcik,setDashboardEditorAcik]=useState(false);
   const [dashboardLayout,setDashboardLayout]=useState(function(){ return normalizeDashboardLayout(null); });
+  const [dashboardKaydediliyor,setDashboardKaydediliyor]=useState(false);
   // FirmaKoduGate'den gelen public bilgi (ad, adminEmail) — şifre içermez
   function handleFirmaKodu(slug, pub){ setTenantIdState(slug); setTenantConfig(pub||null); }
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
@@ -613,6 +614,11 @@ function App(){
     var key="at_dashboard_layout_"+tenantId;
     setDashboardLayout(normalizeDashboardLayout(lsGet(key)));
   },[tenantId]);
+  useEffect(function(){
+    if(!tenantId) return;
+    if(!(tenantConfig&&Array.isArray(tenantConfig.dashboardLayout)&&tenantConfig.dashboardLayout.length>0)) return;
+    setDashboardLayout(normalizeDashboardLayout(tenantConfig.dashboardLayout));
+  },[tenantId,tenantConfig&&tenantConfig.dashboardLayout]);
   useEffect(function(){
     if(!tenantId) return;
     lsSet("at_dashboard_layout_"+tenantId,dashboardLayout);
@@ -1324,6 +1330,21 @@ function App(){
   }
   function dashboardReset(){
     setDashboardLayout(normalizeDashboardLayout(null));
+  }
+  async function dashboardKaydetSunucu(){
+    if(!tenantId) return;
+    var payload=normalizeDashboardLayout(dashboardLayout);
+    setDashboardKaydediliyor(true);
+    var ok=await saveTenantConfig(tenantId,{dashboardLayout:payload});
+    setDashboardKaydediliyor(false);
+    if(ok){
+      setTenantConfig(function(prev){return Object.assign({},prev||{},{dashboardLayout:payload});});
+      setDashboardEditorAcik(false);
+      alert("Dashboard düzeni kaydedildi.");
+    } else {
+      setDashboardEditorAcik(false);
+      alert("Sunucuya kaydedilemedi. Düzen bu cihazda korunacak.");
+    }
   }
   const borcWhatsappMesaji=(e,borc)=>{
     var tutar=(borc||0).toLocaleString("tr-TR")+" ₺";
@@ -3588,9 +3609,10 @@ function App(){
               style:{flex:1,padding:"12px",borderRadius:12,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text-muted)",fontWeight:700,cursor:"pointer"}
             },"↺ Sıfırla"),
             React.createElement('button',{
-              onClick:function(){setDashboardEditorAcik(false);},
-              style:{flex:1.3,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontWeight:800,cursor:"pointer"}
-            },"✓ Kaydet")
+              onClick:dashboardKaydetSunucu,
+              disabled:dashboardKaydediliyor,
+              style:{flex:1.3,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontWeight:800,cursor:dashboardKaydediliyor?"default":"pointer",opacity:dashboardKaydediliyor?0.7:1}
+            },dashboardKaydediliyor?"Kaydediliyor...":"✓ Kaydet")
           )
         )
       )
