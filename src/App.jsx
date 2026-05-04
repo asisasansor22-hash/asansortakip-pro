@@ -89,6 +89,38 @@ function maintTahsilatNotInSonOdemeler(sonOdemeler,maints,ayBas,aySon){
   }).reduce(function(s,m){ return s+finansMaintAlinan(m); },0);
 }
 
+var DASHBOARD_CARDS_DEFAULT=[
+  {id:"planBadge",icon:"🚀",label:"Plan Kullanım Badge",desc:"Paket ve asansör limiti",enabled:true},
+  {id:"quickStats",icon:"📦",label:"Hızlı Durum Kartları",desc:"Toplam asansör, arıza, bakım",enabled:true},
+  {id:"financeSummary",icon:"💰",label:"Bu Ay Finansal Özet",desc:"Tahsil / Hedef / Bekleyen",enabled:true},
+  {id:"totalDevir",icon:"📊",label:"Toplam Devir Bakiye",desc:"Tüm asansörlerin devri",enabled:true},
+  {id:"openFaults",icon:"⚠️",label:"Açık Arızalar Listesi",desc:"Son 5 açık arıza",enabled:true},
+  {id:"districtStatus",icon:"🗺️",label:"İlçe Durumu",desc:"İlçe bazlı bakım oranı",enabled:true},
+  {id:"faultTrend",icon:"📈",label:"Arıza Trendi",desc:"Son 6 ay arıza grafiği",enabled:true},
+  {id:"maintenancePerformance",icon:"👨‍🔧",label:"Bakım Performansı",desc:"Bu ay / toplam / ödenmemiş",enabled:true},
+  {id:"inspectionAlerts",icon:"🔍",label:"Muayene Uyarıları",desc:"Geciken ve yaklaşan",enabled:true},
+  {id:"contractAlerts",icon:"📄",label:"Sözleşme Uyarıları",desc:"Biten ve yaklaşan",enabled:true}
+];
+function normalizeDashboardLayout(raw){
+  var fallback=DASHBOARD_CARDS_DEFAULT.map(function(c){return {id:c.id,enabled:c.enabled!==false};});
+  if(!Array.isArray(raw)||raw.length===0) return fallback;
+  var map={};
+  raw.forEach(function(it){
+    if(!it||!it.id) return;
+    map[it.id]={id:String(it.id),enabled:it.enabled!==false};
+  });
+  var ordered=[];
+  DASHBOARD_CARDS_DEFAULT.forEach(function(c){
+    if(map[c.id]){
+      ordered.push({id:c.id,enabled:map[c.id].enabled});
+      delete map[c.id];
+    } else {
+      ordered.push({id:c.id,enabled:c.enabled!==false});
+    }
+  });
+  return ordered;
+}
+
 // Rota yardımcı fonksiyonları
 function routeAddressKey(e){ return [e.ad||"",e.semt||"",e.adres||"",e.ilce||""].join(" | "); }
 function routeAddressLabel(e){ return (e.semt?e.semt+" Mahallesi, ":"")+(e.adres||"")+(e.ilce?", "+e.ilce+", İstanbul":""); }
@@ -558,6 +590,8 @@ function App(){
   const [firmaAyarlariAcik,setFirmaAyarlariAcik]=useState(false);
   const [firmaAyarlariForm,setFirmaAyarlariForm]=useState({});
   const [firmaAyarlariKaydediliyor,setFirmaAyarlariKaydediliyor]=useState(false);
+  const [dashboardEditorAcik,setDashboardEditorAcik]=useState(false);
+  const [dashboardLayout,setDashboardLayout]=useState(function(){ return normalizeDashboardLayout(null); });
   // FirmaKoduGate'den gelen public bilgi (ad, adminEmail) — şifre içermez
   function handleFirmaKodu(slug, pub){ setTenantIdState(slug); setTenantConfig(pub||null); }
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
@@ -573,6 +607,16 @@ function App(){
   useEffect(function(){aylikKapamaRef.current=aylikKapamalar;},[aylikKapamalar]);
   const haftalikKapamaRef=React.useRef([]);
   useEffect(function(){haftalikKapamaRef.current=haftalikKapamalar;},[haftalikKapamalar]);
+
+  useEffect(function(){
+    if(!tenantId) { setDashboardLayout(normalizeDashboardLayout(null)); return; }
+    var key="at_dashboard_layout_"+tenantId;
+    setDashboardLayout(normalizeDashboardLayout(lsGet(key)));
+  },[tenantId]);
+  useEffect(function(){
+    if(!tenantId) return;
+    lsSet("at_dashboard_layout_"+tenantId,dashboardLayout);
+  },[tenantId,dashboardLayout]);
 
   // Login öncesi pre-auth yükleme: public bilgiler + bakımcı listesi (public/bakimcilar, şifresiz)
   useEffect(function(){
@@ -1248,6 +1292,39 @@ function App(){
     return tel.replace(/^\+/,"");
   };
   const firmaAdi=(tenantConfig&&tenantConfig.ad)||(isSuper?"Asis Asansör Bakım ve Servis Hizmetleri":"Şirketimiz");
+  const dashboardMetaById=useMemo(function(){
+    var map={};
+    DASHBOARD_CARDS_DEFAULT.forEach(function(c){ map[c.id]=c; });
+    return map;
+  },[]);
+  const dashboardEnabledMap=useMemo(function(){
+    var map={};
+    normalizeDashboardLayout(dashboardLayout).forEach(function(c){ map[c.id]=c.enabled!==false; });
+    return map;
+  },[dashboardLayout]);
+  const dashboardCanEdit=(rol==="yonetici"||isSuper)&&!!tenantId;
+  function dashboardMove(itemId,delta){
+    setDashboardLayout(function(prev){
+      var list=normalizeDashboardLayout(prev);
+      var idx=list.findIndex(function(x){return x.id===itemId;});
+      if(idx<0) return list;
+      var ni=idx+delta;
+      if(ni<0||ni>=list.length) return list;
+      var copy=list.slice();
+      var tmp=copy[idx]; copy[idx]=copy[ni]; copy[ni]=tmp;
+      return copy;
+    });
+  }
+  function dashboardToggle(itemId){
+    setDashboardLayout(function(prev){
+      return normalizeDashboardLayout(prev).map(function(x){
+        return x.id===itemId?Object.assign({},x,{enabled:!(x.enabled!==false)}):x;
+      });
+    });
+  }
+  function dashboardReset(){
+    setDashboardLayout(normalizeDashboardLayout(null));
+  }
   const borcWhatsappMesaji=(e,borc)=>{
     var tutar=(borc||0).toLocaleString("tr-TR")+" ₺";
     return "Sayın "+e.ad+" Yönetimi,\n\n"+
@@ -1563,9 +1640,15 @@ function App(){
 /* DASHBOARD */
 , tab===0&&(
   React.createElement('div', { className:"ios-animate"}
-    , React.createElement('div', { style: {fontSize:28,fontWeight:800,letterSpacing:-1,marginBottom:16,marginTop:4}}, "Genel Bakış" )
+    , React.createElement('div', { style: {display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:16,marginTop:4,flexWrap:"wrap"}}
+      , React.createElement('div', { style: {fontSize:28,fontWeight:800,letterSpacing:-1}}, "Genel Bakış" )
+      , dashboardCanEdit&&React.createElement('button',{
+          onClick:function(){setDashboardEditorAcik(true);},
+          style:{padding:"8px 13px",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:10,color:"#3b82f6",fontSize:12,fontWeight:800,cursor:"pointer"}
+        },"⚙️ Dashboard Düzenle")
+    )
     /* PLAN KULLANIM BADGE'i */
-    , rol==="yonetici"&&!isSuper&&(function(){
+    , dashboardEnabledMap.planBadge&&rol==="yonetici"&&!isSuper&&(function(){
         var oran = limits.elevLimit===Infinity ? 0 : (elevs.length / limits.elevLimit);
         var renk = oran>=1 ? "#ef4444" : (oran>=0.8 ? "#f59e0b" : "#3b82f6");
         var bg = oran>=1 ? "rgba(239,68,68,0.1)" : (oran>=0.8 ? "rgba(245,158,11,0.1)" : "rgba(59,130,246,0.1)");
@@ -1591,14 +1674,14 @@ function App(){
         );
       })()
     /* BENTO GRID - Ana istatistikler */
-    , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10},}
+    , dashboardEnabledMap.quickStats&&React.createElement('div', { style: {display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:10},}
       , React.createElement(Stat, { icon: "🛗", label: "Toplam Asansör", value: elevs.length, color: "var(--accent)",})
       , React.createElement(Stat, { icon: "⚠️", label: "Açık Arıza", value: openFaults.length, color: "var(--ios-red)",})
       , React.createElement(Stat, { icon: "✅", label: "Bu Ay Yapılan", value: mMonth.filter(m=>m.yapildi).length, color: "var(--ios-green)",})
       , React.createElement(Stat, { icon: "⏳", label: "Bu Ay Kalan", value: elevs.length - mMonth.filter(m=>m.yapildi).length, color: "var(--ios-orange)",})
     )
     /* FİNANSAL BENTO */
-    , (function(){
+    , dashboardEnabledMap.financeSummary&&(function(){
         var simdi2=new Date();
         var ayBas2=new Date(simdi2.getFullYear(),simdi2.getMonth(),1);ayBas2.setHours(0,0,0,0);
         var aySon2=new Date(simdi2.getFullYear(),simdi2.getMonth()+1,0);aySon2.setHours(23,59,59,999);
@@ -1634,7 +1717,7 @@ function App(){
         );
       })()
     /* Toplam Devir Kartı */
-    , (function(){
+    , dashboardEnabledMap.totalDevir&&(function(){
         var toplamDevir=elevs.reduce(function(s,e){return s+(e.bakiyeDevir||0);},0);
         return React.createElement('div', {style:{background:"var(--bg-panel)",borderRadius:20,padding:"16px 18px",marginBottom:10,boxShadow:"var(--shadow-sm)",borderLeft:"4px solid "+(toplamDevir>0?"var(--ios-red)":toplamDevir===0?"var(--ios-green)":"var(--ios-orange)")}}
           , React.createElement('div', {style:{display:"flex",alignItems:"center",justifyContent:"space-between"}}
@@ -1648,7 +1731,7 @@ function App(){
         );
       })()
     /* Açık arızalar */
-    , React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,overflow:"hidden",marginBottom:10,boxShadow:"var(--shadow-sm)"}},
+    , dashboardEnabledMap.openFaults&&React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,overflow:"hidden",marginBottom:10,boxShadow:"var(--shadow-sm)"}},
       React.createElement('div', { style: {padding:"14px 16px 8px",display:"flex",justifyContent:"space-between",alignItems:"center"}},
         React.createElement('div', {style:{fontSize:14,fontWeight:700}}, "⚠️ Açık Arızalar"),
         openFaults.length>0&&React.createElement('span', {style:{background:"rgba(255,59,48,0.15)",color:"var(--ios-red)",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20}}, openFaults.length)
@@ -1667,7 +1750,7 @@ function App(){
         ))
     )
     /* İlçe durumu */
-    , React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)"}},
+    , dashboardEnabledMap.districtStatus&&React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,padding:"14px 16px",marginBottom:10,boxShadow:"var(--shadow-sm)"}},
       React.createElement('div', { style: {fontSize:14,fontWeight:700,marginBottom:12}}, "🗺️ İlçe Durumu"),
       React.createElement('div', { style: {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
         Object.entries(elevByIlce).sort((a,b)=>b[1].length-a[1].length).slice(0,6).map(([ilce,es])=>{
@@ -1687,7 +1770,7 @@ function App(){
       )
     )
     /* Arıza Trendi Grafiği - son 6 ay */
-    , (function(){
+    , dashboardEnabledMap.faultTrend&&(function(){
         var simdi=new Date();
         var aylar=[];
         for(var i=5;i>=0;i--){
@@ -1714,7 +1797,7 @@ function App(){
         );
       })()
     /* Teknisyen Performans Özeti */
-    , (function(){
+    , dashboardEnabledMap.maintenancePerformance&&(function(){
         var yapilan=maints.filter(function(m){return m.yapildi;});
         var buAy=mMonth.filter(function(m){return m.yapildi;});
         var odenmemis=maints.filter(function(m){return m.yapildi&&!m.odendi;}).length;
@@ -1738,7 +1821,7 @@ function App(){
         );
       })()
     /* Muayene Uyarıları */
-    , (function(){
+    , dashboardEnabledMap.inspectionAlerts&&(function(){
         var gecikti=muayeneler.filter(function(m){var g=new Date(m.sonrakiTarih||"");var b=new Date();b.setHours(0,0,0,0);return m.sonrakiTarih&&g<b;});
         var yakin=muayeneler.filter(function(m){var g=new Date(m.sonrakiTarih||"");var b=new Date();b.setHours(0,0,0,0);var diff=Math.round((g-b)/86400000);return m.sonrakiTarih&&diff>=0&&diff<=30;});
         if(gecikti.length===0&&yakin.length===0) return null;
@@ -1754,7 +1837,7 @@ function App(){
         );
       })()
     /* Sözleşme Uyarıları */
-    , (function(){
+    , dashboardEnabledMap.contractAlerts&&(function(){
         var b=new Date();b.setHours(0,0,0,0);
         var biten=sozlesmeler.filter(function(s){return s.bitis&&new Date(s.bitis)<b;}).length;
         var yakin=sozlesmeler.filter(function(s){if(!s.bitis) return false;var diff=Math.round((new Date(s.bitis)-b)/86400000);return diff>=0&&diff<=30;}).length;
@@ -3451,6 +3534,63 @@ function App(){
               React.createElement('button', { onClick: ()=>{firebaseLogin("yonetici@asistakip.app",sifreInput,{noCreate:true}).then(function(res){if(res.success){setRol("yonetici");setTab(0);setSifreModal(false);}else{setSifreHata("Hatalı şifre!");setSifreInput("");}});},
                 style: {flex:1,padding:"13px",background:"var(--accent)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:700,fontSize:15,minHeight:50}}, "Giriş")
             )
+          )
+        )
+      )
+
+      /* DASHBOARD DÜZENLE MODAL */
+      , dashboardEditorAcik&&dashboardCanEdit&&React.createElement('div',{
+          style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",zIndex:3050,display:"flex",alignItems:"center",justifyContent:"center",padding:16},
+          onClick:function(){setDashboardEditorAcik(false);}
+        },
+        React.createElement('div',{
+          onClick:function(e){e.stopPropagation();},
+          style:{width:"min(560px,100%)",background:"var(--bg-panel)",borderRadius:20,border:"1px solid var(--border)",boxShadow:"0 24px 64px rgba(0,0,0,0.5)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column"}
+        },
+          React.createElement('div',{style:{padding:"16px 18px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}},
+            React.createElement('div',null,
+              React.createElement('div',{style:{fontWeight:800,fontSize:20,color:"var(--text)"}}, "⚙️ Dashboard Düzenle"),
+              React.createElement('div',{style:{fontSize:12,color:"var(--text-muted)",marginTop:2}}, "Kartları göster/gizle ve sırala")
+            ),
+            React.createElement('button',{onClick:function(){setDashboardEditorAcik(false);},style:{width:34,height:34,borderRadius:999,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text-muted)",fontSize:18,lineHeight:1,cursor:"pointer"}},"×")
+          ),
+          React.createElement('div',{style:{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8,overflowY:"auto"}},
+            normalizeDashboardLayout(dashboardLayout).map(function(item,idx,arr){
+              var meta=dashboardMetaById[item.id];
+              if(!meta) return null;
+              var enabled=item.enabled!==false;
+              return React.createElement('div',{key:item.id,style:{background:"var(--bg-elevated)",border:"1px solid var(--border)",borderRadius:12,padding:"10px 12px",display:"grid",gridTemplateColumns:"20px 1fr auto auto auto",gap:8,alignItems:"center"}},
+                React.createElement('span',{style:{color:"#64748b",fontSize:16,lineHeight:1,textAlign:"center"}},"⋮"),
+                React.createElement('div',null,
+                  React.createElement('div',{style:{fontSize:14,fontWeight:700,color:"var(--text)"}},meta.icon+" "+meta.label),
+                  React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},meta.desc)
+                ),
+                React.createElement('button',{
+                  onClick:function(){dashboardMove(item.id,-1);},
+                  disabled:idx===0,
+                  style:{width:34,height:34,borderRadius:8,border:"1px solid "+(idx===0?"var(--border-soft)":"var(--border)"),background:"var(--bg-panel)",color:idx===0?"#475569":"var(--text)",fontSize:12,cursor:idx===0?"default":"pointer",opacity:idx===0?0.5:1}
+                },"▲"),
+                React.createElement('button',{
+                  onClick:function(){dashboardMove(item.id,1);},
+                  disabled:idx===arr.length-1,
+                  style:{width:34,height:34,borderRadius:8,border:"1px solid "+(idx===arr.length-1?"var(--border-soft)":"var(--border)"),background:"var(--bg-panel)",color:idx===arr.length-1?"#475569":"var(--text)",fontSize:12,cursor:idx===arr.length-1?"default":"pointer",opacity:idx===arr.length-1?0.5:1}
+                },"▼"),
+                React.createElement('button',{
+                  onClick:function(){dashboardToggle(item.id);},
+                  style:{width:52,height:30,borderRadius:999,border:"1px solid "+(enabled?"rgba(16,185,129,.45)":"var(--border)"),background:enabled?"linear-gradient(135deg,#10b981,#34d399)":"#233047",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}
+                },enabled?"Açık":"Kapalı")
+              );
+            })
+          ),
+          React.createElement('div',{style:{padding:"12px 14px",borderTop:"1px solid var(--border)",display:"flex",gap:10}},
+            React.createElement('button',{
+              onClick:function(){dashboardReset();},
+              style:{flex:1,padding:"12px",borderRadius:12,border:"1px solid var(--border)",background:"var(--bg-elevated)",color:"var(--text-muted)",fontWeight:700,cursor:"pointer"}
+            },"↺ Sıfırla"),
+            React.createElement('button',{
+              onClick:function(){setDashboardEditorAcik(false);},
+              style:{flex:1.3,padding:"12px",borderRadius:12,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontWeight:800,cursor:"pointer"}
+            },"✓ Kaydet")
           )
         )
       )
