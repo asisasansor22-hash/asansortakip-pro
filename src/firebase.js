@@ -93,6 +93,38 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
+const FIREBASE_PROJECT_ID = firebaseConfig.projectId;
+const FIREBASE_EMULATOR_DB_URL =
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_FIREBASE_EMULATOR_DB_URL) ||
+  "http://127.0.0.1:9000";
+const USE_FIREBASE_EMULATOR_DB = (function () {
+  try {
+    var host = typeof window !== "undefined" && window.location ? window.location.hostname : "";
+    var isLocal = host === "localhost" || host === "127.0.0.1";
+    var forced =
+      typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      String(import.meta.env.VITE_USE_FIREBASE_EMULATOR || "").toLowerCase() === "1";
+    var dev =
+      typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      !!import.meta.env.DEV;
+    return isLocal && (forced || dev);
+  } catch (e) {
+    return false;
+  }
+})();
+
+function buildDbUrl(path, token) {
+  var base;
+  if (USE_FIREBASE_EMULATOR_DB) {
+    base = FIREBASE_EMULATOR_DB_URL + "/asansor/" + cleanDbPath(path) + ".json?ns=" + encodeURIComponent(FIREBASE_PROJECT_ID);
+  } else {
+    base = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
+  }
+  if (token) base += (base.indexOf("?") >= 0 ? "&" : "?") + "auth=" + encodeURIComponent(token);
+  return base;
+}
 
 // Auth token'ı al
 async function getToken() {
@@ -241,8 +273,7 @@ export async function dbSet(key, value) {
 export async function dbGetRaw(path) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
-    if (token) url += "?auth=" + token;
+    var url = buildDbUrl(path, token);
     var controller = new AbortController();
     var timer = setTimeout(function(){ controller.abort(); }, 8000);
     var res = await fetch(url, { signal: controller.signal });
@@ -256,8 +287,7 @@ export async function dbGetRaw(path) {
 export async function dbSetRaw(path, value) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
-    if (token) url += "?auth=" + token;
+    var url = buildDbUrl(path, token);
     var res = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -270,8 +300,7 @@ export async function dbSetRaw(path, value) {
 async function dbPushResolvedPath(path, value) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
-    if (token) url += "?auth=" + token;
+    var url = buildDbUrl(path, token);
     var res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -292,8 +321,7 @@ export async function dbPush(key, value) {
 export async function dbDeleteRaw(path) {
   try {
     var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
-    if (token) url += "?auth=" + token;
+    var url = buildDbUrl(path, token);
     var res = await fetch(url, { method: "DELETE" });
     return res.ok;
   } catch(e) { return false; }
@@ -477,7 +505,12 @@ export async function listTenants() {
 // .read: true olduğu için auth gerektirmez; gizli alan içermez.
 export async function getTenantPublic(tid) {
   if (!tid) return null;
-  return dbGetRaw("tenants/" + tid + "/public");
+  var pub = await dbGetRaw("tenants/" + tid + "/public");
+  // Local emulator boşsa en azından "asis" ile giriş yapılabilsin.
+  if (!pub && USE_FIREBASE_EMULATOR_DB && tid === "asis") {
+    return { ad: "Asis (Emulator)", adminEmail: "yonetici@asistakip.app", plan: "kurumsal", bakimcilar: [] };
+  }
+  return pub;
 }
 
 export async function setTenantPublic(tid, data) {

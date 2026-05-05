@@ -46,11 +46,16 @@ function parseFinansDate(raw){
   return null;
 }
 function finansTutar(v){ var n=Number(v); return isNaN(n)?0:n; }
-/** Bakımda fiilen tahsil edilen tutar: alinanTutar 0 olsa da 0 kabul et (|| tutar ile 0'ın ezilmesini önler — Geri Al sonrası liste/toplamlar düzelir). Alan yoksa eski kayıt için tutar. */
+/** Bakımda fiilen tahsil edilen tutar:
+ * - alinanTutar 0 ise 0 kabul edilir
+ * - alinanTutar yoksa, SADECE eski ve odendi=true kayıtlar için tutar fallback yapılır
+ *   (bakım tamamlandı ama ödeme alınmadı durumunu finansa yanlışlıkla düşürmemek için)
+ */
 function finansMaintAlinan(m){
   if(!m) return 0;
   if(m.alinanTutar!==undefined && m.alinanTutar!==null && m.alinanTutar!=="") return finansTutar(m.alinanTutar);
-  return finansTutar(m.tutar);
+  if(m.odendi===true) return finansTutar(m.tutar);
+  return 0;
 }
 /** Finans listesi: bakım sentetik satırında saat — m.saat yoksa yapildiSaat'ten (BakimciGorunum ile uyum) */
 function finansSaatFromMaint(m){
@@ -2071,8 +2076,10 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    var mevcutEskiDevir=bal(e.id);
-                    var eskiDevirEtiket=mevcutEskiDevir!==(e.bakiyeDevir||0)?"Kalan Eski Devir":"Eski Devir";
+                    // Eski Devir = geçen aydan devreden bakiye (sabit).
+                    // "bal" güncel/ay içi hesap olduğu için burada kullanılmamalı.
+                    var mevcutEskiDevir=Number(e.bakiyeDevir)||0;
+                    var eskiDevirEtiket="Eski Devir";
                     return React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
                       , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
                       , React.createElement('span', { style: {fontSize:10,background:mevcutEskiDevir>0?"#3a1e1e":mevcutEskiDevir<0?"#0a2a1a":"#1a1f2e",color:mevcutEskiDevir>0?"#ef4444":mevcutEskiDevir<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, eskiDevirEtiket+": " , (mevcutEskiDevir>0?"+":"")+mevcutEskiDevir.toLocaleString("tr-TR"), " ₺" )
