@@ -267,6 +267,28 @@ export async function dbSetRaw(path, value) {
   } catch(e) { return false; }
 }
 
+async function dbPushResolvedPath(path, value) {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/asansor/" + cleanDbPath(path) + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value)
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    return data && data.name ? data.name : null;
+  } catch (e) { return null; }
+}
+
+export async function dbPush(key, value) {
+  var p = tenantKeyPath(key);
+  if (p === null) return null;
+  return dbPushResolvedPath(p, value);
+}
+
 export async function dbDeleteRaw(path) {
   try {
     var token = await getToken();
@@ -275,6 +297,132 @@ export async function dbDeleteRaw(path) {
     var res = await fetch(url, { method: "DELETE" });
     return res.ok;
   } catch(e) { return false; }
+}
+
+// ------- Payment Events (tek ledger) ---------------------------------------
+function localDateStr(d) {
+  var dt = d || new Date();
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0");
+}
+function localTimeStr(d) {
+  var dt = d || new Date();
+  return String(dt.getHours()).padStart(2, "0") + ":" + String(dt.getMinutes()).padStart(2, "0");
+}
+function normalizePaymentEventsList(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean);
+  if (typeof raw !== "object") return [];
+  var out = [];
+  for (var k in raw) {
+    if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+    var v = raw[k];
+    if (!v || typeof v !== "object") continue;
+    if (!v.id) v.id = k;
+    out.push(v);
+  }
+  return out;
+}
+
+function paymentEventValidationError(input) {
+  if (!input || typeof input !== "object") return "geçersiz event";
+  var asansorId = Number(input.asansorId);
+  if (!Number.isFinite(asansorId)) return "asansorId zorunlu";
+  var amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return "amount sıfırdan büyük olmalı";
+  var t = String(input.eventType || "payment");
+  if (["payment", "reversal", "adjustment"].indexOf(t) < 0) return "eventType geçersiz";
+  var src = String(input.source || "manuel");
+  if (["manuel", "bakimci", "geri_alma", "duzeltme", "migration"].indexOf(src) < 0) return "source geçersiz";
+  var st = String(input.status || "posted");
+  if (["pending", "posted", "void"].indexOf(st) < 0) return "status geçersiz";
+  return null;
+}
+
+export async function listPaymentEvents(filters) {
+  var all = normalizePaymentEventsList(await dbGet("at_payment_events"));
+  var f = filters || {};
+  var from = f.fromDate ? new Date(f.fromDate) : null;
+  var to = f.toDate ? new Date(f.toDate) : null;
+  if (from && !isNaN(from.getTime())) from.setHours(0, 0, 0, 0); else from = null;
+  if (to && !isNaN(to.getTime())) to.setHours(23, 59, 59, 999); else to = null;
+  return all.filter(function (e) {
+    if (f.asansorId != null && Number(e.asansorId) !== Number(f.asansorId)) return false;
+    if (f.eventType && String(e.eventType) !== String(f.eventType)) return false;
+    if (f.source && String(e.source) !== String(f.source)) return false;
+    if (f.status && String(e.status) !== String(f.status)) return false;
+    if (from || to) {
+      var d = new Date((e.date || "") + "T12:00:00");
+      if (isNaN(d.getTime())) d = new Date(e.createdAt || "");
+      if (isNaN(d.getTime())) return false;
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+    }
+    return true;
+  }).sort(function (a, b) {
+    var ad = new Date(a.createdAt || (a.date || "") + "T" + (a.time || "00:00") + ":00").getTime();
+    var bd = new Date(b.createdAt || (b.date || "") + "T" + (b.time || "00:00") + ":00").getTime();
+    return (isNaN(ad) ? 0 : ad) - (isNaN(bd) ? 0 : bd);
+  });
+}
+
+export async function appendPaymentEvent(input) {
+  var err = paymentEventValidationError(input);
+  if (err) return { success: false, error: err };
+  var now = new Date();
+  var evt = {
+    id: "",
+    tenantId: input.tenantId || currentTenantId || "",
+    asansorId: Number(input.asansorId),
+    maintId: input.maintId != null ? Number(input.maintId) : null,
+    date: input.date || localDateStr(now),
+    time: input.time || localTimeStr(now),
+    amount: Number(input.amount),
+    currency: input.currency || "TRY",
+    eventType: input.eventType || "payment",
+    source: input.source || "manuel",
+    status: input.status || "posted",
+    collectorName: input.collectorName || "",
+    collectorId: input.collectorId || null,
+    note: input.note || "",
+    relatedEventId: input.relatedEventId || null,
+    createdAt: now.toISOString(),
+    createdByUid: input.createdByUid || null,
+    createdByRole: input.createdByRole || null,
+    migrationTag: input.migrationTag || null
+  };
+  var basePath = tenantKeyPath("at_payment_events");
+  if (!basePath) return { success: false, error: "aktif tenant yok" };
+  var key = await dbPushResolvedPath(basePath, evt);
+  if (!key) return { success: false, error: "event yazılamadı" };
+  evt.id = key;
+  var ok = await dbSetRaw(basePath + "/" + key, evt);
+  if (!ok) return { success: false, error: "event id güncellenemedi" };
+  return { success: true, event: evt };
+}
+
+export async function appendReversalEvent(originalEvent, reason, meta) {
+  if (!originalEvent || typeof originalEvent !== "object") return { success: false, error: "orijinal event yok" };
+  var amount = Number(originalEvent.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "orijinal amount geçersiz" };
+  var m = meta || {};
+  return appendPaymentEvent({
+    tenantId: originalEvent.tenantId || currentTenantId || "",
+    asansorId: originalEvent.asansorId,
+    maintId: originalEvent.maintId,
+    date: m.date || localDateStr(new Date()),
+    time: m.time || localTimeStr(new Date()),
+    amount: Math.abs(amount),
+    currency: originalEvent.currency || "TRY",
+    eventType: "reversal",
+    source: "geri_alma",
+    status: "posted",
+    collectorName: m.collectorName || "",
+    collectorId: m.collectorId || null,
+    note: reason || "Geri alma",
+    relatedEventId: originalEvent.id || null,
+    createdByUid: m.createdByUid || null,
+    createdByRole: m.createdByRole || null
+  });
 }
 
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------
