@@ -3258,7 +3258,7 @@ function App(){
 /* YÖNETİCİ / BİNA PORTALI */
 , tab===13&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(YoneticiPortali, {elevs:elevs,maints:maints,faults:faults,muayeneler:muayeneler,sozlesmeler:sozlesmeler})
+    React.createElement(YoneticiPortali, {elevs:elevs,maints:maints,faults:faults,muayeneler:muayeneler,sozlesmeler:sozlesmeler,ekstraIsler:ekstraIsler})
   )
 )
 

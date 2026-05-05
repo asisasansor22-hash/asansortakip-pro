@@ -1,7 +1,11 @@
 import React, { useState, useMemo } from 'react'
 import { MONTHS } from '../utils/constants.js'
 
-export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler}){
+function ekstraSiraKey(k){
+  return String(k.tarih||"") + " " + String(k.saat||"");
+}
+
+export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler, ekstraIsler}){
   const [seciliId, setSeciliId] = useState(null);
   const [aramaText, setAramaText] = useState("");
   const [ilce, setIlce] = useState("Tümü");
@@ -23,6 +27,12 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
   const eAriza = useMemo(()=>seciliId?[...faults.filter(f=>f.asansorId===seciliId)].sort((a,b)=>(b.id||0)-(a.id||0)):[],[faults,seciliId]);
   const eMuayene = useMemo(()=>seciliId?muayeneler.filter(m=>m.asansorId===seciliId):[],[muayeneler,seciliId]);
   const eSozlesme = useMemo(()=>seciliId?sozlesmeler.filter(s=>s.asansorId===seciliId):[],[sozlesmeler,seciliId]);
+  const eEkstra = useMemo(
+    ()=>seciliId
+      ? [...(ekstraIsler||[]).filter(k=>Number(k.binaId)===Number(seciliId))].sort((a,b)=>ekstraSiraKey(b).localeCompare(ekstraSiraKey(a)))
+      : [],
+    [ekstraIsler,seciliId]
+  );
 
   if(secili){
     return (
@@ -70,6 +80,31 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
                 {m.yapildi&&<div style={{fontSize:12,fontWeight:700,color:"var(--ios-green)",whiteSpace:"nowrap"}}>
                   {(m.alinanTutar||m.tutar||0).toLocaleString("tr-TR")} ₺
                 </div>}
+              </div>
+            ))
+          }
+        </div>
+
+        {/* Ekstra İş Geçmişi (Bakımın altında) */}
+        <div style={{background:"var(--bg-panel)",borderRadius:14,overflow:"hidden",marginBottom:10}}>
+          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)"}}>🔩 Ekstra İş Geçmişi</div>
+          {eEkstra.length===0
+            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Ekstra iş kaydı yok.</div>
+            :eEkstra.slice(0,10).map(k=>(
+              <div key={k.id} style={{padding:"10px 14px",borderTop:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{k.isAdi||"Ekstra İş"}</div>
+                  <div style={{fontSize:11,color:"var(--text-muted)"}}>📅 {k.tarih||"—"}{k.saat?" · "+k.saat:""}</div>
+                  {k.not&&<div style={{fontSize:11,color:"var(--text-dim)",marginTop:2}}>📝 {k.not}</div>}
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontSize:12,fontWeight:800,color:k.odendi?"var(--ios-green)":"var(--ios-orange)"}}>
+                    {(+k.tutar||0).toLocaleString("tr-TR")} ₺
+                  </div>
+                  <div style={{fontSize:10,color:k.odendi?"var(--ios-green)":"var(--ios-orange)",fontWeight:600}}>
+                    {k.odendi?"Ödendi":"Devire eklendi"}
+                  </div>
+                </div>
               </div>
             ))
           }
