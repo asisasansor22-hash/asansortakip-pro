@@ -2072,14 +2072,31 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    var mevcutDevir=bal(e.id);
+                    var eskiDevir=bal(e.id);
+                    var aylikBakim=Number(e.aylikUcret)||0;
+                    var guncelDevir=eskiDevir+aylikBakim;
+                    var anaDeger=eBakimYapildi?guncelDevir:eskiDevir;
                     var devirEtiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
-                    var devirRenk=mevcutDevir>0?"#ef4444":mevcutDevir<0?"#34d399":"#64748b";
-                    var devirBg=eBakimYapildi?(mevcutDevir>0?"#3a1e1e":mevcutDevir<0?"#0a2a1a":"#102033"):(mevcutDevir>0?"#2a1010":mevcutDevir<0?"#0a2016":"#1a1f2e");
+                    var devirRenk=anaDeger>0?"#ef4444":anaDeger<0?"#34d399":"#64748b";
+                    var devirBg=eBakimYapildi?(anaDeger>0?"#3a1e1e":anaDeger<0?"#0a2a1a":"#102033"):(anaDeger>0?"#2a1010":anaDeger<0?"#0a2016":"#1a1f2e");
                     var devirBorder=eBakimYapildi?"#10b98166":"#64748b33";
-                    return React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
-                      , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
-                      , React.createElement('span', { style: {fontSize:eBakimYapildi?12:10,background:devirBg,color:devirRenk,padding:eBakimYapildi?"5px 10px":"2px 8px",borderRadius:8,fontWeight:900,border:"1px solid "+devirBorder,boxShadow:eBakimYapildi?"0 0 0 1px rgba(16,185,129,0.15)":"none"},}, devirEtiket+": " , (mevcutDevir>0?"+":"")+mevcutDevir.toLocaleString("tr-TR"), " ₺" )
+                    var eskiRenk=eskiDevir>0?"#ef4444":eskiDevir<0?"#34d399":"#64748b";
+                    var guncelRenk=guncelDevir>0?"#ef4444":guncelDevir<0?"#34d399":"#10b981";
+                    return React.createElement('div', { style: {marginTop:8,display:"flex",flexDirection:"column",gap:6},}
+                      , React.createElement('div', {style:{display:"flex",gap:6,flexWrap:"wrap"}}
+                        , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, aylikBakim.toLocaleString("tr-TR"), " ₺/ay")
+                        , React.createElement('span', { style: {fontSize:eBakimYapildi?12:10,background:devirBg,color:devirRenk,padding:eBakimYapildi?"5px 10px":"2px 8px",borderRadius:8,fontWeight:900,border:"1px solid "+devirBorder,boxShadow:eBakimYapildi?"0 0 0 1px rgba(16,185,129,0.15)":"none"},}, devirEtiket+": " , (anaDeger>0?"+":"")+anaDeger.toLocaleString("tr-TR"), " ₺" )
+                      )
+                      , React.createElement('div', {style:{background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"7px 10px",fontSize:10,display:"flex",flexDirection:"column",gap:4}}
+                        , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",gap:8}}
+                          , React.createElement('span',{style:{color:"#94a3b8",fontWeight:700}},"Eski Devir")
+                          , React.createElement('span',{style:{color:eskiRenk,fontWeight:900}},(eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR")+" ₺")
+                        )
+                        , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",gap:8,borderTop:"1px solid #1e2640",paddingTop:4}}
+                          , React.createElement('span',{style:{color:"#94a3b8",fontWeight:700}},"Güncel Devir")
+                          , React.createElement('span',{style:{color:guncelRenk,fontWeight:900}},(guncelDevir>0?"+":"")+guncelDevir.toLocaleString("tr-TR")+" ₺")
+                        )
+                      )
                     );
                   })()
                 /* Bakım Geçmişi + E-posta bildirim butonları */
