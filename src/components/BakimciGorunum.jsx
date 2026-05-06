@@ -243,7 +243,8 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
               const elev=elevs.find(e=>e.id===m.asansorId);
               if(!elev) return null;
               const devir=Number(elev.bakiyeDevir)||0;
-              const gosterilenDevir=bal(elev.id);
+              const aylikBakim=Number(elev.aylikUcret)||0;
+              const guncelDevir=devir+aylikBakim;
               const c=getIlceRenk(elev.ilce);
               return(
                 React.createElement('div', { key: m.id, style: {background:"#141824",borderRadius:12,border:"1px solid #2a3050",overflow:"hidden"},}
@@ -270,12 +271,12 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                     )
                     , React.createElement('div', { style: {background:"#0d1321",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:11}},
                       React.createElement('div', {style:{display:"flex",justifyContent:"space-between",color:"#94a3b8",marginBottom:4}},
-                        React.createElement('span',null,"Aylık Bakım Ücreti"),React.createElement('span',{style:{color:"#3b82f6",fontWeight:700}},(elev.aylikUcret||0).toLocaleString("tr-TR")+" ₺"))
-                      ,React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px solid #2a3050",paddingTop:4,marginTop:2}},
                         React.createElement('span',{style:{fontWeight:700,color:"#e0e6f0"}},"Eski Devir"),React.createElement('span',{style:{fontWeight:900,fontSize:13,color:devir>0?"#ef4444":devir===0?"#10b981":"#f59e0b"}},devir.toLocaleString("tr-TR")+" ₺"))
-                      , gosterilenDevir!==devir&&React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px dashed #2a3050",paddingTop:4,marginTop:4}},
-                        React.createElement('span',{style:{fontWeight:700,color:"#94a3b8"}},"Güncel Devir"),
-                        React.createElement('span',{style:{fontWeight:900,fontSize:13,color:gosterilenDevir>0?"#ef4444":gosterilenDevir===0?"#10b981":"#f59e0b"}},gosterilenDevir.toLocaleString("tr-TR")+" ₺"))
+                      , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px solid #2a3050",paddingTop:4,marginTop:4}},
+                        React.createElement('span',{style:{fontWeight:700,color:"#94a3b8"}},"Aylık Bakım"),React.createElement('span',{style:{color:"#3b82f6",fontWeight:800}},aylikBakim.toLocaleString("tr-TR")+" ₺"))
+                      , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px dashed #2a3050",paddingTop:4,marginTop:4}},
+                        React.createElement('span',{style:{fontWeight:800,color:"#e0e6f0"}},"Güncel Devir"),
+                        React.createElement('span',{style:{fontWeight:900,fontSize:14,color:guncelDevir>0?"#ef4444":guncelDevir===0?"#10b981":"#f59e0b"}},guncelDevir.toLocaleString("tr-TR")+" ₺"))
                     )
                     , React.createElement('div', { style: {display:"flex",gap:6}},
                       React.createElement('button', { onClick:()=>tamamlaBakim(m,elev),
@@ -301,7 +302,8 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
               const elev=elevs.find(e=>e.id===m.asansorId);
               if(!elev) return null;
               const devir=Number(elev.bakiyeDevir)||0;
-              const gosterilenDevir=bal(elev.id);
+              const aylikBakim=Number(elev.aylikUcret)||0;
+              const guncelDevir=devir+aylikBakim;
               const c=getIlceRenk(elev.ilce);
               // Saat kısmını çıkar
               var saatStr="";
@@ -335,12 +337,12 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                     )
                     , React.createElement('div', { style: {background:"#0d1321",borderRadius:8,padding:"8px 12px",fontSize:11}},
                       React.createElement('div', {style:{display:"flex",justifyContent:"space-between",color:"#94a3b8",marginBottom:4}},
-                        React.createElement('span',null,"Aylık Bakım Ücreti"),React.createElement('span',{style:{color:"#3b82f6",fontWeight:700}},(elev.aylikUcret||0).toLocaleString("tr-TR")+" ₺"))
-                      ,React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px solid #2a3050",paddingTop:4,marginTop:2}},
                         React.createElement('span',{style:{fontWeight:700,color:"#e0e6f0"}},"Eski Devir"),React.createElement('span',{style:{fontWeight:900,fontSize:13,color:devir>0?"#ef4444":devir===0?"#10b981":"#f59e0b"}},devir.toLocaleString("tr-TR")+" ₺"))
-                      , gosterilenDevir!==devir&&React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px dashed #2a3050",paddingTop:4,marginTop:4}},
-                        React.createElement('span',{style:{fontWeight:700,color:"#94a3b8"}},"Güncel Devir"),
-                        React.createElement('span',{style:{fontWeight:900,fontSize:13,color:gosterilenDevir>0?"#ef4444":gosterilenDevir===0?"#10b981":"#f59e0b"}},gosterilenDevir.toLocaleString("tr-TR")+" ₺"))
+                      , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px solid #2a3050",paddingTop:4,marginTop:4}},
+                        React.createElement('span',{style:{fontWeight:700,color:"#94a3b8"}},"Aylık Bakım"),React.createElement('span',{style:{color:"#3b82f6",fontWeight:800}},aylikBakim.toLocaleString("tr-TR")+" ₺"))
+                      , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",borderTop:"1px dashed #2a3050",paddingTop:4,marginTop:4}},
+                        React.createElement('span',{style:{fontWeight:800,color:"#e0e6f0"}},"Güncel Devir"),
+                        React.createElement('span',{style:{fontWeight:900,fontSize:14,color:guncelDevir>0?"#ef4444":guncelDevir===0?"#10b981":"#f59e0b"}},guncelDevir.toLocaleString("tr-TR")+" ₺"))
                     )
                     , React.createElement('div',{style:{display:"flex",gap:6,marginTop:8}}
                       , React.createElement('button',{
