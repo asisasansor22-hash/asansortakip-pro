@@ -837,20 +837,30 @@ function App(){
       var aid=Number(o.aid);
       ayOdemelerMap[aid]=(ayOdemelerMap[aid]||0)+(o.alinanTutar||0);
     });
+    // Bu ay bakımı yapılmış asansörler
+    var bakimYapildiSet=new Set();
+    maints.forEach(function(m){
+      if(!m.yapildi) return;
+      var od=parseFinansDate(m.tarih);
+      if(!od||od<ayBas||od>aySon) return;
+      bakimYapildiSet.add(Number(m.asansorId));
+    });
     setElevs(function(p){
       var changed=false;
       var newP=p.map(function(e){
         var totalPaid=ayOdemelerMap[e.id]||0;
         if(totalPaid===0) return e;
         var base=e.bakiyeDevirBase!==undefined?e.bakiyeDevirBase:(e.bakiyeDevir||0);
-        var newDevir=base+(e.aylikUcret||0)-totalPaid;
+        // Bakım yapıldıysa aylık ücret de eklenir; yapılmadıysa sadece eski devirden düşülür
+        var bakimVar=bakimYapildiSet.has(e.id);
+        var newDevir=bakimVar?(base+(e.aylikUcret||0)-totalPaid):(base-totalPaid);
         if(newDevir===(e.bakiyeDevir||0)&&e.bakiyeDevirBase!==undefined) return e;
         changed=true;
         return Object.assign({},e,{bakiyeDevir:newDevir,bakiyeDevirBase:base});
       });
       return changed?newP:p;
     });
-  },[sonOdemeler]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[sonOdemeler,maints]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderler",giderler);}},[giderler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
@@ -2111,12 +2121,11 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    var mevcutEskiDevir=bal(e.id);
-                    var _base=e.bakiyeDevirBase!==undefined?e.bakiyeDevirBase:(e.bakiyeDevir||0);
-                    var eskiDevirEtiket=mevcutEskiDevir!==_base?"Güncel Bakiye":"Eski Devir";
+                    var mevcutDevir=bal(e.id);
+                    var eskiDevirEtiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
                     return React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
                       , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
-                      , React.createElement('span', { style: {fontSize:10,background:mevcutEskiDevir>0?"#3a1e1e":mevcutEskiDevir<0?"#0a2a1a":"#1a1f2e",color:mevcutEskiDevir>0?"#ef4444":mevcutEskiDevir<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, eskiDevirEtiket+": " , (mevcutEskiDevir>0?"+":"")+mevcutEskiDevir.toLocaleString("tr-TR"), " ₺" )
+                      , React.createElement('span', { style: {fontSize:10,background:mevcutDevir>0?"#3a1e1e":mevcutDevir<0?"#0a2a1a":"#1a1f2e",color:mevcutDevir>0?"#ef4444":mevcutDevir<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, eskiDevirEtiket+": " , (mevcutDevir>0?"+":"")+mevcutDevir.toLocaleString("tr-TR"), " ₺" )
                     );
                   })()
                 , (function(){
