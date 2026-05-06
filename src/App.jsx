@@ -822,6 +822,34 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_haftalik",haftalikKapamalar);}},[haftalikKapamalar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_aylik",aylikKapamalar);}},[aylikKapamalar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_sonodemeler",sonOdemeler);}},[sonOdemeler]);
+  // Ödeme girilince bakiyeDevir'i anında hesapla (canlı bakiye)
+  useEffect(function(){
+    if(ilkYukleme.current) return;
+    var simdi=new Date();
+    var ayBas=new Date(simdi.getFullYear(),simdi.getMonth(),1);ayBas.setHours(0,0,0,0);
+    var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
+    var ayOdemelerMap={};
+    sonOdemeler.forEach(function(o){
+      if(o.iptal) return;
+      var od=new Date(o.tarih);
+      if(od<ayBas||od>aySon) return;
+      var aid=Number(o.aid);
+      ayOdemelerMap[aid]=(ayOdemelerMap[aid]||0)+(o.alinanTutar||0);
+    });
+    setElevs(function(p){
+      var changed=false;
+      var newP=p.map(function(e){
+        var totalPaid=ayOdemelerMap[e.id]||0;
+        if(totalPaid===0) return e;
+        var base=e.bakiyeDevirBase!==undefined?e.bakiyeDevirBase:(e.bakiyeDevir||0);
+        var newDevir=base+(e.aylikUcret||0)-totalPaid;
+        if(newDevir===(e.bakiyeDevir||0)&&e.bakiyeDevirBase!==undefined) return e;
+        changed=true;
+        return Object.assign({},e,{bakiyeDevir:newDevir,bakiyeDevirBase:base});
+      });
+      return changed?newP:p;
+    });
+  },[sonOdemeler]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderler",giderler);}},[giderler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
@@ -959,6 +987,8 @@ function App(){
             return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
           });
           if(!bakimYapildi) return ev; // bakım yapılmadıysa devir değişmez
+          // Temel değer: geçen ay kapanışından kalan (bakiyeDevirBase), yoksa bakiyeDevir
+          var base=ev.bakiyeDevirBase!==undefined?ev.bakiyeDevirBase:(ev.bakiyeDevir||0);
           var yeniDevirHesap;
           if(ev.yeniDevirManuel!==undefined&&ev.yeniDevirManuel!==null&&ev.yeniDevirManuel!==""){
             yeniDevirHesap=Number(ev.yeniDevirManuel);
@@ -967,7 +997,6 @@ function App(){
               var od=new Date(o.tarih);
               return Number(o.aid)===Number(ev.id)&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
             }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
-            // sonOdemeler'de kayıt yoksa maints.alinanTutar'a fallback yap (eski kayıtlar için)
             var ekstraAlinan=0;
             if(sonOdemelerAlinan===0){
               ekstraAlinan=maints.filter(function(m){
@@ -976,10 +1005,10 @@ function App(){
               }).reduce(function(s,m){return s+finansMaintAlinan(m);},0);
             }
             var toplamAlinan=sonOdemelerAlinan+ekstraAlinan;
-            yeniDevirHesap=eskiDevir+aylikUcret-toplamAlinan;
+            yeniDevirHesap=base+aylikUcret-toplamAlinan;
           }
-          // yeniDevirManuel sıfırla — bir sonraki ay otomatik hesaba döner
-          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,yeniDevirManuel:null});
+          // Kapama sonrası her iki alanı da güncelle — bakiyeDevirBase yeni ay tabanı olur
+          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
         });
       });
     }
@@ -1313,13 +1342,10 @@ function App(){
     return soAlinan+maintEk;
   };
 
-  /** Bakım kartı / seçim listesi: makbuz ile aynı — eski devir + bu ay aylık ücret − bu ay tahsilat */
+  /** Canlı bakiye — useEffect tarafından sonOdemeler değişince anında güncellenir */
   const bal=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return 0;
-    const eskiDevir=e.bakiyeDevir||0;
-    const aylikUcret=e.aylikUcret||0;
-    const alinan=buAyToplamAlinan(id);
-    return Math.max(0,eskiDevir+aylikUcret-alinan);
+    return e.bakiyeDevir||0;
   };
 
   /* Aktif ay için yeni devir hesabı:
@@ -1331,14 +1357,11 @@ function App(){
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    // Manuel override varsa direkt döndür
     if(e.yeniDevirManuel!==undefined&&e.yeniDevirManuel!==null&&e.yeniDevirManuel!==""){
       return Number(e.yeniDevirManuel);
     }
-    const eskiDevir=e.bakiyeDevir||0;
-    const aylikUcret=e.aylikUcret||0;
-    const toplamAlinan=buAyToplamAlinan(id);
-    return eskiDevir+aylikUcret-toplamAlinan;
+    // bakiyeDevir artık canlı hesaplı — doğrudan döndür
+    return e.bakiyeDevir||0;
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -1498,7 +1521,14 @@ function App(){
     );
   };
   const oAdd=(t)=>{setEdit(null);setForm({tarih:today});setModal(t);};
-  const oEdit=(t,item)=>{setEdit(item);setForm({...item});setModal(t);};
+  const oEdit=(t,item)=>{
+    setEdit(item);
+    var fi=Object.assign({},item);
+    // Asansör düzenlemesinde "Eski Devir" alanı geçen kapanışın tabanını göstermeli
+    if(t==="e"&&fi.bakiyeDevirBase!==undefined){fi.bakiyeDevir=fi.bakiyeDevirBase;}
+    setForm(fi);
+    setModal(t);
+  };
   const close=()=>setModal(null);
 
   const saveE=()=>{
@@ -1515,7 +1545,11 @@ function App(){
     if(form._yeniDevirOverride!==undefined&&form._yeniDevirOverride!==""){
       yeniDevirManuelDeger=parseFloat(form._yeniDevirOverride);
     }
-    const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:+form.bakiyeDevir||0,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:yeniDevirManuelDeger};
+    // Form'daki "Eski Devir" alanı bakiyeDevirBase'e karşılık gelir.
+    // Canlı bakiyeDevir useEffect tarafından otomatik yeniden hesaplanır,
+    // ama açılışta da base ile başlat ki hemen tutarlı olsun.
+    var formEskiDevir=+form.bakiyeDevir||0;
+    const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:formEskiDevir,bakiyeDevirBase:formEskiDevir,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:yeniDevirManuelDeger};
     if(parsedMapsCoords){
       d.lat=Number(parsedMapsCoords.lat.toFixed(7));
       d.lng=Number(parsedMapsCoords.lng.toFixed(7));
@@ -2076,10 +2110,9 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    // Eski Devir = geçen aydan devreden bakiye (sabit).
-                    // "bal" güncel/ay içi hesap olduğu için burada kullanılmamalı.
-                    var mevcutEskiDevir=Number(e.bakiyeDevir)||0;
-                    var eskiDevirEtiket="Eski Devir";
+                    var mevcutEskiDevir=bal(e.id);
+                    var _base=e.bakiyeDevirBase!==undefined?e.bakiyeDevirBase:(e.bakiyeDevir||0);
+                    var eskiDevirEtiket=mevcutEskiDevir!==_base?"Güncel Bakiye":"Eski Devir";
                     return React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
                       , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
                       , React.createElement('span', { style: {fontSize:10,background:mevcutEskiDevir>0?"#3a1e1e":mevcutEskiDevir<0?"#0a2a1a":"#1a1f2e",color:mevcutEskiDevir>0?"#ef4444":mevcutEskiDevir<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, eskiDevirEtiket+": " , (mevcutEskiDevir>0?"+":"")+mevcutEskiDevir.toLocaleString("tr-TR"), " ₺" )
