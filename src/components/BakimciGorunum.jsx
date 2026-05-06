@@ -4,7 +4,7 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
+function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
   var _firmaAdi=firmaAdi||"Şirketimiz";
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
@@ -101,6 +101,13 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamA
     }
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
+      if(typeof setElevs==="function"){
+        setElevs(function(p){return p.map(function(x){
+          if(Number(x.id)!==Number(elev.id)) return x;
+          var yeniDevir=(Number(x.bakiyeDevir)||0)-alinan;
+          return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
+        });});
+      }
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -136,7 +143,13 @@ function BakimciGorunum({elevs,maints,setMaints,faults,setFaults,bal,buAyToplamA
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-    // NOT: bakiyeDevir burada değiştirilmez — ay kapanışında yeniDevir → bakiyeDevir geçer
+    if(typeof setElevs==="function"){
+      setElevs(function(p){return p.map(function(x){
+        if(Number(x.id)!==Number(elev.id)) return x;
+        var yeniDevir=(Number(x.bakiyeDevir)||0)-tutar;
+        return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
+      });});
+    }
     setMakbuzSonBakim({m:odemeSorModal.m,elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
     setOdemeMiktar("");

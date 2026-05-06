@@ -115,6 +115,42 @@ function hasSonOdemeMatchForMaint(sonOdemeler,m,bas,son,amt){
     return true;
   });
 }
+function odemeSnapshotBetween(sonOdemeler,maints,elevs,bas,son){
+  var list=(sonOdemeler||[]).filter(function(o){
+    var od=parseFinansDate(o&&o.tarih);
+    return !o.iptal&&od&&od>=bas&&od<=son;
+  }).map(function(o){return Object.assign({},o);});
+  (maints||[]).filter(function(m){
+    var amt=finansMaintAlinan(m);
+    if(!m.yapildi||amt<=0) return false;
+    var od=parseFinansDate(m.tarih);
+    if(!od||od<bas||od>son) return false;
+    return !hasSonOdemeMatchForMaint(sonOdemeler,m,bas,son,amt);
+  }).forEach(function(m){
+    var elev=(elevs||[]).find(function(e){return Number(e.id)===Number(m.asansorId);})||{};
+    list.push({
+      id:"maint_"+m.id,
+      aid:m.asansorId,
+      tarih:m.tarih,
+      saat:finansSaatFromMaint(m),
+      alinanTutar:finansMaintAlinan(m),
+      not:"Bakım sonrası tahsilat",
+      binaAd:elev.ad||"?",
+      ilce:elev.ilce||"",
+      yonetici:elev.yonetici||"",
+      tahsilatYapan:m.tahsilatBakimciAd||"",
+      _fromMaint:true
+    });
+  });
+  return list.sort(function(a,b){
+    var ad=parseFinansDate(a.tarih);
+    var bd=parseFinansDate(b.tarih);
+    var at=ad?ad.getTime():0;
+    var bt=bd?bd.getTime():0;
+    if(at!==bt) return at-bt;
+    return String(a.saat||"").localeCompare(String(b.saat||""));
+  });
+}
 
 var DASHBOARD_CARD_SIZES=["small","medium","full"];
 var DASHBOARD_CARDS_DEFAULT=[
@@ -877,15 +913,13 @@ function App(){
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var baslangic=new Date(simdi);
       baslangic.setDate(simdi.getDate()-6);
       baslangic.setHours(0,0,0,0);
       var bitis=new Date(simdi);
       bitis.setHours(23,59,59,999);
-      var donemOdemeleri=sonOdemeler.filter(function(o){
-        var d=new Date(o.tarih);
-        return !isNaN(d)&&d>=baslangic&&d<=bitis;
-      });
+      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
       setHaftalikKapamalar(function(prev){
         var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
         if(zatenVar) return prev;
@@ -897,16 +931,17 @@ function App(){
           tip:"haftalik",
           baslarken:basStr,
           biterken:bitStr,
+          baslangicISO:baslangic.toISOString(),
+          bitisISO:bitis.toISOString(),
           kapamaZamani:simdi.toLocaleString("tr-TR"),
           odemeler:donemOdemeleri.slice(),
-          toplam:donemOdemeleri.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
+          toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
         var yeni=[snap,...prev];
         if(yeni.length>26) yeni=yeni.slice(0,26);
         return yeni;
       });
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
     }
 
     function yapAylikKapama(){
@@ -920,12 +955,11 @@ function App(){
       // Çift çalışma koruması: localStorage (Firebase gecikmesine karşı) + ref (stale closure'a karşı)
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||aylikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
+      if(zatenKapandi) return;
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var ayBaslangic=new Date(yil,ay,1);ayBaslangic.setHours(0,0,0,0);
       var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
-      var donemOdemeleri=sonOdemeler.filter(function(o){
-        var d=new Date(o.tarih);
-        return !isNaN(d)&&d>=ayBaslangic&&d<=aySon;
-      });
+      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
       setAylikKapamalar(function(prev){
         var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
         if(zatenVar) return prev;
@@ -935,52 +969,24 @@ function App(){
           tip:"aylik",
           ay:MONTHS[ay],
           yil:yil,
+          baslarken:ayBaslangic.toLocaleDateString("tr-TR"),
+          biterken:aySon.toLocaleDateString("tr-TR"),
+          baslangicISO:ayBaslangic.toISOString(),
+          bitisISO:aySon.toISOString(),
           kapamaZamani:simdi.toLocaleString("tr-TR"),
           odemeler:donemOdemeleri.slice(),
-          toplam:donemOdemeleri.reduce(function(s,o){return s+(o.alinanTutar||0);},0),
+          toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
         var yeni=[snap,...prev];
         if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
-      // Devir hesabı zaten yapıldıysa tekrar yapma
-      if(zatenKapandi) return;
-      // localStorage'a hemen kaydet — Firebase yazılmadan sayfa yenilenirse tekrar çalışmasın
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
-      /* Ay kapanışında: her asansör için yeniDevir → bakiyeDevir olarak geçir */
+      /* Ay kapanışında ödeme geçmişinden yeniden hesaplama yapma; mevcut devir yeni taban olur. */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          var eskiDevir=ev.bakiyeDevir||0;
-          var aylikUcret=ev.aylikUcret||0;
-          // Bu ay bakım yapıldı mı?
-          var bakimYapildi=maints.find(function(m){
-            var d=new Date(m.tarih);
-            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
-          });
-          if(!bakimYapildi) return ev; // bakım yapılmadıysa devir değişmez
-          // Temel değer: geçen ay kapanışından kalan (bakiyeDevirBase), yoksa bakiyeDevir
-          var base=ev.bakiyeDevirBase!==undefined?ev.bakiyeDevirBase:(ev.bakiyeDevir||0);
-          var yeniDevirHesap;
-          if(ev.yeniDevirManuel!==undefined&&ev.yeniDevirManuel!==null&&ev.yeniDevirManuel!==""){
-            yeniDevirHesap=Number(ev.yeniDevirManuel);
-          } else {
-            var sonOdemelerAlinan=sonOdemeler.filter(function(o){
-              var od=new Date(o.tarih);
-              return Number(o.aid)===Number(ev.id)&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
-            }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
-            var ekstraAlinan=0;
-            if(sonOdemelerAlinan===0){
-              ekstraAlinan=maints.filter(function(m){
-                var md=new Date(m.tarih);
-                return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&m.odendi&&md>=ayBaslangic&&md<=aySon;
-              }).reduce(function(s,m){return s+finansMaintAlinan(m);},0);
-            }
-            var toplamAlinan=sonOdemelerAlinan+ekstraAlinan;
-            yeniDevirHesap=base+aylikUcret-toplamAlinan;
-          }
-          // Kapama sonrası her iki alanı da güncelle — bakiyeDevirBase yeni ay tabanı olur
-          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
+          var mevcutDevir=ev.bakiyeDevir||0;
+          return Object.assign({},ev,{bakiyeDevirBase:mevcutDevir,yeniDevirManuel:null});
         });
       });
     }
@@ -1314,25 +1320,17 @@ function App(){
     return soAlinan+maintEk;
   };
 
-  /** Canlı bakiye — useEffect tarafından sonOdemeler değişince anında güncellenir */
+  /** Devir bakiyesi: ödemeler doğrudan bu alandan düşülür. */
   const bal=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return 0;
     return e.bakiyeDevir||0;
   };
 
-  /* Aktif ay için yeni devir hesabı:
-     - Bakım yapıldıysa & ödeme alındıysa:  eskiDevir + aylikUcret - alinanTutar
-     - Bakım yapıldıysa & ödeme alınmadıysa: eskiDevir + aylikUcret
-     - Bakım henüz yapılmadıysa: null (boş göster)
-  */
+  /* Aktif ayda bakım yapıldıysa ekranda "Güncel Devir" etiketiyle aynı bakiye gösterilir. */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    if(e.yeniDevirManuel!==undefined&&e.yeniDevirManuel!==null&&e.yeniDevirManuel!==""){
-      return Number(e.yeniDevirManuel);
-    }
-    // bakiyeDevir artık canlı hesaplı — doğrudan döndür
     return e.bakiyeDevir||0;
   };
   const guncelBorc=(id)=>{
@@ -2083,22 +2081,13 @@ function App(){
                   )
                 , (function(){
                     var mevcutDevir=bal(e.id);
-                    var eskiDevirEtiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
+                    var devirEtiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
+                    var devirRenk=mevcutDevir>0?"#ef4444":mevcutDevir<0?"#34d399":"#64748b";
+                    var devirBg=eBakimYapildi?(mevcutDevir>0?"#3a1e1e":mevcutDevir<0?"#0a2a1a":"#102033"):(mevcutDevir>0?"#2a1010":mevcutDevir<0?"#0a2016":"#1a1f2e");
+                    var devirBorder=eBakimYapildi?"#10b98166":"#64748b33";
                     return React.createElement('div', { style: {display:"flex",gap:6,marginTop:8,flexWrap:"wrap"},}
                       , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, e.aylikUcret.toLocaleString("tr-TR"), " ₺/ay")
-                      , React.createElement('span', { style: {fontSize:10,background:mevcutDevir>0?"#3a1e1e":mevcutDevir<0?"#0a2a1a":"#1a1f2e",color:mevcutDevir>0?"#ef4444":mevcutDevir<0?"#34d399":"#64748b",padding:"2px 8px",borderRadius:6,fontWeight:700},}, eskiDevirEtiket+": " , (mevcutDevir>0?"+":"")+mevcutDevir.toLocaleString("tr-TR"), " ₺" )
-                    );
-                  })()
-                , (function(){
-                    var nd=yeniDevir(e.id);
-                    if(nd===null) return null;
-                    var ndColor=nd>0?"#f97316":nd===0?"#64748b":"#34d399";
-                    var ndBg=nd>0?"rgba(249,115,22,0.12)":nd===0?"rgba(100,116,139,0.10)":"rgba(52,211,153,0.12)";
-                    var ndBorder=nd>0?"#f9731633":nd===0?"#64748b33":"#34d39933";
-                    return React.createElement('div', {style:{marginTop:6,padding:"6px 10px",borderRadius:8,background:ndBg,border:"1px solid "+ndBorder,display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                      , React.createElement('span', {style:{fontSize:10,color:ndColor,fontWeight:600}}, "🔄 Yeni Devir")
-                      , React.createElement('span', {style:{fontSize:13,color:ndColor,fontWeight:900}},
-                          (nd>0?"+":nd===0?"":"")+ nd.toLocaleString("tr-TR")+" ₺")
+                      , React.createElement('span', { style: {fontSize:eBakimYapildi?12:10,background:devirBg,color:devirRenk,padding:eBakimYapildi?"5px 10px":"2px 8px",borderRadius:8,fontWeight:900,border:"1px solid "+devirBorder,boxShadow:eBakimYapildi?"0 0 0 1px rgba(16,185,129,0.15)":"none"},}, devirEtiket+": " , (mevcutDevir>0?"+":"")+mevcutDevir.toLocaleString("tr-TR"), " ₺" )
                     );
                   })()
                 /* Bakım Geçmişi + E-posta bildirim butonları */
@@ -2178,7 +2167,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi,})
+  React.createElement(BakimciGorunum, { elevs: elevs, setElevs: setElevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi,})
 )
 
 /* ARIZALAR - YÖNETİCİ */
@@ -3671,13 +3660,11 @@ function App(){
                     }
                     /* Her durumda son ödemeler listesine ekle */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    /* Ödeme anında mevcut bakiyeDevir'den direkt düş — hafıza yok, sade hesap */
+                    /* Ödeme anında yalnızca mevcut eski devirden düş — aylık ücret eklenmez. */
                     setElevs(function(p){return p.map(function(elev){
                       if(elev.id!==aid) return elev;
                       var current=elev.bakiyeDevir||0;
-                      // Bakım şu an tamamlanıyorsa aylık ücret de ekle; saf ödeme ise sadece düş
-                      var newDevir=mevcut?(current+(elev.aylikUcret||0)-tutar):(current-tutar);
-                      return Object.assign({},elev,{bakiyeDevir:newDevir});
+                      return Object.assign({},elev,{bakiyeDevir:current-tutar,bakiyeDevirBase:current-tutar,yeniDevirManuel:null});
                     });});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
