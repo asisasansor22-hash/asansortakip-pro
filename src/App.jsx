@@ -3710,7 +3710,14 @@ function App(){
                     }
                     /* Her durumda son ödemeler listesine ekle */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    // NOT: bakiyeDevir burada değiştirilmez — ay kapanışında yeniDevir → bakiyeDevir geçer
+                    /* Ödeme anında bakiyeDevir'i direkt güncelle — Firebase'e de anında yansır */
+                    setElevs(function(p){return p.map(function(elev){
+                      if(elev.id!==aid) return elev;
+                      var base=elev.bakiyeDevirBase!==undefined?elev.bakiyeDevirBase:(elev.bakiyeDevir||0);
+                      var bakimVar=!!mevcut||mMonth.some(function(m){return m.asansorId===aid&&m.yapildi;});
+                      var newDevir=bakimVar?(base+(elev.aylikUcret||0)-tutar):(base-tutar);
+                      return Object.assign({},elev,{bakiyeDevir:newDevir,bakiyeDevirBase:base});
+                    });});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },
