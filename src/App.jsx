@@ -3358,6 +3358,23 @@ function App(){
               , React.createElement('div', {style:{fontSize:10,color:form._devirKilidAcik?"#ef4444":"#64748b",marginTop:3,fontWeight:form._devirKilidAcik?700:400}},
                   form._devirKilidAcik?"⚠️ Dikkat: Bu değeri değiştirmek finansal hesapları etkiler!":"Önceki aydan kalan devir bakiye · Düzenlemek için 🔒 butonuna basın")
             )
+            , (function(){
+                var eskiDevir=parseFloat(form.bakiyeDevir)||0;
+                var aylikBakim=parseFloat(form.aylikUcret)||0;
+                var guncelDevir=eskiDevir+aylikBakim;
+                var eskiRenk=eskiDevir>0?"#ef4444":eskiDevir<0?"#34d399":"#64748b";
+                var guncelRenk=guncelDevir>0?"#ef4444":guncelDevir<0?"#34d399":"#10b981";
+                return React.createElement('div',{style:{background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"8px 10px",display:"flex",flexDirection:"column",gap:5,fontSize:11}}
+                  , React.createElement('div',{style:{display:"flex",justifyContent:"space-between",gap:8}}
+                    , React.createElement('span',{style:{color:"#94a3b8",fontWeight:800}},"Eski Devir")
+                    , React.createElement('span',{style:{color:eskiRenk,fontWeight:900}},(eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR")+" ₺")
+                  )
+                  , React.createElement('div',{style:{display:"flex",justifyContent:"space-between",gap:8,borderTop:"1px solid #1e2640",paddingTop:5}}
+                    , React.createElement('span',{style:{color:"#94a3b8",fontWeight:800}},"Güncel Devir")
+                    , React.createElement('span',{style:{color:guncelRenk,fontWeight:900}},(guncelDevir>0?"+":"")+guncelDevir.toLocaleString("tr-TR")+" ₺")
+                  )
+                );
+              })()
 
           )
           , React.createElement(MapsLinkInput,{
