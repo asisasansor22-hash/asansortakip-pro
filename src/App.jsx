@@ -823,8 +823,9 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_aylik",aylikKapamalar);}},[aylikKapamalar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_sonodemeler",sonOdemeler);}},[sonOdemeler]);
   // Ödeme girilince bakiyeDevir'i anında hesapla (canlı bakiye)
+  // NOT: ilkYukleme guard yok — yükleme sırasında da hesaplansın.
+  // Firebase save line 647 guard'ı tarafından zaten korunuyor.
   useEffect(function(){
-    if(ilkYukleme.current) return;
     var simdi=new Date();
     var ayBas=new Date(simdi.getFullYear(),simdi.getMonth(),1);ayBas.setHours(0,0,0,0);
     var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
