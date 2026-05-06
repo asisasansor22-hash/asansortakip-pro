@@ -539,27 +539,25 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                         style:{width:"100%",background:"var(--bg-elevated)",border:"2px solid var(--ios-green)",borderRadius:12,padding:"12px 14px",color:"var(--ios-green)",fontSize:24,fontWeight:900,outline:"none",boxSizing:"border-box",textAlign:"center"}
                       })
 
-                    /* Canlı Yeni Devir hesabı */
+                    /* Ödeme doğrudan mevcut eski devirden düşer. */
                     , (function(){
                         var elev=odemeSorModal.elev;
                         if(!elev) return null;
                         var eskiDevir=elev.bakiyeDevir||0;
-                        var aylikUcret=elev.aylikUcret||0;
-                        var mevcutAyOdemesi=buAyTahsil(elev.id);
                         var alinan=parseFloat(odemeMiktar)||0;
-                        var yeniD=eskiDevir+aylikUcret-(mevcutAyOdemesi+alinan);
-                        var renk=yeniD>0?"#f97316":yeniD===0?"#94a3b8":"#34d399";
-                        var bg=yeniD>0?"rgba(249,115,22,0.12)":yeniD===0?"rgba(148,163,184,0.10)":"rgba(52,211,153,0.12)";
+                        var kalan=eskiDevir-alinan;
+                        var renk=kalan>0?"#ef4444":kalan===0?"#94a3b8":"#34d399";
+                        var bg=kalan>0?"rgba(239,68,68,0.12)":kalan===0?"rgba(148,163,184,0.10)":"rgba(52,211,153,0.12)";
                         return React.createElement('div', {style:{background:bg,borderRadius:12,padding:"10px 14px",border:"1px solid "+renk+"44"}}
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}
                             , React.createElement('span', {style:{fontSize:11,color:"var(--text-muted)",fontWeight:600}}, "Hesap")
                             , React.createElement('span', {style:{fontSize:11,color:"var(--text-dim)"}},
-                                eskiDevir.toLocaleString("tr-TR")+" + "+aylikUcret.toLocaleString("tr-TR")+" - "+(mevcutAyOdemesi+alinan).toLocaleString("tr-TR"))
+                                eskiDevir.toLocaleString("tr-TR")+" - "+alinan.toLocaleString("tr-TR"))
                           )
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "🔄 Yeni Devir")
+                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "Kalan Eski Devir")
                             , React.createElement('span', {style:{fontSize:18,fontWeight:900,color:renk}},
-                                (yeniD>0?"+":"")+yeniD.toLocaleString("tr-TR")+" ₺")
+                                (kalan>0?"+":"")+kalan.toLocaleString("tr-TR")+" ₺")
                           )
                         );
                       })()

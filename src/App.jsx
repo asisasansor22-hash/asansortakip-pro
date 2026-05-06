@@ -1510,16 +1510,9 @@ function App(){
     if(mapsInput&&!parsedMapsCoords){alert("Google Maps linki/iframe içinden geçerli koordinat okunamadı. Lütfen paylaşılan linki veya embed kodunu kontrol edin.");return;}
     if(!edit&&!parsedMapsCoords){alert("Google Maps linki / iframe zorunludur. Yeni bina rotaya girebilmesi için koordinatla kaydedilmelidir.");return;}
     if(edit&&!parsedMapsCoords&&!mevcutCoords){alert("Bu binada koordinat yok. Google Maps linki / iframe girmeniz zorunludur.");return;}
-    // _yeniDevirOverride girilmişse yeniDevirManuel olarak kaydet, boşsa null (otomatik)
-    var yeniDevirManuelDeger=null;
-    if(form._yeniDevirOverride!==undefined&&form._yeniDevirOverride!==""){
-      yeniDevirManuelDeger=parseFloat(form._yeniDevirOverride);
-    }
-    // Form'daki "Eski Devir" alanı bakiyeDevirBase'e karşılık gelir.
-    // Canlı bakiyeDevir useEffect tarafından otomatik yeniden hesaplanır,
-    // ama açılışta da base ile başlat ki hemen tutarlı olsun.
+    // Eski devir tek kaynak: ödeme alınınca doğrudan buradan düşer.
     var formEskiDevir=+form.bakiyeDevir||0;
-    const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:formEskiDevir,bakiyeDevirBase:formEskiDevir,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:yeniDevirManuelDeger};
+    const d={...form,ilce:ilceDeger,aylikUcret:+form.aylikUcret||0,bakiyeDevir:formEskiDevir,bakiyeDevirBase:formEskiDevir,kat:+form.kat||0,kapasite:+form.kapasite||0,yeniDevirManuel:null};
     if(parsedMapsCoords){
       d.lat=Number(parsedMapsCoords.lat.toFixed(7));
       d.lng=Number(parsedMapsCoords.lng.toFixed(7));
@@ -1529,7 +1522,6 @@ function App(){
       d.geoAddress="Google Maps link/iframe";
       d.geoUpdatedAt=new Date().toISOString();
     }
-    delete d._yeniDevirOverride;
     delete d._devirKilidAcik;
     delete d._mapsInput;
     edit?setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e)):setElevs(p=>[...p,{...d,id:Date.now()}]);
@@ -3304,7 +3296,7 @@ function App(){
           , React.createElement(FF, { label: edit?"Yönetici Dairesi":"Yönetici Dairesi *", value: form.yoneticiDaire||"", onChange: v=>F("yoneticiDaire",v),})
           , React.createElement(FF, { label: edit?"Bakım Günü":"Bakım Günü (Ayın kaçı?) *", type: "number", value: form.bakimGunu||"", onChange: v=>F("bakimGunu",v),})
           , React.createElement(FF, { label: "Aylık Bakım Ücreti (₺) *", type: "number", value: form.aylikUcret||"", onChange: v=>F("aylikUcret",v),})
-          /* Eski Devir + Yeni Devir alanları */
+          /* Eski Devir alanı */
           , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10,marginBottom:8}}
 
             /* Eski Devir — kilitli, özel onay gerektirir */
@@ -3336,37 +3328,6 @@ function App(){
                   form._devirKilidAcik?"⚠️ Dikkat: Bu değeri değiştirmek finansal hesapları etkiler!":"Önceki aydan kalan devir bakiye · Düzenlemek için 🔒 butonuna basın")
             )
 
-            /* Yeni Devir — canlı hesap gösterimi + düzenlenebilir override */
-            , (function(){
-                var eskiD=parseFloat(form.bakiyeDevir)||0;
-                var aylikU=parseFloat(form.aylikUcret)||0;
-                // Bu asansör için bu ay alınan ödemeleri hesapla
-                var simdi=new Date();
-                var ayBas=new Date(simdi.getFullYear(),simdi.getMonth(),1);
-                var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
-                var alinan=edit?sonOdemeler.filter(function(o){
-                  var od=new Date(o.tarih);
-                  return Number(o.aid)===Number(edit.id)&&!o.iptal&&od>=ayBas&&od<=aySon;
-                }).reduce(function(s,o){return s+(o.alinanTutar||0);},0):0;
-                var otomatikND=eskiD+aylikU-alinan;
-                var ndRenk=otomatikND>0?"#f97316":otomatikND===0?"#64748b":"#34d399";
-                var ndBg=otomatikND>0?"rgba(249,115,22,0.10)":otomatikND===0?"rgba(100,116,139,0.08)":"rgba(52,211,153,0.10)";
-                return React.createElement('div', null
-                  , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}
-                    , React.createElement('label', {style:{fontSize:11,fontWeight:700,color:"#94a3b8"}},"🔄 Yeni Devir (₺)")
-                    , React.createElement('span', {style:{fontSize:10,color:ndRenk,background:ndBg,padding:"2px 8px",borderRadius:10,fontWeight:700}},
-                        "Otomatik: "+(otomatikND>0?"+":"")+otomatikND.toLocaleString("tr-TR")+" ₺")
-                  )
-                  , React.createElement('input', {
-                      type:"number",
-                      value:form._yeniDevirOverride!==undefined?form._yeniDevirOverride:"",
-                      onChange:function(e){F("_yeniDevirOverride",e.target.value);},
-                      placeholder:(otomatikND>0?"+":"")+String(otomatikND),
-                      style:{width:"100%",background:"#0d1321",border:"1px solid "+ndRenk+"66",borderRadius:8,padding:"9px 12px",color:ndRenk,fontSize:14,outline:"none",boxSizing:"border-box"}
-                    })
-                  , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:3}}, "Boş bırakırsanız otomatik hesaplanır. Doldurursanız bir sonraki ay bu değer eski devir olur.")
-                );
-              })()
           )
           , React.createElement(MapsLinkInput,{
               value:form._mapsInput||"",
