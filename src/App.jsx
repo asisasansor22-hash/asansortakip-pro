@@ -822,45 +822,6 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_haftalik",haftalikKapamalar);}},[haftalikKapamalar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_aylik",aylikKapamalar);}},[aylikKapamalar]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_sonodemeler",sonOdemeler);}},[sonOdemeler]);
-  // Ödeme girilince bakiyeDevir'i anında hesapla (canlı bakiye)
-  // NOT: ilkYukleme guard yok — yükleme sırasında da hesaplansın.
-  // Firebase save line 647 guard'ı tarafından zaten korunuyor.
-  useEffect(function(){
-    var simdi=new Date();
-    var ayBas=new Date(simdi.getFullYear(),simdi.getMonth(),1);ayBas.setHours(0,0,0,0);
-    var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
-    var ayOdemelerMap={};
-    sonOdemeler.forEach(function(o){
-      if(o.iptal) return;
-      var od=new Date(o.tarih);
-      if(od<ayBas||od>aySon) return;
-      var aid=Number(o.aid);
-      ayOdemelerMap[aid]=(ayOdemelerMap[aid]||0)+(o.alinanTutar||0);
-    });
-    // Bu ay bakımı yapılmış asansörler
-    var bakimYapildiSet=new Set();
-    maints.forEach(function(m){
-      if(!m.yapildi) return;
-      var od=parseFinansDate(m.tarih);
-      if(!od||od<ayBas||od>aySon) return;
-      bakimYapildiSet.add(Number(m.asansorId));
-    });
-    setElevs(function(p){
-      var changed=false;
-      var newP=p.map(function(e){
-        var totalPaid=ayOdemelerMap[e.id]||0;
-        if(totalPaid===0) return e;
-        var base=e.bakiyeDevirBase!==undefined?e.bakiyeDevirBase:(e.bakiyeDevir||0);
-        // Bakım yapıldıysa aylık ücret de eklenir; yapılmadıysa sadece eski devirden düşülür
-        var bakimVar=bakimYapildiSet.has(e.id);
-        var newDevir=bakimVar?(base+(e.aylikUcret||0)-totalPaid):(base-totalPaid);
-        if(newDevir===(e.bakiyeDevir||0)&&e.bakiyeDevirBase!==undefined) return e;
-        changed=true;
-        return Object.assign({},e,{bakiyeDevir:newDevir,bakiyeDevirBase:base});
-      });
-      return changed?newP:p;
-    });
-  },[sonOdemeler,maints]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderler",giderler);}},[giderler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
@@ -1536,7 +1497,7 @@ function App(){
     setEdit(item);
     var fi=Object.assign({},item);
     // Asansör düzenlemesinde "Eski Devir" alanı geçen kapanışın tabanını göstermeli
-    if(t==="e"&&fi.bakiyeDevirBase!==undefined){fi.bakiyeDevir=fi.bakiyeDevirBase;}
+    // bakiyeDevir — mevcut canlı değeri göster (bakiyeDevirBase değil)
     setForm(fi);
     setModal(t);
   };
@@ -3710,13 +3671,13 @@ function App(){
                     }
                     /* Her durumda son ödemeler listesine ekle */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    /* Ödeme anında bakiyeDevir'i direkt güncelle — Firebase'e de anında yansır */
+                    /* Ödeme anında mevcut bakiyeDevir'den direkt düş — hafıza yok, sade hesap */
                     setElevs(function(p){return p.map(function(elev){
                       if(elev.id!==aid) return elev;
-                      var base=elev.bakiyeDevirBase!==undefined?elev.bakiyeDevirBase:(elev.bakiyeDevir||0);
-                      var bakimVar=!!mevcut||mMonth.some(function(m){return m.asansorId===aid&&m.yapildi;});
-                      var newDevir=bakimVar?(base+(elev.aylikUcret||0)-tutar):(base-tutar);
-                      return Object.assign({},elev,{bakiyeDevir:newDevir,bakiyeDevirBase:base});
+                      var current=elev.bakiyeDevir||0;
+                      // Bakım şu an tamamlanıyorsa aylık ücret de ekle; saf ödeme ise sadece düş
+                      var newDevir=mevcut?(current+(elev.aylikUcret||0)-tutar):(current-tutar);
+                      return Object.assign({},elev,{bakiyeDevir:newDevir});
                     });});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
