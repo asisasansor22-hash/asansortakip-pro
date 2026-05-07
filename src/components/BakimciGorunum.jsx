@@ -101,17 +101,6 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     }
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-      if(typeof setElevs==="function"){
-        setElevs(function(p){return p.map(function(x){
-          if(Number(x.id)!==Number(elev.id)) return x;
-          // Bakım yeni tamamlandıysa güncel devir = eski devir + aylık ücret, sonra ödeme düşülür
-          var bakimYeniTamamlandi=!maint||!maint.yapildi;
-          var eski=Number(x.bakiyeDevir)||0;
-          var aylik=bakimYeniTamamlandi?(Number(x.aylikUcret)||0):0;
-          var yeniDevir=eski+aylik-alinan;
-          return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
-        });});
-      }
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -147,17 +136,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-    // Bakım bu işlemde yeni tamamlanıyor — güncel devir = eski devir + aylık ücret, ödeme onu düşürür
-    var bakimYeniTamamlandi=!m.yapildi;
-    if(typeof setElevs==="function"){
-      setElevs(function(p){return p.map(function(x){
-        if(Number(x.id)!==Number(elev.id)) return x;
-        var eski=Number(x.bakiyeDevir)||0;
-        var aylik=bakimYeniTamamlandi?(Number(x.aylikUcret)||0):0;
-        var yeniDevir=eski+aylik-tutar;
-        return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
-      });});
-    }
+    // bakiyeDevir ay kapanışında hesaplanır; burada sadece sonOdemeler güncellenir
     setMakbuzSonBakim({m:odemeSorModal.m,elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
     setOdemeMiktar("");
@@ -526,19 +505,8 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                       , React.createElement('button', {
                           onClick:function(){
                             var o=odemeSorModal;
-                            // Bakım yeni tamamlanıyor mu? (yapildi:false → true geçişi)
-                            var bakimYeniTamamlandi=!o.m.yapildi;
                             setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
-                            // Ödeme alınmasa bile bakım yapıldıysa aylık ücret bakiyeDevir'e eklenir
-                            if(bakimYeniTamamlandi&&typeof setElevs==="function"){
-                              setElevs(function(p){return p.map(function(x){
-                                if(Number(x.id)!==Number(o.elev.id)) return x;
-                                var eski=Number(x.bakiyeDevir)||0;
-                                var aylik=Number(x.aylikUcret)||0;
-                                var yeniDevir=eski+aylik;
-                                return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
-                              });});
-                            }
+                            // bakiyeDevir ay kapanışında hesaplanır
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}

@@ -982,11 +982,27 @@ function App(){
         if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
-      /* Ay kapanışında ödeme geçmişinden yeniden hesaplama yapma; mevcut devir yeni taban olur. */
+      /* Ay kapanışında bakım yapılan asansörler için: bakiyeDevir = eskiDevir + aylikUcret - toplamAlinan */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          var mevcutDevir=ev.bakiyeDevir||0;
-          return Object.assign({},ev,{bakiyeDevirBase:mevcutDevir,yeniDevirManuel:null});
+          var eskiDevir=ev.bakiyeDevir||0;
+          var aylikUcret=ev.aylikUcret||0;
+          var bakimYapildi=maints.find(function(m){
+            var d=new Date(m.tarih);
+            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
+          });
+          if(!bakimYapildi) return ev;
+          var yeniDevirHesap;
+          if(ev.yeniDevirManuel!==undefined&&ev.yeniDevirManuel!==null&&ev.yeniDevirManuel!==""){
+            yeniDevirHesap=Number(ev.yeniDevirManuel);
+          } else {
+            var toplamAlinan=sonOdemeler.filter(function(o){
+              var od=new Date(o.tarih);
+              return Number(o.aid)===Number(ev.id)&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
+            }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
+            yeniDevirHesap=eskiDevir+aylikUcret-toplamAlinan;
+          }
+          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
         });
       });
     }
@@ -1320,18 +1336,26 @@ function App(){
     return soAlinan+maintEk;
   };
 
-  /** Devir bakiyesi: ödemeler doğrudan bu alandan düşülür. */
+  /** Devir bakiyesi: bu ay ödemeler dinamik olarak düşülür. Negatifse (alacak) olduğu gibi döner. */
   const bal=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return 0;
-    return e.bakiyeDevir||0;
+    const eskiDevir=e.bakiyeDevir||0;
+    if(eskiDevir<=0) return eskiDevir;
+    return Math.max(0,eskiDevir-buAyToplamAlinan(id));
   };
 
-  /* Aktif ayda bakım yapıldıysa ekranda "Güncel Devir" etiketiyle aynı bakiye gösterilir. */
+  /* Aktif ayda bakım yapıldıysa yeni devir hesaplanır: eskiDevir + aylikUcret - bu ay ödemeler */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    return e.bakiyeDevir||0;
+    if(e.yeniDevirManuel!==undefined&&e.yeniDevirManuel!==null&&e.yeniDevirManuel!==""){
+      return Number(e.yeniDevirManuel);
+    }
+    const eskiDevir=e.bakiyeDevir||0;
+    const aylikUcret=e.aylikUcret||0;
+    const toplamAlinan=buAyToplamAlinan(id);
+    return eskiDevir+aylikUcret-toplamAlinan;
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -3661,17 +3685,8 @@ function App(){
                     } else {
                       /* Bakımcıya atanmamış veya zaten tamamlanmış → bakım durumunu DEĞİŞTİRME, sadece ödeme kaydı al */
                     }
-                    /* Her durumda son ödemeler listesine ekle */
+                    /* Her durumda son ödemeler listesine ekle — bakiyeDevir ay kapanışında hesaplanır */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    /* Bakım bu ödemeyle yeni tamamlanıyorsa aylık ücret de bakiyeDevir'e eklenir;
-                       saf ödeme (bakım yok veya zaten yapılmış) durumunda sadece mevcut devirden düşülür. */
-                    setElevs(function(p){return p.map(function(elev){
-                      if(elev.id!==aid) return elev;
-                      var current=elev.bakiyeDevir||0;
-                      var aylik=mevcut?(Number(elev.aylikUcret)||0):0;
-                      var yeniDevir=current+aylik-tutar;
-                      return Object.assign({},elev,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
-                    });});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },
