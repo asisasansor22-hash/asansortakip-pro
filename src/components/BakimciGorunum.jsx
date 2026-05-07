@@ -526,7 +526,19 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                       , React.createElement('button', {
                           onClick:function(){
                             var o=odemeSorModal;
+                            // Bakım yeni tamamlanıyor mu? (yapildi:false → true geçişi)
+                            var bakimYeniTamamlandi=!o.m.yapildi;
                             setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
+                            // Ödeme alınmasa bile bakım yapıldıysa aylık ücret bakiyeDevir'e eklenir
+                            if(bakimYeniTamamlandi&&typeof setElevs==="function"){
+                              setElevs(function(p){return p.map(function(x){
+                                if(Number(x.id)!==Number(o.elev.id)) return x;
+                                var eski=Number(x.bakiyeDevir)||0;
+                                var aylik=Number(x.aylikUcret)||0;
+                                var yeniDevir=eski+aylik;
+                                return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
+                              });});
+                            }
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
