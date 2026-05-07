@@ -14,6 +14,18 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
   const [odemeSorModal,setOdemeSorModal]=useState(null); // {m, elev} - bakım sonrası ödeme sor
   const [odemeMiktar,setOdemeMiktar]=useState("");
   const [makbuzSonBakim,setMakbuzSonBakim]=useState(null); // {m, elev} - ödeme sonrası makbuz
+  function para(v){ var n=Number(v); return isNaN(n)?0:n; }
+  function odemeSnapshot(elev,alinan){
+    var eski=para(elev&&elev.bakiyeDevir);
+    var aylik=para(elev&&elev.aylikUcret);
+    return {
+      eskiDevirOnce:eski,
+      aylikBakimUcreti:aylik,
+      guncelDevirOnce:eski+aylik,
+      alinanTutar:para(alinan),
+      kalanBakiye:eski+aylik-para(alinan)
+    };
+  }
 
   // Son 6 günü üret
   const sonGunler=useMemo(()=>{
@@ -95,12 +107,15 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     const tarih=now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0")+"-"+now.getDate().toString().padStart(2,"0");
     const saat=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
     if(maint){
-      setMaints(p=>p.map(m=>m.id===maint.id?{...m,alinanTutar:alinan,notlar:odemeForm.not||m.notlar,yapildi:true,yapildiSaat:simdi,odendi:alinan>=m.tutar,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}:m));
+      var snap=odemeSnapshot(elev,alinan);
+      setMaints(p=>p.map(m=>m.id===maint.id?{...m,...snap,alinanTutar:alinan,notlar:odemeForm.not||m.notlar,yapildi:true,yapildiSaat:simdi,odendi:alinan>=m.tutar,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}:m));
     } else {
-      setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{},tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}]);
+      var snap2=odemeSnapshot(elev,alinan);
+      setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,...snap2,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{},tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}]);
     }
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
+      setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-alinan,bakiyeDevirBase:para(e.bakiyeDevir)-alinan,yeniDevirManuel:null}):e;});});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -130,14 +145,15 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     // Bakım kaydına tamamlandı + ödeme bilgisi ekle
     var beklenen=Number(m.tutar)||Number(elev.aylikUcret)||0;
     var odendiTam=tutar>=beklenen;
-    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:odendiTam,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}):x;});});
+    var snap=odemeSnapshot(elev,tutar);
+    setMaints(function(p){return p.map(function(x){return x.id===m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:yapildiSaat,alinanTutar:tutar,odendi:odendiTam,tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}):x;});});
     // Son ödemeler listesine ekle
     var parts=yapildiSaat.split(" ");
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-    // bakiyeDevir ay kapanışında hesaplanır; burada sadece sonOdemeler güncellenir
-    setMakbuzSonBakim({m:odemeSorModal.m,elev:odemeSorModal.elev,tutar:tutar});
+    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,bakiyeDevirBase:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+    setMakbuzSonBakim({m:Object.assign({},odemeSorModal.m,snap,{alinanTutar:tutar,odendi:odendiTam,yapildi:true,yapildiSaat:yapildiSaat}),elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
     setOdemeMiktar("");
   };
@@ -505,8 +521,8 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                       , React.createElement('button', {
                           onClick:function(){
                             var o=odemeSorModal;
-                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
-                            // bakiyeDevir ay kapanışında hesaplanır
+                            var snap=odemeSnapshot(o.elev,0);
+                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
@@ -536,7 +552,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                         style:{width:"100%",background:"var(--bg-elevated)",border:"2px solid var(--ios-green)",borderRadius:12,padding:"12px 14px",color:"var(--ios-green)",fontSize:24,fontWeight:900,outline:"none",boxSizing:"border-box",textAlign:"center"}
                       })
 
-                    /* Ödeme güncel devirden düşer: (eski + aylık) - alınan = kalan güncel devir */
+                    /* Ödeme eski devirden düşer; kullanıcıya görünen kalan bakiye güncel devir - alınan tutardır. */
                     , (function(){
                         var elev=odemeSorModal.elev;
                         if(!elev) return null;
@@ -554,7 +570,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                                 "("+eskiDevir.toLocaleString("tr-TR")+" + "+aylikUcret.toLocaleString("tr-TR")+") - "+alinan.toLocaleString("tr-TR"))
                           )
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "Kalan Güncel Devir")
+                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "Kalan Bakiye")
                             , React.createElement('span', {style:{fontSize:18,fontWeight:900,color:renk}},
                                 (kalan>0?"+":"")+kalan.toLocaleString("tr-TR")+" ₺")
                           )

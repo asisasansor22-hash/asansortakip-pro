@@ -20,8 +20,12 @@ export function makbuzBakimYazdir(maint, elev) {
   var bakimSaat = maint.yapildiSaat ? (String(maint.yapildiSaat).split(" ")[1]||"").substring(0,5) : "";
   var odendi = maint.odendi ? "✓ Ödendi" : "✗ Ödenmedi";
   var odendiRenk = maint.odendi ? "#10b981" : "#ef4444";
-  var eskiDevir = elev ? (Number(elev.bakiyeDevir)||0) : 0;
-  var kalanDevir = Math.max(0, eskiDevir + aylikUcretSayi0 - alinanSayi);
+  var eskiDevir = maint.eskiDevirOnce!==undefined&&maint.eskiDevirOnce!==null
+    ? (Number(maint.eskiDevirOnce)||0)
+    : (elev ? (Number(elev.bakiyeDevir)||0) : 0);
+  var kalanDevir = maint.kalanBakiye!==undefined&&maint.kalanBakiye!==null
+    ? (Number(maint.kalanBakiye)||0)
+    : (eskiDevir + aylikUcretSayi0 - alinanSayi);
   var eskiDevirStr = eskiDevir.toLocaleString("tr-TR");
   var kalanDevirStr = kalanDevir.toLocaleString("tr-TR");
   var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : "#10b981";
@@ -83,10 +87,10 @@ export function makbuzBakimYazdir(maint, elev) {
     (bakimSaat?'<div class="bilgi"><span class="et">Saat</span><span class="dg">'+bakimSaat+'</span></div>':'') +
     '<div class="bolum">Devir &amp; \u00d6deme</div>' +
     '<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Eski Devir</span><span class="dg" style="color:#ef4444;">' + eskiDevirStr + ' \u20ba</span></div>' +
-    '<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Bak\u0131m \u00dccreti</span><span class="dg">' + aylikUcret + ' \u20ba</span></div>' +
-    (alinanSayi>0?'<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Al\u0131nan</span><span class="dg" style="color:#10b981;">'+alinan+' \u20ba</span></div>':'') +
+    '<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Ayl\u0131k Bak\u0131m \u00dccreti</span><span class="dg">' + aylikUcret + ' \u20ba</span></div>' +
+    (alinanSayi>0?'<div class="bilgi" style="font-size:9.5px;padding:2.5px 0;"><span class="et" style="font-size:8px;">Al\u0131nan \u00d6deme</span><span class="dg" style="color:#10b981;">'+alinan+' \u20ba</span></div>':'') +
     '<div class="kutu">' +
-    '<div class="kutu-l">Kalan Devir</div>' +
+    '<div class="kutu-l">Kalan Bakiye</div>' +
     '<div class="kutu-t" style="color:' + kalanDevirRenk + '">' + kalanDevirStr + ' \u20ba</div>' +
     '</div>' +
     '<div class="imza-row">' +
@@ -180,4 +184,3 @@ export function makbuzEkstraYazdir(kayit, elev) {
   w.document.write(html);
   w.document.close();
 }
-

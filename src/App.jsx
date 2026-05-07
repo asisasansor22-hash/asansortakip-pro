@@ -914,10 +914,13 @@ function App(){
       var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
       try{localStorage.setItem(lsKey,"1");}catch(e){}
+      var gun=simdi.getDay();
+      var pazartesiFark=gun===0?-6:1-gun;
       var baslangic=new Date(simdi);
-      baslangic.setDate(simdi.getDate()-6);
+      baslangic.setDate(simdi.getDate()+pazartesiFark);
       baslangic.setHours(0,0,0,0);
-      var bitis=new Date(simdi);
+      var bitis=new Date(baslangic);
+      bitis.setDate(baslangic.getDate()+6);
       bitis.setHours(23,59,59,999);
       var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
       setHaftalikKapamalar(function(prev){
@@ -982,26 +985,18 @@ function App(){
         if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
-      /* Ay kapanışında bakım yapılan asansörler için: bakiyeDevir = eskiDevir + aylikUcret - toplamAlinan */
+      /* Ay kapanışında bakım yapılan asansörler için aylık bakım ücreti eski devre eklenir.
+         Ödemeler ve ekstra işler zaten anlık olarak bakiyeDevir'i hareket ettirir. */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          var eskiDevir=ev.bakiyeDevir||0;
-          var aylikUcret=ev.aylikUcret||0;
+          var eskiDevir=finansTutar(ev.bakiyeDevir);
+          var aylikUcret=finansTutar(ev.aylikUcret);
           var bakimYapildi=maints.find(function(m){
             var d=new Date(m.tarih);
             return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
           });
           if(!bakimYapildi) return ev;
-          var yeniDevirHesap;
-          if(ev.yeniDevirManuel!==undefined&&ev.yeniDevirManuel!==null&&ev.yeniDevirManuel!==""){
-            yeniDevirHesap=Number(ev.yeniDevirManuel);
-          } else {
-            var toplamAlinan=sonOdemeler.filter(function(o){
-              var od=new Date(o.tarih);
-              return Number(o.aid)===Number(ev.id)&&!o.iptal&&od>=ayBaslangic&&od<=aySon;
-            }).reduce(function(s,o){return s+(o.alinanTutar||0);},0);
-            yeniDevirHesap=eskiDevir+aylikUcret-toplamAlinan;
-          }
+          var yeniDevirHesap=eskiDevir+aylikUcret;
           return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
         });
       });
@@ -1336,26 +1331,20 @@ function App(){
     return soAlinan+maintEk;
   };
 
-  /** Devir bakiyesi: bu ay ödemeler dinamik olarak düşülür. Negatifse (alacak) olduğu gibi döner. */
+  /** Eski devir tek ana bakiye alanıdır: ekstra işler ekler, ödemeler anlık düşer. */
   const bal=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return 0;
-    const eskiDevir=e.bakiyeDevir||0;
-    if(eskiDevir<=0) return eskiDevir;
-    return Math.max(0,eskiDevir-buAyToplamAlinan(id));
+    return finansTutar(e.bakiyeDevir);
   };
 
-  /* Aktif ayda bakım yapıldıysa yeni devir hesaplanır: eskiDevir + aylikUcret - bu ay ödemeler */
+  /* Aktif ayda bakım yapıldıysa güncel devir hesaplanır: eskiDevir + aylikUcret */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    if(e.yeniDevirManuel!==undefined&&e.yeniDevirManuel!==null&&e.yeniDevirManuel!==""){
-      return Number(e.yeniDevirManuel);
-    }
-    const eskiDevir=e.bakiyeDevir||0;
-    const aylikUcret=e.aylikUcret||0;
-    const toplamAlinan=buAyToplamAlinan(id);
-    return eskiDevir+aylikUcret-toplamAlinan;
+    const eskiDevir=finansTutar(e.bakiyeDevir);
+    const aylikUcret=finansTutar(e.aylikUcret);
+    return eskiDevir+aylikUcret;
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -2688,6 +2677,7 @@ function App(){
                                 } else {
                                   if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
                                   setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                   setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                 }
                               },
@@ -2778,6 +2768,7 @@ function App(){
                                         } else {
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                           setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                         }
                                       },
@@ -2890,6 +2881,7 @@ function App(){
                                       } else {
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                         setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                       }
                                     },
@@ -3348,33 +3340,21 @@ function App(){
           /* Eski Devir alanı */
           , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:12,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10,marginBottom:8}}
 
-            /* Eski Devir — kilitli, özel onay gerektirir */
+            /* Eski Devir — manuel düzenlenebilir ana bakiye */
             , React.createElement('div', null
               , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}
                 , React.createElement('label', {style:{fontSize:11,fontWeight:700,color:"#94a3b8"}}, "📊 Eski Devir (₺)")
-                , React.createElement('button', {
-                    type:"button",
-                    onClick:function(){
-                      if(!form._devirKilidAcik){
-                        if(!window.confirm("Eski Devir değerini değiştirmek istediğinizden emin misiniz?\n\nYanlış değer girilmesi finansal hesapları bozabilir!")) return;
-                        F("_devirKilidAcik",true);
-                      } else {
-                        F("_devirKilidAcik",false);
-                      }
-                    },
-                    style:{fontSize:10,padding:"2px 8px",borderRadius:6,background:form._devirKilidAcik?"#3a1e1e":"#1e3050",border:"1px solid "+(form._devirKilidAcik?"#ef444466":"#3b82f666"),color:form._devirKilidAcik?"#ef4444":"#3b82f6",cursor:"pointer",fontWeight:700}
-                  }, form._devirKilidAcik?"🔓 Kilitle":"🔒 Düzenle")
+                , React.createElement('span', {style:{fontSize:10,padding:"2px 8px",borderRadius:6,background:"#1e3a2e",border:"1px solid #10b98166",color:"#10b981",fontWeight:800}}, "Düzenlenebilir")
               )
               , React.createElement('input', {
                   type:"number",
                   value:form.bakiyeDevir||"",
                   onChange:function(e){F("bakiyeDevir",e.target.value);},
                   placeholder:"0",
-                  readOnly:!form._devirKilidAcik,
-                  style:{width:"100%",background:form._devirKilidAcik?"#1a0a0a":"#0a0f1a",border:"1px solid "+(form._devirKilidAcik?"#ef444466":"#1e2640"),borderRadius:8,padding:"9px 12px",color:form._devirKilidAcik?"#ef4444":"#64748b",fontSize:14,outline:"none",boxSizing:"border-box",cursor:form._devirKilidAcik?"text":"not-allowed"}
+                  style:{width:"100%",background:"#0d1321",border:"1px solid #10b98144",borderRadius:8,padding:"9px 12px",color:"#e0e6f0",fontSize:14,outline:"none",boxSizing:"border-box"}
                 })
-              , React.createElement('div', {style:{fontSize:10,color:form._devirKilidAcik?"#ef4444":"#64748b",marginTop:3,fontWeight:form._devirKilidAcik?700:400}},
-                  form._devirKilidAcik?"⚠️ Dikkat: Bu değeri değiştirmek finansal hesapları etkiler!":"Önceki aydan kalan devir bakiye · Düzenlemek için 🔒 butonuna basın")
+              , React.createElement('div', {style:{fontSize:10,color:"#64748b",marginTop:3}},
+                  "Önceki aydan kalan ana bakiye. Negatif değer müşteri alacağını gösterir.")
             )
             , (function(){
                 var eskiDevir=parseFloat(form.bakiyeDevir)||0;
@@ -3676,17 +3656,21 @@ function App(){
                     var saat=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
                     var tarih=now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0")+"-"+now.getDate().toString().padStart(2,"0");
                     var yapildiSaat=tarih+" "+saat;
+                    var eskiOnce=el?finansTutar(el.bakiyeDevir):0;
+                    var aylikOnce=el?finansTutar(el.aylikUcret):0;
+                    var finansSnap={eskiDevirOnce:eskiOnce,aylikBakimUcreti:aylikOnce,guncelDevirOnce:eskiOnce+aylikOnce,kalanBakiye:eskiOnce+aylikOnce-tutar};
 
                     /* Sadece bu ay bakımcıya atanmış VE henüz tamamlanmamış (planlanmis:true, yapildi:false) kayıt varsa tamamlandıya işaretle */
                     var mevcut=mMonth.find(function(m){return m.asansorId===aid && m.planlanmis===true && !m.yapildi;});
                     if(mevcut){
                       /* Bakımcıya atanmış ve bekleyen bakım var → tamamlandı olarak güncelle */
-                      setMaints(function(p){return p.map(function(x){return x.id===mevcut.id?Object.assign({},x,{alinanTutar:tutar,odendi:true,yapildi:true,yapildiSaat:yapildiSaat,notlar:form.odNot||x.notlar||""}):x;});});
+                      setMaints(function(p){return p.map(function(x){return x.id===mevcut.id?Object.assign({},x,finansSnap,{alinanTutar:tutar,odendi:tutar>=finansTutar(x.tutar||aylikOnce),yapildi:true,yapildiSaat:yapildiSaat,notlar:form.odNot||x.notlar||""}):x;});});
                     } else {
                       /* Bakımcıya atanmamış veya zaten tamamlanmış → bakım durumunu DEĞİŞTİRME, sadece ödeme kaydı al */
                     }
-                    /* Her durumda son ödemeler listesine ekle — bakiyeDevir ay kapanışında hesaplanır */
+                    /* Ödeme her zaman eski devirden düşer; güncel devir eski devir + aylık bakım olarak hesaplanır. */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
+                    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,bakiyeDevirBase:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },
