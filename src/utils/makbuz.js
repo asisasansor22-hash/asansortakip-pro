@@ -19,11 +19,15 @@ export function makbuzBakimYazdir(maint, elev) {
   var odendi = maint.odendi ? "✓ Ödendi" : "✗ Ödenmedi";
   var odendiRenk = maint.odendi ? "#10b981" : "#ef4444";
   var aylikUcretSayi = elev ? (elev.aylikUcret||0) : (maint.tutar||0);
-  var eskiDevir = elev ? (elev.bakiyeDevir||0) : 0;
-  var kalanDevir = Math.max(0, eskiDevir + aylikUcretSayi - (maint.alinanTutar||0));
-  var eskiDevirStr = eskiDevir.toLocaleString("tr-TR");
-  var kalanDevirStr = kalanDevir.toLocaleString("tr-TR");
-  var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : "#10b981";
+  // Eski Devir: ödeme öncesi anlık bakiye (kayıttan oku, yoksa elev.bakiyeDevir)
+  var eskiDevir = (maint && maint.eskiDevirAnindaki!==undefined && maint.eskiDevirAnindaki!==null)
+    ? Number(maint.eskiDevirAnindaki)
+    : (elev ? (Number(elev.bakiyeDevir)||0) : 0);
+  // Kalan Bakiye = Eski Devir + Aylık Bakım Ücreti - Alınan Ödeme (negatif desteklenir)
+  var kalanDevir = eskiDevir + aylikUcretSayi - (Number(maint.alinanTutar)||0);
+  var eskiDevirStr = (eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR");
+  var kalanDevirStr = (kalanDevir>0?"+":"")+kalanDevir.toLocaleString("tr-TR");
+  var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : kalanDevir < 0 ? "#10b981" : "#666";
   var html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<title>Bakım Makbuzu</title><style>' +
     '* { margin:0; padding:0; box-sizing:border-box; }' +
