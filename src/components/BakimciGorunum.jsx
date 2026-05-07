@@ -104,7 +104,11 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
       if(typeof setElevs==="function"){
         setElevs(function(p){return p.map(function(x){
           if(Number(x.id)!==Number(elev.id)) return x;
-          var yeniDevir=(Number(x.bakiyeDevir)||0)-alinan;
+          // Bakım yeni tamamlandıysa güncel devir = eski devir + aylık ücret, sonra ödeme düşülür
+          var bakimYeniTamamlandi=!maint||!maint.yapildi;
+          var eski=Number(x.bakiyeDevir)||0;
+          var aylik=bakimYeniTamamlandi?(Number(x.aylikUcret)||0):0;
+          var yeniDevir=eski+aylik-alinan;
           return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
         });});
       }
@@ -143,10 +147,14 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
+    // Bakım bu işlemde yeni tamamlanıyor — güncel devir = eski devir + aylık ücret, ödeme onu düşürür
+    var bakimYeniTamamlandi=!m.yapildi;
     if(typeof setElevs==="function"){
       setElevs(function(p){return p.map(function(x){
         if(Number(x.id)!==Number(elev.id)) return x;
-        var yeniDevir=(Number(x.bakiyeDevir)||0)-tutar;
+        var eski=Number(x.bakiyeDevir)||0;
+        var aylik=bakimYeniTamamlandi?(Number(x.aylikUcret)||0):0;
+        var yeniDevir=eski+aylik-tutar;
         return Object.assign({},x,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
       });});
     }
@@ -483,25 +491,32 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
               , React.createElement('div', {style:{fontWeight:800,fontSize:17,color:"var(--text)",textAlign:"center"}},
                   odemeSorModal.elev?odemeSorModal.elev.ad:"")
 
-              /* Finansal özet kutusu */
-              , React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:14,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}
-                , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                  , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, "📋 Aylık Bakım Ücreti")
-                  , React.createElement('span', {style:{fontSize:14,fontWeight:800,color:"var(--accent)"}},
-                      (odemeSorModal.elev?odemeSorModal.elev.aylikUcret:0).toLocaleString("tr-TR")+" ₺")
-                )
-                , React.createElement('div', {style:{height:"0.5px",background:"var(--border-soft)"}})
-                , (function(){
-                    var modalDevir=odemeSorModal.elev?bal(odemeSorModal.elev.id):0;
-                    var hamDevir=odemeSorModal.elev?(odemeSorModal.elev.bakiyeDevir||0):0;
-                    return React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                      , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, modalDevir!==hamDevir?"📊 Kalan Devir":"📊 Mevcut Devir")
-                      , React.createElement('span', {style:{fontSize:14,fontWeight:800,color:modalDevir>0?"var(--ios-red)":modalDevir===0?"var(--ios-green)":"#f59e0b"}},
-                          (modalDevir>0?"+":"")+
-                          modalDevir.toLocaleString("tr-TR")+" ₺")
-                    );
-                  })()
-              )
+              /* Finansal özet kutusu — Eski Devir + Aylık = Güncel Devir */
+              , (function(){
+                  var elev=odemeSorModal.elev;
+                  var eski=elev?(Number(elev.bakiyeDevir)||0):0;
+                  var aylik=elev?(Number(elev.aylikUcret)||0):0;
+                  var guncel=eski+aylik;
+                  var guncelRenk=guncel>0?"var(--ios-red)":guncel===0?"var(--ios-green)":"#f59e0b";
+                  return React.createElement('div', {style:{background:"var(--bg-elevated)",borderRadius:14,padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}
+                    , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                      , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, "📊 Eski Devir")
+                      , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:eski>0?"var(--ios-red)":eski===0?"var(--text-muted)":"#10b981"}},
+                          (eski>0?"+":"")+eski.toLocaleString("tr-TR")+" ₺")
+                    )
+                    , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                      , React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)",fontWeight:500}}, "➕ Aylık Bakım Ücreti")
+                      , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:"var(--accent)"}},
+                          aylik.toLocaleString("tr-TR")+" ₺")
+                    )
+                    , React.createElement('div', {style:{height:"0.5px",background:"var(--border-soft)"}})
+                    , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                      , React.createElement('span', {style:{fontSize:13,color:"var(--text)",fontWeight:800}}, "💰 Güncel Devir")
+                      , React.createElement('span', {style:{fontSize:16,fontWeight:900,color:guncelRenk}},
+                          (guncel>0?"+":"")+guncel.toLocaleString("tr-TR")+" ₺")
+                    )
+                  );
+                })()
 
               /* Ödeme sorusu veya tutar girişi */
               , !odemeSorModal.odemeGir
@@ -541,23 +556,25 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                         style:{width:"100%",background:"var(--bg-elevated)",border:"2px solid var(--ios-green)",borderRadius:12,padding:"12px 14px",color:"var(--ios-green)",fontSize:24,fontWeight:900,outline:"none",boxSizing:"border-box",textAlign:"center"}
                       })
 
-                    /* Ödeme doğrudan mevcut eski devirden düşer. */
+                    /* Ödeme güncel devirden düşer: (eski + aylık) - alınan = kalan güncel devir */
                     , (function(){
                         var elev=odemeSorModal.elev;
                         if(!elev) return null;
-                        var eskiDevir=elev.bakiyeDevir||0;
+                        var eskiDevir=Number(elev.bakiyeDevir)||0;
+                        var aylikUcret=Number(elev.aylikUcret)||0;
+                        var guncelDevir=eskiDevir+aylikUcret;
                         var alinan=parseFloat(odemeMiktar)||0;
-                        var kalan=eskiDevir-alinan;
+                        var kalan=guncelDevir-alinan;
                         var renk=kalan>0?"#ef4444":kalan===0?"#94a3b8":"#34d399";
                         var bg=kalan>0?"rgba(239,68,68,0.12)":kalan===0?"rgba(148,163,184,0.10)":"rgba(52,211,153,0.12)";
                         return React.createElement('div', {style:{background:bg,borderRadius:12,padding:"10px 14px",border:"1px solid "+renk+"44"}}
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}
                             , React.createElement('span', {style:{fontSize:11,color:"var(--text-muted)",fontWeight:600}}, "Hesap")
                             , React.createElement('span', {style:{fontSize:11,color:"var(--text-dim)"}},
-                                eskiDevir.toLocaleString("tr-TR")+" - "+alinan.toLocaleString("tr-TR"))
+                                "("+eskiDevir.toLocaleString("tr-TR")+" + "+aylikUcret.toLocaleString("tr-TR")+") - "+alinan.toLocaleString("tr-TR"))
                           )
                           , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "Kalan Eski Devir")
+                            , React.createElement('span', {style:{fontSize:13,fontWeight:700,color:renk}}, "Kalan Güncel Devir")
                             , React.createElement('span', {style:{fontSize:18,fontWeight:900,color:renk}},
                                 (kalan>0?"+":"")+kalan.toLocaleString("tr-TR")+" ₺")
                           )
