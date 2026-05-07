@@ -1408,6 +1408,73 @@ function App(){
     var days=Math.max(1,Math.round((aySon-ayBas)/86400000)+1);
     return {mode:"month",label:"Bu Ay",start:ayBas,end:aySon,days:days};
   },[dashboardRange]);
+  function tahsilatBetween(bas,son){
+    var toplam=sonOdemeler.filter(function(o){
+      var od=parseFinansDate(o.tarih);
+      return !o.iptal&&od&&od>=bas&&od<=son;
+    }).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
+    return toplam+maintTahsilatNotInSonOdemeler(sonOdemeler,maints,bas,son);
+  }
+  function tarihKey(d){
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function tahsilatGunSerisi(bas,son){
+    var seri=[];
+    var cur=new Date(bas);
+    cur.setHours(0,0,0,0);
+    var end=new Date(son);
+    end.setHours(0,0,0,0);
+    while(cur<=end){
+      var gunBas=new Date(cur); gunBas.setHours(0,0,0,0);
+      var gunSon=new Date(cur); gunSon.setHours(23,59,59,999);
+      seri.push({
+        key:tarihKey(cur),
+        label:String(cur.getDate()),
+        alt:String(cur.getMonth()+1).padStart(2,"0"),
+        value:tahsilatBetween(gunBas,gunSon)
+      });
+      cur.setDate(cur.getDate()+1);
+    }
+    return seri;
+  }
+  function MiniBarChart(props){
+    var series=props.series||[];
+    var max=Math.max(1,...series.map(function(x){return finansTutar(x.value);}));
+    var color=props.color||"#3b82f6";
+    var activeKey=props.activeKey||"";
+    return React.createElement('div',{style:{background:"#111827",border:"1px solid #25304a",borderRadius:14,padding:"12px 14px",minWidth:0}}
+      , React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,marginBottom:10}}
+        , React.createElement('div',{style:{fontSize:12,fontWeight:900,color:"#e0e6f0"}},props.title||"Grafik")
+        , React.createElement('div',{style:{fontSize:11,fontWeight:800,color:color}},props.valueLabel||"")
+      )
+      , React.createElement('div',{style:{height:94,display:"flex",alignItems:"flex-end",gap:4,borderBottom:"1px solid #25304a",paddingBottom:6,overflow:"hidden"}}
+        , series.map(function(x){
+          var v=finansTutar(x.value);
+          var h=Math.max(v>0?8:3,Math.round(v/max*86));
+          var active=activeKey&&x.key===activeKey;
+          return React.createElement('div',{key:x.key,title:(x.label||"")+" · "+v.toLocaleString("tr-TR")+" ₺",style:{flex:"1 1 0",minWidth:5,height:h,borderRadius:"7px 7px 3px 3px",background:active?"#f59e0b":(v>0?color:"#25304a"),boxShadow:active?"0 0 0 1px #f59e0b88":"none",opacity:v>0?1:0.45,transition:"height .35s ease"}});
+        })
+      )
+      , React.createElement('div',{style:{display:"flex",justifyContent:"space-between",fontSize:9,color:"#64748b",fontWeight:700,marginTop:6}}
+        , series.slice(0,1).map(function(x){return React.createElement('span',{key:"first"},(x.label||"")+"."+x.alt);})
+        , series.length>2&&React.createElement('span',null,props.midLabel||"")
+        , series.slice(-1).map(function(x){return React.createElement('span',{key:"last"},(x.label||"")+"."+x.alt);})
+      )
+    );
+  }
+  function RingChart(props){
+    var pct=Math.max(0,Math.min(100,Number(props.pct)||0));
+    var color=props.color||"#10b981";
+    return React.createElement('div',{style:{background:"#111827",border:"1px solid #25304a",borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,minWidth:0}}
+      , React.createElement('div',{style:{width:74,height:74,borderRadius:"50%",background:"conic-gradient("+color+" "+pct+"%, #25304a "+pct+"%)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}
+        , React.createElement('div',{style:{width:52,height:52,borderRadius:"50%",background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:color}},pct+"%")
+      )
+      , React.createElement('div',{style:{minWidth:0}}
+        , React.createElement('div',{style:{fontSize:12,fontWeight:900,color:"#e0e6f0",marginBottom:4}},props.title||"Oran")
+        , React.createElement('div',{style:{fontSize:11,color:"#64748b",lineHeight:1.35}},props.caption||"")
+      )
+    );
+  }
   function dashboardMove(itemId,delta){
     setDashboardLayout(function(prev){
       var list=normalizeDashboardLayout(prev);
@@ -1845,13 +1912,14 @@ function App(){
       })()
     /* FİNANSAL BENTO */
     , dashboardEnabledMap.financeSummary&&(function(){
-        var tahsil=sonOdemeler.filter(function(o){var od=parseFinansDate(o.tarih);return !o.iptal&&od&&od>=dashboardWindow.start&&od<=dashboardWindow.end;}).reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0);
-        tahsil+=maintTahsilatNotInSonOdemeler(sonOdemeler,maints,dashboardWindow.start,dashboardWindow.end);
+        var tahsil=tahsilatBetween(dashboardWindow.start,dashboardWindow.end);
         var aylikToplam=elevs.reduce(function(s,e){return s+e.aylikUcret;},0);
         var hedef=dashboardWindow.mode==="month"?aylikToplam:Math.round((aylikToplam/30)*dashboardWindow.days);
         var bekleyen=Math.max(0,hedef-tahsil);
         var pct=hedef>0?Math.round(tahsil/hedef*100):0;
         var p=dashboardPad("financeSummary","12px 14px","18px","22px 24px");
+        var seri=tahsilatGunSerisi(dashboardWindow.start,dashboardWindow.end);
+        var ayAd=MONTHS[new Date().getMonth()];
         return React.createElement('div', { style: {background:"var(--bg-panel)",borderRadius:20,padding:p,marginBottom:10,boxShadow:"var(--shadow-sm)"},}
           , React.createElement('div', { style: {fontSize:13,fontWeight:600,color:"var(--text-muted)",marginBottom:12}}, "💰 "+dashboardWindow.label+" Finansal Özet")
           , React.createElement('div', { style: {display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:14}},
@@ -1874,6 +1942,10 @@ function App(){
           , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",marginTop:6}},
             React.createElement('span', {style:{fontSize:12,color:"var(--text-muted)"}}, "Tahsilat oranı"),
             React.createElement('span', {style:{fontSize:12,fontWeight:700,color:"var(--accent)"}}, pct+"%")
+          )
+          , React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:10,marginTop:14}}
+            , React.createElement(MiniBarChart,{title:dashboardWindow.label+" Tahsilat Grafiği",series:seri,color:"#10b981",valueLabel:tahsil.toLocaleString("tr-TR")+" ₺",activeKey:tarihKey(new Date()),midLabel:dashboardWindow.mode==="month"?ayAd:""})
+            , React.createElement(RingChart,{title:"Hedef Karşılama",pct:pct,color:"#10b981",caption:"Tahsil "+tahsil.toLocaleString("tr-TR")+" ₺ · Hedef "+hedef.toLocaleString("tr-TR")+" ₺"})
           )
         );
       })()
@@ -2598,6 +2670,29 @@ function App(){
           , React.createElement(Stat, {icon:"📅", label:"Bu Hafta ("+haftaBasStr+" - "+haftaSonStr+")", value:buHaftaTahsilat.toLocaleString("tr-TR")+" ₺", color:"#3b82f6"})
           , React.createElement(Stat, {icon:"☀️", label:"Bugün ("+gunler[simdi.getDay()]+")", value:bugunTahsilat.toLocaleString("tr-TR")+" ₺", color:"#f59e0b"})
           , React.createElement(Stat, {icon:"🗓️", label:"Haftalık Kapama", value:haftalikKapamalar.length+" / 26", color:"#8b5cf6"})
+        );
+      })()
+
+    /* Grafikler */
+    , (function(){
+        var simdi=new Date();
+        var bugunKey=tarihKey(simdi);
+        var ayBas=new Date(simdi.getFullYear(),simdi.getMonth(),1);ayBas.setHours(0,0,0,0);
+        var aySon=new Date(simdi.getFullYear(),simdi.getMonth()+1,0);aySon.setHours(23,59,59,999);
+        var gun=simdi.getDay();
+        var pazartesiFark=gun===0?-6:1-gun;
+        var haftaBas=new Date(simdi);haftaBas.setDate(simdi.getDate()+pazartesiFark);haftaBas.setHours(0,0,0,0);
+        var haftaSon=new Date(haftaBas);haftaSon.setDate(haftaBas.getDate()+6);haftaSon.setHours(23,59,59,999);
+        var haftaSeri=tahsilatGunSerisi(haftaBas,haftaSon);
+        var aySeri=tahsilatGunSerisi(ayBas,aySon);
+        var haftaToplam=tahsilatBetween(haftaBas,haftaSon);
+        var ayToplam=tahsilatBetween(ayBas,aySon);
+        var ayHedef=elevs.reduce(function(s,e){return s+finansTutar(e.aylikUcret);},0);
+        var pct=ayHedef>0?Math.round(ayToplam/ayHedef*100):0;
+        return React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:10,marginBottom:16}}
+          , React.createElement(MiniBarChart,{title:"Haftalık Tahsilat",series:haftaSeri,color:"#3b82f6",valueLabel:haftaToplam.toLocaleString("tr-TR")+" ₺",activeKey:bugunKey})
+          , React.createElement(MiniBarChart,{title:"Aylık Tahsilat",series:aySeri,color:"#10b981",valueLabel:ayToplam.toLocaleString("tr-TR")+" ₺",activeKey:bugunKey,midLabel:MONTHS[simdi.getMonth()]})
+          , React.createElement(RingChart,{title:"Aylık Hedef",pct:pct,color:"#10b981",caption:"Tahsil "+ayToplam.toLocaleString("tr-TR")+" ₺ · Hedef "+ayHedef.toLocaleString("tr-TR")+" ₺"})
         );
       })()
 
