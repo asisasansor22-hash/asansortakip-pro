@@ -3663,11 +3663,14 @@ function App(){
                     }
                     /* Her durumda son ödemeler listesine ekle */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    /* Ödeme anında yalnızca mevcut eski devirden düş — aylık ücret eklenmez. */
+                    /* Bakım bu ödemeyle yeni tamamlanıyorsa aylık ücret de bakiyeDevir'e eklenir;
+                       saf ödeme (bakım yok veya zaten yapılmış) durumunda sadece mevcut devirden düşülür. */
                     setElevs(function(p){return p.map(function(elev){
                       if(elev.id!==aid) return elev;
                       var current=elev.bakiyeDevir||0;
-                      return Object.assign({},elev,{bakiyeDevir:current-tutar,bakiyeDevirBase:current-tutar,yeniDevirManuel:null});
+                      var aylik=mevcut?(Number(elev.aylikUcret)||0):0;
+                      var yeniDevir=current+aylik-tutar;
+                      return Object.assign({},elev,{bakiyeDevir:yeniDevir,bakiyeDevirBase:yeniDevir,yeniDevirManuel:null});
                     });});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
