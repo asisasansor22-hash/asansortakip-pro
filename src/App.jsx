@@ -2160,35 +2160,15 @@ function App(){
                     var eskiDevir=bal(e.id);
                     var aylikBakim=Number(e.aylikUcret)||0;
                     var guncelDevir=eskiDevir+aylikBakim;
-                    var eskiRenk=eskiDevir>0?"#ef4444":eskiDevir<0?"#34d399":"#64748b";
-                    var guncelRenk=guncelDevir>0?"#ef4444":guncelDevir<0?"#34d399":"#10b981";
-                    var eskiAktif=!eBakimYapildi;
-                    var guncelAktif=eBakimYapildi;
-                    var satirStyle=function(aktif,renk,top){
-                      return {
-                        display:"flex",justifyContent:"space-between",gap:8,
-                        borderTop:top?"1px solid #1e2640":"none",
-                        padding:aktif?"5px 7px":(top?"4px 0 0":"0"),
-                        margin:aktif?"0 -3px":"0",
-                        border:aktif?"1px solid "+renk+"77":"none",
-                        borderRadius:7,
-                        background:aktif?renk+"18":"transparent",
-                        boxShadow:aktif?"0 0 0 1px "+renk+"22":"none"
-                      };
-                    };
+                    var gosterilen=eBakimYapildi?guncelDevir:eskiDevir;
+                    var etiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
+                    var renk=gosterilen>0?"#ef4444":gosterilen<0?"#34d399":"#64748b";
+                    var bg=gosterilen>0?"#3a1e1e":gosterilen<0?"#0d2f1d":"#1e2640";
                     return React.createElement('div', { style: {marginTop:8,display:"flex",flexDirection:"column",gap:6},}
                       , React.createElement('div', {style:{display:"flex",gap:6,flexWrap:"wrap"}}
                         , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, aylikBakim.toLocaleString("tr-TR"), " ₺/ay")
-                      )
-                      , React.createElement('div', {style:{background:"#0d1321",border:"1px solid #2a3050",borderRadius:8,padding:"7px 10px",fontSize:10,display:"flex",flexDirection:"column",gap:4}}
-                        , React.createElement('div', {style:satirStyle(eskiAktif,eskiRenk,false)}
-                          , React.createElement('span',{style:{color:eskiAktif?eskiRenk:"#94a3b8",fontWeight:eskiAktif?900:700}},"Eski Devir")
-                          , React.createElement('span',{style:{color:eskiRenk,fontWeight:900}},(eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR")+" ₺")
-                        )
-                        , React.createElement('div', {style:satirStyle(guncelAktif,guncelRenk,true)}
-                          , React.createElement('span',{style:{color:guncelAktif?guncelRenk:"#94a3b8",fontWeight:guncelAktif?900:700}},"Güncel Devir")
-                          , React.createElement('span',{style:{color:guncelRenk,fontWeight:900}},(guncelDevir>0?"+":"")+guncelDevir.toLocaleString("tr-TR")+" ₺")
-                        )
+                        , React.createElement('span', { style: {fontSize:10,background:bg,color:renk,padding:"2px 8px",borderRadius:6,fontWeight:900},},
+                          "📊 "+etiket+": "+(gosterilen>0?"+":"")+gosterilen.toLocaleString("tr-TR")+" ₺")
                       )
                     );
                   })()
