@@ -107,13 +107,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── CANLI TEKNİK TAKİP ── */}
+      {/* ── DİJİTAL SERVİS DENEYİMİ ── */}
       <section className="section">
         <div className="container split">
           <Reveal>
-            <div className="eyebrow">Canlı Teknik Takip</div>
-            <h2>Servis süreci ekranda yaşayan bir sistem gibi çalışır.</h2>
-            <p className="lead">Modern tasarım diliyle sadece kurumsal bilgi değil, markanın hızlı ve teknik çalışma karakteri de görünür olur.</p>
+            <div className="eyebrow">Dijital Servis Deneyimi</div>
+            <h2>Kurumsal, dijital ve fark yaratan bir servis yaklaşımı.</h2>
+            <p className="lead">Ziyaretçilerinize sektörden ayrışan, dijital ve kurumsal bir deneyim sunuyoruz. Her arıza bildirimi, bakım randevusu ve teknik rapor; kayıt altında, takip edilebilir ve şeffaf şekilde ilerler.</p>
           </Reveal>
           <Reveal className="reveal-right">
             <MotionGraphic />
