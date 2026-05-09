@@ -67,8 +67,6 @@ export const faqItems = [
   }
 ];
 
-export const districts = [
-
 export const services = [
   {
     id: "bakim",
