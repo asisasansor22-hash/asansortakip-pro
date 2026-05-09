@@ -222,7 +222,7 @@ export default function HomePage() {
         <div className="container cta-band-inner">
           <Reveal>
             <h2>Servis veya teklif için hemen ulaşın.</h2>
-            <p className="cta-sub">Ofisimiz Yenibosna'da, hizmetimiz İstanbul genelinde — 7/24.</p>
+            <p className="cta-sub">Ofisimiz Bahçelievler'da, hizmetimiz İstanbul genelinde — 7/24.</p>
           </Reveal>
           <div className="cta-actions">
             <a className="btn btn-primary" href="tel:+905435070794">Hemen Ara</a>

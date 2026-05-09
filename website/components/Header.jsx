@@ -26,7 +26,7 @@ export default function Header() {
           <div className="topbar-links">
             <a href={`tel:${contact.phoneLinks[0]}`}>{contact.phones[0]}</a>
             <a href={`tel:${contact.phoneLinks[1]}`}>{contact.phones[1]}</a>
-            <span>Yenibosna / İstanbul</span>
+            <span>Bahçelievler / İstanbul</span>
           </div>
           <div className="topbar-status"><span className="status-dot" />7/24 servis hattı açık</div>
         </div>
