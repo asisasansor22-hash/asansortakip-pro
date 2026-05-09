@@ -132,13 +132,56 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── TAKİP PROGRAMI ── */}
+      <section className="section tracker-section">
+        <div className="container">
+          <Reveal className="section-head">
+            <div>
+              <div className="eyebrow">Asis Asansör Takip Programı</div>
+              <h2>Sahada teknisyen, ofiste yönetici — hepsi tek sistemde.</h2>
+            </div>
+            <p className="lead">Kendi geliştirdiğimiz takip yazılımı sayesinde saha ekibimiz ve yöneticilerimiz tüm iş akışını anlık olarak takip eder. Hiçbir bakım, arıza veya servis kaydı gözden kaçmaz.</p>
+          </Reveal>
+          <div className="grid-3 tracker-grid">
+            <Reveal className="tracker-card" style={{ "--stagger": 0 }}>
+              <div className="tracker-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <h3>Teknisyen Takibi</h3>
+              <p>Saha teknisyenlerimiz iş emirlerini program üzerinden alır, tamamlanan işleri dijital olarak raporlar. Hangi ekip nerede, anlık görülür.</p>
+            </Reveal>
+            <Reveal className="tracker-card" style={{ "--stagger": 1 }}>
+              <div className="tracker-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </div>
+              <h3>Bakım Takvimi</h3>
+              <p>Her binanın periyodik bakım tarihleri sisteme girilir; otomatik hatırlatma ile hiçbir bakım seansı atlanmaz, gecikme oluşmaz.</p>
+            </Reveal>
+            <Reveal className="tracker-card" style={{ "--stagger": 2 }}>
+              <div className="tracker-icon-wrap">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <h3>Arıza ve Servis Kaydı</h3>
+              <p>Her arıza bildirimi, müdahale süresi ve yapılan işlem sisteme kaydedilir. Bina yöneticisiyle paylaşılan raporlar şeffaflık sağlar.</p>
+            </Reveal>
+          </div>
+          <Reveal className="tracker-banner">
+            <div className="tracker-banner-left">
+              <span className="tracker-live-dot" />
+              <span>Sistem şu an aktif</span>
+            </div>
+            <p>Asis Asansör bünyesindeki tüm teknisyen ve yöneticiler bu yazılımı sahada ve ofiste günlük olarak kullanmaktadır.</p>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ── DİJİTAL SERVİS DENEYİMİ ── */}
       <section className="section">
         <div className="container split">
           <Reveal>
             <div className="eyebrow">Dijital Servis Deneyimi</div>
             <h2>Kurumsal, dijital ve fark yaratan bir servis yaklaşımı.</h2>
-            <p className="lead">Ziyaretçilerinize sektörden ayrışan, dijital ve kurumsal bir deneyim sunuyoruz. Her arıza bildirimi, bakım randevusu ve teknik rapor; kayıt altında, takip edilebilir ve şeffaf şekilde ilerler.</p>
+            <p className="lead">Her arıza bildirimi, bakım randevusu ve teknik rapor; kayıt altında, takip edilebilir ve şeffaf şekilde ilerler.</p>
           </Reveal>
           <Reveal className="reveal-right">
             <MotionGraphic />
