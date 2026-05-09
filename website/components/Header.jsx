@@ -6,9 +6,38 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { contact, navItems } from "@/lib/siteData";
 
+function getServisStatus() {
+  const parts = new Intl.DateTimeFormat("tr-TR", {
+    timeZone: "Europe/Istanbul",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const weekday = map.weekday?.toLowerCase() ?? "";
+  const hour = Number(map.hour);
+  const minute = Number(map.minute);
+  const isSunday = weekday.startsWith("paz");
+  const isSaturday = weekday.startsWith("cmt") || weekday.startsWith("cts");
+  const offline =
+    isSunday ||
+    (isSaturday && (hour > 14 || (hour === 14 && minute >= 0))) ||
+    (!isSaturday && !isSunday && (hour > 18 || (hour === 18 && minute >= 0)));
+  return !offline;
+}
+
 export default function Header() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [online, setOnline] = useState(true);
+
+  useEffect(() => {
+    const update = () => setOnline(getServisStatus());
+    update();
+    const timer = setInterval(update, 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     document.body.classList.toggle("menu-open", open);
@@ -28,7 +57,10 @@ export default function Header() {
             <a href={`tel:${contact.phoneLinks[1]}`}>{contact.phones[1]}</a>
             <span>Bahçelievler / İstanbul</span>
           </div>
-          <div className="topbar-status"><span className="status-dot" />7/24 servis hattı açık</div>
+          <div className="topbar-status">
+            <span className={online ? "status-dot is-online" : "status-dot is-offline"} />
+            {online ? "Servis hattı açık" : "Mesai dışı"}
+          </div>
         </div>
       </div>
       <header className="site-header">

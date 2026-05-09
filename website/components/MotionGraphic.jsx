@@ -21,7 +21,7 @@ export default function MotionGraphic({ title = "Canlı Servis Akışı" }) {
           <div className="counterweight" />
         </div>
         <div className="telemetry">
-          <div className="ring ring-a"><span>35dk</span></div>
+          <div className="ring ring-a"><span>45dk</span></div>
           <div className="ring ring-b"><span>7/24</span></div>
           <div className="signal-bars">
             <i />
