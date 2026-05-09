@@ -105,7 +105,7 @@ export const testimonials = [
 ];
 
 export const trustItems = [
-  { value: "17+", label: "Yıllık deneyim" },
+  { value: "7+", label: "Yıllık deneyim" },
   { value: "480+", label: "Aktif sözleşme" },
   { value: "19", label: "Avrupa Yakası ilçesi" },
   { value: "7/24", label: "Acil servis" }

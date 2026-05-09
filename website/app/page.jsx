@@ -14,7 +14,7 @@ export default function HomePage() {
         <div className="hero-orb hero-orb-2" aria-hidden="true" />
         <div className="container">
           <div className="hero-copy">
-            <div className="eyebrow">İstanbul Avrupa Yakası · 17 Yıllık Deneyim</div>
+            <div className="eyebrow">İstanbul Avrupa Yakası · 7 Yıllık Deneyim</div>
             <h1 className="hero-heading">
               Asansörde güven,<br />
               <span className="heading-gradient">bakımda disiplin.</span>
@@ -51,7 +51,7 @@ export default function HomePage() {
       {/* ── KURUMSAL GÜVEN ŞERİDİ ── */}
       <div className="trust-strip">
         <div className="container trust-strip-inner">
-          <Reveal className="trust-item"><strong>17+</strong><span>Yıl sahada</span></Reveal>
+          <Reveal className="trust-item"><strong>7+</strong><span>Yıl sahada</span></Reveal>
           <Reveal className="trust-item"><strong>480+</strong><span>Aktif sözleşme</span></Reveal>
           <Reveal className="trust-item"><strong>İstanbul</strong><span>Geneline hizmet</span></Reveal>
           <Reveal className="trust-item"><strong>7/24</strong><span>Acil müdahale</span></Reveal>
@@ -92,7 +92,7 @@ export default function HomePage() {
               <div className="eyebrow">Neden Asis Asansör?</div>
               <h2>Kurumsal güvenilirlik, saha hızı.</h2>
             </div>
-            <p className="lead">10 yıllık tecrübeyle sektörde güven inşa ettik. Her müdahalede kayıt tutuyoruz, her işte sorumluluk alıyoruz.</p>
+            <p className="lead">7 yıllık tecrübeyle sektörde güven inşa ettik. Her müdahalede kayıt tutuyoruz, her işte sorumluluk alıyoruz.</p>
           </Reveal>
           <div className="grid-3">
             {[

@@ -78,14 +78,14 @@ export default function PremiumElevatorShowcase() {
         >
           <div className="eyebrow eyebrow-light">Teknik Tasarım</div>
           <h2 className="showcase-heading">
-            10 yılın birikimi,<br />her projede görünür hale gelir.
+            7 yılın birikimi,<br />her projede görünür hale gelir.
           </h2>
           <p className="showcase-lead">
             Sahada kazanılan deneyim, titiz teknik kadromuz ve kayıtlı servis
             süreçlerimizle binanızın asansörünü güvenli, konforlu ve uzun ömürlü tutuyoruz.
           </p>
           <div className="showcase-metrics">
-            <span><strong>17+</strong>Yıl deneyim</span>
+            <span><strong>7+</strong>Yıl deneyim</span>
             <span><strong>7/24</strong>Acil servis</span>
             <span><strong>CE</strong>Standart</span>
           </div>

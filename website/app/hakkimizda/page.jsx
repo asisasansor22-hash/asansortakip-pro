@@ -2,7 +2,7 @@ import Reveal from "@/components/Reveal";
 
 export const metadata = {
   title: "Hakkımızda",
-  description: "Asis Asansör hakkında — 10 yıllık saha deneyimi, İstanbul geneline hizmet."
+  description: "Asis Asansör hakkında — 7 yıllık saha deneyimi, İstanbul geneline hizmet."
 };
 
 export default function AboutPage() {
@@ -32,11 +32,11 @@ export default function AboutPage() {
           <Reveal>
             <div className="about-stats-grid">
               <div className="about-stat-card">
-                <strong>2007</strong>
+                <strong>2019</strong>
                 <span>Kuruluş yılı</span>
               </div>
               <div className="about-stat-card">
-                <strong>10+</strong>
+                <strong>7+</strong>
                 <span>Yıl saha deneyimi</span>
               </div>
               <div className="about-stat-card">
@@ -59,7 +59,7 @@ export default function AboutPage() {
       <section className="section alt">
         <div className="container grid-3">
           {[
-            { num: "01", title: "Deneyim", desc: "Farklı marka ve kapasitelerdeki asansör sistemlerinde 10 yıllık saha tecrübesi." },
+            { num: "01", title: "Deneyim", desc: "Farklı marka ve kapasitelerdeki asansör sistemlerinde 7 yıllık saha tecrübesi." },
             { num: "02", title: "Takip", desc: "Tüm bakım, arıza ve parça değişim süreçleri dijital sistemimizle kayıt altında ilerler." },
             { num: "03", title: "Güven", desc: "Yapılan her işin arkında durur, yazılı garanti ve raporla teslim ederiz." }
           ].map((item) => (
