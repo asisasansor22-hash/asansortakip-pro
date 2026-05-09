@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Counter from "@/components/Counter";
 import MotionGraphic from "@/components/MotionGraphic";
-import PremiumElevatorShowcase, { HeroElevatorRender } from "@/components/PremiumElevatorShowcase";
+import PremiumElevatorShowcase from "@/components/PremiumElevatorShowcase";
 import Reveal from "@/components/Reveal";
 import { services, testimonials } from "@/lib/siteData";
 
@@ -32,7 +32,13 @@ export default function HomePage() {
           </div>
           <aside className="hero-panel" aria-label="Öne çıkan hizmetler">
             <div className="hero-panel-title">Hızlı Erişim</div>
-            <HeroElevatorRender />
+            <div className="hero-elevator-img-wrap">
+              <img
+                src="/elevator-hero.jpg"
+                alt="Asis Asansör — modern paslanmaz çelik kabin"
+                className="hero-elevator-img"
+              />
+            </div>
             <ul className="hero-service-list">
               {services.map((service) => (
                 <li key={service.id}><Link href={`/hizmetler#${service.id}`}>{service.title.replace("Asansör ", "")}<span>→</span></Link></li>

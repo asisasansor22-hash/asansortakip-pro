@@ -354,6 +354,23 @@ h3 {
   box-shadow: var(--shadow);
 }
 
+/* ── HERO ELEVATOR IMAGE ── */
+.hero-elevator-img-wrap {
+  position: relative;
+  margin: 0 -6px 24px;
+  border-radius: 14px;
+  overflow: hidden;
+  height: 320px;
+}
+
+.hero-elevator-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+}
+
 /* ════════════════════════════════════════
    YENİ KABİN RENDER (HeroElevatorRender)
    ════════════════════════════════════════ */
