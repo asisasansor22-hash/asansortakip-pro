@@ -2177,6 +2177,51 @@ h3 {
   margin: 0;
 }
 
+/* ── PROJECT PHOTO ── */
+.project-photo-wrap {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  max-height: 560px;
+}
+
+.project-photo {
+  width: 100%;
+  height: 560px;
+  object-fit: cover;
+  object-position: center 30%;
+  display: block;
+  transform: rotate(90deg) scale(1.35);
+}
+
+.project-photo-badge {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  background: rgba(7, 25, 43, 0.72);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.project-photo-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2d7e72;
+  box-shadow: 0 0 0 3px rgba(45, 126, 114, 0.32);
+  flex-shrink: 0;
+}
+
 /* ── TESTIMONIALS ── */
 .testimonials-section {
   position: relative;

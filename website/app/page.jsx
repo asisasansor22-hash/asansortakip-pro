@@ -107,6 +107,31 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── GERÇEK PROJE GÖRSELI ── */}
+      <section className="section project-photo-section">
+        <div className="container">
+          <Reveal className="section-head">
+            <div>
+              <div className="eyebrow">Gerçek Projeler</div>
+              <h2>Sahadan gelen kalite.</h2>
+            </div>
+            <p className="lead">Montajını yaptığımız her kabin, titiz işçilik ve seçkin malzeme anlayışının yansımasıdır. Görseller, tamamlanan gerçek projelerimizden.</p>
+          </Reveal>
+          <Reveal className="project-photo-wrap">
+            <img
+              src="/elevator-real.jpg"
+              alt="Asis Asansör tarafından monte edilen cam ve paslanmaz çelik kabin"
+              className="project-photo"
+              loading="lazy"
+            />
+            <div className="project-photo-badge">
+              <span className="project-photo-badge-dot" />
+              Tamamlanan Proje
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ── DİJİTAL SERVİS DENEYİMİ ── */}
       <section className="section">
         <div className="container split">
