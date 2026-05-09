@@ -2,8 +2,8 @@ export const contact = {
   phones: ["0543 507 07 94", "0536 565 92 23", "0212 703 20 52"],
   phoneLinks: ["+905435070794", "+905365659223", "+902127032052"],
   emails: ["berat@asisasansor.com", "tolgahan@asisasansor.com"],
-  address: "Zafer Mahallesi Yüksel Sokak No.23/A Yenibosna İstanbul",
-  mapQuery: "Zafer Mahallesi Yüksel Sokak No.23/A Yenibosna İstanbul"
+  address: "Zafer Mahallesi Yüksel Sokak No.23/A Bahçelievler/İstanbul",
+  mapQuery: "Zafer Mahallesi Yüksel Sokak No.23/A Bahçelievler/İstanbul"
 };
 
 export const navItems = [

@@ -78,7 +78,7 @@ export default function PremiumElevatorShowcase() {
         >
           <div className="eyebrow eyebrow-light">Teknik Tasarım</div>
           <h2 className="showcase-heading">
-            17 yılın birikimi,<br />her projede görünür hale gelir.
+            10 yılın birikimi,<br />her projede görünür hale gelir.
           </h2>
           <p className="showcase-lead">
             Sahada kazanılan deneyim, titiz teknik kadromuz ve kayıtlı servis

@@ -2,7 +2,7 @@ import Reveal from "@/components/Reveal";
 
 export const metadata = {
   title: "Hakkımızda",
-  description: "Asis Asansör hakkında — 17 yıllık saha deneyimi, İstanbul geneline hizmet."
+  description: "Asis Asansör hakkında — 10 yıllık saha deneyimi, İstanbul geneline hizmet."
 };
 
 export default function AboutPage() {
@@ -12,7 +12,7 @@ export default function AboutPage() {
         <div className="container">
           <div className="breadcrumb">Ana Sayfa / Hakkımızda</div>
           <h1>Asansör sistemlerinde güvenilir servis yaklaşımı.</h1>
-          <p className="lead">Asis Asansör; ofisi Yenibosna'da, hizmet alanı İstanbul genelinde olan, bina yönetimleri ve sakinleri için güvenilir asansör servis firmasıdır.</p>
+          <p className="lead">Asis Asansör; ofisi Bahçelievler'de, hizmet alanı İstanbul genelinde olan, bina yönetimleri ve sakinleri için güvenilir asansör servis firmasıdır.</p>
         </div>
       </section>
 
@@ -36,7 +36,7 @@ export default function AboutPage() {
                 <span>Kuruluş yılı</span>
               </div>
               <div className="about-stat-card">
-                <strong>17+</strong>
+                <strong>10+</strong>
                 <span>Yıl saha deneyimi</span>
               </div>
               <div className="about-stat-card">
@@ -59,7 +59,7 @@ export default function AboutPage() {
       <section className="section alt">
         <div className="container grid-3">
           {[
-            { num: "01", title: "Deneyim", desc: "Farklı marka ve kapasitelerdeki asansör sistemlerinde 17 yıllık saha tecrübesi." },
+            { num: "01", title: "Deneyim", desc: "Farklı marka ve kapasitelerdeki asansör sistemlerinde 10 yıllık saha tecrübesi." },
             { num: "02", title: "Takip", desc: "Tüm bakım, arıza ve parça değişim süreçleri dijital sistemimizle kayıt altında ilerler." },
             { num: "03", title: "Güven", desc: "Yapılan her işin arkında durur, yazılı garanti ve raporla teslim ederiz." }
           ].map((item) => (

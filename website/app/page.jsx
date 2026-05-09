@@ -92,7 +92,7 @@ export default function HomePage() {
               <div className="eyebrow">Neden Asis Asansör?</div>
               <h2>Kurumsal güvenilirlik, saha hızı.</h2>
             </div>
-            <p className="lead">17 yıllık tecrübeyle sektörde güven inşa ettik. Her müdahalede kayıt tutuyoruz, her işte sorumluluk alıyoruz.</p>
+            <p className="lead">10 yıllık tecrübeyle sektörde güven inşa ettik. Her müdahalede kayıt tutuyoruz, her işte sorumluluk alıyoruz.</p>
           </Reveal>
           <div className="grid-3">
             {[
