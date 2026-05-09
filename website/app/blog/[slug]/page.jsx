@@ -85,7 +85,7 @@ export default function BlogDetailPage({ params }) {
             ))}
             <div className="article-cta">
               <h2>Asansörünüz için bakım veya revizyon desteği alın.</h2>
-              <p>İstanbul Avrupa Yakası'nda bakım, revizyon ve arıza servis talepleriniz için Asis Asansör ile iletişime geçebilirsiniz.</p>
+              <p>İstanbul'un tüm ilçelerinde bakım, revizyon ve arıza servis talepleriniz için Asis Asansör ile iletişime geçebilirsiniz.</p>
               <Link className="btn btn-dark" href="/iletisim">İletişime Geç</Link>
             </div>
           </div>
