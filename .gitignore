@@ -1,2 +1,5 @@
 node_modules/
 dist/
+.next/
+website/.next/
+website/node_modules/
