@@ -24,7 +24,7 @@ export default function ServicesPage() {
         </div>
       </section>
       <section className="section alt"><div className="container split"><Reveal><div className="eyebrow">Teklif Süreci</div><h2>Önce keşif, sonra net teklif.</h2><p className="lead">Binanızın teknik durumu görülmeden ezbere fiyat verilmez. İhtiyaç netleşir, kapsam yazılır, süreç açık şekilde paylaşılır.</p></Reveal><Reveal className="card"><ul className="plain-list"><li>Adres ve hizmet bilgisi alınır.</li><li>Uygun ekip yönlendirilir.</li><li>Teknik tespit yapılır.</li><li>Onay sonrası işlem başlatılır.</li></ul></Reveal></div></section>
-      <section className="section"><div className="container split"><Reveal><MotionGraphic title="Servis Döngüsü" /></Reveal><Reveal><div className="eyebrow">Dijital Servis Akışı</div><h2>Bakım takvimi ve arıza akışı tek merkezden ilerler.</h2><p className="lead">Bakım takviminden arıza müdahalesine kadar tüm süreçler sistematik ve kayıtlı şekilde yürütülür; bina yöneticisi her adımı takip edebilir.</p></Reveal></div></section>
+      <section className="section"><div className="container split"><Reveal><MotionGraphic title="Servis Döngüsü" /></Reveal><Reveal><div className="eyebrow">Dijital Servis Akışı</div><h2>Bakım takvimi ve arıza akışı tek merkezden ilerler.</h2><p className="lead">Bakım ve arıza müdahalesi tamamlandığında kendi geliştirdiğimiz program aracılığıyla bina yöneticisine otomatik bildirim mesajı gönderilir. Yapılan işlem, tarih ve bir sonraki bakım bilgisi anında iletilir.</p></Reveal></div></section>
     </main>
   );
 }

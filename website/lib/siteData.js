@@ -51,7 +51,7 @@ export const faqItems = [
   },
   {
     q: "Hangi marka asansörlere servis veriyorsunuz?",
-    a: "Otis, Schindler, KONE, ThyssenKrupp, Askon, Böcker, Kleemann ve diğer yaygın markalara servis vermekteyiz. Markadan bağımsız olarak tüm elektrikli ve hidrolik asansör sistemlerinde teknik destek sağlanır."
+    a: "Yerli markalı asansörlere servis vermekteyiz. Tüm yerli elektrikli ve hidrolik asansör sistemlerinde teknik bakım, arıza ve revizyon desteği sağlanır."
   },
   {
     q: "Bakım sözleşmesi imzalamak için ne gerekli?",
@@ -63,7 +63,7 @@ export const faqItems = [
   },
   {
     q: "Bakım sonrası rapor alabilir miyiz?",
-    a: "Evet. Her bakım ziyaretinin ardından yapılan kontrolleri, tespit edilen durumları ve gerçekleştirilen işlemleri içeren yazılı bakım raporu düzenlenir ve bina yönetimine teslim edilir. Bu raporlar periyodik muayenede gerekli belgeler arasında yer alır."
+    a: "Evet. Her bakım ve arıza müdahalesi sonrasında kendi geliştirdiğimiz program aracılığıyla bina yöneticisine otomatik bildirim mesajı gönderilir. Yapılan işlemleri, tespit edilen durumları ve bir sonraki bakım tarihini içeren dijital rapor anında iletilir. Bu kayıtlar periyodik muayenede yasal belge olarak kullanılır."
   }
 ];
 
@@ -206,7 +206,7 @@ export const posts = [
       },
       {
         heading: "Asis Asansör bakım sözleşmesinde ne sunar?",
-        body: "Asis Asansör, İstanbul genelinde aylık periyodik bakım, yazılı raporlama, 7/24 arıza müdahalesi ve bakım geçmişinin dijital takibini tek sözleşme altında sunar. Tüm bakım kayıtları sisteme işlenerek bina yönetiminin ihtiyaç duyduğu anda erişilebilir hale getirilir."
+        body: "Asis Asansör, İstanbul genelinde aylık periyodik bakım, 7/24 arıza müdahalesi ve bakım geçmişinin dijital takibini tek sözleşme altında sunar. Her bakım ve arıza müdahalesi sonrasında kendi geliştirdiğimiz program aracılığıyla bina yöneticisine otomatik bildirim mesajı gönderilir; yapılan işlemler ve bir sonraki bakım tarihi anında iletilir."
       }
     ]
   },
@@ -260,7 +260,7 @@ export const posts = [
       },
       {
         heading: "Arıza sonrası tekrarlamaması için ne yapılmalı?",
-        body: "Arıza giderildikten sonra aynı sorunun kaynağı tespit edilmeli ve gerekiyorsa bakım planı güncellenmeli ya da ilgili bileşen değiştirilmelidir. Asis Asansör her müdahale sonrası arıza kaydını sisteme işler ve bina yönetimiyle yazılı olarak paylaşır."
+        body: "Arıza giderildikten sonra aynı sorunun kaynağı tespit edilmeli ve gerekiyorsa bakım planı güncellenmeli ya da ilgili bileşen değiştirilmelidir. Asis Asansör her müdahale sonrası arıza kaydını kendi geliştirdiği programa işler ve bina yöneticisine otomatik bildirim mesajı göndererek yazılı olarak bilgilendirir."
       }
     ]
   },

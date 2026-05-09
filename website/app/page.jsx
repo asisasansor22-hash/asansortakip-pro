@@ -142,8 +142,8 @@ export default function HomePage() {
               <div className="tracker-icon-wrap">
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
-              <h3>Arıza ve Servis Kaydı</h3>
-              <p>Her arıza bildirimi, müdahale süresi ve yapılan işlem sisteme kaydedilir. Bina yöneticisiyle paylaşılan raporlar şeffaflık sağlar.</p>
+              <h3>Otomatik Yönetici Bildirimi</h3>
+              <p>Her bakım ve arıza müdahalesi sonrası kendi geliştirdiğimiz program aracılığıyla bina yöneticisine otomatik mesaj gönderilir. Yapılan işlem, tarih ve bir sonraki bakım bilgisi anında iletilir.</p>
             </Reveal>
           </div>
           <Reveal className="tracker-banner">
