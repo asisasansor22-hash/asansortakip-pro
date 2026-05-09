@@ -30,11 +30,15 @@ export default function PremiumElevatorShowcase() {
       const p      = clamp(-rect.top / travel);
       setProgress(p);
       if (video && video.duration && ready) {
-        // Cap at 97% of duration — browsers freeze when seeking to the last keyframe gap
-        const safeEnd = video.duration * 0.97;
-        // Map scroll 0→0.88 to video 0→97%; beyond 0.88 the last frame holds naturally
-        const videoP = Math.min(p / 0.88, 1);
-        video.currentTime = videoP * safeEnd;
+        // Only use first 80% of video duration — last portion has sparse keyframes
+        // and causes browser freeze. Map scroll 0→0.80 to video 0→80% duration.
+        const safeEnd = video.duration * 0.80;
+        const videoP = Math.min(p / 0.80, 1);
+        const target = videoP * safeEnd;
+        // Skip tiny seeks — avoids stutter from async decode latency
+        if (Math.abs(video.currentTime - target) > 0.08) {
+          video.currentTime = target;
+        }
       }
     };
     const onScroll = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
