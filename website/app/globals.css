@@ -2194,6 +2194,41 @@ h3 {
   margin: 0;
 }
 
+/* ── ABOUT STATS ── */
+.about-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.about-stat-card {
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.about-stat-wide {
+  grid-column: 1 / -1;
+}
+
+.about-stat-card strong {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.about-stat-card span {
+  font-size: 13px;
+  color: var(--gray);
+  font-weight: 600;
+}
+
 /* ── PROJECT PHOTO ── */
 .project-photo-wrap {
   position: relative;

@@ -78,14 +78,14 @@ export const testimonials = [
     name: "Ahmet Karaaslan",
     role: "Bina Yöneticisi",
     location: "Bahçelievler",
-    text: "3 yıldır bakım sözleşmemiz var. Her ay düzenli geliyorlar, rapor bırakıyorlar. Tek bir sorunsuz ay kaçırmadılar.",
+    text: "3 yıldır bakım sözleşmemiz var. Her ay düzenli geliyorlar, bakım raporu bırakıyorlar. Tek bir ayı kaçırmadılar.",
     stars: 5
   },
   {
     name: "Fatma Şahin",
     role: "Apartman Yöneticisi",
     location: "Küçükçekmece",
-    text: "Arıza gece yarısı geldi, sabah 8'de ekip kapıdaydı. Hem hızlı hem güvenilir. Fiyatları da çok makul.",
+    text: "Sabah erken saatlerde arıza bildirdik, öğleden önce ekip gelip sorunu çözdü. Hem hızlı hem güvenilir, fiyatları da makul.",
     stars: 5
   },
   {
