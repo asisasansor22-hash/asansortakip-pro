@@ -945,6 +945,161 @@ h3 {
 .sensor-a { margin-top: -156px; }
 .sensor-b { margin-top: 124px; }
 
+/* ════════════════════════════════════════
+   VIDEO SHOWCASE — TAM GENİŞLİK SCROLL
+   ════════════════════════════════════════ */
+.video-showcase {
+  position: relative;
+  height: 320vh;
+}
+
+.video-showcase-sticky {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #060e18;
+}
+
+.showcase-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.showcase-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top,
+      rgba(5, 14, 26, 0.88) 0%,
+      rgba(5, 14, 26, 0.42) 38%,
+      rgba(5, 14, 26, 0.10) 65%,
+      transparent 100%
+    );
+  z-index: 1;
+}
+
+.showcase-copy {
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  padding: 0 max(28px, calc((100% - 1180px) / 2));
+  color: #fff;
+  transition: opacity 0.1s linear, transform 0.1s linear;
+  max-width: 100%;
+}
+
+.eyebrow-light {
+  color: rgba(180, 210, 240, 0.82) !important;
+}
+
+.eyebrow-light::before {
+  background: rgba(180, 210, 240, 0.6) !important;
+}
+
+.showcase-heading {
+  margin: 14px 0 18px;
+  font-size: clamp(36px, 5.5vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #fff;
+  max-width: 780px;
+}
+
+.showcase-lead {
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: clamp(16px, 1.8vw, 20px);
+  font-weight: 620;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.showcase-metrics {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.showcase-metrics span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.showcase-metrics span:first-child { border-radius: 10px 0 0 10px; }
+.showcase-metrics span:last-child  { border-radius: 0 10px 10px 0; }
+
+.showcase-metrics strong {
+  color: #fff;
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 950;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+/* İlerleme çubuğu */
+.showcase-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  z-index: 3;
+}
+
+.showcase-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue), #18a4e0);
+  transform-origin: left;
+  transition: transform 0.05s linear;
+}
+
+/* Scroll ipucu */
+.scroll-hint {
+  position: absolute;
+  bottom: 36px;
+  right: max(28px, calc((100% - 1180px) / 2));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  animation: scroll-hint-fade 2s ease-in-out infinite;
+}
+
+.scroll-hint-arrow {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.5), transparent);
+}
+
+@keyframes scroll-hint-fade {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50%       { opacity: 1;   transform: translateY(4px); }
+}
+
+/* Eski premium-scroll stilleri (kullanılmıyor ama silmiyorum) */
 .premium-scroll {
   position: relative;
   height: 230vh;
