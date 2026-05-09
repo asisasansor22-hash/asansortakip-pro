@@ -12,8 +12,62 @@ export const navItems = [
   { href: "/hakkimizda", label: "Hakkımızda" },
   { href: "/bolgeler", label: "Bölgeler" },
   { href: "/blog", label: "Blog" },
+  { href: "/sss", label: "SSS" },
   { href: "/iletisim", label: "İletişim" }
 ];
+
+export const faqItems = [
+  {
+    q: "Asansör bakımı kaç ayda bir yapılmalıdır?",
+    a: "Türk standartlarına ve asansör yönetmeliğine göre asansörler en az ayda bir kez yetkili servis firması tarafından bakıma alınmalıdır. Yoğun kullanımlı ticari asansörlerde bu sıklık artırılabilir."
+  },
+  {
+    q: "Asansör periyodik kontrolü zorunlu mu? Yaptırmazsak ne olur?",
+    a: "Evet, zorunludur. Sanayi ve Teknoloji Bakanlığı'nın yetkilendirdiği A tipi muayene kuruluşları tarafından yılda en az bir kez periyodik kontrol yaptırılması yasal zorunluluktur. Muayenesi yapılmayan asansörler mühürlenerek hizmet dışı bırakılabilir; bina yönetimi idari para cezasıyla karşılaşabilir."
+  },
+  {
+    q: "Asansör bakım sözleşmesi ne kadar tutar?",
+    a: "Bakım ücreti asansörün tipine (elektrikli veya hidrolik), kat sayısına, kullanım yoğunluğuna ve hizmet kapsamına göre değişir. Kesin fiyat için binanızın teknik bilgilerini bizimle paylaşın; 48 saat içinde yazılı teklif sunalım."
+  },
+  {
+    q: "Bakım sözleşmesi kapsamında parça değişimi de yapılıyor mu?",
+    a: "Standart bakım sözleşmelerinde yağlama, ayar ve kontrol hizmetleri yer alır. Parça değişimi genellikle ek ücrete tabidir; ancak hangi parçaların kapsama girdiği sözleşmede açıkça belirtilir. Sözleşme imzalamadan önce bu detayları netleştirmenizi öneririz."
+  },
+  {
+    q: "Asansörümün revizyona ihtiyacı olup olmadığını nasıl anlarım?",
+    a: "Sık arıza, katta tam durmama (seviye farklılığı), kapılarda geç açılıp kapanma, kabin içinde titreşim veya anormal gürültü, 15 yılı aşmış kumanda panosu gibi belirtiler revizyon ihtiyacına işaret eder. Ücretsiz yerinde keşif için bizimle iletişime geçebilirsiniz."
+  },
+  {
+    q: "Arıza ihbarı sonrası kaç dakikada müdahale edilir?",
+    a: "Asis Asansör olarak ortalama müdahale süremiz 45 dakikadır. İstanbul genelinde ekiplerimiz aktif olduğundan kısa sürede sahaya ulaşılır. Mesai saatleri dışındaki acil arızalar için de hattımız açıktır."
+  },
+  {
+    q: "Asansörde kişi mahsur kaldığında ne yapmalıyız?",
+    a: "Önce mahsur kalan kişiyle interkom veya telefonla iletişim kurarak sakin kalmasını sağlayın. Kapıyı zorlamayın, merdiven boşluğundan ulaşmaya çalışmayın. Hemen servis hattımızı arayın; ekibimiz kısa sürede müdahale eder."
+  },
+  {
+    q: "Yeni bina için asansör montajı yaptırıyor musunuz?",
+    a: "Evet. Konut, ticari ve yük asansörü montajı hizmetlerimiz kapsamındadır. Proje aşamasında teknik şartname desteği, montaj ve devreye alma ile periyodik muayene hazırlığı süreçlerini birlikte yönetiyoruz."
+  },
+  {
+    q: "Hangi marka asansörlere servis veriyorsunuz?",
+    a: "Otis, Schindler, KONE, ThyssenKrupp, Askon, Böcker, Kleemann ve diğer yaygın markalara servis vermekteyiz. Markadan bağımsız olarak tüm elektrikli ve hidrolik asansör sistemlerinde teknik destek sağlanır."
+  },
+  {
+    q: "Bakım sözleşmesi imzalamak için ne gerekli?",
+    a: "Binanın adresi, asansör sayısı ve tipi hakkında temel bilgiler yeterlidir. Ekibimiz yerinde keşif yaparak teknik durumu değerlendirir ve size özel bir teklif hazırlar. Sözleşme, her iki tarafın onayıyla dijital veya yazılı olarak imzalanır."
+  },
+  {
+    q: "İstanbul'un her ilçesine servis veriyor musunuz?",
+    a: "Evet. Bahçelievler merkezli ekiplerimizle İstanbul'un tüm 39 ilçesine bakım, arıza ve revizyon hizmeti sunuyoruz. Uzak ilçelerde program uygunluğuna göre randevu planlanır."
+  },
+  {
+    q: "Bakım sonrası rapor alabilir miyiz?",
+    a: "Evet. Her bakım ziyaretinin ardından yapılan kontrolleri, tespit edilen durumları ve gerçekleştirilen işlemleri içeren yazılı bakım raporu düzenlenir ve bina yönetimine teslim edilir. Bu raporlar periyodik muayenede gerekli belgeler arasında yer alır."
+  }
+];
+
+export const districts = [
 
 export const services = [
   {
@@ -51,45 +105,45 @@ export const services = [
 ];
 
 export const districts = [
-  "Adalar",
-  "Arnavutköy",
-  "Ataşehir",
-  "Avcılar",
-  "Bağcılar",
-  "Bahçelievler",
-  "Bakırköy",
-  "Başakşehir",
-  "Bayrampaşa",
-  "Beşiktaş",
-  "Beykoz",
-  "Beylikdüzü",
-  "Beyoğlu",
-  "Büyükçekmece",
-  "Çatalca",
-  "Çekmeköy",
-  "Esenler",
-  "Esenyurt",
-  "Eyüpsultan",
-  "Fatih",
-  "Gaziosmanpaşa",
-  "Güngören",
-  "Kadıköy",
-  "Kağıthane",
-  "Kartal",
-  "Küçükçekmece",
-  "Maltepe",
-  "Pendik",
-  "Sancaktepe",
-  "Sarıyer",
-  "Silivri",
-  "Sultanbeyli",
-  "Sultangazi",
-  "Şile",
-  "Şişli",
-  "Tuzla",
-  "Ümraniye",
-  "Üsküdar",
-  "Zeytinburnu"
+  { name: "Adalar", slug: "adalar" },
+  { name: "Arnavutköy", slug: "arnavutkoy" },
+  { name: "Ataşehir", slug: "atasehir" },
+  { name: "Avcılar", slug: "avcilar" },
+  { name: "Bağcılar", slug: "bagcilar" },
+  { name: "Bahçelievler", slug: "bahcelievler" },
+  { name: "Bakırköy", slug: "bakirkoy" },
+  { name: "Başakşehir", slug: "basaksehir" },
+  { name: "Bayrampaşa", slug: "bayrampasa" },
+  { name: "Beşiktaş", slug: "besiktas" },
+  { name: "Beykoz", slug: "beykoz" },
+  { name: "Beylikdüzü", slug: "beylikduzu" },
+  { name: "Beyoğlu", slug: "beyoglu" },
+  { name: "Büyükçekmece", slug: "buyukcekmece" },
+  { name: "Çatalca", slug: "catalca" },
+  { name: "Çekmeköy", slug: "cekmekoy" },
+  { name: "Esenler", slug: "esenler" },
+  { name: "Esenyurt", slug: "esenyurt" },
+  { name: "Eyüpsultan", slug: "eyupsultan" },
+  { name: "Fatih", slug: "fatih" },
+  { name: "Gaziosmanpaşa", slug: "gaziosmanpasa" },
+  { name: "Güngören", slug: "gungoren" },
+  { name: "Kadıköy", slug: "kadikoy" },
+  { name: "Kağıthane", slug: "kagithane" },
+  { name: "Kartal", slug: "kartal" },
+  { name: "Küçükçekmece", slug: "kucukcekmece" },
+  { name: "Maltepe", slug: "maltepe" },
+  { name: "Pendik", slug: "pendik" },
+  { name: "Sancaktepe", slug: "sancaktepe" },
+  { name: "Sarıyer", slug: "sariyer" },
+  { name: "Silivri", slug: "silivri" },
+  { name: "Sultanbeyli", slug: "sultanbeyli" },
+  { name: "Sultangazi", slug: "sultangazi" },
+  { name: "Şile", slug: "sile" },
+  { name: "Şişli", slug: "sisli" },
+  { name: "Tuzla", slug: "tuzla" },
+  { name: "Ümraniye", slug: "umraniye" },
+  { name: "Üsküdar", slug: "uskudar" },
+  { name: "Zeytinburnu", slug: "zeytinburnu" }
 ];
 
 export const testimonials = [
