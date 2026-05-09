@@ -48,7 +48,7 @@ export default function AboutPage() {
                 <span>Geneline hizmet</span>
               </div>
               <div className="about-stat-card about-stat-wide">
-                <strong>CE Standart</strong>
+                <strong>Yetki Belgeli Servis</strong>
                 <span>Tüm hizmetler yönetmeliklere uygun yürütülür</span>
               </div>
             </div>
