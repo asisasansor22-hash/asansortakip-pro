@@ -1,5 +1,7 @@
 "use client";
 
+import { reportWhatsAppConversion } from "@/components/GoogleAdsTracking";
+
 export default function ContactForm() {
   function submit(event) {
     event.preventDefault();
@@ -12,7 +14,7 @@ export default function ContactForm() {
       `Hizmet: ${data.get("service") || ""}`,
       `Mesaj: ${data.get("message") || ""}`
     ].join("\n");
-    window.location.href = `https://wa.me/905435070794?text=${encodeURIComponent(text)}`;
+    reportWhatsAppConversion(`https://wa.me/905435070794?text=${encodeURIComponent(text)}`);
   }
 
   return (
