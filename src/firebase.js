@@ -262,6 +262,16 @@ export async function dbGet(key) {
   return dbGetRaw(p);
 }
 
+// dbGetWithMeta — App.jsx ana yükleyici için "okuma başarısız" ile
+// "veri yok" durumlarını ayırt eder. {ok, data} döner.
+// ok=false → fetch/timeout/permission hatası; çağıran taraf yedeğe düşer
+// ve dbSet'i bloklayarak boş state ile Firebase'i ezmeyi engeller.
+export async function dbGetWithMeta(key) {
+  var p = tenantKeyPath(key);
+  if (p === null) return { ok: false, data: null, error: "tenant-yok" };
+  return dbGetRawWithMeta(p);
+}
+
 export async function dbSet(key, value) {
   var p = tenantKeyPath(key);
   if (p === null) return;
@@ -271,30 +281,64 @@ export async function dbSet(key, value) {
 // ------- Database: raw (tenant-bypass, global yollar için) -----------------
 // Örn: users/{uid}, superadmins/{uid}, tenants (liste), tenants/{tid}/config
 export async function dbGetRaw(path) {
+  var r = await dbGetRawWithMeta(path);
+  return r && r.ok ? r.data : null;
+}
+
+async function dbGetRawWithMeta(path) {
   try {
     var token = await getToken();
     var url = buildDbUrl(path, token);
     var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, 8000);
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
     var res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
-    if(!res.ok) return null;
+    if (!res.ok) return { ok: false, data: null, status: res.status };
     var data = await res.json();
-    return (data !== null && data !== undefined) ? data : null;
-  } catch(e) { return null; }
+    return { ok: true, data: (data !== null && data !== undefined) ? data : null };
+  } catch(e) { return { ok: false, data: null, error: (e && e.message) || "fetch-hata" }; }
 }
 
+// Yazma hatası global handler'ı — App.jsx kullanıcıya bildirim göstermek
+// için kayıt olur. Sessiz veri kaybını engeller.
+var _dbSetErrorHandler = null;
+export function setDbErrorHandler(fn) { _dbSetErrorHandler = fn; }
+
 export async function dbSetRaw(path, value) {
-  try {
-    var token = await getToken();
-    var url = buildDbUrl(path, token);
-    var res = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-    return res.ok;
-  } catch(e) { return false; }
+  var attempts = 4;
+  var delay = 200;
+  var lastError = null;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var token = await getToken();
+      if (!token) {
+        lastError = "auth-yok";
+      } else {
+        var url = buildDbUrl(path, token);
+        var controller = new AbortController();
+        var timer = setTimeout(function(){ controller.abort(); }, 15000);
+        var res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) return true;
+        lastError = "http-" + res.status;
+        // 4xx (auth/permission) — retry'la düzelmez
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
+      }
+    } catch (e) {
+      lastError = (e && e.message) || "fetch-hata";
+    }
+    if (i < attempts - 1) {
+      await new Promise(function(r){ setTimeout(r, delay); });
+      delay = delay * 3;
+    }
+  }
+  try { if (_dbSetErrorHandler) _dbSetErrorHandler(path, lastError); } catch(e) {}
+  return false;
 }
 
 async function dbPushResolvedPath(path, value) {
