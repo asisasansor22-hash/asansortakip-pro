@@ -17,7 +17,6 @@ const auth = getAuth(app);
 
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
 
-// Auth token'ı al
 async function getToken() {
   var user = auth.currentUser;
   if (!user) return null;
@@ -26,7 +25,6 @@ async function getToken() {
   } catch (e) { return null; }
 }
 
-// Firebase Auth ile giriş yap (yoksa hesap oluştur)
 export async function firebaseLogin(email, password) {
   try {
     var result = await signInWithEmailAndPassword(auth, email, password);
@@ -54,31 +52,67 @@ export function onAuthChange(cb) {
 
 export { auth };
 
-// Database - REST API (artık auth token ile)
+// dbGet — ok=true sadece sunucudan geçerli cevap (200) geldiğinde döner.
+// Timeout/ağ hatası ok=false; çağıran taraf "veri yok" ile "okuma başarısız"
+// durumlarını ayırt edebilsin diye {ok, data} dönüyoruz.
 export async function dbGet(key) {
   try {
     var token = await getToken();
     var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
     if (token) url += "?auth=" + token;
     var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, 8000);
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
     var res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
-    if(!res.ok) return null;
+    if(!res.ok) return { ok:false, data:null, status:res.status };
     var data = await res.json();
-    return (data !== null && data !== undefined) ? data : null;
-  } catch(e) { return null; }
+    return { ok:true, data: (data !== null && data !== undefined) ? data : null };
+  } catch(e) {
+    return { ok:false, data:null, error: e && e.message };
+  }
 }
 
+// dbSet — başarı/başarısızlık döner, başarısız olursa 4 deneme yapar
+// (200ms → 600ms → 1800ms → 5400ms exponential backoff).
+// onError callback varsa kullanıcıya bildirim göstermek için tetiklenir.
+var _dbSetErrorHandler = null;
+export function setDbErrorHandler(fn){ _dbSetErrorHandler = fn; }
+
 export async function dbSet(key, value) {
-  try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + "/asansor/" + key + ".json";
-    if (token) url += "?auth=" + token;
-    await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-  } catch(e) {}
+  var attempts = 4;
+  var delay = 200;
+  var lastError = null;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var token = await getToken();
+      if (!token) {
+        lastError = "auth-yok";
+      } else {
+        var url = FIREBASE_DB_URL + "/asansor/" + key + ".json?auth=" + token;
+        var controller = new AbortController();
+        var timer = setTimeout(function(){ controller.abort(); }, 15000);
+        var res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) return { ok:true };
+        lastError = "http-" + res.status;
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+          // 4xx (auth/permission) — retry'la düzelmez
+          break;
+        }
+      }
+    } catch (e) {
+      lastError = (e && e.message) || "fetch-hata";
+    }
+    if (i < attempts - 1) {
+      await new Promise(function(r){ setTimeout(r, delay); });
+      delay = delay * 3;
+    }
+  }
+  try { if (_dbSetErrorHandler) _dbSetErrorHandler(key, lastError); } catch(e) {}
+  return { ok:false, error: lastError };
 }
