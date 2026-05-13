@@ -835,13 +835,11 @@ function App(){
           yuklendi.current[key] = true;
           return;
         }
-        // Okuma başarısız → yedekten yükle, dbSet bloklu kalsın
+        // Okuma başarısız → ekrana ls yedeği BASMA (kullanıcının stale veri üzerinde
+        // çalışmasını engellemek için). dbSet de bloklu kalır. Kullanıcı sadece
+        // bağlantı bandını görür ve uygulama "veri yok" gibi davranır.
         okumaHatasi.count++;
         okumaHatasi.lastErr = (r && (r.error || r.status)) || "ag-hatasi";
-        if (lsKey) {
-          var bb = lsGet(lsKey);
-          if (bb && bb.length > 0) setter(bb);
-        }
         yuklendi.current[key] = false;
       }
 
@@ -899,16 +897,17 @@ function App(){
     yukle();
   },[rol]);
 
-  // Generic kaydedici: ls yedeğini her zaman günceller; dbSet sadece o alanın
-  // okuması başarılıysa (yuklendi[key]=true) çağrılır. Aksi halde boş state
-  // Firebase'deki dolu veriyi siler.
-  function kaydet(key, lsKey, value){
-    if (lsKey) {
-      try { if (Array.isArray(value) && value.length > 0) lsSet(lsKey, value); } catch(e) {}
-    }
+  // Generic kaydedici: önce Firebase'e yazmayı dener; başarısızsa localStorage'a
+  // da yazmaz (kullanıcı bağlantı bandını görür, sahte "kaydedildi" izlenimi olmaz).
+  // Okuma başarısızsa (yuklendi[key]=false) hiç yazma yapılmaz — boş state
+  // Firebase'i ezemez ve yedek de bozulmaz.
+  async function kaydet(key, lsKey, value){
     if (ilkYukleme.current) return;
     if (!yuklendi.current[key]) return;
-    dbSet("at_" + key, value);
+    var ok = await dbSet("at_" + key, value);
+    if (ok && lsKey) {
+      try { if (Array.isArray(value) && value.length > 0) lsSet(lsKey, value); } catch(e) {}
+    }
   }
 
   useEffect(function(){if(!ilkYukleme.current)kaydet("elevs","ls_elevs",elevs);},[elevs]);
@@ -928,17 +927,18 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current)kaydet("muayeneler","ls_muayeneler",muayeneler);},[muayeneler]);
   useEffect(function(){
     if(ilkYukleme.current) return;
-    // ls yedeği her zaman güncelle (bakımcı listesi şifre içerebilir,
-    // boş olsa bile yedek tutulur ki silme niyeti korunsun)
-    try { lsSet("ls_bakimcilar", bakimcilar); } catch(e) {}
-    if (yuklendi.current.bakimcilar) {
-      dbSet("at_bakimcilar",bakimcilar);
-      if(tenantId){
-        var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
-        setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
-        if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
+    if(!yuklendi.current.bakimcilar) return;
+    (async function(){
+      var ok = await dbSet("at_bakimcilar",bakimcilar);
+      if (ok) {
+        try { lsSet("ls_bakimcilar", bakimcilar); } catch(e) {}
+        if(tenantId){
+          var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
+          setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
+          if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
+        }
       }
-    }
+    })();
   },[bakimcilar]);
 
   // Finans sekmesi için canlı yenileme
