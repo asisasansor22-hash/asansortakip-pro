@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -675,6 +675,20 @@ function App(){
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
+  // Her veri alanı için ayrı "yükleme tamam" bayrağı.
+  // Okuma başarısız olursa o alan false kalır → dbSet bloklanır;
+  // boş/varsayılan state'in Firebase'i ezmesi engellenir.
+  const yuklendi=React.useRef({
+    elevs:false, maints:false, faults:false, tasks:false, sozlesme:false,
+    hesapkayit:false, haftalik:false, aylik:false, sonodemeler:false,
+    giderler:false, giderhafta:false, notlar:false, ekstraisler:false,
+    teklifler:false, muayeneler:false, bakimcilar:false, payment_events:false
+  });
+  const [dbHata,setDbHata]=useState(null);
+  useEffect(function(){
+    setDbErrorHandler(function(path,err){ setDbHata({ path:path, err:err, t:Date.now() }); });
+    return function(){ setDbErrorHandler(null); };
+  },[]);
   // Tema uygula
   useEffect(function(){
     localStorage.setItem('at_tema',tema);
@@ -748,130 +762,142 @@ function App(){
     yukPublic();
   },[tenantId]);
 
-  // Login sonrası veri yükle (auth token gerekli)
+  // Login sonrası veri yükle (auth token gerekli).
+  // Her alan için "yuklendi" bayrağı ayrı tutulur. Okuma başarısız olursa
+  // (timeout/permission/ağ) o alanın dbSet'i ileride bloklanır → kullanıcının
+  // boş ekrana yeni kayıt eklemesi Firebase'deki dolu veriyi silemez.
   useEffect(function(){
-    if(rol===null) return; // henüz giriş yapılmadı
+    if(rol===null) return;
     async function yukle(){
-      try{
-        // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
-        // kullanıcı değişiklik yaparsa kayıt atlanıyordu (race condition). Paralel
-        // sorgu ile yükleme süresi tek istek kadar kısalır.
-        function fb(v){return Array.isArray(v)?v:(v&&typeof v==='string'?JSON.parse(v):null);}
-        var sonuclar=await Promise.all([
-          dbGet("at_elevs"),    // r0
-          dbGet("at_maints"),   // r1
-          dbGet("at_faults"),   // r2
-          dbGet("at_tasks"),    // r3
-          dbGet("at_sozlesme"), // r4
-          dbGet("at_hesapkayit"),// r5
-          dbGet("at_haftalik"), // r6
-          dbGet("at_aylik"),    // r7
-          dbGet("at_sonodemeler"),// r8
-          dbGet("at_giderler"), // r9
-          dbGet("at_giderhafta"),// r10
-          dbGet("at_notlar"),      // r11
-          dbGet("at_ekstraisler"), // r12
-          dbGet("at_teklifler"),   // r13
-          dbGet("at_muayeneler"),  // r14
-          dbGet("at_bakimcilar"),  // r15
-          dbGet("at_payment_events"), // r16
-        ]);
-        var r1=sonuclar[0],r2=sonuclar[1],r3=sonuclar[2],r4=sonuclar[3];
-        var r5=sonuclar[4],r6=sonuclar[5],r7=sonuclar[6],r8=sonuclar[7];
-        var r9=sonuclar[8],r10=sonuclar[9],r11=sonuclar[10],r12=sonuclar[11],r13=sonuclar[12],r14=sonuclar[13],r15=sonuclar[14],r16=sonuclar[15],r17=sonuclar[16];
-        // ── Asansör listesi ──────────────────────────────────────
-        // Firebase erişilemezse veya boş dönerse localStorage yedeğine bak,
-        // o da yoksa ilk kez açılıyordur → EXCEL_ELEVS kullan.
-        // HİÇBİR DURUMDA Firebase null dönünce EXCEL_ELEVS yazılmaz.
-        (function(){
-          var lsBak=lsGet("ls_elevs");
-          if(r1){
-            try{
-              var d=fb(r1);
-              if(Array.isArray(d)&&d.length>0){
-                setElevs(d);
-                lsSet("ls_elevs",d); // yedeği güncelle
-              } else {
-                // Firebase boş/geçersiz döndü — yedekten yükle
-                if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-                else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
-                else{ setElevs([]); }
-              }
-            }catch(e){
-              if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-              else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); }
-              else{ setElevs([]); }
+      function fb(v){return Array.isArray(v)?v:(v&&typeof v==='string'?JSON.parse(v):null);}
+
+      // Genel yükleyici: Firebase başarılıysa setter'ı + ls yedeğini günceller,
+      // başarısızsa SADECE ls'den yükler ve yuklendi[key]=false bırakır.
+      async function yukleAlan(key, lsKey, setter, opts){
+        opts = opts || {};
+        var r;
+        try { r = await dbGetWithMeta("at_" + key); } catch(e) { r = { ok:false, data:null }; }
+        if (r && r.ok) {
+          var d = null;
+          try { d = fb(r.data); } catch(e) { d = null; }
+          if (Array.isArray(d)) {
+            if (d.length > 0 || opts.allowEmpty) {
+              setter(d);
+              if (lsKey && d.length > 0) lsSet(lsKey, d);
+              yuklendi.current[key] = true;
+              return;
             }
-          } else {
-            // Firebase erişilemedi (null) — asla EXCEL_ELEVS yazma, yedekten yükle
-            if(lsBak&&lsBak.length>0){
-              setElevs(lsBak);
-            } else if(tenantId==="asis") {
-              // İlk açılış: Firebase da yok, yedek de yok → Excel ile başlat (sadece Asis)
-              setElevs(EXCEL_ELEVS);
-              dbSet("at_elevs",EXCEL_ELEVS);
-            } else {
-              setElevs([]);
+            // Firebase boş dizi döndü
+            if (lsKey) {
+              var bak = lsGet(lsKey);
+              if (bak && bak.length > 0) { setter(bak); yuklendi.current[key] = true; return; }
             }
+            if (opts.firstInit) opts.firstInit();
+            yuklendi.current[key] = true;
+            return;
           }
-        })();
-        // ── Diğer veriler ─────────────────────────────────────
-        if(r2){try{var d=fb(r2);if(Array.isArray(d)){setMaints(d);lsSet("ls_maints",d);}}catch(e){}}
-        else{var b=lsGet("ls_maints");if(b)setMaints(b);}
-        if(r3){try{var d=fb(r3);if(Array.isArray(d))setFaults(d);}catch(e){}}
-        if(r4){try{var d=fb(r4);if(Array.isArray(d))setTasks(d);}catch(e){}}
-        if(r5){try{var d=fb(r5);if(Array.isArray(d))setSozlesmeler(d);}catch(e){}}
-        if(r6){try{var d=fb(r6);if(Array.isArray(d))setHesapKayitlari(d);}catch(e){}}
-        if(r7){try{var d=fb(r7);if(Array.isArray(d))setHaftalikKapamalar(d);}catch(e){}}
-        if(r8){try{var d=fb(r8);if(Array.isArray(d)){setAylikKapamalar(d);lsSet("ls_aylik",d);}}catch(e){}}
-        else{var b=lsGet("ls_aylik");if(b)setAylikKapamalar(b);}
-        if(r9){try{var d=fb(r9);if(Array.isArray(d)){setSonOdemeler(d);lsSet("ls_sonodemeler",d);}}catch(e){}}
-        else{var b=lsGet("ls_sonodemeler");if(b)setSonOdemeler(b);}
-        if(r10){try{var d=fb(r10);if(Array.isArray(d))setGiderler(d);}catch(e){}}
-        if(r11){try{var d=fb(r11);if(Array.isArray(d))setGiderHaftaArsiv(d);}catch(e){}}
-        if(r12){try{var d=fb(r12);if(Array.isArray(d))setNotlar(d);}catch(e){}}
-        if(r13){try{var d=fb(r13);if(Array.isArray(d))setEkstraIsler(d);}catch(e){}}
-        if(r14){try{var d=fb(r14);if(Array.isArray(d))setTeklifler(d);}catch(e){}}
-        if(r15){try{var d=fb(r15);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
-        if(r16){try{var d=fb(r16);if(Array.isArray(d)){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}catch(e){}}
-        if(r17){try{var d=fb(r17);if(Array.isArray(d))setPaymentEvents(d);}catch(e){}}
-        // Login sonrası tam config + subscription yükle (auth gerektirir)
-        try{
-          var cfg=await getTenantConfig(tenantId);
-          if(cfg) setTenantConfig(function(prev){ return Object.assign({},prev||{},cfg); });
-          var sub=await getTenantSubscription(tenantId);
-          if(sub) setSubscription(sub);
-        }catch(e){}
+          // Veri yok / format bozuk
+          if (lsKey) {
+            var b2 = lsGet(lsKey);
+            if (b2 && b2.length > 0) { setter(b2); }
+          }
+          if (opts.firstInit && (!lsKey || !lsGet(lsKey))) opts.firstInit();
+          yuklendi.current[key] = true;
+          return;
+        }
+        // Okuma başarısız → yedekten yükle, dbSet bloklu kalsın
+        if (lsKey) {
+          var bb = lsGet(lsKey);
+          if (bb && bb.length > 0) setter(bb);
+        }
+        yuklendi.current[key] = false;
+      }
+
+      await Promise.all([
+        yukleAlan("elevs","ls_elevs",setElevs,{
+          firstInit:function(){
+            if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
+            else { setElevs([]); }
+          }
+        }),
+        yukleAlan("maints","ls_maints",setMaints),
+        yukleAlan("faults","ls_faults",setFaults,{ allowEmpty:true }),
+        yukleAlan("tasks","ls_tasks",setTasks,{ allowEmpty:true }),
+        yukleAlan("sozlesme","ls_sozlesme",setSozlesmeler,{ allowEmpty:true }),
+        yukleAlan("hesapkayit","ls_hesapkayit",setHesapKayitlari,{ allowEmpty:true }),
+        yukleAlan("haftalik","ls_haftalik",setHaftalikKapamalar,{ allowEmpty:true }),
+        yukleAlan("aylik","ls_aylik",setAylikKapamalar,{ allowEmpty:true }),
+        yukleAlan("sonodemeler","ls_sonodemeler",setSonOdemeler,{ allowEmpty:true }),
+        yukleAlan("giderler","ls_giderler",setGiderler,{ allowEmpty:true }),
+        yukleAlan("giderhafta","ls_giderhafta",setGiderHaftaArsiv,{ allowEmpty:true }),
+        yukleAlan("notlar","ls_notlar",setNotlar,{ allowEmpty:true }),
+        yukleAlan("ekstraisler","ls_ekstraisler",setEkstraIsler,{ allowEmpty:true }),
+        yukleAlan("teklifler","ls_teklifler",setTeklifler,{ allowEmpty:true }),
+        yukleAlan("muayeneler","ls_muayeneler",setMuayeneler,{ allowEmpty:true }),
+        yukleAlan("bakimcilar","ls_bakimcilar",setBakimcilar,{ allowEmpty:true }),
+        // payment_events obje (push key'li) olabileceği için Array kontrolü
+        // yerine ayrı handle edilir; başarısızsa bayrak false kalır.
+        (async function(){
+          try {
+            var rp = await dbGetWithMeta("at_payment_events");
+            if (rp && rp.ok) {
+              var d = null; try { d = fb(rp.data); } catch(e) {}
+              if (Array.isArray(d)) setPaymentEvents(d);
+              yuklendi.current.payment_events = true;
+            }
+          } catch(e) {}
+        })()
+      ]);
+
+      // Login sonrası tam config + subscription yükle (auth gerektirir)
+      try{
+        var cfg=await getTenantConfig(tenantId);
+        if(cfg) setTenantConfig(function(prev){ return Object.assign({},prev||{},cfg); });
+        var sub=await getTenantSubscription(tenantId);
+        if(sub) setSubscription(sub);
       }catch(e){}
       ilkYukleme.current=false;
     }
     yukle();
   },[rol]);
 
-  // Veri değişince Firebase'e kaydet (ilk yüklemede tetiklenmez)
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_elevs",elevs);if(elevs.length>0)lsSet("ls_elevs",elevs);}},[elevs]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_maints",maints);if(maints.length>0)lsSet("ls_maints",maints);}},[maints]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_faults",faults);}},[faults]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_tasks",tasks);}},[tasks]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_sozlesme",sozlesmeler);}},[sozlesmeler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_hesapkayit",hesapKayitlari);}},[hesapKayitlari]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_haftalik",haftalikKapamalar);}},[haftalikKapamalar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_aylik",aylikKapamalar);}},[aylikKapamalar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_sonodemeler",sonOdemeler);}},[sonOdemeler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderler",giderler);}},[giderler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_teklifler",teklifler);}},[teklifler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
+  // Generic kaydedici: ls yedeğini her zaman günceller; dbSet sadece o alanın
+  // okuması başarılıysa (yuklendi[key]=true) çağrılır. Aksi halde boş state
+  // Firebase'deki dolu veriyi siler.
+  function kaydet(key, lsKey, value){
+    if (lsKey) {
+      try { if (Array.isArray(value) && value.length > 0) lsSet(lsKey, value); } catch(e) {}
+    }
+    if (ilkYukleme.current) return;
+    if (!yuklendi.current[key]) return;
+    dbSet("at_" + key, value);
+  }
+
+  useEffect(function(){if(!ilkYukleme.current)kaydet("elevs","ls_elevs",elevs);},[elevs]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("maints","ls_maints",maints);},[maints]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("faults","ls_faults",faults);},[faults]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("tasks","ls_tasks",tasks);},[tasks]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("sozlesme","ls_sozlesme",sozlesmeler);},[sozlesmeler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("hesapkayit","ls_hesapkayit",hesapKayitlari);},[hesapKayitlari]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("haftalik","ls_haftalik",haftalikKapamalar);},[haftalikKapamalar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("aylik","ls_aylik",aylikKapamalar);},[aylikKapamalar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("sonodemeler","ls_sonodemeler",sonOdemeler);},[sonOdemeler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("giderler","ls_giderler",giderler);},[giderler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("giderhafta","ls_giderhafta",giderHaftaArsiv);},[giderHaftaArsiv]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("notlar","ls_notlar",notlar);},[notlar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("ekstraisler","ls_ekstraisler",ekstraIsler);},[ekstraIsler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("teklifler","ls_teklifler",teklifler);},[teklifler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("muayeneler","ls_muayeneler",muayeneler);},[muayeneler]);
   useEffect(function(){
-    if(!ilkYukleme.current){
+    if(ilkYukleme.current) return;
+    // ls yedeği her zaman güncelle (bakımcı listesi şifre içerebilir,
+    // boş olsa bile yedek tutulur ki silme niyeti korunsun)
+    try { lsSet("ls_bakimcilar", bakimcilar); } catch(e) {}
+    if (yuklendi.current.bakimcilar) {
       dbSet("at_bakimcilar",bakimcilar);
-      lsSet("ls_bakimcilar",bakimcilar);
       if(tenantId){
         var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
         setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
-        // Asis için auth gerektirmeyen yedek public path'e de yaz
         if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
       }
     }
@@ -3977,6 +4003,13 @@ function App(){
 
       /* Ana Ekrana Ekle Banner */
       , React.createElement(InstallBanner, null)
+      , dbHata && React.createElement('div', {
+          key:'dbhata-'+dbHata.t,
+          onClick:function(){setDbHata(null);},
+          style:{position:"fixed",bottom:16,left:16,right:16,maxWidth:440,margin:"0 auto",background:"#3a1e1e",border:"1px solid #ef4444",color:"#fecaca",padding:"10px 14px",borderRadius:10,fontSize:13,zIndex:9999,boxShadow:"0 6px 20px rgba(0,0,0,0.4)",cursor:"pointer"}
+        },
+        "⚠ Veri kaydedilemedi: ", String(dbHata.path||""), " — ", String(dbHata.err||""), " · İnternet/yetki kontrol et. Yedek localStorage'da. Kapatmak için dokun."
+      )
     )
   );
 }
