@@ -685,9 +685,38 @@ function App(){
     teklifler:false, muayeneler:false, bakimcilar:false, payment_events:false
   });
   const [dbHata,setDbHata]=useState(null);
+  // Bağlantı durumu: "ok" | "agHatasi" | "yetkiHatasi"
+  // agHatasi → tarayıcı offline, fetch reddedildi veya timeout
+  // yetkiHatasi → 401/403 (auth/permission)
+  const [baglantiDurum,setBaglantiDurum]=useState("ok");
+  function siniflandirHata(err){
+    var s = String(err||"").toLowerCase();
+    if (s.indexOf("auth")>=0 || s.indexOf("http-401")>=0 || s.indexOf("http-403")>=0) return "yetkiHatasi";
+    return "agHatasi";
+  }
   useEffect(function(){
-    setDbErrorHandler(function(path,err){ setDbHata({ path:path, err:err, t:Date.now() }); });
+    setDbErrorHandler(function(path,err){
+      setDbHata({ path:path, err:err, t:Date.now() });
+      setBaglantiDurum(siniflandirHata(err));
+    });
     return function(){ setDbErrorHandler(null); };
+  },[]);
+  // Tarayıcı online/offline event'leri — kullanıcı kabloyu çıkarınca anında bandı göster.
+  useEffect(function(){
+    function on(){
+      if (typeof navigator !== "undefined" && navigator.onLine === false) setBaglantiDurum("agHatasi");
+    }
+    function off(){ setBaglantiDurum("agHatasi"); }
+    function back(){ setBaglantiDurum("ok"); setDbHata(null); }
+    on();
+    if (typeof window !== "undefined") {
+      window.addEventListener("offline", off);
+      window.addEventListener("online", back);
+      return function(){
+        window.removeEventListener("offline", off);
+        window.removeEventListener("online", back);
+      };
+    }
   },[]);
   // Tema uygula
   useEffect(function(){
@@ -770,6 +799,7 @@ function App(){
     if(rol===null) return;
     async function yukle(){
       function fb(v){return Array.isArray(v)?v:(v&&typeof v==='string'?JSON.parse(v):null);}
+      var okumaHatasi = { count: 0, lastErr: null };
 
       // Genel yükleyici: Firebase başarılıysa setter'ı + ls yedeğini günceller,
       // başarısızsa SADECE ls'den yükler ve yuklendi[key]=false bırakır.
@@ -806,6 +836,8 @@ function App(){
           return;
         }
         // Okuma başarısız → yedekten yükle, dbSet bloklu kalsın
+        okumaHatasi.count++;
+        okumaHatasi.lastErr = (r && (r.error || r.status)) || "ag-hatasi";
         if (lsKey) {
           var bb = lsGet(lsKey);
           if (bb && bb.length > 0) setter(bb);
@@ -856,6 +888,12 @@ function App(){
         var sub=await getTenantSubscription(tenantId);
         if(sub) setSubscription(sub);
       }catch(e){}
+      // Yükleme bitti — okuma hatalarına göre bağlantı durumunu güncelle
+      if (okumaHatasi.count > 0) {
+        setBaglantiDurum(siniflandirHata(okumaHatasi.lastErr));
+      } else {
+        setBaglantiDurum("ok");
+      }
       ilkYukleme.current=false;
     }
     yukle();
@@ -4003,12 +4041,21 @@ function App(){
 
       /* Ana Ekrana Ekle Banner */
       , React.createElement(InstallBanner, null)
+      /* Sürekli bağlantı durumu bandı (üstte) — ağ/yetki sorunu varsa görünür */
+      , baglantiDurum !== "ok" && React.createElement('div', {
+          style:{position:"fixed",top:0,left:0,right:0,background: baglantiDurum==="yetkiHatasi" ? "#3a2a1e" : "#3a1e1e",borderBottom:"1px solid "+(baglantiDurum==="yetkiHatasi" ? "#f59e0b" : "#ef4444"),color: baglantiDurum==="yetkiHatasi" ? "#fde68a" : "#fecaca",padding:"8px 14px",fontSize:13,fontWeight:600,zIndex:10000,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}
+        },
+        baglantiDurum==="yetkiHatasi"
+          ? "🔒 Yetki hatası — sunucu erişimi reddetti. Çıkış yapıp tekrar giriş yapın."
+          : "⚠ Bağlantı hatası — sunucuya erişilemiyor. Yerel yedek gösteriliyor; değişiklikler kaydedilmeyecek. İnternetinizi kontrol edin."
+      )
+      /* Anlık yazma hatası popup'ı (alt) — dokununca kapanır */
       , dbHata && React.createElement('div', {
           key:'dbhata-'+dbHata.t,
           onClick:function(){setDbHata(null);},
           style:{position:"fixed",bottom:16,left:16,right:16,maxWidth:440,margin:"0 auto",background:"#3a1e1e",border:"1px solid #ef4444",color:"#fecaca",padding:"10px 14px",borderRadius:10,fontSize:13,zIndex:9999,boxShadow:"0 6px 20px rgba(0,0,0,0.4)",cursor:"pointer"}
         },
-        "⚠ Veri kaydedilemedi: ", String(dbHata.path||""), " — ", String(dbHata.err||""), " · İnternet/yetki kontrol et. Yedek localStorage'da. Kapatmak için dokun."
+        "⚠ Veri kaydedilemedi: ", String(dbHata.path||""), " — ", String(dbHata.err||""), " · Yedek localStorage'da. Kapatmak için dokun."
       )
     )
   );
