@@ -21,6 +21,7 @@ import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 import { exportObsidian } from './utils/obsidian.js'
+import ObsidianModal from './components/ObsidianModal.jsx'
 
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
 function _optionalChain(ops) { let lastAccessLHS = undefined; let value = ops[0]; let i = 1; while (i < ops.length) { const op = ops[i]; const fn = ops[i + 1]; i += 2; if ((op === 'optionalAccess' || op === 'optionalCall') && value == null) { return undefined; } if (op === 'access' || op === 'optionalAccess') { lastAccessLHS = value; value = fn(value); } else if (op === 'call' || op === 'optionalCall') { value = fn((...args) => value.call(lastAccessLHS, ...args)); lastAccessLHS = undefined; } } return value; }
@@ -579,6 +580,7 @@ function App(){
   const [konumYukleniyor,setKonumYukleniyor]=useState(false);
   const [konumHata,setKonumHata]=useState("");
   const [sifreModal,setSifreModal]=useState(false);
+  const [obsidianModal,setObsidianModal]=useState(false);
   const [sifreInput,setSifreInput]=useState("");
   const [sifreHata,setSifreHata]=useState("");
   const [sonOdemeler,setSonOdemeler]=useState([]);
@@ -1548,7 +1550,7 @@ function App(){
         )
         , React.createElement('button', { onClick: ()=>oAdd("e"), style: {background:"linear-gradient(135deg,#3b82f6,#1d4ed8)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"},}, "+ Ekle" )
         , React.createElement('button', { onClick: function(){exportAsansorlerExcel(filteredElevs,bal);}, style: {background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"},}, "\ud83d\udce5 Excel \u0130ndir" )
-        , React.createElement('button', { onClick: function(){ exportObsidian({ elevs:filteredElevs, maints:maints, faults:faults, sozlesmeler:sozlesmeler, muayeneler:muayeneler, ekstraIsler:ekstraIsler, notlar:notlar, giderler:giderler }); }, style: {background:"linear-gradient(135deg,#7c3aed,#4c1d95)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"},}, "\ud83d\udfe3 Obsidian'a Aktar" )
+        , React.createElement('button', { onClick: function(){setObsidianModal(true);}, style: {background:"linear-gradient(135deg,#7c3aed,#4c1d95)",color:"#fff",border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:12,cursor:"pointer"},}, "\ud83d\udfe3 Obsidian'a G\u00f6nder" )
       )
     )
     , Object.entries(filteredByIlce||{}).sort((a,b)=>b[1].length-a[1].length).map(([ilce,es])=>{
@@ -3130,6 +3132,12 @@ function App(){
 
       /* Ana Ekrana Ekle Banner */
       , React.createElement(InstallBanner, null)
+
+      /* Obsidian Gönder Modal */
+      , obsidianModal&&React.createElement(ObsidianModal,{
+          onKapat:function(){setObsidianModal(false);},
+          veri:{elevs:elevs,maints:maints,faults:faults,sozlesmeler:sozlesmeler,muayeneler:muayeneler,ekstraIsler:ekstraIsler,notlar:notlar,giderler:giderler},
+        })
     )
   );
 }

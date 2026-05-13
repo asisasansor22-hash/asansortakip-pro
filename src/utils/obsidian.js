@@ -199,6 +199,67 @@ function ozetMd(elevs, maints, faults, notlar, ekstraIsler, giderler) {
   return satirlar.join('\n');
 }
 
+// Local REST API üzerinden doğrudan Obsidian'a gönder
+// Obsidian'da "Local REST API" community plugin kurulu ve HTTP portu açık olmalı
+export async function sendToObsidian({ apiKey, port = 27124, klasorAdi = 'Asansor Takip', elevs, maints, faults, sozlesmeler, muayeneler, ekstraIsler, notlar, giderler, onProgress }) {
+  var base = 'http://127.0.0.1:' + port;
+  var headers = {
+    'Authorization': 'Bearer ' + apiKey,
+    'Content-Type': 'text/markdown',
+  };
+
+  var dosyalar = [];
+
+  // Özet
+  dosyalar.push({
+    yol: klasorAdi + '/Ozet.md',
+    icerik: ozetMd(elevs, maints, faults, notlar, ekstraIsler, giderler),
+  });
+
+  // Asansörler
+  (elevs || []).forEach(function(e) {
+    var ad = temizDosyaAdi((e.id ? e.id + ' - ' : '') + (e.ad || 'Isimsiz'));
+    dosyalar.push({
+      yol: klasorAdi + '/Asansörler/' + ad + '.md',
+      icerik: asansorMd(e, maints, faults, sozlesmeler, muayeneler, ekstraIsler),
+    });
+  });
+
+  // Notlar
+  (notlar || []).forEach(function(n, i) {
+    var ad = temizDosyaAdi(n.baslik || n.title || ('Not_' + (i + 1)));
+    dosyalar.push({
+      yol: klasorAdi + '/Notlar/' + ad + '.md',
+      icerik: notMd(n),
+    });
+  });
+
+  var basarili = 0;
+  var hatali = 0;
+
+  for (var i = 0; i < dosyalar.length; i++) {
+    var d = dosyalar[i];
+    try {
+      var encodedYol = d.yol.split('/').map(encodeURIComponent).join('/');
+      var res = await fetch(base + '/vault/' + encodedYol, {
+        method: 'PUT',
+        headers: headers,
+        body: d.icerik,
+      });
+      if (res.ok || res.status === 204) {
+        basarili++;
+      } else {
+        hatali++;
+      }
+    } catch (e) {
+      hatali++;
+    }
+    if (onProgress) onProgress(i + 1, dosyalar.length, basarili, hatali);
+  }
+
+  return { toplam: dosyalar.length, basarili, hatali };
+}
+
 export async function exportObsidian({ elevs, maints, faults, sozlesmeler, muayeneler, ekstraIsler, notlar, giderler }) {
   var zip = new JSZip();
   var asansorlerKlasor = zip.folder('Asansörler');
