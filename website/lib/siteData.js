@@ -364,7 +364,7 @@ export const posts = [
       },
       {
         heading: "Temizlik ve yağlama ne sıklıkta yapılmalı?",
-        body: "Standart bakım ziyaretlerinde (aylık veya iki ayda bir) yağlama ve temizlik kontrol edilir; gerektiğinde tamamlanır. Yoğun kullanımlı ticari asansörlerde bu aralık kısaltılabilir. Bakım raporunda hangi noktaların yağlandığı yazılı olarak belirtilmelidir."
+        body: "Her aylık bakım ziyaretinde yağlama ve temizlik de gerçekleştirilir. Yönetmelik gereği asansörler ayda bir yetkili servis tarafından bakıma alınmalıdır. Bakım raporunda hangi noktaların yağlandığı yazılı olarak belirtilir."
       },
       {
         heading: "İhmal edildiğinde ne olur?",
