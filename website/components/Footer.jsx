@@ -32,7 +32,7 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        <div className="footer-bottom"><span>© {new Date().getFullYear()} Asis Asansör. Tüm hakları saklıdır.</span><span>asisasansor.com</span></div>
+        <div className="footer-bottom"><span>© {new Date().getFullYear()} Asis Asansör. Tüm hakları saklıdır.</span><span style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center" }}><Link href="/kvkk-aydinlatma-metni">KVKK Aydınlatma Metni</Link><Link href="/gizlilik-politikasi">Gizlilik Politikası</Link><Link href="/cerez-politikasi">Çerez Politikası</Link><span>asisasansor.com</span></span></div>
       </div>
     </footer>
   );
