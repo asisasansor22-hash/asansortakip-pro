@@ -94,6 +94,72 @@ export default function GizlilikPage() {
 
             <h2>11. Değişiklikler</h2>
             <p>Asis Asansör, bu politikada gerekli gördüğü değişiklikleri yapma hakkını saklı tutar. Güncellenen metin bu sayfada yayımlandığı anda yürürlüğe girer.</p>
+
+            <hr style={{ margin: "3rem 0 2rem", border: "none", borderTop: "1px solid #e5e7eb" }} />
+
+            <h2 id="english-summary">English Summary</h2>
+            <p><em>This is a brief English summary of our Privacy Policy. The Turkish version above is the authoritative text.</em></p>
+
+            <h3>1. Data Controller</h3>
+            <p>Asis Asansör (the &ldquo;Company&rdquo;) operates the asisasansor.com website and provides elevator maintenance, installation, modernization, and repair services in Istanbul, Türkiye.
+              <br />Address: {contact.address}
+              <br />Contact: <a href={`mailto:${primaryEmail}`}>{primaryEmail}</a> · {contact.phones.join(" / ")}
+            </p>
+
+            <h3>2. Data We Collect</h3>
+            <ul>
+              <li>Identity and contact details voluntarily submitted via the contact form (name, phone, email, district).</li>
+              <li>Service request details (selected service type, message content).</li>
+              <li>Automatic log data when you visit our website (IP address, browser type, visit timestamp, referrer).</li>
+              <li>Cookies and anonymous measurement data from Google Analytics and Google Ads.</li>
+            </ul>
+
+            <h3>3. How We Use Your Data</h3>
+            <ul>
+              <li>To respond to your service request and prepare offers (maintenance, installation, modernization, repair).</li>
+              <li>To fulfill contractual and legal obligations (e.g. elevator periodic inspection records, invoicing).</li>
+              <li>To improve website security and performance.</li>
+              <li>For marketing and advertising activities, only with your explicit consent.</li>
+            </ul>
+
+            <h3>4. How We Protect Your Data</h3>
+            <ul>
+              <li>All data transmission is encrypted using HTTPS/TLS.</li>
+              <li>Access to our systems is restricted via Firebase Authentication and role-based authorization.</li>
+              <li>OAuth 2.0 tokens are stored securely and rotated periodically.</li>
+              <li>Only authorized personnel with a legitimate business need can access the data.</li>
+              <li>Regular security reviews are conducted.</li>
+            </ul>
+
+            <h3>5. Third-Party Sharing</h3>
+            <p>We <strong>do not sell, rent, or share</strong> your personal data with third parties for marketing purposes. Limited sharing may occur only where required for service delivery (e.g. authorized public authorities, A-type inspection bodies, accountants and legal advisors, hosting providers such as Cloudflare and Google) or where mandated by law.</p>
+
+            <h3>6. Google Ads API Usage</h3>
+            <p>Asis Asansör uses the Google Ads API <strong>solely to manage its own Google Ads account</strong> and retrieve performance reports. Data accessed via the Google Ads API is limited to our own campaigns, ad groups, keywords, conversion metrics, and the OAuth 2.0 authorization tokens required for API calls.</p>
+            <p>Google Ads API data:</p>
+            <ul>
+              <li>Is accessed only by authorized Asis Asansör personnel for our own advertising management and reporting.</li>
+              <li>Is transmitted over HTTPS and stored in systems protected by Firebase Authentication.</li>
+              <li><strong>Is never sold, rented, shared, or transferred to any third party for any purpose, including marketing.</strong></li>
+              <li>Is not combined with end-user personal data collected from our website visitors.</li>
+              <li>Is retained only as long as necessary for the stated purpose and is deleted thereafter.</li>
+            </ul>
+            <p>Our use of the Google Ads API complies with the <a href="https://developers.google.com/google-ads/api/docs/policy" target="_blank" rel="noopener noreferrer">Google Ads API Required Minimum Functionality</a> and the <a href="https://developers.google.com/terms" target="_blank" rel="noopener noreferrer">Google APIs Terms of Service</a>.</p>
+
+            <h3>7. Cookies</h3>
+            <p>Our website uses cookies for essential site functionality, anonymous analytics (Google Analytics), and advertising conversion tracking (Google Ads). For details and opt-out instructions, see our <Link href="/cerez-politikasi">Cookie Policy</Link>.</p>
+
+            <h3>8. Your Rights</h3>
+            <p>Under the Turkish Personal Data Protection Law (KVKK, Law No. 6698), you have the right to access, correct, delete, or restrict the processing of your personal data, and to object to automated decision-making. To exercise these rights, contact <a href={`mailto:${primaryEmail}`}>{primaryEmail}</a>. Requests are answered within 30 days.</p>
+
+            <h3>9. Data Retention &amp; Deletion</h3>
+            <p>Personal data is retained only for the period required by law or by the purpose of processing. Once the purpose ceases, data is deleted, destroyed, or anonymized.</p>
+
+            <h3>10. Contact</h3>
+            <p>For any privacy-related questions or requests, contact us at <a href={`mailto:${primaryEmail}`}>{primaryEmail}</a> or by post at {contact.address}.</p>
+
+            <h3>11. Updates</h3>
+            <p>We may update this policy from time to time. The current version is always published on this page and becomes effective upon posting.</p>
           </article>
         </div>
       </section>
