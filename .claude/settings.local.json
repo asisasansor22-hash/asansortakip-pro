@@ -7,7 +7,11 @@
       "Read(//c/Program Files/nodejs/**)",
       "Read(//c/Program Files/nodejs//**)",
       "Bash(gh auth:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(mkdir -p ~/.ssh)",
+      "Bash(cp \"/root/.claude/uploads/ed0c3046-012d-42af-8cdf-fe45514d2f33/8f96d7e1-sshkey20260518_7.key\" ~/.ssh/oracle.key)",
+      "Bash(chmod 600 ~/.ssh/oracle.key)",
+      "Bash(ssh -i ~/.ssh/oracle.key -o StrictHostKeyChecking=no -o ConnectTimeout=15 opc@130.61.245.81 'echo CONNECTED && uname -a && free -h && df -h /')"
     ]
   }
 }
