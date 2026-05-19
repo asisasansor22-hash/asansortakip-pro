@@ -2775,3 +2775,89 @@ h3 {
 .legal-doc strong { font-weight: 600; }
 
 .kvkk-onay a { text-decoration: underline; }
+
+/* ── District landing page ───────────────────────── */
+.district-trust-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.faq-list {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+.faq-item {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.faq-q {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.faq-a {
+  font-size: 0.9375rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Sticky mobile CTA — sadece mobile */
+.district-sticky-cta {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .district-sticky-cta {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+  }
+
+  .district-sticky-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+
+  .district-sticky-btn:active { opacity: 0.8; }
+
+  .district-sticky-call {
+    background: var(--navy, #1a2e4a);
+    color: #fff;
+  }
+
+  .district-sticky-wa {
+    background: #25d366;
+    color: #fff;
+    border-left: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* Alt sticky için sayfa içeriğine boşluk */
+  main { padding-bottom: 60px; }
+}
