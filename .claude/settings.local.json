@@ -7,7 +7,9 @@
       "Read(//c/Program Files/nodejs/**)",
       "Read(//c/Program Files/nodejs//**)",
       "Bash(gh auth:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "mcp__c3276402-8063-4438-ae2d-a4756e52a76f__data_source_discovery",
+      "mcp__c3276402-8063-4438-ae2d-a4756e52a76f__accounts_discovery"
     ]
   }
 }
