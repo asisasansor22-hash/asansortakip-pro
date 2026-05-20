@@ -9,7 +9,11 @@
       "Bash(gh auth:*)",
       "Bash(node -e \":*)",
       "Bash(cp \"/root/.claude/uploads/a0f61455-318a-4416-ae9f-45f600aa3e25/d3ad5a9f-Luxury_elevator_closed_center_sliding_doors___doors_slide_open_left_and_right_revealing_bright___ho_seed3234351379.mp4\" /home/user/asansortakip-pro/website/public/elevator-cabin.mp4 *)",
-      "Bash(cp \"/root/.claude/uploads/a0f61455-318a-4416-ae9f-45f600aa3e25/8426f850-The_elevator_doors_slowly_slide_open_from_the_center___left_door_moves_left_right_door_moves_right_seed1704846317.mp4\" /home/user/asansortakip-pro/website/public/elevator-cabin.mp4 *)"
+      "Bash(cp \"/root/.claude/uploads/a0f61455-318a-4416-ae9f-45f600aa3e25/8426f850-The_elevator_doors_slowly_slide_open_from_the_center___left_door_moves_left_right_door_moves_right_seed1704846317.mp4\" /home/user/asansortakip-pro/website/public/elevator-cabin.mp4 *)",
+      "Bash(mkdir -p ~/.ssh)",
+      "Bash(cp \"/root/.claude/uploads/93c8b85a-80e9-474b-812a-f875fb3c233e/5ff95eba-sshkey20260520_2.key\" ~/.ssh/oracle_vm)",
+      "Bash(chmod 600 ~/.ssh/oracle_vm)",
+      "Bash(ssh -i ~/.ssh/oracle_vm -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@130.61.180.201 \"uname -a && cat /etc/os-release | head -3 && free -h && nproc\")"
     ]
   }
 }
