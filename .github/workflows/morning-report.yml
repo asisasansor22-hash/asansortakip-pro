@@ -41,12 +41,19 @@ jobs:
                 });
               } catch (error) {
                 if (error.status === 404) {
-                  await github.rest.issues.createLabel({
-                    owner: context.repo.owner,
-                    repo:  context.repo.repo,
-                    name:  label.name,
-                    color: label.color,
-                  });
+                  try {
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo:  context.repo.repo,
+                      name:  label.name,
+                      color: label.color,
+                    });
+                    console.log(`✅ Label '${label.name}' oluşturuldu`);
+                  } catch (createError) {
+                    console.log(`⚠️ Label '${label.name}' oluşturulamadı:`, createError.message);
+                  }
+                } else {
+                  console.log(`⚠️ Label kontrol hatası:`, error.message);
                 }
               }
             }
