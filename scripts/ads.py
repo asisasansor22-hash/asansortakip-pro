@@ -2,9 +2,8 @@
 """
 Asis Asansör - Google Ads Sabah Raporu
 Kullanım: python3 ads.py [morning_report|campaigns|keywords|search_terms|set_budget|pause|enable]
-Çevre değişkenleri (GitHub Secrets):
-  GADS_DEVELOPER_TOKEN, GADS_CLIENT_ID, GADS_CLIENT_SECRET,
-  GADS_REFRESH_TOKEN, GADS_CUSTOMER_ID
+Çevre değişkeni (GitHub Secret): ASIS_ADS_WORKFLOW  (JSON string)
+Lokal: ~/.gads_config.json
 """
 
 import sys, os, json, requests, io
@@ -13,14 +12,11 @@ from contextlib import redirect_stdout
 
 # ── Kimlik bilgileri ──────────────────────────────────────────────────────────
 def load_config():
-    if os.environ.get("GADS_DEVELOPER_TOKEN"):
-        return {
-            "developer_token":   os.environ["GADS_DEVELOPER_TOKEN"],
-            "client_id":         os.environ["GADS_CLIENT_ID"],
-            "client_secret":     os.environ["GADS_CLIENT_SECRET"],
-            "refresh_token":     os.environ["GADS_REFRESH_TOKEN"],
-            "login_customer_id": os.environ["GADS_CUSTOMER_ID"],
-        }
+    # GitHub Actions: tek JSON secret
+    raw = os.environ.get("ASIS_ADS_WORKFLOW")
+    if raw:
+        return json.loads(raw)
+    # Lokal: config dosyası
     config_file = os.path.expanduser("~/.gads_config.json")
     if os.path.exists(config_file):
         with open(config_file) as f:
@@ -28,7 +24,7 @@ def load_config():
     raise SystemExit(
         "❌  Kimlik bilgisi bulunamadı.\n"
         "    Lokal: ~/.gads_config.json\n"
-        "    CI:    GADS_* environment variables"
+        "    CI:    ASIS_ADS_WORKFLOW secret (JSON)"
     )
 
 CFG            = load_config()
