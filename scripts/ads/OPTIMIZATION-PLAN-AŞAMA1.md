@@ -138,7 +138,7 @@ Reklam metni yenileme (Aşama 2) ve landing page revizyonu (Aşama 3) ayrı plan
 
 | Alan | Değer |
 |---|---|
-| Final URL | `https://www.asisasansor.com/` (ana sayfa, mevcut) |
+| Final URL | `https://www.asisasansor.com/iletisim` (acil tamir için direkt iletişim sayfası — dönüşüm odaklı) |
 | Path1 | `asansor-tamiri` |
 | Path2 | `7-24-servis` |
 
@@ -410,9 +410,7 @@ Her sabah otomatik rapor (routine) içinde:
   - Bölgesel reklamlar → `/bolgeler/[ilce]` (mevcut)
 - Bu Google policy'ye uygun: domain aynı olduğu sürece display path serbest. Kullanıcı reklamda "asansor-bakim/istanbul" görür, ama gerçek sayfa farklı olabilir.
 
-⚠️ **Hâlâ teyit edilmesi gereken (uygulama öncesi sor):**
-- `/iletisim` veya benzeri bir sayfa var mı sitede? Acil tamir reklamları için kullanılabilir mi?
-- Sitede başka önemli sayfa var mı (örn. `/hakkimizda`, `/referanslar`)?
+✅ **İletişim sayfası onaylı:** `/iletisim` mevcut, "Firma & Tamir" reklamının final URL'i olarak kullanılacak (acil müdahale reklamları dönüşüm sayfasına gider).
 
 ---
 
