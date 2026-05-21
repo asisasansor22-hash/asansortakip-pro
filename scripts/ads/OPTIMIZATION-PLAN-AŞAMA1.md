@@ -87,7 +87,7 @@ Reklam metni yenileme (Aşama 2) ve landing page revizyonu (Aşama 3) ayrı plan
 
 | Alan | Değer |
 |---|---|
-| Final URL | `https://www.asisasansor.com` (ileride aylık bakım landing page'i yapıldığında: `/asansor-aylik-bakim`) |
+| Final URL | `https://www.asisasansor.com/asansor/aylik-bakim` (sayfa mevcut, doğru hedef) |
 | Path1 | `asansor-bakim` |
 | Path2 | `istanbul` |
 
@@ -100,9 +100,9 @@ Reklam metni yenileme (Aşama 2) ve landing page revizyonu (Aşama 3) ayrı plan
 4. `Asansör Bakım Sözleşmesi`
 
 *USP & Sosyal Kanıt (4):*
-5. `15 Yıl Deneyimli Ekip` *(rakam doğru mu sen onayla)*
+5. `7 Yıl Deneyimli Ekip` ✅ ONAYLI
 6. `TS EN 81-20 Sertifikalı`
-7. `500+ Apartmanda Hizmet` *(rakam doğru mu sen onayla)*
+7. `480+ Apartmanda Hizmet` ✅ ONAYLI
 8. `Lisanslı Asansör Firması`
 
 *Fayda (3):*
@@ -115,16 +115,14 @@ Reklam metni yenileme (Aşama 2) ve landing page revizyonu (Aşama 3) ayrı plan
 13. `İstanbul Asansör Servisi`
 
 *CTA (2):*
-14. `Ücretsiz Keşif Talep Et`
-15. `WhatsApp'tan Teklif Al`
+14. `WhatsApp: 0 543 507 07 94` ✅
+15. `Ücretsiz Keşif Talep Et`
 
 **Descriptions (4 adet):**
-1. `İstanbul Avrupa Yakası'nda 15 yıl deneyimle apartman asansör bakımı. TS EN 81-20 uyumlu, yazılı garantili.`
-2. `500+ apartmanda lisanslı ekibimizle aylık bakım sözleşmesi. 45 dk içinde sahada, 7/24 acil müdahale.`
-3. `Asansörünüzün güvenliği için profesyonel bakım. Ücretsiz keşif ve teklif için WhatsApp'tan yazın.`
+1. `İstanbul Avrupa Yakası'nda 7 yıl deneyimle apartman asansör bakımı. TS EN 81-20 uyumlu, yazılı garantili.`
+2. `480+ apartmanda lisanslı ekibimizle aylık bakım sözleşmesi. 45 dk içinde sahada, 7/24 acil müdahale.`
+3. `Asansörünüzün güvenliği için profesyonel bakım. Ücretsiz keşif için WhatsApp: 0 543 507 07 94`
 4. `Apartman asansör bakımında uzman firma. Sözleşmeli aylık bakım, revizyon ve onarım tek elden.`
-
-**Uyarı:** Headline 5 ve 7'deki rakamlar **mutlaka doğrulanmalı** — yanlış sayı kullanmak Google policy violation. Doğru sayıları söyle, ona göre düzeltirim.
 
 ---
 
@@ -138,10 +136,14 @@ Reklam metni yenileme (Aşama 2) ve landing page revizyonu (Aşama 3) ayrı plan
 
 **Aksiyon:** **Sadece path ekle. Headlines/descriptions iyi durumda, dokunma.**
 
-Path1: `asansor-tamiri`
-Path2: `7-24-servis`
+| Alan | Değer |
+|---|---|
+| Final URL | `https://www.asisasansor.com/` (ana sayfa, mevcut) |
+| Path1 | `asansor-tamiri` |
+| Path2 | `7-24-servis` |
 
-Path eklemek için yine yeni reklam oluşturmak gerekecek ama bu sefer **mevcut metni bire bir kopyalayıp** sadece path alanlarını dolduracağız.
+Path eklemek için yine yeni reklam oluşturmak gerekecek ama bu sefer **mevcut metni bire bir kopyalayıp** sadece path alanlarını ve son description'a WhatsApp ekleyeceğiz:
+- Description 4'ü güncelle: `Asis Asansör - Avrupa Yakası 7/24 asansör servisi. WhatsApp: 0 543 507 07 94`
 
 ---
 
@@ -177,8 +179,13 @@ Path eklemek için yine yeni reklam oluşturmak gerekecek ama bu sefer **mevcut 
 
 **Aksiyon:** **Sadece path ekle.** Headlines iyi durumda.
 
-Path1: `asansor-bakim`
-Path2: `apartman`
+| Alan | Değer |
+|---|---|
+| Final URL | `https://www.asisasansor.com/asansor/aylik-bakim` (mevcut sayfa) |
+| Path1 | `asansor-bakim` |
+| Path2 | `apartman` |
+
+- Description 4'e WhatsApp ekle: `Avrupa Yakası'nda profesyonel asansör bakımı. WhatsApp: 0 543 507 07 94`
 
 ---
 
@@ -192,11 +199,14 @@ Path2: `apartman`
 
 **Aksiyon:** **{KeyWord:} kaldır, çoklu bölge headline'larını koru.**
 
-Path'i daha optimize edebiliriz:
-Path1: `asansor-bakim` (mevcut: `asansor`)
-Path2: `bolgesel-hizmet` (mevcut: `aylik-bakim`)
+| Alan | Değer |
+|---|---|
+| Final URL | `https://www.asisasansor.com/asansor/aylik-bakim` |
+| Path1 | `asansor-bakim` (mevcut: `asansor`) |
+| Path2 | `bolgesel-hizmet` (mevcut: `aylik-bakim`) |
 
-Headline'da `{KeyWord:Asis Asansör}` yerine: `Asis Asansör Bölgesel Bakım`
+- Headline'da `{KeyWord:Asis Asansör}` yerine: `Asis Asansör Bölgesel Bakım`
+- Bir description'a WhatsApp ekle: `Bölgenizde hızlı ve garantili bakım. WhatsApp: 0 543 507 07 94`
 
 ---
 
@@ -208,15 +218,20 @@ Headline'da `{KeyWord:Asis Asansör}` yerine: `Asis Asansör Bölgesel Bakım`
 - `{KeyWord:Asansör Bakım Firması}` var ❌
 - Çok düşük trafik (algoritma temkinli)
 
-**Aksiyon:** **Her biri için {KeyWord:} kaldır + path ekle.**
+**Aksiyon:** **Her biri için {KeyWord:} kaldır + path ekle + WhatsApp ekle.**
 
-| İlçe | Path1 | Path2 |
-|---|---|---|
-| Esenyurt | `esenyurt` | `asansor-bakim` |
-| Avcılar | `avcilar` | `asansor-bakim` |
-| Beylikdüzü | `beylikduzu` | `asansor-bakim` |
+| İlçe | Final URL | Path1 | Path2 |
+|---|---|---|---|
+| Esenyurt | `/bolgeler/esenyurt` ✅ | `esenyurt` | `asansor-bakim` |
+| Avcılar | `/bolgeler/avcilar` ✅ | `avcilar` | `asansor-bakim` |
+| Beylikdüzü | `/bolgeler/beylikduzu` ✅ | `beylikduzu` | `asansor-bakim` |
 
-`{KeyWord:Asansör Bakım Firması}` yerine: ilçe + spesifik bir headline (`Esenyurt'ta En Hızlı Servis` gibi).
+- `{KeyWord:Asansör Bakım Firması}` yerine ilçe + USP headline:
+  - Esenyurt için: `Esenyurt'ta 45 Dk Müdahale`
+  - Avcılar için: `Avcılar'da 7 Yıl Tecrübe`
+  - Beylikdüzü için: `Beylikdüzü'nde Yazılı Garanti`
+- Bir headline'da `7 Yıl Deneyimli Ekip` ekle (her üç reklam için)
+- Bir description'a WhatsApp ekle: `[İlçe] asansörleriniz için anında destek. WhatsApp: 0 543 507 07 94`
 
 ---
 
@@ -228,10 +243,15 @@ Headline'da `{KeyWord:Asis Asansör}` yerine: `Asis Asansör Bölgesel Bakım`
 - {KeyWord:} yok ✅
 - 19 gösterim, 0 tıklama
 
-**Aksiyon:** Path ekle.
+**Aksiyon:** Path ekle + WhatsApp ekle.
 
-Path1: `asansor-bakim`
-Path2: `bolgesel`
+| Alan | Değer |
+|---|---|
+| Final URL | `https://www.asisasansor.com/asansor/aylik-bakim` |
+| Path1 | `asansor-bakim` |
+| Path2 | `bolgesel` |
+
+- Description'a WhatsApp ekle: `Avrupa Yakası bölgesel bakım hizmeti. WhatsApp: 0 543 507 07 94`
 
 ---
 
@@ -368,25 +388,31 @@ Her sabah otomatik rapor (routine) içinde:
 
 ---
 
-## 9. Onayın Gereken Kararlar
+## 9. Onaylanmış Kararlar (21 May)
 
-26 Mayıs'a kadar bana net cevap ver:
+✅ **Sayılar:**
+- **7 yıl deneyim** (15 değil — eski plan revize edildi)
+- **480+ apartman** (500+ değil)
+- TS EN 81-20 sertifikası onaylı
 
-1. **Sayılar onayı:**
-   - 15 yıl deneyim doğru mu? Doğru değilse kaç yıl?
-   - 500+ apartman doğru mu? Doğru değilse yaklaşık kaç?
-   - Hangi sertifikaları yazabiliriz? (TS EN 81-20 dışında ISO, OHSAS vb?)
+✅ **CTA & İletişim:**
+- WhatsApp: **0 543 507 07 94** — reklamlarda kullanılacak
+- "Ücretsiz keşif" + WhatsApp paralel CTA olarak kullanılacak
 
-2. **CTA tercihi:**
-   - WhatsApp numarası var mı? Reklamda kullanalım mı?
-   - "Ücretsiz keşif" tek mi? Yoksa "Ücretsiz fiyat teklifi" daha mı iyi?
+✅ **Path tercihi:**
+- Ben yukarıda önerdiğim path'ler ile devam edeceğim (asansor-bakim/istanbul, esenyurt/asansor-bakim, vs.)
 
-3. **Path tercihi:**
-   - Path'leri ben yukarıdaki gibi mi yapayım yoksa farklı öneriniz var mı?
-   - "asansor-bakim" yerine "asansor-bakim-istanbul" gibi daha uzun mu olsun?
+✅ **Landing page stratejisi:**
+- Site'de ayrı LP sayfaları yok (sadece /asansor/aylik-bakim, /bolgeler/[ilce], /asansor/kurulum, /asansor/revizyon var)
+- **Strateji:** Display path (görünen URL) keyword'lerle dolduralacak, Final URL ise mevcut sayfalara yönlendirilecek:
+  - Bakım reklamları → `/asansor/aylik-bakim` (sayfa mevcut)
+  - Tamir reklamları → ana sayfa veya `/iletisim` (varsa)
+  - Bölgesel reklamlar → `/bolgeler/[ilce]` (mevcut)
+- Bu Google policy'ye uygun: domain aynı olduğu sürece display path serbest. Kullanıcı reklamda "asansor-bakim/istanbul" görür, ama gerçek sayfa farklı olabilir.
 
-4. **Yeni landing page için:**
-   - `/asansor-aylik-bakim` ve `/asansor-tamiri` gibi sayfalar açılabilir mi? (Site geliştirici ile konuşman lazım)
+⚠️ **Hâlâ teyit edilmesi gereken (uygulama öncesi sor):**
+- `/iletisim` veya benzeri bir sayfa var mı sitede? Acil tamir reklamları için kullanılabilir mi?
+- Sitede başka önemli sayfa var mı (örn. `/hakkimizda`, `/referanslar`)?
 
 ---
 
