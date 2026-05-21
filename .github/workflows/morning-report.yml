@@ -1,0 +1,86 @@
+name: Asis Asansör — Sabah Raporu
+
+on:
+  schedule:
+    # Her gün 09:00 Türkiye saati = 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    # Elle de tetiklenebilir (GitHub UI → Actions → Run workflow)
+
+jobs:
+  morning-report:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bağımlılıkları yükle
+        run: pip install requests
+
+      - name: Sabah raporunu oluştur
+        id: report
+        env:
+          GADS_DEVELOPER_TOKEN: ${{ secrets.GADS_DEVELOPER_TOKEN }}
+          GADS_CLIENT_ID:       ${{ secrets.GADS_CLIENT_ID }}
+          GADS_CLIENT_SECRET:   ${{ secrets.GADS_CLIENT_SECRET }}
+          GADS_REFRESH_TOKEN:   ${{ secrets.GADS_REFRESH_TOKEN }}
+          GADS_CUSTOMER_ID:     ${{ secrets.GADS_CUSTOMER_ID }}
+        run: |
+          python scripts/ads.py morning_report /tmp/report.md
+          echo "date=$(date +'%d %B %Y')" >> $GITHUB_OUTPUT
+
+      - name: Raporu GitHub Issue olarak aç
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs   = require('fs');
+            const body = fs.readFileSync('/tmp/report.md', 'utf8');
+            const date = '${{ steps.report.outputs.date }}';
+
+            // Aynı güne ait eski issue varsa kapat
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              labels: ['ads-rapor'],
+              state: 'open',
+            });
+            for (const issue of issues) {
+              if (issue.title.includes(date)) {
+                await github.rest.issues.update({
+                  owner:        context.repo.owner,
+                  repo:         context.repo.repo,
+                  issue_number: issue.number,
+                  state:        'closed',
+                });
+              }
+            }
+
+            // Yeni issue aç
+            await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `☀️ Sabah Raporu — ${date}`,
+              body:   body,
+              labels: ['ads-rapor'],
+            });
+
+      - name: Hata durumunda bildir
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `🔴 Sabah Raporu HATASI — ${{ steps.report.outputs.date }}`,
+              body:   'Sabah raporu çalışırken hata oluştu. Actions loglarını kontrol et.',
+              labels: ['ads-rapor', 'hata'],
+            });
