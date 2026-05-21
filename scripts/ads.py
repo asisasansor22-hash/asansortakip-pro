@@ -61,7 +61,7 @@ def api_headers():
     }
 
 def detect_api_version():
-    """v14'ten v30'a kadar çalışan ilk versiyonu bulur."""
+    """v14'ten v30'a kadar çalışan ilk versiyonu bulur (404 olmayanı seçer)."""
     global _api_version
     if _api_version:
         return _api_version
@@ -72,8 +72,7 @@ def detect_api_version():
             r = requests.post(url, headers=hdrs,
                               json={"query": "SELECT customer.id FROM customer LIMIT 1"},
                               timeout=10)
-            # 200 veya API hatası (401/403) → versiyon çalışıyor
-            if r.status_code in (200, 400, 401, 403):
+            if r.status_code != 404:
                 _api_version = ver
                 return ver
         except Exception:
