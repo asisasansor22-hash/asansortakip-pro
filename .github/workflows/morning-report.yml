@@ -6,6 +6,9 @@ on:
     - cron: "0 6 * * *"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   morning-report:
     runs-on: ubuntu-latest
@@ -41,19 +44,12 @@ jobs:
                 });
               } catch (error) {
                 if (error.status === 404) {
-                  try {
-                    await github.rest.issues.createLabel({
-                      owner: context.repo.owner,
-                      repo:  context.repo.repo,
-                      name:  label.name,
-                      color: label.color,
-                    });
-                    console.log(`✅ Label '${label.name}' oluşturuldu`);
-                  } catch (createError) {
-                    console.log(`⚠️ Label '${label.name}' oluşturulamadı:`, createError.message);
-                  }
-                } else {
-                  console.log(`⚠️ Label kontrol hatası:`, error.message);
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo:  context.repo.repo,
+                    name:  label.name,
+                    color: label.color,
+                  });
                 }
               }
             }
