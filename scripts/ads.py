@@ -61,23 +61,28 @@ def api_headers():
     }
 
 def detect_api_version():
-    """v14'ten v30'a kadar çalışan ilk versiyonu bulur (404 olmayanı seçer)."""
+    """Aktif Google Ads API versiyonunu bulur. JSON response = versiyon var."""
     global _api_version
     if _api_version:
         return _api_version
     hdrs = api_headers()
+    print("🔍 API versiyonu tespit ediliyor...", flush=True)
     for ver in [f"v{n}" for n in range(30, 13, -1)]:
         url = f"{GADS_HOST}/{ver}/customers/{CUSTOMER_ID}/googleAds:search"
         try:
             r = requests.post(url, headers=hdrs,
                               json={"query": "SELECT customer.id FROM customer LIMIT 1"},
-                              timeout=10)
-            if r.status_code != 404:
+                              timeout=8)
+            ct = r.headers.get("content-type", "")
+            if "application/json" in ct or r.status_code == 200:
                 _api_version = ver
+                print(f"✅ Aktif versiyon: {ver} (HTTP {r.status_code})", flush=True)
                 return ver
-        except Exception:
+            print(f"   {ver}: HTTP {r.status_code} (HTML → yok)", flush=True)
+        except Exception as e:
+            print(f"   {ver}: hata → {e}", flush=True)
             continue
-    raise SystemExit("❌  Çalışan Google Ads API versiyonu bulunamadı.")
+    raise SystemExit("❌  Çalışan Google Ads API versiyonu bulunamadı (v14-v30 tarandı).")
 
 def api_base():
     return f"{GADS_HOST}/{detect_api_version()}"
