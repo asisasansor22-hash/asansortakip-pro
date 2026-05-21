@@ -12,11 +12,9 @@ from contextlib import redirect_stdout
 
 # ── Kimlik bilgileri ──────────────────────────────────────────────────────────
 def load_config():
-    # GitHub Actions: tek JSON secret
     raw = os.environ.get("ASIS_ADS_WORKFLOW")
     if raw:
         return json.loads(raw)
-    # Lokal: config dosyası
     config_file = os.path.expanduser("~/.gads_config.json")
     if os.path.exists(config_file):
         with open(config_file) as f:
@@ -33,8 +31,8 @@ DEV_TOKEN      = CFG["developer_token"]
 CLIENT_ID      = CFG["client_id"]
 CLIENT_SECRET  = CFG["client_secret"]
 REFRESH_TOKEN  = CFG["refresh_token"]
-TOKEN_URL    = "https://oauth2.googleapis.com/token"
-GADS_HOST    = "https://googleads.googleapis.com"
+TOKEN_URL      = "https://oauth2.googleapis.com/token"
+GADS_HOST      = "https://googleads.googleapis.com"
 
 _access_token = None
 _api_version  = None
@@ -55,10 +53,25 @@ def get_token():
 
 def api_headers():
     return {
-        "Authorization":   f"Bearer {get_token()}",
-        "developer-token": DEV_TOKEN,
-        "Content-Type":    "application/json",
+        "Authorization":      f"Bearer {get_token()}",
+        "developer-token":    DEV_TOKEN,
+        "login-customer-id":  CUSTOMER_ID,   # MCC veya doğrudan hesap için gerekli
+        "Content-Type":       "application/json",
     }
+
+def api_error_detail(r):
+    """API hata yanıtından okunabilir mesaj üretir."""
+    try:
+        body = r.json()
+        err  = body.get("error", {})
+        msg  = err.get("message", "")
+        # details içinde daha spesifik hata olabilir
+        for d in err.get("details", []):
+            for e in d.get("errors", []):
+                msg += f"\n   → {e.get('errorCode', '')} : {e.get('message', '')}"
+        return msg or r.text[:300]
+    except Exception:
+        return r.text[:300]
 
 def detect_api_version():
     """Aktif Google Ads API versiyonunu bulur. JSON response = versiyon var."""
@@ -94,11 +107,7 @@ def gaql(query, page_size=1000):
     while True:
         r = requests.post(url, headers=api_headers(), json=body)
         if not r.ok:
-            try:
-                msg = r.json().get("error", {}).get("message", r.text)
-            except Exception:
-                msg = r.text
-            raise SystemExit(f"❌  API Hatası ({r.status_code}): {msg}")
+            raise SystemExit(f"❌  API Hatası ({r.status_code}): {api_error_detail(r)}")
         data = r.json()
         rows.extend(data.get("results", []))
         token = data.get("nextPageToken")
@@ -111,11 +120,7 @@ def mutate(operations, resource="campaigns"):
     url = f"{api_base()}/customers/{CUSTOMER_ID}/{resource}:mutate"
     r   = requests.post(url, headers=api_headers(), json={"operations": operations})
     if not r.ok:
-        try:
-            msg = r.json().get("error", {}).get("message", r.text)
-        except Exception:
-            msg = r.text
-        raise SystemExit(f"❌  Mutate Hatası ({r.status_code}): {msg}")
+        raise SystemExit(f"❌  Mutate Hatası ({r.status_code}): {api_error_detail(r)}")
     return r.json()
 
 # ── Yardımcı ──────────────────────────────────────────────────────────────────
