@@ -25,6 +25,15 @@ jobs:
       - name: Bağımlılıkları yükle
         run: pip install requests
 
+      - name: Label oluştur (yoksa)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            for (const [name, color] of [['ads-rapor','0075ca'],['hata','d73a4a']]) {
+              try { await github.rest.issues.getLabel({...context.repo, name}); }
+              catch { await github.rest.issues.createLabel({...context.repo, name, color}); }
+            }
+
       - name: Sabah raporunu oluştur
         id: report
         env:

@@ -33,11 +33,11 @@ DEV_TOKEN      = CFG["developer_token"]
 CLIENT_ID      = CFG["client_id"]
 CLIENT_SECRET  = CFG["client_secret"]
 REFRESH_TOKEN  = CFG["refresh_token"]
-TOKEN_URL      = "https://oauth2.googleapis.com/token"
-API_VERSION    = "v19"
-API_BASE       = f"https://googleads.googleapis.com/{API_VERSION}"
+TOKEN_URL    = "https://oauth2.googleapis.com/token"
+GADS_HOST    = "https://googleads.googleapis.com"
 
 _access_token = None
+_api_version  = None
 
 def get_token():
     global _access_token
@@ -60,8 +60,30 @@ def api_headers():
         "Content-Type":    "application/json",
     }
 
+def detect_api_version():
+    """v14'ten v30'a kadar çalışan ilk versiyonu bulur (404 olmayanı seçer)."""
+    global _api_version
+    if _api_version:
+        return _api_version
+    hdrs = api_headers()
+    for ver in [f"v{n}" for n in range(30, 13, -1)]:
+        url = f"{GADS_HOST}/{ver}/customers/{CUSTOMER_ID}/googleAds:search"
+        try:
+            r = requests.post(url, headers=hdrs,
+                              json={"query": "SELECT customer.id FROM customer LIMIT 1"},
+                              timeout=10)
+            if r.status_code != 404:
+                _api_version = ver
+                return ver
+        except Exception:
+            continue
+    raise SystemExit("❌  Çalışan Google Ads API versiyonu bulunamadı.")
+
+def api_base():
+    return f"{GADS_HOST}/{detect_api_version()}"
+
 def gaql(query, page_size=1000):
-    url  = f"{API_BASE}/customers/{CUSTOMER_ID}/googleAds:search"
+    url  = f"{api_base()}/customers/{CUSTOMER_ID}/googleAds:search"
     body = {"query": query, "pageSize": page_size}
     rows = []
     while True:
@@ -81,7 +103,7 @@ def gaql(query, page_size=1000):
     return rows
 
 def mutate(operations, resource="campaigns"):
-    url = f"{API_BASE}/customers/{CUSTOMER_ID}/{resource}:mutate"
+    url = f"{api_base()}/customers/{CUSTOMER_ID}/{resource}:mutate"
     r   = requests.post(url, headers=api_headers(), json={"operations": operations})
     if not r.ok:
         try:
