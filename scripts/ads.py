@@ -1,434 +1,411 @@
 #!/usr/bin/env python3
 """
-Asis Asansör - Google Ads Yönetim Scripti
-Kullanım: python3 ads.py [campaigns|keywords|search_terms|morning_report|set_budget|pause|enable]
+Asis Asansör - Google Ads Yönetim Scripti (REST API)
+Kullanım: python3 ads.py [campaigns|keywords|search_terms|morning_report|set_budget|pause|enable|setup]
 """
 
-import sys
-import os
-import json
+import sys, os, json, requests
 from datetime import date, timedelta
-from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.errors import GoogleAdsException
 
-# ── Konfigürasyon ──────────────────────────────────────────────────────────────
-CONFIG_FILE = os.path.expanduser("~/.gads_config.json")
-YAML_FILE   = os.path.expanduser("~/google-ads.yaml")
+# ── Sabitler ──────────────────────────────────────────────────────────────────
+API_VERSION   = "v19"
+API_BASE      = f"https://googleads.googleapis.com/{API_VERSION}"
+TOKEN_URL     = "https://oauth2.googleapis.com/token"
+CONFIG_FILE   = os.path.expanduser("~/.gads_config.json")
 
+# ── Kimlik bilgileri ──────────────────────────────────────────────────────────
 def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE) as f:
             return json.load(f)
-    return {}
+    raise SystemExit("❌  ~/.gads_config.json bulunamadı. 'ads.py setup' çalıştır.")
 
-def get_client():
-    if os.path.exists(YAML_FILE):
-        return GoogleAdsClient.load_from_storage(YAML_FILE)
-    cfg = load_config()
-    if cfg.get("developer_token"):
-        return GoogleAdsClient.load_from_dict(cfg)
-    raise SystemExit(
-        "❌  Kimlik bilgisi bulunamadı.\n"
-        "    Lütfen ~/.gads_config.json veya ~/google-ads.yaml oluştur.\n"
-        "    Örnek: python3 ads.py setup"
-    )
+CFG = load_config()
+CUSTOMER_ID    = str(CFG["login_customer_id"]).replace("-", "")
+DEV_TOKEN      = CFG["developer_token"]
+CLIENT_ID      = CFG["client_id"]
+CLIENT_SECRET  = CFG["client_secret"]
+REFRESH_TOKEN  = CFG["refresh_token"]
 
-def customer_id():
-    cfg = load_config()
-    cid = cfg.get("login_customer_id") or os.environ.get("GADS_CUSTOMER_ID", "")
-    if not cid:
-        raise SystemExit("❌  GADS_CUSTOMER_ID bulunamadı.")
-    return str(cid).replace("-", "")
+_access_token = None
+
+def get_token():
+    global _access_token
+    if _access_token:
+        return _access_token
+    r = requests.post(TOKEN_URL, data={
+        "client_id":     CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "refresh_token": REFRESH_TOKEN,
+        "grant_type":    "refresh_token",
+    })
+    r.raise_for_status()
+    _access_token = r.json()["access_token"]
+    return _access_token
+
+def headers():
+    return {
+        "Authorization":        f"Bearer {get_token()}",
+        "developer-token":      DEV_TOKEN,
+        "Content-Type":         "application/json",
+    }
+
+def gaql(query, page_size=1000):
+    url  = f"{API_BASE}/customers/{CUSTOMER_ID}/googleAds:search"
+    body = {"query": query, "pageSize": page_size}
+    rows = []
+    while True:
+        r = requests.post(url, headers=headers(), json=body)
+        if not r.ok:
+            err = r.json()
+            msg = err.get("error", {}).get("message", r.text)
+            raise SystemExit(f"❌  API Hatası: {msg}")
+        data = r.json()
+        rows.extend(data.get("results", []))
+        token = data.get("nextPageToken")
+        if not token:
+            break
+        body["pageToken"] = token
+    return rows
+
+def mutate(operations, resource="campaigns"):
+    url  = f"{API_BASE}/customers/{CUSTOMER_ID}/{resource}:mutate"
+    body = {"operations": operations}
+    r    = requests.post(url, headers=headers(), json=body)
+    if not r.ok:
+        err = r.json()
+        msg = err.get("error", {}).get("message", r.text)
+        raise SystemExit(f"❌  Mutate Hatası: {msg}")
+    return r.json()
 
 # ── Yardımcı ──────────────────────────────────────────────────────────────────
-def date_range(days_back_start, days_back_end=1):
+def drange(days_back_start, days_back_end=1):
     end   = date.today() - timedelta(days=days_back_end)
     start = date.today() - timedelta(days=days_back_start)
     return start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")
 
-def fmt_pct(val):
-    return f"{val*100:.2f}%"
+def micros(v): return int(v or 0)
+def tl(micros_val): return micros_val / 1_000_000
+def fmt_tl(m): return f"₺{tl(m):.2f}"
+def fmt_pct(v): return f"{float(v or 0)*100:.2f}%"
+def safe_float(v): return float(v or 0)
 
-def fmt_money(micros):
-    return f"₺{micros/1_000_000:.2f}"
+def trend(val, avg, thr=0.1):
+    if avg == 0: return "→"
+    return "↑" if val > avg * (1 + thr) else ("↓" if val < avg * (1 - thr) else "→")
 
-# ── 1. Kampanya özeti ─────────────────────────────────────────────────────────
+# ── 1. Kampanya raporu ────────────────────────────────────────────────────────
 def cmd_campaigns():
-    client = get_client()
-    cid    = customer_id()
-    ga_svc = client.get_service("GoogleAdsService")
+    d_start, d_end = drange(1, 1)
+    w_start, w_end = drange(7, 1)
 
-    d_start, d_end = date_range(1, 1)   # dün
-    w_start, w_end = date_range(7, 1)   # son 7 gün
-
-    query = f"""
-        SELECT
-          campaign.id,
-          campaign.name,
-          campaign.status,
-          campaign.advertising_channel_type,
-          campaign_budget.amount_micros,
-          metrics.clicks,
-          metrics.impressions,
-          metrics.ctr,
-          metrics.average_cpc,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.conversion_rate
-        FROM campaign
-        WHERE segments.date BETWEEN '{d_start}' AND '{d_end}'
-          AND campaign.status != 'REMOVED'
-        ORDER BY metrics.cost_micros DESC
+    q_day = f"""
+        SELECT campaign.id, campaign.name, campaign.status,
+               campaign_budget.amount_micros,
+               metrics.clicks, metrics.impressions, metrics.ctr,
+               metrics.average_cpc, metrics.cost_micros,
+               metrics.conversions
+        FROM   campaign
+        WHERE  segments.date BETWEEN '{d_start}' AND '{d_end}'
+          AND  campaign.status != 'REMOVED'
+        ORDER  BY metrics.cost_micros DESC
     """
-
-    query_7d = f"""
-        SELECT
-          campaign.id,
-          metrics.clicks,
-          metrics.impressions,
-          metrics.ctr,
-          metrics.average_cpc,
-          metrics.cost_micros,
-          metrics.conversions
-        FROM campaign
-        WHERE segments.date BETWEEN '{w_start}' AND '{w_end}'
-          AND campaign.status != 'REMOVED'
+    q_week = f"""
+        SELECT campaign.id,
+               metrics.clicks, metrics.cost_micros, metrics.conversions
+        FROM   campaign
+        WHERE  segments.date BETWEEN '{w_start}' AND '{w_end}'
+          AND  campaign.status != 'REMOVED'
     """
 
     print(f"\n📅  KAMPANYA RAPORU — Dün ({d_end})")
-    print("=" * 60)
+    print("=" * 62)
 
     yesterday = {}
-    try:
-        for row in ga_svc.search(customer_id=cid, query=query):
-            c = row.campaign
-            m = row.metrics
-            yesterday[c.id] = {
-                "name":       c.name,
-                "status":     c.status.name,
-                "budget":     row.campaign_budget.amount_micros,
-                "clicks":     m.clicks,
-                "impr":       m.impressions,
-                "ctr":        m.ctr,
-                "cpc":        m.average_cpc,
-                "cost":       m.cost_micros,
-                "conv":       m.conversions,
-                "conv_rate":  m.conversion_rate,
-            }
-    except GoogleAdsException as ex:
-        for error in ex.failure.errors:
-            print(f"❌  {error.message}")
-        return
+    for row in gaql(q_day):
+        c = row.get("campaign", {})
+        m = row.get("metrics", {})
+        b = row.get("campaignBudget", {})
+        yesterday[c["id"]] = {
+            "name":   c.get("name", "?"),
+            "status": c.get("status", "?"),
+            "budget": micros(b.get("amountMicros", 0)),
+            "clicks": int(m.get("clicks", 0)),
+            "impr":   int(m.get("impressions", 0)),
+            "ctr":    safe_float(m.get("ctr", 0)),
+            "cpc":    micros(m.get("averageCpc", 0)),
+            "cost":   micros(m.get("costMicros", 0)),
+            "conv":   safe_float(m.get("conversions", 0)),
+        }
 
     weekly = {}
-    for row in ga_svc.search(customer_id=cid, query=query_7d):
-        cid_key = row.campaign.id
-        m = row.metrics
+    for row in gaql(q_week):
+        cid_key = row.get("campaign", {}).get("id")
+        m = row.get("metrics", {})
         if cid_key not in weekly:
-            weekly[cid_key] = {"clicks": 0, "cost": 0, "conv": 0, "impr": 0}
-        weekly[cid_key]["clicks"] += m.clicks
-        weekly[cid_key]["cost"]   += m.cost_micros
-        weekly[cid_key]["conv"]   += m.conversions
-        weekly[cid_key]["impr"]   += m.impressions
+            weekly[cid_key] = {"clicks": 0, "cost": 0, "conv": 0}
+        weekly[cid_key]["clicks"] += int(m.get("clicks", 0))
+        weekly[cid_key]["cost"]   += micros(m.get("costMicros", 0))
+        weekly[cid_key]["conv"]   += safe_float(m.get("conversions", 0))
 
+    anomaly = False
+    lines   = []
     for cid_key, d in yesterday.items():
-        w = weekly.get(cid_key, {})
+        w          = weekly.get(cid_key, {})
         avg_clicks = w.get("clicks", 0) / 7
         avg_cost   = w.get("cost",   0) / 7
         avg_conv   = w.get("conv",   0) / 7
+        budget_pct = (d["cost"] / d["budget"] * 100) if d["budget"] > 0 else 0
+        budget_warn = " ⚠️ Erken bitti!" if budget_pct >= 95 else ""
+        if budget_pct >= 95: anomaly = True
 
-        clicks_trend = "↑" if d["clicks"] > avg_clicks * 1.1 else ("↓" if d["clicks"] < avg_clicks * 0.9 else "→")
-        cost_trend   = "↑" if d["cost"]   > avg_cost   * 1.1 else ("↓" if d["cost"]   < avg_cost   * 0.9 else "→")
-        conv_trend   = "↑" if d["conv"]   > avg_conv   * 1.1 else ("↓" if d["conv"]   < avg_conv   * 0.9 else "→")
+        lines.append(
+            f"\n🏷️  {d['name']}  [{d['status']}]\n"
+            f"   Tıklama  : {d['clicks']:>5}   7g ort: {avg_clicks:>5.1f}  {trend(d['clicks'], avg_clicks)}\n"
+            f"   Gösterim : {d['impr']:>5}\n"
+            f"   CTR      : {fmt_pct(d['ctr']):>8}\n"
+            f"   Harcama  : {fmt_tl(d['cost']):>8}   7g ort: {fmt_tl(avg_cost)}  {trend(d['cost'], avg_cost)}\n"
+            f"   Bütçe    : %{budget_pct:.0f} kullanıldı{budget_warn}\n"
+            f"   Dönüşüm  : {d['conv']:>5.1f}   7g ort: {avg_conv:>5.1f}  {trend(d['conv'], avg_conv)}\n"
+            f"   CPC      : {fmt_tl(d['cpc']):>8}"
+        )
 
-        budget_used_pct = (d["cost"] / d["budget"] * 100) if d["budget"] > 0 else 0
-
-        print(f"\n🏷️  {d['name']}  [{d['status']}]")
-        print(f"   Tıklama:   {d['clicks']:>6}  (7g ort: {avg_clicks:.1f})  {clicks_trend}")
-        print(f"   Gösterim:  {d['impr']:>6}")
-        print(f"   CTR:       {fmt_pct(d['ctr']):>8}")
-        print(f"   Harcama:   {fmt_money(d['cost']):>8}  (7g ort: {fmt_money(avg_cost)})  {cost_trend}")
-        print(f"   Bütçe kul: {budget_used_pct:.0f}%  {'⚠️ Erken bitti!' if budget_used_pct >= 95 else ''}")
-        print(f"   Dönüşüm:   {d['conv']:>6.1f}  (7g ort: {avg_conv:.1f})  {conv_trend}")
-        print(f"   CPC:       {fmt_money(d['cpc']):>8}")
+    if anomaly:
+        print("🔴  ANOMALİ: Bütçe erken tükenen kampanya var!")
+    for l in lines:
+        print(l)
 
 
 # ── 2. Anahtar kelime analizi ──────────────────────────────────────────────────
 def cmd_keywords():
-    client = get_client()
-    cid    = customer_id()
-    ga_svc = client.get_service("GoogleAdsService")
-
-    d_start, d_end = date_range(30, 1)  # son 30 gün
-
-    query = f"""
-        SELECT
-          ad_group_criterion.keyword.text,
-          ad_group_criterion.keyword.match_type,
-          ad_group_criterion.quality_info.quality_score,
-          ad_group_criterion.status,
-          ad_group.name,
-          campaign.name,
-          metrics.clicks,
-          metrics.impressions,
-          metrics.cost_micros,
-          metrics.conversions,
-          metrics.average_cpc
-        FROM keyword_view
-        WHERE segments.date BETWEEN '{d_start}' AND '{d_end}'
-          AND ad_group_criterion.status != 'REMOVED'
-          AND campaign.status != 'REMOVED'
-        ORDER BY metrics.cost_micros DESC
-        LIMIT 50
+    d_start, d_end = drange(30, 1)
+    q = f"""
+        SELECT ad_group_criterion.keyword.text,
+               ad_group_criterion.keyword.matchType,
+               ad_group_criterion.qualityInfo.qualityScore,
+               ad_group.name, campaign.name,
+               metrics.clicks, metrics.cost_micros,
+               metrics.conversions, metrics.average_cpc
+        FROM   keyword_view
+        WHERE  segments.date BETWEEN '{d_start}' AND '{d_end}'
+          AND  ad_group_criterion.status != 'REMOVED'
+          AND  campaign.status != 'REMOVED'
+        ORDER  BY metrics.cost_micros DESC
+        LIMIT  100
     """
 
-    print(f"\n🔑  ANAHTAR KELİME ANALİZİ — Son 30 gün ({d_start} → {d_end})")
-    print("=" * 60)
+    print(f"\n🔑  ANAHTAR KELİME ANALİZİ — Son 30 gün")
+    print("=" * 62)
 
-    wasters     = []
-    converters  = []
-    low_qs      = []
+    wasters, converters, low_qs = [], [], []
+    for row in gaql(q):
+        kw   = row.get("adGroupCriterion", {}).get("keyword", {})
+        qi   = row.get("adGroupCriterion", {}).get("qualityInfo", {})
+        m    = row.get("metrics", {})
+        cost = micros(m.get("costMicros", 0))
+        conv = safe_float(m.get("conversions", 0))
+        qs   = qi.get("qualityScore")
 
-    try:
-        for row in ga_svc.search(customer_id=cid, query=query):
-            kw   = row.ad_group_criterion.keyword
-            m    = row.metrics
-            qs   = row.ad_group_criterion.quality_info.quality_score
-
-            entry = {
-                "keyword":  kw.text,
-                "match":    kw.match_type.name,
-                "campaign": row.campaign.name,
-                "ad_group": row.ad_group.name,
-                "clicks":   m.clicks,
-                "cost":     m.cost_micros,
-                "conv":     m.conversions,
-                "cpc":      m.average_cpc,
-                "qs":       qs,
-            }
-
-            if m.cost_micros > 50_000_000 and m.conversions == 0:
-                wasters.append(entry)
-            if m.conversions > 0:
-                converters.append(entry)
-            if 1 <= qs <= 3:
-                low_qs.append(entry)
-
-    except GoogleAdsException as ex:
-        for error in ex.failure.errors:
-            print(f"❌  {error.message}")
-        return
+        entry = {
+            "kw":    kw.get("text", "?"),
+            "match": kw.get("matchType", "?")[:3],
+            "cost":  cost,
+            "conv":  conv,
+            "cpc":   micros(m.get("averageCpc", 0)),
+            "qs":    qs,
+        }
+        if cost > 50_000_000 and conv == 0:
+            wasters.append(entry)
+        if conv > 0:
+            converters.append(entry)
+        if qs and int(qs) <= 3:
+            low_qs.append(entry)
 
     print("\n🔥  Para Yakanlar (harcama > ₺50, dönüşüm = 0):")
     if wasters:
         for e in sorted(wasters, key=lambda x: -x["cost"])[:10]:
-            print(f"   [{e['match'][:3]}] {e['keyword']:<30} {fmt_money(e['cost']):>8}  conv:0  QS:{e['qs'] or '?'}")
+            print(f"   [{e['match']}] {e['kw']:<32} {fmt_tl(e['cost']):>8}  conv:0  QS:{e['qs'] or '?'}")
     else:
         print("   ✅ Yok")
 
     print("\n✅  Dönüşüm Getirenler:")
     if converters:
         for e in sorted(converters, key=lambda x: -x["conv"])[:10]:
-            print(f"   [{e['match'][:3]}] {e['keyword']:<30} {fmt_money(e['cost']):>8}  conv:{e['conv']:.1f}  QS:{e['qs'] or '?'}")
+            print(f"   [{e['match']}] {e['kw']:<32} {fmt_tl(e['cost']):>8}  conv:{e['conv']:.1f}  QS:{e['qs'] or '?'}")
     else:
         print("   ⚠️  Son 30 günde dönüşüm yok")
 
-    print("\n🟡  Düşük Quality Score (≤3):")
+    print("\n🟡  Düşük Quality Score (≤ 3):")
     if low_qs:
-        for e in sorted(low_qs, key=lambda x: x["qs"])[:10]:
-            print(f"   QS:{e['qs']}  [{e['match'][:3]}] {e['keyword']:<30} {fmt_money(e['cost']):>8}")
+        for e in sorted(low_qs, key=lambda x: int(x["qs"] or 9))[:10]:
+            print(f"   QS:{e['qs']}  [{e['match']}] {e['kw']:<32} {fmt_tl(e['cost']):>8}")
     else:
         print("   ✅ Yok")
 
+    return wasters, converters, low_qs
+
 
 # ── 3. Arama terimi taraması ───────────────────────────────────────────────────
+NEGATIVE_SIGNALS = [
+    "nasıl", "diy", "ucuz", "ücretsiz", "bedava", "ne kadar fiyat",
+    "iş ilanı", "eleman", "mühendis", "öğrenci", "ders", "sertifika",
+    "kurs", "youtube", "wikipedia", "resim", "logo",
+]
+
 def cmd_search_terms():
-    client = get_client()
-    cid    = customer_id()
-    ga_svc = client.get_service("GoogleAdsService")
-
-    d_start, d_end = date_range(7, 1)
-
-    query = f"""
-        SELECT
-          search_term_view.search_term,
-          search_term_view.status,
-          campaign.name,
-          metrics.clicks,
-          metrics.impressions,
-          metrics.cost_micros,
-          metrics.conversions
-        FROM search_term_view
-        WHERE segments.date BETWEEN '{d_start}' AND '{d_end}'
-          AND metrics.impressions > 0
-        ORDER BY metrics.cost_micros DESC
-        LIMIT 100
+    d_start, d_end = drange(7, 1)
+    q = f"""
+        SELECT search_term_view.search_term, search_term_view.status,
+               campaign.name,
+               metrics.clicks, metrics.cost_micros, metrics.conversions
+        FROM   search_term_view
+        WHERE  segments.date BETWEEN '{d_start}' AND '{d_end}'
+          AND  metrics.impressions > 0
+        ORDER  BY metrics.cost_micros DESC
+        LIMIT  200
     """
 
-    print(f"\n🔍  ARAMA TERİMİ TARAMASI — Son 7 gün ({d_start} → {d_end})")
-    print("=" * 60)
+    print(f"\n🔍  ARAMA TERİMİ TARAMASI — Son 7 gün")
+    print("=" * 62)
 
-    # Negatif kelime işaretçileri
-    negative_signals = [
-        "nasıl yapılır", "diy", "ucuz", "ücretsiz", "bedava", "ne kadar",
-        "fiyatı nedir", "arıyorum iş", "mühendis", "öğrenci", "ders",
-        "sertifika", "kurs", "youtube", "video", "wikipedia",
-        "istanbul dışı", "ankara", "izmir", "bursa", "konya",  # adjust per city
-    ]
+    neg_add, pos_add = [], []
+    for row in gaql(q):
+        stv   = row.get("searchTermView", {})
+        m     = row.get("metrics", {})
+        term  = stv.get("searchTerm", "").lower()
+        cost  = micros(m.get("costMicros", 0))
+        conv  = safe_float(m.get("conversions", 0))
+        status = stv.get("status", "")
 
-    negative_add  = []
-    positive_add  = []
-
-    try:
-        rows = list(ga_svc.search(customer_id=cid, query=query))
-    except GoogleAdsException as ex:
-        for error in ex.failure.errors:
-            print(f"❌  {error.message}")
-        return
-
-    for row in rows:
-        term = row.search_term_view.search_term.lower()
-        m    = row.metrics
-        is_neg_candidate = (
-            m.cost_micros > 20_000_000 and m.conversions == 0 and
-            any(sig in term for sig in negative_signals)
-        )
-        is_pos_candidate = (
-            m.conversions > 0 and
-            row.search_term_view.status.name == "NONE"  # henüz keyword eklenmemiş
-        )
-        if is_neg_candidate:
-            negative_add.append({"term": row.search_term_view.search_term, "cost": m.cost_micros, "clicks": m.clicks})
-        if is_pos_candidate:
-            positive_add.append({"term": row.search_term_view.search_term, "conv": m.conversions, "cost": m.cost_micros})
+        if cost > 10_000_000 and conv == 0 and any(s in term for s in NEGATIVE_SIGNALS):
+            neg_add.append({"term": stv.get("searchTerm"), "cost": cost,
+                            "clicks": int(m.get("clicks", 0))})
+        if conv > 0 and status == "NONE":
+            pos_add.append({"term": stv.get("searchTerm"), "conv": conv, "cost": cost})
 
     print("\n🚫  Negatife Eklenmesi Önerilen Terimler:")
-    if negative_add:
-        for e in sorted(negative_add, key=lambda x: -x["cost"])[:15]:
-            print(f"   - \"{e['term']}\"  ({fmt_money(e['cost'])}  {e['clicks']} tık)")
+    if neg_add:
+        for e in sorted(neg_add, key=lambda x: -x["cost"])[:15]:
+            print(f'   - "{e["term"]}"  ({fmt_tl(e["cost"])}  {e["clicks"]} tık)')
     else:
         print("   ✅ Belirgin negatif aday yok")
 
-    print("\n➕  Pozitif Keyword Adayları (dönüşüm getirdi ama keyword değil):")
-    if positive_add:
-        for e in sorted(positive_add, key=lambda x: -x["conv"])[:10]:
-            print(f"   + \"{e['term']}\"  (conv:{e['conv']:.1f}  {fmt_money(e['cost'])})")
+    print("\n➕  Pozitif Keyword Adayları (dönüşüm getirdi, keyword değil):")
+    if pos_add:
+        for e in sorted(pos_add, key=lambda x: -x["conv"])[:10]:
+            print(f'   + "{e["term"]}"  (conv:{e["conv"]:.1f}  {fmt_tl(e["cost"])})')
     else:
-        print("   ℹ️  Yok (mevcut keyword'ler kapsıyor)")
+        print("   ℹ️  Yok")
+
+    return neg_add, pos_add
 
 
-# ── 4. Sabah raporu (hepsi bir arada) ─────────────────────────────────────────
+# ── 4. Karar önerisi ──────────────────────────────────────────────────────────
+def cmd_decision(wasters=None, neg_add=None, converters=None):
+    print(f"\n📋  KARAR ÖNERİSİ — {date.today().strftime('%d %B %Y')}")
+    print("=" * 62)
+    suggestions = []
+
+    if neg_add:
+        suggestions.append(("🚫 Negatif kelime ekle",
+            f"{len(neg_add)} alakasız terim bütçe tüketiyor → hemen ekle"))
+    if wasters:
+        suggestions.append(("⏸️  Para yakan kelimeleri duraklat",
+            f"{len(wasters)} kelime 0 dönüşümle bütçe eriyor → pause veya teklif düşür"))
+    if converters:
+        suggestions.append(("💰 Dönüşüm getiren kelimelere bütçe kaydır",
+            "En iyi kelimeler için teklif artır veya kampanya bütçesini yükselt"))
+    if not suggestions:
+        suggestions.append(("✅ Bekle",
+            "Belirgin bir aksiyon gerektiren durum yok, veri izle"))
+
+    for title, reason in suggestions:
+        print(f"\n   {title}")
+        print(f"   Neden: {reason}")
+
+    print("\n⚠️  Onay Beklenenler:")
+    print("   • Negatif kelime eklemek için onayını bekliyorum")
+    print("   • Teklif/bütçe değişikliği için onayını bekliyorum")
+    print("   • Kelime duraklatma için onayını bekliyorum")
+    print()
+
+
+# ── 5. Tam sabah raporu ───────────────────────────────────────────────────────
 def cmd_morning_report():
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 62)
     print("☀️   ASİS ASANSÖR — SABAH RAPORU")
     print(f"     {date.today().strftime('%d %B %Y')}")
-    print("=" * 60)
+    print("=" * 62)
     cmd_campaigns()
-    cmd_keywords()
-    cmd_search_terms()
-    print("\n" + "=" * 60)
-    print("📋  KARAR ÖNERİSİ → 'python3 ads.py decision' ile görüntüle")
-    print("=" * 60 + "\n")
+    result = cmd_keywords()
+    wasters   = result[0] if result else []
+    converters = result[1] if result else []
+    n_result  = cmd_search_terms()
+    neg_add   = n_result[0] if n_result else []
+    cmd_decision(wasters=wasters, neg_add=neg_add, converters=converters)
+    print("=" * 62)
 
 
-# ── 5. Bütçe değiştir ─────────────────────────────────────────────────────────
+# ── 6. Bütçe değiştir ─────────────────────────────────────────────────────────
 def cmd_set_budget(args):
     if len(args) < 2:
-        print("Kullanım: ads.py set_budget <campaign_id> <günlük_tl>")
-        return
-    client = get_client()
-    cid    = customer_id()
+        print("Kullanım: ads.py set_budget <campaign_id> <günlük_tl>"); return
     campaign_id = args[0]
     amount_tl   = float(args[1])
 
-    # Kampanyanın mevcut budget resource'unu bul
-    ga_svc = client.get_service("GoogleAdsService")
-    query  = f"""
-        SELECT campaign.id, campaign_budget.resource_name, campaign_budget.amount_micros
-        FROM campaign
-        WHERE campaign.id = {campaign_id}
-    """
-    row = next(ga_svc.search(customer_id=cid, query=query), None)
-    if not row:
-        print(f"❌  Kampanya bulunamadı: {campaign_id}")
-        return
+    # Budget resource adını bul
+    rows = gaql(f"""
+        SELECT campaign.id, campaign_budget.resource_name
+        FROM   campaign WHERE campaign.id = {campaign_id}
+    """)
+    if not rows:
+        print(f"❌  Kampanya bulunamadı: {campaign_id}"); return
 
-    budget_rn = row.campaign_budget.resource_name
-    budget_svc = client.get_service("CampaignBudgetService")
-    budget_op  = client.get_type("CampaignBudgetOperation")
-    budget     = budget_op.update
-    budget.resource_name        = budget_rn
-    budget.amount_micros        = int(amount_tl * 1_000_000)
-    field_mask = client.get_type("FieldMask")
-    field_mask.paths.append("amount_micros")
-    budget_op.update_mask.CopyFrom(field_mask)
-
-    try:
-        resp = budget_svc.mutate_campaign_budgets(customer_id=cid, operations=[budget_op])
-        print(f"✅  Bütçe güncellendi → ₺{amount_tl:.2f}/gün")
-        print(f"   Resource: {resp.results[0].resource_name}")
-    except GoogleAdsException as ex:
-        for e in ex.failure.errors:
-            print(f"❌  {e.message}")
+    budget_rn = rows[0]["campaignBudget"]["resourceName"]
+    ops = [{"update": {"resourceName": budget_rn,
+                        "amountMicros": str(int(amount_tl * 1_000_000))},
+             "updateMask": "amountMicros"}]
+    resp = mutate(ops, resource="campaignBudgets")
+    print(f"✅  Bütçe güncellendi → ₺{amount_tl:.2f}/gün")
+    print(f"   Resource: {resp['results'][0]['resourceName']}")
 
 
-# ── 6. Kampanya durdur / aktifleştir ──────────────────────────────────────────
-def _set_campaign_status(campaign_id, status_str):
-    client = get_client()
-    cid    = customer_id()
-    svc    = client.get_service("CampaignService")
-    op     = client.get_type("CampaignOperation")
-    campaign = op.update
-    campaign.resource_name = svc.campaign_path(cid, campaign_id)
-    status_enum = client.enums.CampaignStatusEnum.CampaignStatus.Value(status_str)
-    campaign.status = status_enum
-    field_mask = client.get_type("FieldMask")
-    field_mask.paths.append("status")
-    op.update_mask.CopyFrom(field_mask)
-    try:
-        resp = svc.mutate_campaigns(customer_id=cid, operations=[op])
-        print(f"✅  Kampanya {status_str} → {resp.results[0].resource_name}")
-    except GoogleAdsException as ex:
-        for e in ex.failure.errors:
-            print(f"❌  {e.message}")
+# ── 7. Kampanya durdur / aktifleştir ──────────────────────────────────────────
+def _set_status(campaign_id, status):
+    rows = gaql(f"SELECT campaign.resource_name FROM campaign WHERE campaign.id = {campaign_id}")
+    if not rows:
+        print(f"❌  Kampanya bulunamadı: {campaign_id}"); return
+    rn  = rows[0]["campaign"]["resourceName"]
+    ops = [{"update": {"resourceName": rn, "status": status}, "updateMask": "status"}]
+    resp = mutate(ops, resource="campaigns")
+    print(f"✅  Kampanya {status} → {resp['results'][0]['resourceName']}")
 
 def cmd_pause(args):
-    if not args:
-        print("Kullanım: ads.py pause <campaign_id>")
-        return
-    _set_campaign_status(args[0], "PAUSED")
+    if not args: print("Kullanım: ads.py pause <campaign_id>"); return
+    _set_status(args[0], "PAUSED")
 
 def cmd_enable(args):
-    if not args:
-        print("Kullanım: ads.py enable <campaign_id>")
-        return
-    _set_campaign_status(args[0], "ENABLED")
+    if not args: print("Kullanım: ads.py enable <campaign_id>"); return
+    _set_status(args[0], "ENABLED")
 
 
-# ── 7. İlk kurulum rehberi ────────────────────────────────────────────────────
+# ── 8. Kurulum rehberi ────────────────────────────────────────────────────────
 def cmd_setup():
     print("""
 🔧  KURULUM REHBERİ
 ──────────────────
-1) Google Ads API erişimi için:
-   • Google Cloud Console → yeni proje → Google Ads API etkinleştir
-   • OAuth 2.0 credentials (Desktop App) indir
+~/.gads_config.json dosyasını oluştur:
 
-2) ~/.gads_config.json oluştur:
 {
-  "developer_token":  "YOUR_DEVELOPER_TOKEN",
-  "client_id":        "YOUR_CLIENT_ID",
-  "client_secret":    "YOUR_CLIENT_SECRET",
-  "refresh_token":    "YOUR_REFRESH_TOKEN",
-  "login_customer_id":"YOUR_MCC_OR_CUSTOMER_ID",
-  "use_proto_plus":   true
+  "developer_token":   "YOUR_DEVELOPER_TOKEN",
+  "client_id":         "YOUR_CLIENT_ID.apps.googleusercontent.com",
+  "client_secret":     "YOUR_CLIENT_SECRET",
+  "refresh_token":     "YOUR_REFRESH_TOKEN",
+  "login_customer_id": "1234567890",
+  "use_proto_plus":    true
 }
 
-3) Alternatif: ~/google-ads.yaml kullan
-   (google-ads kütüphanesi standart formatı)
-
-4) Test et:
-   python3 ads.py campaigns
+Test: python3 ads.py campaigns
 """)
 
 
@@ -447,7 +424,5 @@ COMMANDS = {
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         print("Kullanım: ads.py [" + "|".join(COMMANDS) + "] [argümanlar...]")
-        print("         ads.py morning_report  → tam sabah raporu")
-        print("         ads.py setup           → kurulum rehberi")
         sys.exit(1)
     COMMANDS[sys.argv[1]](sys.argv[2:])
