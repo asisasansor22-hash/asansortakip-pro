@@ -2,6 +2,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GoogleAdsTracking from "@/components/GoogleAdsTracking";
+import SmoothScroll from "@/components/SmoothScroll";
 
 export const metadata = {
   title: {
@@ -18,7 +19,7 @@ export default function RootLayout({ children }) {
       <body>
         <GoogleAdsTracking />
         <Header />
-        {children}
+        <SmoothScroll>{children}</SmoothScroll>
         <Footer />
       </body>
     </html>

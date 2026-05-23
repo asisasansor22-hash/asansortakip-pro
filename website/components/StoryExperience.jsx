@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import PaintedBackground from "./PaintedBackground";
-import SmoothScroll from "./SmoothScroll";
 import { chapters } from "@/lib/storyChapters";
 import { setPalette } from "@/lib/paintStore";
 
@@ -64,7 +63,7 @@ export default function StoryExperience() {
   };
 
   return (
-    <SmoothScroll>
+    <>
       <PaintedBackground />
       <div className="story-fallback-bg" aria-hidden="true" />
 
@@ -159,6 +158,6 @@ export default function StoryExperience() {
           </section>
         ))}
       </div>
-    </SmoothScroll>
+    </>
   );
 }
