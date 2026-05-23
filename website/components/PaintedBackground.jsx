@@ -12,7 +12,7 @@ const vertexShader = /* glsl */ `
   }
 `;
 
-const fragmentShader = /* glsl */ `
+const fragHeader = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
   uniform float uTime;
@@ -43,41 +43,109 @@ const fragmentShader = /* glsl */ `
     }
     return v;
   }
-
-  void main() {
-    vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
-    vec2 p = vUv * aspect * 1.6;
-    float t = uTime * 0.06;
-
-    // domain warped fbm -> painterly, fluid marble
-    vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2, 1.3) - t));
-    vec2 r = vec2(
-      fbm(p + 3.0 * q + vec2(1.7, 9.2) + 0.4 * t),
-      fbm(p + 3.0 * q + vec2(8.3, 2.8) - 0.4 * t)
-    );
-    float f = fbm(p + 3.0 * r);
-
-    vec3 col = mix(uColorA, uColorB, clamp(f * 1.3, 0.0, 1.0));
-    col = mix(col, uAccent, clamp((r.x * r.y) * 1.3, 0.0, 0.55));
-
-    // cursor-driven light
-    vec2 m = uMouse * aspect;
-    float d = distance(vUv * aspect, m);
-    float glow = smoothstep(0.55, 0.0, d);
-    col += uAccent * glow * 0.22;
-
-    // vignette + subtle grain
-    float vig = smoothstep(1.25, 0.25, distance(vUv, vec2(0.5)));
-    col *= 0.82 + 0.18 * vig;
-    col += (hash(vUv * uRes) - 0.5) * 0.025;
-
-    gl_FragColor = vec4(col, 1.0);
-  }
 `;
+
+// Each variant is a self-contained main(); they share fragHeader + uniforms.
+// All variants are tuned for a LIGHT/airy look: patterns appear as soft
+// brand-tinted marks via mix() (no additive blow-out, no dark vignette).
+const mains = {
+  // Domain-warped fbm marble (soft watercolour)
+  marble: /* glsl */ `
+    void main() {
+      vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
+      vec2 p = vUv * aspect * 1.6;
+      float t = uTime * 0.06;
+      vec2 q = vec2(fbm(p + t), fbm(p + vec2(5.2, 1.3) - t));
+      vec2 r = vec2(
+        fbm(p + 3.0 * q + vec2(1.7, 9.2) + 0.4 * t),
+        fbm(p + 3.0 * q + vec2(8.3, 2.8) - 0.4 * t)
+      );
+      float f = fbm(p + 3.0 * r);
+      vec3 col = mix(uColorA, uColorB, clamp(f * 1.2, 0.0, 1.0));
+      col = mix(col, uAccent, clamp((r.x * r.y) * 0.9, 0.0, 0.4));
+      vec2 m = uMouse * aspect;
+      col = mix(col, uAccent, smoothstep(0.5, 0.0, distance(vUv * aspect, m)) * 0.12);
+      col += (hash(vUv * uRes) - 0.5) * 0.012;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  // Soft Stripe-like mesh gradient (calm, corporate)
+  gradient: /* glsl */ `
+    void main() {
+      vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
+      vec2 uv = vUv * aspect;
+      float t = uTime * 0.25;
+      vec3 col = uColorA;
+      vec2 c1 = vec2(0.35 + 0.18 * sin(t * 0.7), 0.40 + 0.16 * cos(t * 0.6)) * aspect;
+      vec2 c2 = vec2(0.70 + 0.16 * sin(t * 0.5 + 2.0), 0.30 + 0.18 * cos(t * 0.8 + 1.0)) * aspect;
+      vec2 c3 = vec2(0.55 + 0.20 * sin(t * 0.4 + 4.0), 0.70 + 0.14 * cos(t * 0.5 + 3.0)) * aspect;
+      float w1 = exp(-2.2 * dot(uv - c1, uv - c1));
+      float w2 = exp(-2.6 * dot(uv - c2, uv - c2));
+      float w3 = exp(-2.4 * dot(uv - c3, uv - c3));
+      col = mix(col, uColorB, clamp(w1 + w3 * 0.5, 0.0, 1.0));
+      col = mix(col, uAccent, clamp(w2 * 0.55 + w3 * 0.3, 0.0, 0.5));
+      vec2 m = uMouse * aspect;
+      col = mix(col, uAccent, exp(-3.0 * dot(uv - m, uv - m)) * 0.18);
+      col += (hash(vUv * uRes) - 0.5) * 0.012;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  // Vertical flowing light beams (elevator-shaft feel)
+  beams: /* glsl */ `
+    void main() {
+      vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
+      float t = uTime * 0.5;
+      vec3 col = mix(uColorB, uColorA, vUv.y);
+      float flow = fbm(vec2(vUv.x * aspect.x * 3.0, vUv.y * 1.5 - t));
+      float cols = 0.5 + 0.5 * sin(vUv.x * aspect.x * 36.0);
+      float lines = pow(cols, 6.0) * smoothstep(0.3, 0.9, flow);
+      col = mix(col, uAccent, lines * 0.32);
+      col = mix(col, uAccent, pow(flow, 2.0) * 0.08);
+      col = mix(col, uAccent, smoothstep(0.12, 0.0, abs(vUv.x - uMouse.x)) * 0.1);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  // Subtle technical / blueprint grid drifting upward
+  grid: /* glsl */ `
+    void main() {
+      vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
+      float t = uTime * 0.5;
+      vec3 col = mix(uColorA, uColorB, vUv.y * 0.6);
+      vec2 coord = vUv * aspect * 14.0;
+      coord.y += t;
+      vec2 fr = abs(fract(coord) - 0.5);
+      float g = smoothstep(0.47, 0.5, max(fr.x, fr.y));
+      vec2 fr2 = abs(fract(coord / 4.0) - 0.5);
+      float g2 = smoothstep(0.47, 0.5, max(fr2.x, fr2.y));
+      col = mix(col, uAccent, g * 0.1 + g2 * 0.16);
+      vec2 m = uMouse * aspect;
+      col = mix(col, uAccent, smoothstep(0.5, 0.0, distance(vUv * aspect, m)) * 0.12);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+  // Drifting dot / constellation field
+  dots: /* glsl */ `
+    void main() {
+      vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
+      float t = uTime * 0.4;
+      vec3 col = mix(uColorA, uColorB, vUv.y * 0.5);
+      vec2 coord = vUv * aspect * 20.0;
+      coord.y -= t;
+      vec2 id = floor(coord);
+      vec2 cell = fract(coord) - 0.5;
+      float j = hash(id);
+      float dot = smoothstep(0.22, 0.04, length(cell)) * (0.4 + 0.6 * j);
+      col = mix(col, uAccent, dot * 0.4);
+      vec2 m = uMouse * aspect;
+      col = mix(col, uAccent, smoothstep(0.45, 0.0, distance(vUv * aspect, m)) * 0.1);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+};
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-export default function PaintedBackground() {
+export default function PaintedBackground({ variant = "marble" }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -88,7 +156,7 @@ export default function PaintedBackground() {
     try {
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
     } catch {
-      return; // no WebGL -> CSS fallback background stays visible
+      return;
     }
 
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -106,7 +174,11 @@ export default function PaintedBackground() {
       uAccent: { value: new THREE.Vector3(...paintState.current.accent) }
     };
 
-    const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
+    const material = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader,
+      fragmentShader: fragHeader + (mains[variant] || mains.marble)
+    });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
     scene.add(mesh);
 
@@ -158,7 +230,7 @@ export default function PaintedBackground() {
       material.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [variant]);
 
   return <canvas ref={canvasRef} className="story-bg-canvas" aria-hidden="true" />;
 }
