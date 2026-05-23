@@ -2892,7 +2892,8 @@ h3 {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 14vh 0;
+  /* extra top clearance so centered content never tucks under the sticky header */
+  padding: max(14vh, 150px) 0 14vh;
 }
 .story-chapter .container {
   width: min(980px, calc(100% - 44px));
@@ -3093,15 +3094,33 @@ h3 {
 
 /* Dark, transparent header/topbar while the cinematic homepage is active */
 body.story-page .topbar {
-  background: rgba(7, 18, 30, 0.45);
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #cfe0f2;
+  background: rgba(6, 16, 28, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #d6e6f6;
+}
+body.story-page .topbar a,
+body.story-page .topbar span,
+body.story-page .topbar-status {
+  color: #d6e6f6;
 }
 body.story-page .site-header {
-  background: rgba(7, 18, 30, 0.42);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: none;
-  color: #eef4fb;
+  background: linear-gradient(180deg, rgba(5, 14, 25, 0.86), rgba(5, 14, 25, 0.66));
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px) saturate(135%);
+  color: #f3f8ff;
+}
+/* Nav links default to dark blue (--ink-2); force light + readable here */
+body.story-page .nav a {
+  color: rgba(243, 248, 255, 0.82);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+body.story-page .nav a:hover,
+body.story-page .nav a.is-active {
+  color: #ffffff;
+}
+body.story-page .nav a::after {
+  background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.5));
 }
 
 @media (max-width: 720px) {
