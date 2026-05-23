@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import PaintedBackground from "./PaintedBackground";
+import HeroElevator from "./HeroElevator";
 import { chapters } from "@/lib/storyChapters";
 import { setPalette } from "@/lib/paintStore";
 
@@ -85,11 +86,12 @@ export default function StoryExperience() {
           <section
             key={c.id}
             id={c.id}
-            className="story-chapter"
+            className={`story-chapter${c.hero ? " is-hero" : ""}`}
             data-id={c.id}
             data-palette={JSON.stringify(c.palette)}
           >
-            <div className="container">
+            <div className={`container${c.hero ? " story-hero" : ""}`}>
+              <div className={c.hero ? "story-hero-copy" : "story-copy-plain"}>
               {c.index ? (
                 <div className="story-index" data-reveal>
                   {c.index}
@@ -152,6 +154,13 @@ export default function StoryExperience() {
                 <div className="story-hint" aria-hidden="true">
                   <span className="story-hint-line" />
                   {c.hint}
+                </div>
+              ) : null}
+              </div>
+
+              {c.hero ? (
+                <div className="story-hero-visual" data-reveal>
+                  <HeroElevator />
                 </div>
               ) : null}
             </div>

@@ -3141,3 +3141,289 @@ h3 {
   color: #ffffff;
 }
 
+/* ============================================================
+   HERO — two-column opening chapter with animated elevator
+   ============================================================ */
+.story-chapter.is-hero .container.story-hero {
+  width: min(1180px, calc(100% - 44px));
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: clamp(28px, 5vw, 80px);
+}
+.story-hero-copy {
+  min-width: 0;
+}
+.story-hero-visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ---- Animated elevator device ---- */
+.hx {
+  position: relative;
+  width: min(360px, 82vw);
+  aspect-ratio: 3 / 4.3;
+}
+.hx-glow {
+  position: absolute;
+  inset: -12% -16% -6%;
+  background: radial-gradient(58% 50% at 50% 38%, rgba(47, 114, 173, 0.34), transparent 70%);
+  filter: blur(26px);
+  z-index: 0;
+  animation: hx-glow-pulse 7s ease-in-out infinite;
+}
+.hx-stage {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 14px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(176deg, #16263a 0%, #0e1e30 52%, #0a1622 100%);
+  box-shadow:
+    0 40px 90px rgba(7, 25, 43, 0.4),
+    0 8px 24px rgba(7, 25, 43, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: hx-float 6.5s ease-in-out infinite;
+}
+
+/* Üst gösterge */
+.hx-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #0a121c, #060d15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+.hx-arrow {
+  font-size: 13px;
+  color: #ffb800;
+  text-shadow: 0 0 10px rgba(255, 184, 0, 0.7);
+  animation: hx-arrow 1.6s ease-in-out infinite;
+}
+.hx-arrow.is-down { color: #5fd0ff; text-shadow: 0 0 10px rgba(95, 208, 255, 0.7); }
+.hx-floor {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+  color: #ffb800;
+  text-shadow: 0 0 14px rgba(255, 184, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+  animation: hx-floor-pop 0.5s ease;
+}
+.hx-status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: rgba(180, 210, 240, 0.66);
+}
+.hx-led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+  animation: hx-blink 1.4s ease-in-out infinite;
+}
+
+/* Kabin + kapı */
+.hx-cabin {
+  position: relative;
+  flex: 1;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hx-interior {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 240, 214, 0.22), transparent 30%),
+    linear-gradient(170deg, #2a3a4d 0%, #1b2a3b 55%, #14222f 100%);
+}
+.hx-ceiling-light {
+  position: absolute;
+  top: 8px;
+  left: 18%;
+  right: 18%;
+  height: 7px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, transparent, rgba(255, 244, 222, 0.85), transparent);
+  box-shadow: 0 0 26px rgba(255, 238, 210, 0.5);
+}
+.hx-mirror {
+  position: absolute;
+  top: 26px;
+  right: 16px;
+  width: 34%;
+  bottom: 30px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.hx-handrail {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 42%;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.1));
+}
+.hx-door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 12%),
+    linear-gradient(100deg, #d7e2ee 0%, #aebfd0 38%, #c6d4e2 62%, #9fb2c6 100%);
+  box-shadow: inset 0 0 30px rgba(7, 25, 43, 0.18);
+}
+.hx-door-l {
+  left: 0;
+  border-right: 1px solid rgba(7, 25, 43, 0.25);
+  animation: hx-door-l 7s ease-in-out infinite;
+}
+.hx-door-r {
+  right: 0;
+  border-left: 1px solid rgba(7, 25, 43, 0.25);
+  animation: hx-door-r 7s ease-in-out infinite;
+}
+.hx-door-line {
+  position: absolute;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgba(7, 25, 43, 0.28), transparent);
+}
+.hx-door-l .hx-door-line { right: 22%; }
+.hx-door-r .hx-door-line { left: 22%; }
+.hx-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.4) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: hx-sheen 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Zemin */
+.hx-base {
+  height: 26px;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #0b1726 0%, #07101a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+.hx-reflection {
+  height: 100%;
+  background: linear-gradient(90deg, transparent 18%, rgba(180, 210, 240, 0.16) 50%, transparent 82%);
+}
+
+/* Yüzen rozet */
+.hx-badge {
+  position: absolute;
+  z-index: 2;
+  left: -14px;
+  bottom: 16%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(47, 114, 173, 0.2);
+  box-shadow: 0 16px 36px rgba(14, 40, 68, 0.2);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 850;
+  color: var(--ink-2);
+  white-space: nowrap;
+  animation: hx-badge-float 6.5s ease-in-out infinite;
+}
+.hx-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+  animation: hx-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes hx-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes hx-badge-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes hx-glow-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@keyframes hx-arrow {
+  0%, 100% { opacity: 0.45; transform: translateY(1px); }
+  50% { opacity: 1; transform: translateY(-1px); }
+}
+@keyframes hx-floor-pop {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.9); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes hx-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+/* Doors: closed → open (reveal interior) → hold → close, looping */
+@keyframes hx-door-l {
+  0%, 26% { transform: translateX(0); }
+  44%, 66% { transform: translateX(-94%); }
+  84%, 100% { transform: translateX(0); }
+}
+@keyframes hx-door-r {
+  0%, 26% { transform: translateX(0); }
+  44%, 66% { transform: translateX(94%); }
+  84%, 100% { transform: translateX(0); }
+}
+@keyframes hx-sheen {
+  0%, 18% { transform: translateX(-120%); }
+  34%, 100% { transform: translateX(120%); }
+}
+
+@media (max-width: 880px) {
+  .story-chapter.is-hero .container.story-hero {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .story-hero-visual { order: 2; }
+  .hx { width: min(300px, 74vw); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hx-stage,
+  .hx-badge,
+  .hx-glow,
+  .hx-arrow,
+  .hx-led,
+  .hx-badge-dot,
+  .hx-door-l,
+  .hx-door-r,
+  .hx-sheen,
+  .hx-floor { animation: none; }
+  .hx-door-l { transform: translateX(-94%); }
+  .hx-door-r { transform: translateX(94%); }
+}
+

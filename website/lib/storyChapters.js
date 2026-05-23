@@ -7,10 +7,14 @@ export const chapters = [
   {
     id: "kapak",
     index: "",
+    hero: true,
     kicker: "İstanbul Avrupa Yakası · 7 Yıllık Deneyim",
     title: ["Profesyonel asansör", "bakım ve servis hizmetleri"],
     lead: "Asis Asansör; bakım, montaj, revizyon ve arıza servisini tek elden, kayıtlı ve garantili olarak yürütür.",
-    actions: [{ href: `tel:${contact.phoneLinks[0]}`, label: "Servis Çağır", primary: true }],
+    actions: [
+      { href: `tel:${contact.phoneLinks[0]}`, label: "Servis Çağır", primary: true },
+      { href: "/hizmetler", label: "Hizmetler" }
+    ],
     hint: "Hizmetlerimiz için kaydırın",
     palette: { a: [0.95, 0.97, 1.0], b: [0.84, 0.91, 0.99], accent: [0.26, 0.52, 0.84] }
   },
