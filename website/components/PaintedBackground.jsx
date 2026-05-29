@@ -43,6 +43,14 @@ const fragHeader = /* glsl */ `
     }
     return v;
   }
+  // Triangular-PDF dithering — kills 8-bit gradient banding for a perfectly
+  // smooth, bandless look across the whole canvas.
+  vec3 dither(vec3 col, vec2 uv) {
+    float r1 = hash(uv * uRes + uTime);
+    float r2 = hash(uv * uRes - uTime * 1.37 + 17.0);
+    float tri = (r1 + r2 - 1.0) / 255.0;
+    return col + tri;
+  }
 `;
 
 // Each variant is a self-contained main(); they share fragHeader + uniforms.
@@ -61,11 +69,14 @@ const mains = {
         fbm(p + 3.0 * q + vec2(8.3, 2.8) - 0.4 * t)
       );
       float f = fbm(p + 3.0 * r);
-      vec3 col = mix(uColorA, uColorB, clamp(f * 1.2, 0.0, 1.0));
-      col = mix(col, uAccent, clamp((r.x * r.y) * 0.9, 0.0, 0.4));
+      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, clamp(f * 1.2, 0.0, 1.0)));
+      col = mix(col, uAccent, smoothstep(0.0, 0.4, (r.x * r.y) * 0.9));
       vec2 m = uMouse * aspect;
-      col = mix(col, uAccent, smoothstep(0.5, 0.0, distance(vUv * aspect, m)) * 0.12);
-      col += (hash(vUv * uRes) - 0.5) * 0.012;
+      col = mix(col, uAccent, smoothstep(0.5, 0.0, distance(vUv * aspect, m)) * 0.14);
+      // Soft depth vignette — barely-there, keeps the airy/light feel.
+      float vig = 1.0 - 0.06 * dot(vUv - 0.5, vUv - 0.5) * 4.0;
+      col *= clamp(vig, 0.0, 1.0);
+      col = dither(col, vUv);
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -204,7 +215,9 @@ export default function PaintedBackground({ variant = "marble" }) {
       uniforms.uTime.value += reduce ? dt * 0.15 : dt;
 
       const { current, target } = paintState;
-      const k = Math.min(1, dt * 1.8);
+      // Slower, frame-rate-independent palette blend → silky chapter-to-chapter
+      // colour transitions instead of an abrupt snap.
+      const k = 1 - Math.pow(0.5, dt * 1.6);
       for (const key of ["a", "b", "accent"]) {
         for (let i = 0; i < 3; i++) current[key][i] = lerp(current[key][i], target[key][i], k);
       }

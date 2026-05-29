@@ -10,7 +10,15 @@ export default function SmoothScroll({ children }) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     gsap.registerPlugin(ScrollTrigger);
-    const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+    const lenis = new Lenis({
+      duration: 1.25,
+      // Exponential ease-out — the signature "glide to a stop" smooth feel.
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      wheelMultiplier: 0.95,
+      touchMultiplier: 1.5,
+      lerp: 0.085
+    });
 
     lenis.on("scroll", ScrollTrigger.update);
     const raf = (time) => lenis.raf(time * 1000);
