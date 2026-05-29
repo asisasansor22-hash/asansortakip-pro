@@ -58,6 +58,12 @@ export default function HeroElevator() {
     <div className="hx" aria-hidden="true">
       <div className="hx-glow" />
       <div className="hx-stage">
+        {/* 7/24 aktif servis — kabinin üstünde, animasyonsuz şerit */}
+        <div className="hx-badge">
+          <i className="hx-badge-dot" />
+          7/24 Aktif Servis
+        </div>
+
         {/* Üst gösterge */}
         <div className="hx-indicator">
           <span className={`hx-arrow ${goingUp ? "is-up" : "is-down"}`}>
@@ -114,11 +120,6 @@ export default function HeroElevator() {
         <div className="hx-base">
           <div className="hx-reflection" />
         </div>
-      </div>
-
-      <div className="hx-badge">
-        <i className="hx-badge-dot" />
-        7/24 Aktif Servis
       </div>
     </div>
   );

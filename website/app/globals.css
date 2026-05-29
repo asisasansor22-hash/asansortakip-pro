@@ -3412,26 +3412,21 @@ h3 {
   background: linear-gradient(90deg, transparent 18%, rgba(180, 210, 240, 0.16) 50%, transparent 82%);
 }
 
-/* Yüzen rozet */
+/* 7/24 aktif servis şeridi — kabinin üstünde, akış içinde, animasyonsuz */
 .hx-badge {
-  position: absolute;
-  z-index: 2;
-  left: -14px;
-  top: 16%;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 15px;
+  padding: 8px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(47, 114, 173, 0.2);
-  box-shadow: 0 16px 36px rgba(14, 40, 68, 0.2);
-  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 24px rgba(14, 40, 68, 0.22);
   font-size: 12px;
   font-weight: 850;
   color: var(--ink-2);
   white-space: nowrap;
-  animation: hx-badge-float 6.5s ease-in-out infinite;
 }
 .hx-badge-dot {
   width: 8px;
