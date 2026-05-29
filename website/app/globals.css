@@ -3370,17 +3370,18 @@ h3 {
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 12%),
     linear-gradient(100deg, #d7e2ee 0%, #aebfd0 38%, #c6d4e2 62%, #9fb2c6 100%);
   box-shadow: inset 0 0 30px rgba(7, 25, 43, 0.18);
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.2, 1);
 }
 .hx-door-l {
   left: 0;
   border-right: 1px solid rgba(7, 25, 43, 0.25);
-  animation: hx-door-l 7s ease-in-out infinite;
 }
 .hx-door-r {
   right: 0;
   border-left: 1px solid rgba(7, 25, 43, 0.25);
-  animation: hx-door-r 7s ease-in-out infinite;
 }
+.hx-cabin.is-open .hx-door-l { transform: translateX(-94%); }
+.hx-cabin.is-open .hx-door-r { transform: translateX(94%); }
 .hx-door-line {
   position: absolute;
   top: 14%;
@@ -3488,15 +3489,14 @@ h3 {
 
 @media (prefers-reduced-motion: reduce) {
   .hx-stage,
-  .hx-badge,
   .hx-glow,
   .hx-arrow,
   .hx-led,
   .hx-badge-dot,
-  .hx-door-l,
-  .hx-door-r,
   .hx-sheen,
   .hx-floor { animation: none; }
+  .hx-door { transition: none; }
+  .hx-call { transition: none; }
   .hx-door-l { transform: translateX(-94%); }
   .hx-door-r { transform: translateX(94%); }
 }
