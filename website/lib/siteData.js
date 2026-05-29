@@ -63,7 +63,7 @@ export const faqItems = [
   },
   {
     q: "Bakım sonrası rapor alabilir miyiz?",
-    a: "Evet. Her bakım ve arıza müdahalesi sonrasında kendi geliştirdiğimiz program aracılığıyla bina yöneticisine otomatik bildirim mesajı gönderilir. Yapılan işlemleri, tespit edilen durumları ve bir sonraki bakım tarihini içeren dijital rapor anında iletilir. Bu kayıtlar periyodik muayenede yasal belge olarak kullanılır."
+    a: "Evet. Her bakım ve arıza müdahalesi sonrasında, sahada kullandığımız ve Asis Asansör'e özel geliştirdiğimiz Asansör Takip Pro yazılımı aracılığıyla bina yöneticisine otomatik bildirim mesajı gönderilir. Yapılan işlemleri, tespit edilen durumları ve bir sonraki bakım tarihini içeren dijital rapor anında iletilir. Bu kayıtlar periyodik muayenede yasal belge olarak kullanılır."
   }
 ];
 

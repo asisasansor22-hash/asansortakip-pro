@@ -60,7 +60,7 @@ export default function AboutPage() {
         <div className="container grid-3">
           {[
             { num: "01", title: "Deneyim", desc: "Farklı marka ve kapasitelerdeki asansör sistemlerinde 7 yıllık saha tecrübesi." },
-            { num: "02", title: "Takip", desc: "Tüm bakım, arıza ve parça değişim süreçleri dijital sistemimizle kayıt altında ilerler." },
+            { num: "02", title: "Takip", desc: "Tüm bakım, arıza ve parça değişim süreçleri, sahada Asis Asansör'e özel geliştirdiğimiz Asansör Takip Pro yazılımıyla kayıt altında ilerler." },
             { num: "03", title: "Güven", desc: "Yapılan her işin arkında durur, yazılı garanti ve raporla teslim ederiz." }
           ].map((item) => (
             <Reveal className="card" key={item.title}>
