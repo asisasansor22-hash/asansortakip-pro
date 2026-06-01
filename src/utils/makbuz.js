@@ -20,15 +20,13 @@ export function makbuzBakimYazdir(maint, elev) {
   var bakimSaat = maint.yapildiSaat ? (String(maint.yapildiSaat).split(" ")[1]||"").substring(0,5) : "";
   var odendi = maint.odendi ? "✓ Ödendi" : "✗ Ödenmedi";
   var odendiRenk = maint.odendi ? "#10b981" : "#ef4444";
-  var eskiDevir = maint.eskiDevirOnce!==undefined&&maint.eskiDevirOnce!==null
-    ? (Number(maint.eskiDevirOnce)||0)
+  var eskiDevir = (maint && maint.eskiDevirAnindaki!==undefined && maint.eskiDevirAnindaki!==null)
+    ? Number(maint.eskiDevirAnindaki)
     : (elev ? (Number(elev.bakiyeDevir)||0) : 0);
-  var kalanDevir = maint.kalanBakiye!==undefined&&maint.kalanBakiye!==null
-    ? (Number(maint.kalanBakiye)||0)
-    : (eskiDevir + aylikUcretSayi0 - alinanSayi);
-  var eskiDevirStr = eskiDevir.toLocaleString("tr-TR");
-  var kalanDevirStr = kalanDevir.toLocaleString("tr-TR");
-  var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : "#10b981";
+  var kalanDevir = eskiDevir + aylikUcretSayi0 - (Number(maint.alinanTutar)||0);
+  var eskiDevirStr = (eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR");
+  var kalanDevirStr = (kalanDevir>0?"+":"")+kalanDevir.toLocaleString("tr-TR");
+  var kalanDevirRenk = kalanDevir > 0 ? "#ef4444" : kalanDevir < 0 ? "#10b981" : "#666";
   var html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<title>Bakım Makbuzu</title><style>' +
     '* { margin:0; padding:0; box-sizing:border-box; }' +
