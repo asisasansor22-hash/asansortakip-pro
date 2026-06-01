@@ -205,3 +205,68 @@ Müşteri pratik, hızlı kararlar veriyor. Tercih:
 - Türkçe, samimi ama profesyonel ton
 - Aşırı uyarı/disclaimer yok — net görüş
 - Karar veremediğin yerde 2-3 seçenek sun, önerini söyle
+
+---
+
+## 13. CPA Düşürme Planı (1 Haziran 2026 — aktif hedef)
+
+### Ana hedef
+Dönüşüm SAYISI sorun değil — **verim (CPA) sorun.** Müşterinin net talebi: "ucuzlatmak."
+
+### Aylık CPA trendi (2026)
+| Ay | Dönüşüm | Maliyet | CPA |
+|---|---:|---:|---:|
+| Ocak | 13 | 7.050₺ | 542₺ |
+| Şubat | 27 | 6.342₺ | **235₺** (en iyi) |
+| Mart | 33 | 13.198₺ | 400₺ |
+| Nisan | 28 | 16.275₺ | 581₺ |
+| Mayıs | 35 | 24.762₺ | **707₺** (en kötü) |
+
+**Tespit:** Dönüşüm stabil (27-35), ama maliyet 4x artmış (6K→24K) → CPA 235→707₺.
+Hedef: CPA'yı tekrar 300-400₺ bandına çekmek.
+
+### Dönüşüm takibi DURUMU (1 Haz itibarıyla — DÜZELTME)
+"Dönüşüm yok" paniği abartıydı. 6 kanal AKTİF çalışıyor:
+- AD_CALL (2) — call reporting AÇIK, gerçek aramalar sayılıyor ✅
+- CLICK_TO_CALL (siteden ara) ✅
+- WhatsApp İletişimi ✅
+- LEAD_FORM_SUBMIT ✅
+- Google Hosted: Directions + Clicks to call (GBP bağlı) ✅
+Son 30 gün: 34 dönüşüm. TechSol şart değil — AD_CALL zaten gerçek aramayı yakalıyor.
+Eski TechSol action'ları REMOVED ama temel sayım çalışıyor.
+
+### Gün bazlı verim (Mart-Haziran, 90g)
+| Gün | Dönüşüm | CPA | Not |
+|---|---:|---:|---|
+| Çarşamba | 22 | 427₺ | 🥇 En çok + verimli |
+| Cuma | 15 | 384₺ | 🥈 En düşük CPA |
+| Pazar | 8 | 464₺ | Az hacim, verimli |
+| Perşembe | 12 | 519₺ | Dengeli |
+| Pazartesi | 16 | 726₺ | Çok tık, pahalı |
+| Salı | 14 | 746₺ | Pahalı |
+| Cumartesi | 11 | 823₺ | 🔴 En verimsiz |
+
+**Aksiyon (ileride):** Çarşamba/Cuma bid +, Cumartesi bid −. Max Conversions otomatik öğrenir.
+
+### CPA düşürme kaldıraçları (öncelik sırası)
+1. **Max Conversions'a dön** — algoritma CPA optimize eder, verimli gün/saat/cihazı öğrenir.
+   Takip çalıştığı için ARTIK mümkün. (Müşteri "sonra dönelim" dedi — birkaç gün veri sonrası.)
+2. **Yeni site (PR #51 merged)** — QS↑ → CPC↓ → CPA↓. Next.js SSG + bölge sayfaları + schema.
+3. **Reklam URL eşleştirme** — bölge keyword'leri → /bolgeler/<ilce> sayfalarına. QS↑.
+4. **CPC dalgalanması** — Max Clicks tavansız 60₺↔250₺ savruluyor. Oturmazsa yumuşak cap (150₺).
+5. **Aşama 1 creative** — sosyal kanıt (7 yıl, 480+ apartman), path, {KeyWord} temizliği. CTR↑ → QS↑.
+
+### Yapısal değişiklik (29-31 May yapıldı)
+- 8 grup → 1 aktif grup ("Aylık Bakım - Genel"). Kanibalizasyon bitti.
+- Diğer gruplar PAUSED (Genel Bakım, bölgeseller, Bölgesel Bakım, Firma & Tamir).
+- Sebep: 139 keyword'lük Genel grup zaten her bölgeyi kapsıyordu, küçük grupları eziyordu.
+
+### Site/deploy durumu
+- asisasansor.com = website/ klasörü, Next.js, **Netlify'a** deploy (Cloudflare DEĞİL — o ayrı, takip programı)
+- ⚠️ Netlify production branch yanlış (claude/qs-landing-optimization), main OLMALI.
+  Düzeltilmezse main'e merge'ler otomatik yayınlanmaz.
+- PR #51 merged (1 Haz) — yeni site main'de, manuel publish ile canlıda.
+
+### Bekleyen müşteri aksiyonları
+- Netlify production branch → main (UI'dan)
+- (Opsiyonel) Google'ı telefonla ara, eski TechSol detay raporlaması için — ama kritik değil
