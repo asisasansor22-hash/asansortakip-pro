@@ -75,14 +75,95 @@
   .trust div span{font-size:13px;color:var(--ink-soft)}
 
   /* elevator visual */
-  .shaft{position:relative;height:430px;background:linear-gradient(180deg,#fafbfd,#eef1f6);border:1px solid var(--line);border-radius:26px;overflow:hidden;box-shadow:var(--shadow)}
-  .shaft::before,.shaft::after{content:"";position:absolute;top:0;bottom:0;width:2px;background:repeating-linear-gradient(180deg,var(--line) 0 18px,transparent 18px 36px)}
-  .shaft::before{left:33%}.shaft::after{right:33%}
-  .cabin{position:absolute;left:50%;transform:translateX(-50%);width:120px;height:150px;background:linear-gradient(160deg,#fff,#e9edf3);border:1px solid #d7dce4;border-radius:12px;box-shadow:0 16px 30px -14px rgba(20,20,30,.35);animation:ride 6s ease-in-out infinite;display:flex;align-items:flex-end;justify-content:center}
-  .cabin .door{width:42%;height:78%;margin-bottom:8px;background:linear-gradient(90deg,#cfd6e0,#eef1f6 50%,#cfd6e0);border-radius:4px;border:1px solid #c3cad4}
-  .cabin .led{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:34px;height:8px;border-radius:3px;background:var(--red);box-shadow:0 0 8px var(--red)}
-  @keyframes ride{0%,100%{top:30px}50%{top:230px}}
-  .floornum{position:absolute;right:14px;top:14px;font-weight:900;font-size:13px;color:var(--red);background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px 8px}
+  .shaft{
+    position:relative;height:430px;
+    background:linear-gradient(180deg,#f0f2f7 0%,#e4e8f0 100%);
+    border:1px solid var(--line);border-radius:26px;overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  /* floor lines */
+  .shaft-floors{position:absolute;inset:0;pointer-events:none}
+  .shaft-floors span{
+    position:absolute;left:0;right:0;height:1px;
+    background:rgba(180,190,210,.45);
+  }
+  /* guide rails */
+  .rail{position:absolute;top:0;bottom:0;width:4px;border-radius:2px;
+    background:linear-gradient(180deg,#c8cdd8,#d8dde8 50%,#c8cdd8);
+  }
+  .rail.l{left:30%}.rail.r{right:30%}
+  /* cable */
+  .cable{position:absolute;left:50%;width:2px;top:0;
+    background:linear-gradient(180deg,#aab0be,#c5cbd8);
+    transform:translateX(-50%);transform-origin:top center;
+    transition:height .05s linear;
+  }
+  /* cabin */
+  .cabin{
+    position:absolute;left:50%;
+    width:130px;height:160px;
+    transform:translateX(-50%);
+    background:linear-gradient(160deg,#ffffff 0%,#edf0f6 100%);
+    border:1.5px solid #cdd3de;
+    border-radius:14px;
+    box-shadow:0 20px 40px -16px rgba(20,20,40,.30),0 2px 8px rgba(20,20,40,.08);
+  }
+  /* top bar */
+  .cabin-top{
+    height:22px;background:linear-gradient(90deg,#d8dce8,#eef1f8,#d8dce8);
+    border-radius:12px 12px 0 0;border-bottom:1px solid #c8cdd8;
+    display:flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;
+  }
+  .cabin-top .led{
+    width:30px;height:6px;border-radius:3px;
+    background:var(--red);box-shadow:0 0 10px var(--red),0 0 20px rgba(237,28,36,.4);
+  }
+  .cabin-top .btn-p{width:8px;height:8px;border-radius:50%;background:#c8cdd8;border:1px solid #b8bdc8}
+  /* door wrapper */
+  .cabin-doors{
+    position:absolute;left:10px;right:10px;top:26px;bottom:14px;
+    border-radius:6px;overflow:hidden;
+    display:flex;
+  }
+  .door-l,.door-r{
+    height:100%;width:50%;
+    background:linear-gradient(180deg,#dde2ec 0%,#eef1f7 40%,#dde2ec 100%);
+    border:1px solid #c5cad4;
+  }
+  .door-l{border-radius:5px 0 0 5px;border-right:none;transform-origin:left}
+  .door-r{border-radius:0 5px 5px 0;border-left:none;transform-origin:right}
+  /* door gap line */
+  .cabin-doors::after{
+    content:"";position:absolute;left:50%;top:0;bottom:0;
+    width:2px;background:#b8bdc8;transform:translateX(-50%);
+    border-radius:1px;
+  }
+  /* door handle */
+  .door-l::after,.door-r::after{
+    content:"";position:absolute;top:50%;width:3px;height:22px;
+    background:#a8adb8;border-radius:2px;transform:translateY(-50%);
+  }
+  .door-l::after{right:7px}.door-r::after{left:7px}
+  /* floor indicator panel */
+  .floor-panel{
+    position:absolute;right:14px;top:14px;
+    background:#0f1115;border-radius:10px;padding:6px 10px;
+    box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:48px;text-align:center;
+  }
+  .floor-panel .floor-num{
+    font-size:20px;font-weight:900;color:var(--red);
+    font-variant-numeric:tabular-nums;letter-spacing:-1px;
+    text-shadow:0 0 12px rgba(237,28,36,.6);
+    line-height:1;
+  }
+  .floor-panel .floor-lbl{font-size:8px;color:#666;letter-spacing:2px;margin-top:2px}
+  /* shadow under cabin */
+  .cabin-shadow{
+    position:absolute;left:50%;transform:translateX(-50%);
+    height:10px;border-radius:50%;
+    background:rgba(20,20,40,.18);filter:blur(6px);
+    transition:width .05s,opacity .05s;
+  }
 
   /* marquee */
   .marquee{background:var(--ink);color:#fff;overflow:hidden;white-space:nowrap;padding:14px 0;position:relative;z-index:1}
@@ -214,12 +295,33 @@
         </div>
       </div>
       <div class="reveal">
-        <div class="shaft">
-          <div class="floornum" id="floornum">K</div>
-          <div class="cabin">
-            <span class="led"></span>
-            <span class="door"></span>
+        <div class="shaft" id="shaft">
+          <!-- floor lines -->
+          <div class="shaft-floors" id="shaftFloors"></div>
+          <!-- rails -->
+          <div class="rail l"></div>
+          <div class="rail r"></div>
+          <!-- cable -->
+          <div class="cable" id="cable"></div>
+          <!-- floor indicator -->
+          <div class="floor-panel">
+            <div class="floor-num" id="floornum">K</div>
+            <div class="floor-lbl">KAT</div>
           </div>
+          <!-- cabin -->
+          <div class="cabin" id="cabin">
+            <div class="cabin-top">
+              <div class="led"></div>
+              <div class="btn-p"></div>
+              <div class="btn-p"></div>
+            </div>
+            <div class="cabin-doors" id="cabinDoors">
+              <div class="door-l" id="doorL"></div>
+              <div class="door-r" id="doorR"></div>
+            </div>
+          </div>
+          <!-- ground shadow -->
+          <div class="cabin-shadow" id="cabinShadow"></div>
         </div>
       </div>
     </div>
@@ -385,11 +487,111 @@
     },{threshold:.14});
     document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 
-    // Floor indicator following the cabin
-    const fn = document.getElementById('floornum');
-    const floors = ['K','1','2','3','4','5','6','5','4','3','2','1'];
-    let fi=0;
-    setInterval(()=>{ fi=(fi+1)%floors.length; if(fn) fn.textContent=floors[fi]; },500);
+    // ── Elevator Animation ──────────────────────────────────────────
+    (function(){
+      const shaft   = document.getElementById('shaft');
+      const cabin   = document.getElementById('cabin');
+      const cable   = document.getElementById('cable');
+      const shadow  = document.getElementById('cabinShadow');
+      const doorL   = document.getElementById('doorL');
+      const doorR   = document.getElementById('doorR');
+      const floorEl = document.getElementById('floornum');
+      const floorsEl= document.getElementById('shaftFloors');
+
+      // Draw floor lines
+      const FLOORS = ['K','1','2','3','4','5'];
+      const shaftH = 430;
+      const cabinH = 160;
+      const topPad = 20;
+      const btmPad = 20;
+      const usable = shaftH - topPad - btmPad - cabinH;
+      const step   = usable / (FLOORS.length - 1);
+
+      FLOORS.forEach((_,i)=>{
+        const s = document.createElement('span');
+        s.style.top = (topPad + cabinH/2 + i*step) + 'px';
+        floorsEl.appendChild(s);
+      });
+
+      // stops[i] = top px value for floor i (0=top floor, last=ground)
+      const stops = FLOORS.map((_,i) => topPad + i * step);
+
+      let currentStop = stops.length - 1; // start at ground
+      let targetStop  = 0;
+
+      function setDoors(open){
+        doorL.style.transition = 'transform .5s cubic-bezier(.4,0,.2,1)';
+        doorR.style.transition = 'transform .5s cubic-bezier(.4,0,.2,1)';
+        doorL.style.transform  = open ? 'scaleX(0)' : 'scaleX(1)';
+        doorR.style.transform  = open ? 'scaleX(0)' : 'scaleX(1)';
+      }
+
+      function updateCable(topPx){
+        cable.style.height = (topPx + cabinH/2) + 'px';
+      }
+
+      function updateShadow(topPx){
+        const dist = shaftH - (topPx + cabinH); // distance from floor
+        const w = Math.max(40, 120 - dist * 0.5);
+        const op= Math.max(0.04, 0.22 - dist * 0.0006);
+        shadow.style.width   = w + 'px';
+        shadow.style.opacity = op;
+        shadow.style.top     = (topPx + cabinH + 2) + 'px';
+      }
+
+      // Easing: cubic ease-in-out
+      function easeInOut(t){ return t<.5 ? 2*t*t : -1+(4-2*t)*t }
+
+      let animFrame = null;
+      function animateTo(fromPx, toPx, duration, onDone){
+        const start = performance.now();
+        function frame(now){
+          const elapsed = now - start;
+          const t = Math.min(elapsed / duration, 1);
+          const e = easeInOut(t);
+          const cur = fromPx + (toPx - fromPx) * e;
+          cabin.style.top  = cur + 'px';
+          updateCable(cur);
+          updateShadow(cur);
+          // floor label
+          const frac = (cur - stops[0]) / (stops[stops.length-1] - stops[0]);
+          const fi   = Math.round(frac * (FLOORS.length-1));
+          floorEl.textContent = FLOORS[Math.max(0,Math.min(FLOORS.length-1,fi))];
+          if(t < 1){ animFrame = requestAnimationFrame(frame); }
+          else{ onDone && onDone(); }
+        }
+        animFrame = requestAnimationFrame(frame);
+      }
+
+      function nextCycle(){
+        // pick a random different stop
+        let next;
+        do{ next = Math.floor(Math.random() * stops.length); } while(next === currentStop);
+        targetStop = next;
+
+        const fromPx   = stops[currentStop];
+        const toPx     = stops[targetStop];
+        const dist     = Math.abs(toPx - fromPx);
+        const duration = 600 + dist * 4; // ~600ms base + distance factor
+
+        // close doors → travel → open doors → wait → repeat
+        setDoors(false);
+        setTimeout(()=>{
+          animateTo(fromPx, toPx, duration, ()=>{
+            currentStop = targetStop;
+            setDoors(true);
+            setTimeout(nextCycle, 1800); // wait at floor
+          });
+        }, 600); // wait for doors to close
+      }
+
+      // Init position
+      cabin.style.top = stops[currentStop] + 'px';
+      updateCable(stops[currentStop]);
+      updateShadow(stops[currentStop]);
+      setDoors(true);
+      setTimeout(nextCycle, 1200);
+    })();
 
     // Animated counters
     function animateCount(el){
@@ -398,8 +600,9 @@
       const t = setInterval(()=>{ cur+=step; if(cur>=to){cur=to;clearInterval(t);} span.textContent=cur; },28);
     }
     const cio = new IntersectionObserver((es)=>{
-      es.forEach(e=>{ if(e.isIntersecting){ const n=e.target.querySelector('.num[data-to], [data-to]'); }
-        if(e.isIntersecting && e.target.dataset && e.target.dataset.to){ animateCount(e.target); cio.unobserve(e.target);} });
+      es.forEach(e=>{
+        if(e.isIntersecting && e.target.dataset && e.target.dataset.to){ animateCount(e.target); cio.unobserve(e.target);}
+      });
     },{threshold:.6});
     document.querySelectorAll('[data-to]').forEach(el=>cio.observe(el));
   </script>
