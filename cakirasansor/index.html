@@ -236,18 +236,102 @@
   .fab .wa{background:#25D366}
   .fab .tel{background:var(--red)}
 
+  /* ── Tablet ── */
   @media(max-width:920px){
     .hero-grid{grid-template-columns:1fr}
-    .shaft{height:340px;max-width:360px;margin:0 auto}
+    .shaft{height:340px;max-width:380px;margin:0 auto}
     .cards{grid-template-columns:repeat(2,1fr)}
-    .why-grid{grid-template-columns:1fr}
+    .why-grid{grid-template-columns:repeat(2,1fr)}
     .stats .grid{grid-template-columns:repeat(2,1fr)}
     .contact-grid{grid-template-columns:1fr}
     .nav nav{display:none}
+    .hero{padding:48px 0 40px}
+    .sec{padding:60px 0}
+    .foot-top{flex-direction:column}
+    .foot-cols{gap:32px}
   }
-  @media(max-width:520px){
-    .cards{grid-template-columns:1fr}
-    .trust{gap:18px}
+
+  /* ── Mobile ── */
+  @media(max-width:600px){
+    /* header */
+    .nav{height:62px}
+    .logo .txt{font-size:17px}
+    .logo svg{width:30px;height:30px}
+    .logo .txt small{font-size:8px}
+    .btn{padding:9px 15px;font-size:13px}
+
+    /* hero */
+    .hero{padding:36px 0 28px}
+    .hero h1{font-size:30px;margin:16px 0 14px}
+    .hero p.lead{font-size:15.5px}
+    .hero .cta{flex-direction:column;gap:10px}
+    .hero .cta .btn{text-align:center;justify-content:center}
+    .pill{font-size:12px;padding:6px 12px}
+    .trust{gap:16px}
+    .trust div b{font-size:20px}
+    .trust div span{font-size:12px}
+
+    /* shaft — daha kısa ve dar */
+    .shaft{height:260px;max-width:100%;border-radius:16px}
+    .cabin{width:100px;height:124px}
+    .cabin-top{height:18px}
+    .cabin-top .led{width:22px;height:5px}
+    .floor-panel{right:10px;top:10px;padding:4px 8px;min-width:38px;border-radius:8px}
+    .floor-panel .floor-num{font-size:16px}
+    .floor-panel .floor-lbl{font-size:7px}
+
+    /* marquee */
+    .marquee{padding:11px 0}
+    .marquee .track{font-size:13px}
+    .marquee .track span{margin:0 18px}
+
+    /* sections */
+    .sec{padding:48px 0}
+    .sec-head{margin-bottom:32px}
+    .sec-head h2{font-size:24px}
+    .sec-head p{font-size:15px}
+
+    /* service cards — tek sütun */
+    .cards{grid-template-columns:1fr;gap:14px}
+    .card{padding:20px 18px}
+    .card h3{font-size:16px}
+
+    /* why us — tek sütun */
+    .why-grid{grid-template-columns:1fr;gap:18px}
+
+    /* stats */
+    .stats .grid{grid-template-columns:repeat(2,1fr);gap:18px}
+    .stats .num{font-size:30px}
+    .stats .lbl{font-size:13px}
+
+    /* contact */
+    .info .row{padding:14px}
+    .info .row .ic{width:38px;height:38px;border-radius:10px}
+    .info .row .val{font-size:15px}
+    .map{min-height:260px}
+    .map iframe{min-height:260px}
+
+    /* footer */
+    footer{padding:40px 0 20px}
+    .foot-top{gap:24px}
+    .foot-cols{flex-direction:column;gap:20px}
+    .foot-bottom{flex-direction:column;gap:6px;text-align:center}
+
+    /* fab — bigger tap targets on mobile */
+    .fab{right:14px;bottom:14px;gap:10px}
+    .fab a{width:52px;height:52px}
+
+    /* blobs — smaller on mobile */
+    .blob.r{width:260px;height:260px}
+    .blob.g{width:220px;height:220px}
+  }
+
+  /* ── Small phones (iPhone SE etc.) ── */
+  @media(max-width:380px){
+    .hero h1{font-size:26px}
+    .logo .txt{font-size:15px}
+    .btn{padding:8px 13px;font-size:12.5px}
+    .stats .grid{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -498,23 +582,44 @@
       const floorEl = document.getElementById('floornum');
       const floorsEl= document.getElementById('shaftFloors');
 
-      // Draw floor lines
+      // Draw floor lines — read actual dimensions from DOM
       const FLOORS = ['K','1','2','3','4','5'];
-      const shaftH = 430;
-      const cabinH = 160;
       const topPad = 20;
       const btmPad = 20;
-      const usable = shaftH - topPad - btmPad - cabinH;
-      const step   = usable / (FLOORS.length - 1);
 
-      FLOORS.forEach((_,i)=>{
-        const s = document.createElement('span');
-        s.style.top = (topPad + cabinH/2 + i*step) + 'px';
-        floorsEl.appendChild(s);
-      });
+      function getShaftH(){ return shaft.offsetHeight; }
+      function getCabinH(){ return cabin.offsetHeight; }
 
+      function buildFloorLines(){
+        floorsEl.innerHTML = '';
+        const shaftH = getShaftH();
+        const cabinH = getCabinH();
+        const usable = shaftH - topPad - btmPad - cabinH;
+        const step   = usable / (FLOORS.length - 1);
+        FLOORS.forEach((_,i)=>{
+          const s = document.createElement('span');
+          s.style.top = (topPad + cabinH/2 + i*step) + 'px';
+          floorsEl.appendChild(s);
+        });
+      }
+
+      function getStops(){
+        const shaftH = getShaftH();
+        const cabinH = getCabinH();
+        const usable = shaftH - topPad - btmPad - cabinH;
+        const step   = usable / (FLOORS.length - 1);
+        return FLOORS.map((_,i) => topPad + i * step);
+      }
+
+      buildFloorLines();
       // stops[i] = top px value for floor i (0=top floor, last=ground)
-      const stops = FLOORS.map((_,i) => topPad + i * step);
+      let stops = getStops();
+
+      // Rebuild on resize
+      window.addEventListener('resize', ()=>{
+        stops = getStops();
+        buildFloorLines();
+      });
 
       let currentStop = stops.length - 1; // start at ground
       let targetStop  = 0;
@@ -527,12 +632,14 @@
       }
 
       function updateCable(topPx){
-        cable.style.height = (topPx + cabinH/2) + 'px';
+        cable.style.height = (topPx + getCabinH()/2) + 'px';
       }
 
       function updateShadow(topPx){
-        const dist = shaftH - (topPx + cabinH); // distance from floor
-        const w = Math.max(40, 120 - dist * 0.5);
+        const shaftH = getShaftH();
+        const cabinH = getCabinH();
+        const dist = shaftH - (topPx + cabinH);
+        const w = Math.max(30, cabinH * 0.75 - dist * 0.35);
         const op= Math.max(0.04, 0.22 - dist * 0.0006);
         shadow.style.width   = w + 'px';
         shadow.style.opacity = op;
