@@ -613,7 +613,8 @@
       const floorsEl= document.getElementById('shaftFloors');
 
       // Draw floor lines — read actual dimensions from DOM
-      const FLOORS = ['K','1','2','3','4','5'];
+      // FLOORS[0] = top of shaft (highest floor), FLOORS[last] = bottom (ground)
+      const FLOORS = ['4','3','2','1','G'];
       const topPad = 20;
       const btmPad = 20;
 
