@@ -211,19 +211,27 @@ Müşteri pratik, hızlı kararlar veriyor. Tercih:
 ## 13. CPA Düşürme Planı (1 Haziran 2026 — aktif hedef)
 
 ### Ana hedef
-Dönüşüm SAYISI sorun değil — **verim (CPA) sorun.** Müşterinin net talebi: "ucuzlatmak."
+Asıl sorun **CTR çöküşü → QS düşüşü → CPC artışı → CPA artışı** zinciri.
+Müşterinin net talebi: "ucuzlatmak." Hedef: CPA'yı tekrar 300-400₺ bandına çekmek.
 
-### Aylık CPA trendi (2026)
-| Ay | Dönüşüm | Maliyet | CPA |
-|---|---:|---:|---:|
-| Ocak | 13 | 7.050₺ | 542₺ |
-| Şubat | 27 | 6.342₺ | **235₺** (en iyi) |
-| Mart | 33 | 13.198₺ | 400₺ |
-| Nisan | 28 | 16.275₺ | 581₺ |
-| Mayıs | 35 | 24.762₺ | **707₺** (en kötü) |
+### Aylık TAM tablo (2026) — CTR ve dönüşüm oranı dahil
+| Ay | Gösterim | Tık | CTR | Maliyet | Dönş | Dönş.Oranı | CPA |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Ocak | 4.539 | 383 | 8.4% | 7.050₺ | 13 | 3.4% | 542₺ |
+| Şubat | 2.694 | 323 | **12.0%** | 6.342₺ | 27 | 8.4% | **235₺** (en iyi) |
+| Mart | 2.686 | 229 | 8.5% | 13.198₺ | 33 | **14.4%** | 400₺ |
+| Nisan | 1.974 | 194 | 9.8% | 16.275₺ | 28 | **14.4%** | 581₺ |
+| Mayıs | 5.048 | 284 | **5.6%** | 24.762₺ | 35 | 12.3% | **707₺** (en kötü) |
 
-**Tespit:** Dönüşüm stabil (27-35), ama maliyet 4x artmış (6K→24K) → CPA 235→707₺.
-Hedef: CPA'yı tekrar 300-400₺ bandına çekmek.
+**DÜZELTİLMİŞ tespit (önceki "dönüşüm stabil, sadece CPA" özeti EKSİKTİ):**
+- Dönüşüm SAYISI stabil (27-35) AMA asıl sinyal CTR ve dönüşüm oranında.
+- **CTR Şubat %12 → Mayıs %5.6'ya yarılandı.** Reklam ilgi çekmiyor.
+- Mayıs'ta gösterim patladı (5.048) ama tık oranı düştü → çok gösterim/az ilgi.
+- Dönüşüm oranı Mart-Nisan zirvesi %14.4 → Mayıs %12.3'e geriledi.
+- Sebep: 19 May büyük değişiklikler (yeni reklamlar, {KeyWord}, fragmentasyon) CTR'ı bozdu.
+- **CPA artışının kökü: maliyet 4x (6K→24K) + CTR yarılanması → QS↓ → CPC↑.**
+
+**CPA düşürmenin kökü = CTR'ı Şubat seviyesine (%12) geri yükseltmek → QS↑ → CPC↓.**
 
 ### Dönüşüm takibi DURUMU (1 Haz itibarıyla — DÜZELTME)
 "Dönüşüm yok" paniği abartıydı. 6 kanal AKTİF çalışıyor:
