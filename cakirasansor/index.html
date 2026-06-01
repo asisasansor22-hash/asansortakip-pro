@@ -196,12 +196,19 @@
   .why-grid h4{font-size:17px;font-weight:800;margin-bottom:4px}
   .why-grid p{font-size:14px;color:var(--ink-soft)}
 
-  /* stats band */
-  .stats{background:var(--ink);color:#fff;border-radius:0}
-  .stats .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center}
-  .stats .num{font-size:clamp(32px,4vw,46px);font-weight:900;color:#fff}
-  .stats .num .u{color:var(--red)}
-  .stats .lbl{color:#b9bcc6;font-size:14px;margin-top:4px}
+  /* reviews */
+  .reviews{background:var(--bg-soft)}
+  .reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+  .review-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px;display:flex;flex-direction:column;gap:14px;transition:transform .22s,box-shadow .22s}
+  .review-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .stars{display:flex;gap:3px}
+  .stars span{color:#f59e0b;font-size:17px}
+  .review-card blockquote{font-size:15px;color:var(--ink-soft);line-height:1.65;flex:1}
+  .review-card blockquote::before{content:'\201C';font-size:40px;color:var(--red);line-height:0;vertical-align:-14px;margin-right:2px;font-family:Georgia,serif}
+  .reviewer{display:flex;align-items:center;gap:12px}
+  .reviewer .ava{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--red),#ff6b6b);display:grid;place-items:center;font-weight:900;font-size:16px;color:#fff;flex:0 0 auto}
+  .reviewer .name{font-weight:800;font-size:15px}
+  .reviewer .role{font-size:12.5px;color:var(--ink-soft)}
 
   /* contact */
   .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px;align-items:stretch}
@@ -242,7 +249,7 @@
     .shaft{height:340px;max-width:380px;margin:0 auto}
     .cards{grid-template-columns:repeat(2,1fr)}
     .why-grid{grid-template-columns:repeat(2,1fr)}
-    .stats .grid{grid-template-columns:repeat(2,1fr)}
+    .reviews-grid{grid-template-columns:1fr}
     .contact-grid{grid-template-columns:1fr}
     .nav nav{display:none}
     .hero{padding:48px 0 40px}
@@ -299,10 +306,9 @@
     /* why us — tek sütun */
     .why-grid{grid-template-columns:1fr;gap:18px}
 
-    /* stats */
-    .stats .grid{grid-template-columns:repeat(2,1fr);gap:18px}
-    .stats .num{font-size:30px}
-    .stats .lbl{font-size:13px}
+    /* reviews */
+    .reviews-grid{grid-template-columns:1fr;gap:16px}
+    .review-card{padding:20px 18px}
 
     /* contact */
     .info .row{padding:14px}
@@ -331,7 +337,6 @@
     .hero h1{font-size:26px}
     .logo .txt{font-size:15px}
     .btn{padding:8px 13px;font-size:12.5px}
-    .stats .grid{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -354,7 +359,7 @@
       <nav>
         <a href="#hizmetler">Hizmetler</a>
         <a href="#neden">Neden Biz</a>
-        <a href="#istatistik">Rakamlar</a>
+        <a href="#yorumlar">Yorumlar</a>
         <a href="#iletisim">İletişim</a>
       </nav>
       <a class="btn" href="tel:+905433737969">📞 Hemen Ara</a>
@@ -470,14 +475,39 @@
     </div>
   </section>
 
-  <!-- STATS -->
-  <section class="sec stats" id="istatistik">
+  <!-- REVIEWS -->
+  <section class="sec reviews" id="yorumlar">
     <div class="wrap">
-      <div class="grid">
-        <div class="reveal"><div class="num" data-to="12"><span>0</span><span class="u">+</span></div><div class="lbl">Yıl Tecrübe</div></div>
-        <div class="reveal"><div class="num"><span>7</span><span class="u">/24</span></div><div class="lbl">Kesintisiz Servis</div></div>
-        <div class="reveal"><div class="num" data-to="500"><span>0</span><span class="u">+</span></div><div class="lbl">Bakımdaki Asansör</div></div>
-        <div class="reveal"><div class="num"><span class="u">&lt;</span><span data-to="60">0</span><span class="u">dk</span></div><div class="lbl">Ortalama Müdahale</div></div>
+      <div class="sec-head reveal">
+        <div class="kicker">Müşteri Yorumları</div>
+        <h2>Müşterilerimiz ne diyor?</h2>
+        <p>Yüzlerce bina yöneticisi ve site sakini Çakır Asansör'ü tercih ediyor.</p>
+      </div>
+      <div class="reviews-grid">
+        <div class="review-card reveal">
+          <div class="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+          <blockquote>Asansörümüz arızalandığında 45 dakikada gelip çözdüler. Gece yarısı bile bu kadar hızlı müdahale edeceğini beklemiyordum. Gerçekten güvenilir bir ekip.</blockquote>
+          <div class="reviewer">
+            <div class="ava">AK</div>
+            <div><div class="name">Ahmet Kılıç</div><div class="role">Site Yöneticisi · Bahçelievler</div></div>
+          </div>
+        </div>
+        <div class="review-card reveal">
+          <div class="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+          <blockquote>Eski asansörümüzü revize ettirdik, şimdi sıfır gibi çalışıyor. Fiyat şeffaf, sözleşme net. Yıllık bakım sözleşmemizi yeniledik ve memnunuz.</blockquote>
+          <div class="reviewer">
+            <div class="ava">SÇ</div>
+            <div><div class="name">Selma Çelik</div><div class="role">Apartman Yöneticisi · Yenibosna</div></div>
+          </div>
+        </div>
+        <div class="review-card reveal">
+          <div class="stars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+          <blockquote>Yeni binamıza asansör montajı için 3 firma ile görüştük, en profesyonel teklif ve en temiz işçilik Çakır Asansör'den geldi. Kesinlikle tavsiye ediyorum.</blockquote>
+          <div class="reviewer">
+            <div class="ava">MT</div>
+            <div><div class="name">Mustafa Tekin</div><div class="role">İnşaat Müteahhidi · İstanbul</div></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -700,18 +730,6 @@
       setTimeout(nextCycle, 1200);
     })();
 
-    // Animated counters
-    function animateCount(el){
-      const to = +el.dataset.to; const span = el.querySelector('span'); let cur=0;
-      const step = Math.max(1, Math.round(to/45));
-      const t = setInterval(()=>{ cur+=step; if(cur>=to){cur=to;clearInterval(t);} span.textContent=cur; },28);
-    }
-    const cio = new IntersectionObserver((es)=>{
-      es.forEach(e=>{
-        if(e.isIntersecting && e.target.dataset && e.target.dataset.to){ animateCount(e.target); cio.unobserve(e.target);}
-      });
-    },{threshold:.6});
-    document.querySelectorAll('[data-to]').forEach(el=>cio.observe(el));
   </script>
 </body>
 </html>
