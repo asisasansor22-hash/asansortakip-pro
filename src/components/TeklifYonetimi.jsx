@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+var ACCENT = '#1f4e79'
+var ACCENT_HEX = '1F4E79'
+
 function formatTarihTR(value) {
   if (!value) return ''
   var d = new Date(value)
@@ -127,50 +130,93 @@ function islerPreview(value) {
 function teklifVerisi(teklif, elev, config) {
   var apartmanHam = (teklif.apartmanAdi || (elev && elev.ad) || '').trim()
   var recipientCore = apartmanHam || 'APARTMAN'
-  if (!/YÖNETİMİ$/i.test(recipientCore)) recipientCore += ' YÖNETİMİ'
+  if (!/YÖNET[İI]M[İI]\s*$/i.test(recipientCore)) recipientCore += ' YÖNETİMİ'
   var items = parseIsler(teklif.yapilacakIsler)
-  var itemsFirst = items.slice(0, 8)
-  var itemsSecond = items.slice(8)
-  var tutar = (+teklif.tutar || 0).toLocaleString('tr-TR')
+  var itemsFirst = items.slice(0, 12)
+  var itemsSecond = items.slice(12)
+  var tutarSayi = +teklif.tutar || 0
+  var kdvDahil = teklif.kdvDahil !== false // varsayılan: KDV dahil
+  function fmtTL(n) { return (Math.round(n) || 0).toLocaleString('tr-TR') + ' TL' }
+  var totalRows
+  if (kdvDahil) {
+    totalRows = [{ label: 'TOPLAM TUTAR (KDV Dahil)', value: fmtTL(tutarSayi), big: true }]
+  } else {
+    var kdvTutar = tutarSayi * 0.20
+    totalRows = [
+      { label: 'Ara Toplam', value: fmtTL(tutarSayi), big: false },
+      { label: 'KDV (%20)', value: fmtTL(kdvTutar), big: false },
+      { label: 'GENEL TOPLAM', value: fmtTL(tutarSayi + kdvTutar), big: true }
+    ]
+  }
 
   var cfg = config || {}
   var isAsis = !!(cfg._isAsis)
   var company1 = (cfg.ad || '').trim() || (isAsis ? 'Asis Asansör Sistemleri' : '')
   var company2 = (cfg.adres || '').trim() || (isAsis ? 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL' : '')
-  var tel1 = (cfg.tel || '').trim()
-  var tel2 = (cfg.tel2 || '').trim()
-  var tel3 = (cfg.tel3 || '').trim()
-  var company3 = tel1 ? ('Tel: ' + tel1) : (isAsis ? 'Tel: 0212-703-20-52' : '')
-  var company4Parts = []
-  if (tel2) company4Parts.push('Cep Tel: ' + tel2)
-  if (tel3) company4Parts.push(tel3)
-  var company4 = company4Parts.length ? company4Parts.join('   ') : (isAsis ? 'Cep Tel: 0536-565-92-23   0543-507-07-94' : '')
+  var tel1 = (cfg.tel || '').trim() || (isAsis ? '0212-703-20-52' : '')
+  var tel2 = (cfg.tel2 || '').trim() || (isAsis ? '0536-565-92-23' : '')
+  var tel3 = (cfg.tel3 || '').trim() || (isAsis ? '0543-507-07-94' : '')
+  var email1 = (cfg.email || '').trim()
+  var email2 = (cfg.email2 || '').trim()
+
+  var telLines = []
+  if (tel1) telLines.push('Tel: ' + tel1)
+  if (tel2) telLines.push('Cep Tel: ' + tel2)
+  if (tel3) telLines.push(tel3)
+
+  var footerParts = []
+  if (company2) footerParts.push(company2)
+  if (tel1) footerParts.push('Tel: ' + tel1)
+  if (tel2) footerParts.push('Cep: ' + tel2)
+  if (tel3) footerParts.push(tel3)
+  if (email1) footerParts.push(email1)
+  if (email2) footerParts.push(email2)
+
+  // Teklif numarası (kayıtlı teklifin id'sinden türetilir, taslakta TASLAK)
+  var d = teklif.tarih ? new Date(teklif.tarih) : new Date()
+  var yil = isNaN(d) ? new Date().getFullYear() : d.getFullYear()
+  var ref = teklif.id ? String(teklif.id).slice(-5) : 'TASLAK'
+  var teklifNo = 'TKF-' + yil + '-' + ref
+
+  // Geçerlilik: tarih + 15 gün
+  var gecerlilik = '15 gün'
+  if (teklif.tarih && !isNaN(d)) {
+    var g = new Date(d); g.setDate(g.getDate() + 15)
+    gecerlilik = formatTarihTR(g.toISOString())
+  }
 
   return {
     date: formatTarihTR(teklif.tarih),
+    teklifNo: teklifNo,
+    gecerlilik: gecerlilik,
     recipient: turkceBuyut(recipientCore),
-    intro1: 'Binanızda bulunan 1 adet asansörün firmamız tarafından yapılan',
-    intro2: 'incelemede belirlediği eksikler ve düzeltilmesini istediği maddeler aşağıda sırası ile belirtilmiştir.',
+    recipientAddress: (teklif.adres || '').trim(),
+    intro: 'Binanızda bulunan 1 adet asansörün firmamız tarafından yapılan incelemede belirlenen eksikler ve düzeltilmesi gereken maddeler aşağıda sırası ile belirtilmiştir.',
     title: 'YAPILACAK İŞLEMLER',
+    items: items,
     itemsFirst: itemsFirst,
     itemsSecond: itemsSecond,
     secondStart: itemsFirst.length + 1,
-    price: "FİYATIMIZ YUKARIDAKİ BİR ADET ASANSÖR İÇİN TOPLAM TUTAR " + tutar + " TL'DİR.",
+    kdvDahil: kdvDahil,
+    totalRows: totalRows,
+    delivery: 'ASANSÖR, SÖZLEŞME YAPILDIĞI TARİHTEN İTİBAREN 2 HAFTA İÇİNDE TESLİM EDİLECEKTİR.',
     company1: company1,
     company2: company2,
-    company3: company3,
-    company4: company4,
+    telLines: telLines,
+    footer: footerParts.join('   ·   '),
     signLeft: 'Sözleşme Onay Tarihi',
     signRight: 'Kaşe / İmza'
   }
 }
 
-function teklifItemsHtml(items, start) {
+function teklifItemsTableHtml(items, startIndex) {
   if (!items.length) return ''
-  var startAttr = start && start > 1 ? ' start="' + start + '"' : ''
-  return '<ol class="items"' + startAttr + '>' + items.map(function(item) {
-    return '<li>' + escapeHtml(item) + '</li>'
-  }).join('') + '</ol>'
+  var rows = items.map(function(item, i) {
+    var no = (startIndex || 0) + i + 1
+    var zebra = (i % 2 === 1) ? ' class="zebra"' : ''
+    return '<tr' + zebra + '><td class="no">' + no + '</td><td class="is">' + escapeHtml(item) + '</td></tr>'
+  }).join('')
+  return '<table class="items"><thead><tr><th class="no">No</th><th class="is">Yapılacak İşlem</th></tr></thead><tbody>' + rows + '</tbody></table>'
 }
 
 function teklifHtmlDocument(teklif, elev, options, config) {
@@ -180,64 +226,133 @@ function teklifHtmlDocument(teklif, elev, options, config) {
   var title = escapeHtml((options && options.title) || 'Teklif')
   var headerSrc = (options && options.headerSrc) || null
   var showHeader = !!(headerSrc)
-  var headerHtml = showHeader ? ('<img class="header" src="' + headerSrc + '" alt="logo" />') : ''
-  var headerStyle = showHeader ? '.header{width:100%;display:block;border-bottom:1px solid #d0d5dd;padding-bottom:8px;margin-bottom:26px;}' : ''
+
+  var headerHtml = '<div class="doc-header">' +
+    (showHeader ? '<img class="logo" src="' + headerSrc + '" alt="logo" />' : '<div class="logo-spacer"></div>') +
+    '<div class="accent-bar"></div></div>'
+
   var bodyBg = preview ? '#eef2f6' : '#ffffff'
   var bodyPadding = preview ? '18px 0' : '0'
   var pageWidth = preview ? 'min(920px, calc(100vw - 20px))' : '210mm'
   var pageMargin = preview ? '0 auto 18px' : '0 auto'
   var pageShadow = preview ? '0 16px 40px rgba(16,24,40,.12)' : 'none'
-  var pagePadding = preview ? '30px 36px 38px' : '26mm 20mm 20mm'
   var script = autoPrint ? '<script>window.onload=function(){window.focus();};<\/script>' : ''
-  var companyLines =
-    (data.company1 ? '<p class="p indent company">' + escapeHtml(data.company1) + '</p>' : '') +
-    (data.company2 ? '<p class="p indent company">' + escapeHtml(data.company2) + '</p>' : '') +
-    (data.company3 ? '<p class="p indent company">' + escapeHtml(data.company3) + '</p>' : '') +
-    (data.company4 ? '<p class="p indent company">' + escapeHtml(data.company4) + '</p>' : '')
-  var bottomBlockHtml =
-    '<div class="bottom-block">' +
-    '<p class="p price">' + escapeHtml(data.price) + '</p>' +
-    companyLines +
-    '<div class="signatures"><div class="sig">' + escapeHtml(data.signLeft) + '</div><div class="sig">' + escapeHtml(data.signRight) + '</div></div>' +
+
+  var metaBox =
+    '<div class="meta-box">' +
+      '<div class="meta-title">TEKLİF</div>' +
+      '<div class="meta-line"><span class="meta-k">Teklif No</span><span class="meta-v">' + escapeHtml(data.teklifNo) + '</span></div>' +
+      (data.date ? '<div class="meta-line"><span class="meta-k">Tarih</span><span class="meta-v">' + escapeHtml(data.date) + '</span></div>' : '') +
+      '<div class="meta-line"><span class="meta-k">Geçerlilik</span><span class="meta-v">' + escapeHtml(data.gecerlilik) + '</span></div>' +
     '</div>'
+
+  var recipientBlock =
+    '<div class="recipient">' +
+      '<div class="rec-label">SAYIN</div>' +
+      '<div class="rec-name">' + escapeHtml(data.recipient) + '</div>' +
+      (data.recipientAddress ? '<div class="rec-addr">' + escapeHtml(data.recipientAddress) + '</div>' : '') +
+    '</div>'
+
+  var companyLines =
+    (data.company1 ? '<div class="co-name">' + escapeHtml(data.company1) + '</div>' : '') +
+    (data.company2 ? '<div class="co-line">' + escapeHtml(data.company2) + '</div>' : '') +
+    data.telLines.map(function(t) { return '<div class="co-line">' + escapeHtml(t) + '</div>' }).join('')
+
+  var totalRowsHtml = data.totalRows.map(function(r) {
+    return '<div class="total-row' + (r.big ? ' big' : '') + '">' +
+      '<span class="tr-label">' + escapeHtml(r.label) + '</span>' +
+      '<span class="tr-value">' + escapeHtml(r.value) + '</span>' +
+    '</div>'
+  }).join('')
+  var totalBox = '<div class="total-wrap"><div class="total-box' + (data.totalRows.length > 1 ? ' multi' : '') + '">' + totalRowsHtml + '</div></div>'
+
+  var signatures =
+    '<div class="signatures">' +
+      '<div class="sig"><div class="sig-space"></div><div class="sig-label">' + escapeHtml(data.signLeft) + '</div></div>' +
+      '<div class="sig"><div class="sig-space"></div><div class="sig-label">' + escapeHtml(data.signRight) + '</div></div>' +
+    '</div>'
+
+  var footerHtml = data.footer ? '<div class="footer-band">' + escapeHtml(data.footer) + '</div>' : ''
+
+  var css =
+    '*{box-sizing:border-box;}' +
+    'body{margin:0;background:' + bodyBg + ';padding:' + bodyPadding + ';font-family:"Segoe UI",Verdana,Arial,sans-serif;color:#1a2330;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+    '.page{width:' + pageWidth + ';min-height:297mm;margin:' + pageMargin + ';background:#fff;box-shadow:' + pageShadow + ';display:flex;flex-direction:column;overflow:hidden;}' +
+    '.doc-header{width:100%;}' +
+    '.doc-header .logo{display:block;width:100%;max-height:96px;object-fit:contain;padding:18px 34px 10px;}' +
+    '.doc-header .logo-spacer{height:40px;}' +
+    '.accent-bar{height:5px;background:linear-gradient(90deg,' + ACCENT + ',#2e6ca8);}' +
+    '.content{padding:24px 36px 0;flex:1;display:flex;flex-direction:column;}' +
+    '.meta-top{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:22px;}' +
+    '.recipient .rec-label{font-size:11px;letter-spacing:1.5px;color:#7a8aa0;font-weight:700;}' +
+    '.recipient .rec-name{font-size:19px;font-weight:800;color:' + ACCENT + ';margin-top:3px;line-height:1.25;}' +
+    '.recipient .rec-addr{font-size:12px;color:#5a6b80;margin-top:5px;max-width:320px;line-height:1.5;}' +
+    '.meta-box{border:1px solid #d4dde7;border-radius:9px;overflow:hidden;min-width:215px;}' +
+    '.meta-box .meta-title{background:' + ACCENT + ';color:#fff;font-size:12px;font-weight:800;letter-spacing:3px;text-align:center;padding:7px 12px;}' +
+    '.meta-box .meta-line{display:flex;justify-content:space-between;gap:16px;padding:7px 13px;font-size:12px;border-bottom:1px solid #eef2f6;}' +
+    '.meta-box .meta-line:last-child{border-bottom:none;}' +
+    '.meta-k{color:#7a8aa0;font-weight:600;}' +
+    '.meta-v{color:#1a2330;font-weight:700;}' +
+    '.intro{font-size:13.5px;line-height:1.75;text-align:justify;margin:0 0 22px;color:#2a3645;}' +
+    '.section-title{font-size:13px;font-weight:800;letter-spacing:.6px;color:' + ACCENT + ';border-bottom:2px solid ' + ACCENT + ';padding-bottom:6px;margin:0 0 12px;}' +
+    'table.items{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}' +
+    'table.items th{background:' + ACCENT + ';color:#fff;text-align:left;padding:9px 13px;font-size:12px;font-weight:700;letter-spacing:.3px;}' +
+    'table.items th.no,table.items td.no{width:50px;text-align:center;}' +
+    'table.items td{padding:9px 13px;border:1px solid #e4eaf1;color:#2a3645;line-height:1.45;}' +
+    'table.items tr.zebra td{background:#f6f9fc;}' +
+    '.page-two .content{padding-top:18px;}' +
+    '.bottom-block{margin-top:auto;padding-top:14px;}' +
+    '.total-wrap{display:flex;justify-content:flex-end;margin-bottom:18px;}' +
+    '.total-box{display:inline-flex;flex-direction:column;gap:6px;background:#eef3f8;border:1px solid #d4dde7;border-left:5px solid ' + ACCENT + ';border-radius:9px;padding:13px 22px;min-width:280px;}' +
+    '.total-row{display:flex;justify-content:space-between;gap:28px;align-items:baseline;font-size:13px;}' +
+    '.total-row .tr-label{font-weight:700;color:#3a4a5e;}' +
+    '.total-row .tr-value{font-weight:700;color:#1a2330;}' +
+    '.total-box.multi .total-row.big{border-top:1px solid #cdd9e6;padding-top:8px;margin-top:2px;}' +
+    '.total-row.big .tr-label{color:' + ACCENT + ';font-size:13px;letter-spacing:.3px;}' +
+    '.total-row.big .tr-value{color:' + ACCENT + ';font-size:23px;font-weight:900;}' +
+    '.delivery{font-size:12px;color:#4a5a6e;font-weight:700;margin:0 0 22px;letter-spacing:.2px;}' +
+    '.company-block{margin-bottom:8px;}' +
+    '.company-block .co-name{font-family:Calibri,"Segoe UI",sans-serif;font-size:18px;font-weight:800;color:#1a2330;}' +
+    '.company-block .co-line{font-family:Calibri,"Segoe UI",sans-serif;font-size:14px;font-weight:700;color:#3a4a5e;line-height:1.55;}' +
+    '.signatures{display:flex;gap:48px;margin-top:18px;}' +
+    '.signatures .sig{flex:1;}' +
+    '.signatures .sig-space{height:46px;border-bottom:1.5px solid #8a99ad;margin-bottom:8px;}' +
+    '.signatures .sig-label{text-align:center;font-size:12px;font-weight:700;color:#3a4a5e;}' +
+    '.footer-band{margin-top:18px;background:' + ACCENT + ';color:#dfe9f4;font-size:11px;text-align:center;padding:9px 18px;letter-spacing:.2px;}' +
+    '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
+    '@media (max-width:760px){.content{padding:16px 16px 0;}.meta-top{flex-direction:column;gap:14px;}.meta-box{min-width:0;width:100%;}.recipient .rec-name{font-size:17px;}.intro{font-size:13px;}.signatures{flex-direction:column;gap:24px;}.total-box{min-width:0;width:100%;}}'
+
+  var page1 =
+    '<section class="page">' +
+      headerHtml +
+      '<div class="content">' +
+        '<div class="meta-top">' + recipientBlock + metaBox + '</div>' +
+        '<p class="intro">' + escapeHtml(data.intro) + '</p>' +
+        '<div class="section-title">' + escapeHtml(data.title) + '</div>' +
+        teklifItemsTableHtml(data.itemsFirst, 0) +
+      '</div>' +
+    '</section>'
+
+  var page2 =
+    '<section class="page page-two">' +
+      headerHtml +
+      '<div class="content">' +
+        (data.itemsSecond.length ? teklifItemsTableHtml(data.itemsSecond, data.secondStart - 1) : '') +
+        '<div class="bottom-block">' +
+          totalBox +
+          '<p class="delivery">' + escapeHtml(data.delivery) + '</p>' +
+          '<div class="company-block">' + companyLines + '</div>' +
+          signatures +
+        '</div>' +
+      '</div>' +
+      footerHtml +
+    '</section>'
 
   return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
     '<title>' + title + '</title>' +
-    '<style>' +
-    'body{margin:0;background:' + bodyBg + ';padding:' + bodyPadding + ';font-family:Verdana,Arial,sans-serif;color:#111;}' +
-    '.page{width:' + pageWidth + ';min-height:297mm;margin:' + pageMargin + ';background:#fff;padding:' + pagePadding + ';box-shadow:' + pageShadow + ';box-sizing:border-box;}' +
-    headerStyle +
-    '.p{margin:0 0 4px;font-size:18px;line-height:1.6;}' +
-    '.right{text-align:right;font-weight:700;}' +
-    '.indent{margin-left:82px;}' +
-    '.items{margin:0 0 14px 114px;font-size:18px;line-height:1.5;}' +
-    '.items li{margin-bottom:5px;}' +
-    '.recipient-line{margin:0 0 18px;font-size:18px;font-weight:700;text-align:center;}' +
-    '.price{margin-left:28px;font-weight:700;color:#1f4e79;}' +
-    '.company{font-family:Calibri,Arial,sans-serif;font-size:22px;font-weight:700;}' +
-    '.signatures{display:flex;gap:28px;margin-top:38px;}' +
-    '.sig{flex:1;border-top:1px solid #667085;padding-top:12px;text-align:center;font-family:Calibri,Arial,sans-serif;font-size:18px;font-weight:700;}' +
-    '.page-two{display:flex;flex-direction:column;}' +
-    '.bottom-block{margin-top:auto;}' +
-    '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
-    '@media (max-width:760px){body{padding:10px 0;}.page{width:calc(100vw - 12px);padding:18px 14px 26px;min-height:auto;}.p,.items{font-size:16px;}.indent,.price{margin-left:0;}.items{margin-left:24px;}.company{font-size:18px;}.signatures{flex-direction:column;gap:18px;}}' +
-    '</style></head><body>' +
-    '<section class="page">' +
-    headerHtml +
-    '<p class="p right">' + escapeHtml(data.date) + '</p>' +
-    '<p class="recipient-line">SN. ' + escapeHtml(data.recipient) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.intro1) + '</p>' +
-    '<p class="p indent">' + escapeHtml(data.intro2) + '</p>' +
-    '<p class="p indent"><strong>' + escapeHtml(data.title) + '</strong></p>' +
-    teklifItemsHtml(data.itemsFirst, 1) +
-    '</section>' +
-    '<section class="page page-two">' +
-    headerHtml +
-    (data.itemsSecond.length ? teklifItemsHtml(data.itemsSecond, data.secondStart) : '') +
-    bottomBlockHtml +
-    '</section>' +
-    script +
+    '<style>' + css + '</style></head><body>' +
+    page1 + page2 + script +
     '</body></html>'
 }
 
@@ -249,19 +364,10 @@ function teklifDosyaAdi(teklif, elev, ext) {
   return parcalar.join('-').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.' + ext
 }
 
-function teklifBosHucresizBorders(docx) {
-  return {
-    top: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' },
-    left: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' },
-    right: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' },
-    bottom: { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' }
-  }
-}
-
 function teklifParagraf(docx, text, options) {
   var opts = options || {}
   return new docx.Paragraph({
-    alignment: opts.align,
+    alignment: opts.justify ? docx.AlignmentType.JUSTIFIED : opts.align,
     indent: opts.leftCm ? { left: cmToTwip(opts.leftCm) } : undefined,
     spacing: {
       before: opts.beforePt ? opts.beforePt * 20 : 0,
@@ -279,47 +385,6 @@ function teklifParagraf(docx, text, options) {
   })
 }
 
-function teklifNumaraliParagraf(docx, index, text) {
-  return new docx.Paragraph({
-    indent: { left: cmToTwip(2.4) },
-    spacing: { after: 80 },
-    children: [
-      new docx.TextRun({
-        text: index + '. ' + text,
-        font: 'Verdana',
-        size: 24
-      })
-    ]
-  })
-}
-
-function teklifRecipientParagraf(docx, recipient) {
-  return new docx.Paragraph({
-    alignment: docx.AlignmentType.CENTER,
-    spacing: { after: 160 },
-    children: [
-      new docx.TextRun({
-        text: 'SN. ' + recipient,
-        bold: true,
-        font: 'Verdana',
-        size: 24
-      })
-    ]
-  })
-}
-
-function teklifBoslukParagraflari(docx, itemCount) {
-  var bosSatir = Math.max(7, Math.round(14 - (itemCount * 1.25)))
-  var lines = []
-  for (var i = 0; i < bosSatir; i += 1) {
-    lines.push(new docx.Paragraph({
-      spacing: { after: 110 },
-      children: [new docx.TextRun({ text: ' ', font: 'Verdana', size: 4 })]
-    }))
-  }
-  return lines
-}
-
 function waitForImages(root) {
   var imgs = Array.prototype.slice.call(root.querySelectorAll('img'))
   return Promise.all(imgs.map(function(img) {
@@ -334,9 +399,9 @@ function waitForImages(root) {
 function teklifHeaderParagraf(docx, headerBytes) {
   return new docx.Paragraph({
     border: {
-      bottom: { style: docx.BorderStyle.SINGLE, color: 'D0D5DD', size: 6 }
+      bottom: { style: docx.BorderStyle.SINGLE, color: ACCENT_HEX, size: 18 }
     },
-    spacing: { after: 360 },
+    spacing: { after: 300 },
     children: [
       new docx.ImageRun({
         type: 'png',
@@ -347,32 +412,162 @@ function teklifHeaderParagraf(docx, headerBytes) {
   })
 }
 
+function teklifNilBorders(docx) {
+  var nil = { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' }
+  return { top: nil, bottom: nil, left: nil, right: nil, insideHorizontal: nil, insideVertical: nil }
+}
+
+function teklifUstBilgiTablosu(docx, data) {
+  var nilAll = teklifNilBorders(docx)
+  var leftChildren = [
+    new docx.Paragraph({ children: [new docx.TextRun({ text: 'SAYIN', bold: true, font: 'Verdana', size: 16, color: '7A8AA0' })] }),
+    new docx.Paragraph({ spacing: { before: 30 }, children: [new docx.TextRun({ text: data.recipient, bold: true, font: 'Verdana', size: 26, color: ACCENT_HEX })] })
+  ]
+  if (data.recipientAddress) {
+    leftChildren.push(new docx.Paragraph({ spacing: { before: 40 }, children: [new docx.TextRun({ text: data.recipientAddress, font: 'Verdana', size: 18, color: '5A6B80' })] }))
+  }
+  function metaLine(k, v) {
+    return new docx.Paragraph({
+      alignment: docx.AlignmentType.RIGHT,
+      spacing: { after: 40 },
+      children: [
+        new docx.TextRun({ text: k + ': ', font: 'Verdana', size: 18, color: '7A8AA0' }),
+        new docx.TextRun({ text: v, bold: true, font: 'Verdana', size: 18, color: '1A2330' })
+      ]
+    })
+  }
+  var rightChildren = [metaLine('Teklif No', data.teklifNo)]
+  if (data.date) rightChildren.push(metaLine('Tarih', data.date))
+  rightChildren.push(metaLine('Geçerlilik', data.gecerlilik))
+
+  return new docx.Table({
+    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    columnWidths: [5600, 4000],
+    borders: nilAll,
+    rows: [
+      new docx.TableRow({
+        children: [
+          new docx.TableCell({ borders: nilAll, margins: { top: 120, bottom: 160, right: 140 }, children: leftChildren }),
+          new docx.TableCell({ borders: nilAll, verticalAlign: docx.VerticalAlign.TOP, margins: { top: 120, bottom: 160, left: 140 }, children: rightChildren })
+        ]
+      })
+    ]
+  })
+}
+
+function teklifBolumBasligi(docx, text) {
+  return new docx.Paragraph({
+    spacing: { before: 60, after: 140 },
+    border: { bottom: { style: docx.BorderStyle.SINGLE, size: 12, color: ACCENT_HEX } },
+    children: [new docx.TextRun({ text: text, bold: true, font: 'Verdana', size: 22, color: ACCENT_HEX })]
+  })
+}
+
+function teklifTableBorders(docx) {
+  var b = { style: docx.BorderStyle.SINGLE, size: 4, color: 'D6DEE8' }
+  return { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b }
+}
+
+function teklifTableCell(docx, text, opts) {
+  opts = opts || {}
+  var shading
+  if (opts.header) shading = { type: docx.ShadingType.CLEAR, fill: ACCENT_HEX, color: 'auto' }
+  else if (opts.zebra) shading = { type: docx.ShadingType.CLEAR, fill: 'F6F9FC', color: 'auto' }
+  return new docx.TableCell({
+    width: opts.widthPct ? { size: opts.widthPct, type: docx.WidthType.PERCENTAGE } : undefined,
+    shading: shading,
+    verticalAlign: docx.VerticalAlign.CENTER,
+    margins: { top: 70, bottom: 70, left: 130, right: 130 },
+    children: [
+      new docx.Paragraph({
+        alignment: opts.align,
+        children: [new docx.TextRun({ text: String(text), bold: !!opts.header, color: opts.header ? 'FFFFFF' : '2A3645', font: 'Verdana', size: opts.header ? 20 : 22 })]
+      })
+    ]
+  })
+}
+
+function teklifItemsTable(docx, items, startIndex) {
+  var headerRow = new docx.TableRow({
+    tableHeader: true,
+    children: [
+      teklifTableCell(docx, 'No', { header: true, align: docx.AlignmentType.CENTER, widthPct: 8 }),
+      teklifTableCell(docx, 'Yapılacak İşlem', { header: true, widthPct: 92 })
+    ]
+  })
+  var rows = (items || []).map(function(item, i) {
+    var zebra = (i % 2 === 1)
+    return new docx.TableRow({
+      children: [
+        teklifTableCell(docx, (startIndex || 0) + i + 1, { align: docx.AlignmentType.CENTER, widthPct: 8, zebra: zebra }),
+        teklifTableCell(docx, item, { widthPct: 92, zebra: zebra })
+      ]
+    })
+  })
+  return new docx.Table({
+    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    columnWidths: [820, 8800],
+    borders: teklifTableBorders(docx),
+    rows: [headerRow].concat(rows)
+  })
+}
+
+function teklifTotalTable(docx, rows) {
+  var light = { style: docx.BorderStyle.SINGLE, size: 4, color: 'D4DDE7' }
+  var accentL = { style: docx.BorderStyle.SINGLE, size: 28, color: ACCENT_HEX }
+  var multi = rows.length > 1
+  var paras = rows.map(function(r, idx) {
+    return new docx.Paragraph({
+      alignment: docx.AlignmentType.RIGHT,
+      spacing: { before: idx === 0 ? 0 : 50 },
+      border: (multi && r.big) ? { top: { style: docx.BorderStyle.SINGLE, size: 6, color: 'CDD9E6' } } : undefined,
+      children: [
+        new docx.TextRun({ text: r.label + ':   ', bold: true, font: 'Verdana', size: r.big ? 19 : 17, color: r.big ? ACCENT_HEX : '3A4A5E' }),
+        new docx.TextRun({ text: r.value, bold: true, font: 'Verdana', size: r.big ? 32 : 19, color: r.big ? ACCENT_HEX : '1A2330' })
+      ]
+    })
+  })
+  return new docx.Table({
+    alignment: docx.AlignmentType.RIGHT,
+    width: { size: 56, type: docx.WidthType.PERCENTAGE },
+    columnWidths: [5400],
+    borders: { top: light, bottom: light, right: light, left: accentL, insideHorizontal: light, insideVertical: light },
+    rows: [
+      new docx.TableRow({
+        children: [
+          new docx.TableCell({
+            shading: { type: docx.ShadingType.CLEAR, fill: 'EEF3F8', color: 'auto' },
+            margins: { top: 150, bottom: 150, left: 220, right: 220 },
+            children: paras
+          })
+        ]
+      })
+    ]
+  })
+}
+
 function teklifImzaParagraflari(docx, leftText, rightText) {
   return [
     new docx.Paragraph({
       alignment: docx.AlignmentType.CENTER,
-      spacing: { before: 240, after: 80 },
-      children: [
-        new docx.TextRun({
-          text: '__________________________        __________________________',
-          font: 'Calibri',
-          size: 22
-        })
-      ]
+      spacing: { before: 760, after: 60 },
+      children: [new docx.TextRun({ text: '______________________                    ______________________', font: 'Calibri', size: 22, color: '8A99AD' })]
     }),
     new docx.Paragraph({
       alignment: docx.AlignmentType.CENTER,
       spacing: { after: 0 },
-      children: [
-        new docx.TextRun({
-          text: leftText + '        ' + rightText,
-          bold: true,
-          font: 'Calibri',
-          size: 22
-        })
-      ]
+      children: [new docx.TextRun({ text: leftText + '                         ' + rightText, bold: true, font: 'Calibri', size: 22, color: '3A4A5E' })]
     })
   ]
+}
+
+function teklifFooterParagraf(docx, text) {
+  return new docx.Paragraph({
+    shading: { type: docx.ShadingType.CLEAR, fill: ACCENT_HEX, color: 'auto' },
+    alignment: docx.AlignmentType.CENTER,
+    spacing: { before: 260, after: 0 },
+    children: [new docx.TextRun({ text: text, font: 'Calibri', size: 16, color: 'DFE9F4' })]
+  })
 }
 
 async function downloadWord(teklif, elev, config) {
@@ -388,40 +583,35 @@ async function downloadWord(teklif, elev, config) {
 
   var children = []
   if (hasLogo) children.push(teklifHeaderParagraf(docx, headerBytes))
-  children.push(teklifParagraf(docx, data.date, { align: docx.AlignmentType.RIGHT, bold: true, afterPt: 4 }))
-  children.push(teklifRecipientParagraf(docx, data.recipient))
-  children.push(teklifParagraf(docx, '', { afterPt: 22 }))
-  children.push(teklifParagraf(docx, data.intro1, { leftCm: 2.2, afterPt: 2 }))
-  children.push(teklifParagraf(docx, data.intro2, { leftCm: 2.2, afterPt: 14 }))
-  children.push(teklifParagraf(docx, data.title, { leftCm: 2.2, bold: true, afterPt: 8 }))
-
-  data.itemsFirst.forEach(function(item, index) {
-    children.push(teklifNumaraliParagraf(docx, index + 1, item))
-  })
+  children.push(teklifUstBilgiTablosu(docx, data))
+  children.push(teklifParagraf(docx, data.intro, { justify: true, sizePt: 11, afterPt: 12 }))
+  children.push(teklifBolumBasligi(docx, data.title))
+  children.push(teklifItemsTable(docx, data.itemsFirst, 0))
 
   children.push(new docx.Paragraph({ children: [new docx.PageBreak()] }))
   if (hasLogo) children.push(teklifHeaderParagraf(docx, headerBytes))
-  data.itemsSecond.forEach(function(item, index) {
-    children.push(teklifNumaraliParagraf(docx, data.secondStart + index, item))
-  })
-  children = children.concat(teklifBoslukParagraflari(docx, data.itemsSecond.length))
-
-  children.push(teklifParagraf(docx, data.price, { leftCm: 0.8, bold: true, color: '1F4E79', afterPt: 12 }))
-  if (data.company1) children.push(teklifParagraf(docx, data.company1, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  if (data.company2) children.push(teklifParagraf(docx, data.company2, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  if (data.company3) children.push(teklifParagraf(docx, data.company3, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 2 }))
-  if (data.company4) children.push(teklifParagraf(docx, data.company4, { leftCm: 2.2, font: 'Calibri', sizePt: 16, bold: true, afterPt: 30 }))
+  if (data.itemsSecond.length) {
+    children.push(teklifItemsTable(docx, data.itemsSecond, data.secondStart - 1))
+    children.push(teklifParagraf(docx, '', { afterPt: 4 }))
+  }
+  children.push(teklifParagraf(docx, '', { afterPt: 8 }))
+  children.push(teklifTotalTable(docx, data.totalRows))
+  children.push(teklifParagraf(docx, data.delivery, { beforePt: 14, afterPt: 16, sizePt: 10, bold: true, color: '4A5A6E' }))
+  if (data.company1) children.push(teklifParagraf(docx, data.company1, { font: 'Calibri', sizePt: 15, bold: true, afterPt: 2 }))
+  if (data.company2) children.push(teklifParagraf(docx, data.company2, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 }))
+  data.telLines.forEach(function(t) { children.push(teklifParagraf(docx, t, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 })) })
   children = children.concat(teklifImzaParagraflari(docx, data.signLeft, data.signRight))
+  if (data.footer) children.push(teklifFooterParagraf(docx, data.footer))
 
   var doc = new docx.Document({
     sections: [{
       properties: {
         page: {
           margin: {
-            top: cmToTwip(1.4),
-            right: cmToTwip(2.0),
-            bottom: cmToTwip(2.1),
-            left: cmToTwip(2.0)
+            top: cmToTwip(1.3),
+            right: cmToTwip(1.9),
+            bottom: cmToTwip(1.4),
+            left: cmToTwip(1.9)
           }
         }
       },
@@ -542,9 +732,9 @@ function TeklifModal(props) {
   var F = props.F
   var elevs = props.elevs
   var ilceler = props.ilceler
-  var filteredElevs = props.filteredElevs
   var tenantConfig = props.tenantConfig || null
   var filtreIlce = props.filtreIlce
+  var filteredElevs = props.filteredElevs
   var closeModal = props.closeModal
   var save = props.save
   var syncElevatorFields = props.syncElevatorFields
@@ -632,6 +822,14 @@ function TeklifModal(props) {
                 <input type="date" value={form.onayTarihi || ''} onChange={function(e) { F('onayTarihi', e.target.value) }} style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text)', boxSizing: 'border-box' }} />
               </div>
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.kdvDahil !== false} onChange={function(e) { F('kdvDahil', e.target.checked) }} style={{ width: 17, height: 17, cursor: 'pointer', accentColor: '#1f4e79' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>KDV Dahil</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {form.kdvDahil !== false ? 'Tutar KDV dahil tek satır gösterilir' : 'Ara Toplam + KDV %20 + Genel Toplam ayrı gösterilir'}
+              </span>
+            </label>
           </div>
 
           <div>
@@ -678,7 +876,7 @@ export default function TeklifYonetimi(props) {
   var _useState2 = useState(null), edit = _useState2[0], setEdit = _useState2[1]
   var _useState3 = useState('Tümü'), filtreIlce = _useState3[0], setFiltreIlce = _useState3[1]
   var _useState4 = useState(''), arama = _useState4[0], setArama = _useState4[1]
-  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '' }), form = _useState5[0], setForm = _useState5[1]
+  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: true }), form = _useState5[0], setForm = _useState5[1]
   var _useState6 = useState(typeof window !== 'undefined' ? window.innerWidth : 1280), viewportWidth = _useState6[0], setViewportWidth = _useState6[1]
 
   var darModal = viewportWidth < 1100
@@ -744,7 +942,7 @@ export default function TeklifYonetimi(props) {
 
   function openAdd() {
     setEdit(null)
-    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '' })
+    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: true })
     setModal(true)
   }
 
@@ -840,7 +1038,7 @@ export default function TeklifYonetimi(props) {
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <div style={{ fontSize: 11, background: '#1e3a5f', color: '#93c5fd', padding: '4px 8px', borderRadius: 999, fontWeight: 700 }}>{teklifler.length + ' teklif'}</div>
-            <div style={{ fontSize: 11, background: '#102218', color: '#86efac', padding: '4px 8px', borderRadius: 999, fontWeight: 700 }}>Sablon: Bos Teklif</div>
+            <div style={{ fontSize: 11, background: '#102218', color: '#86efac', padding: '4px 8px', borderRadius: 999, fontWeight: 700 }}>Sablon: Kurumsal</div>
           </div>
         </div>
 
