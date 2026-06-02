@@ -2220,7 +2220,7 @@ function App(){
                       , React.createElement('div', {style:{display:"flex",gap:6,flexWrap:"wrap"}}
                         , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, aylikBakim.toLocaleString("tr-TR"), " ₺/ay")
                         , React.createElement('span', { style: {fontSize:10,background:bg,color:renk,padding:"2px 8px",borderRadius:6,fontWeight:900},},
-                          "📊 "+etiket+": "+(gosterilen>0?"+":"")+gosterilen.toLocaleString("tr-TR")+" ₺")
+                          etiket+": "+(gosterilen>0?"+":"")+gosterilen.toLocaleString("tr-TR")+" ₺")
                       )
                     );
                   })()
