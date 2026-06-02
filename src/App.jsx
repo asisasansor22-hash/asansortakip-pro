@@ -1049,11 +1049,18 @@ function App(){
         if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
-      /* Ay kapanışı: bakiyeDevir snapshot olarak bakiyeDevirBase'e kopyalanır.
-         Aylık ücret bakım tamamlanırken eklendi, burada tekrar eklenmez. */
+      /* Ay kapanışı: bakım yapılan asansörlerde Aylık Ücret Eski Devir'e eklenir.
+         Böylece bu ayın "Güncel Devir"i, gelecek ayın "Eski Devir"i olarak devreder.
+         Bu blok ayda bir kez çalışır (kapamaTetiklendi + localStorage guard ile korunur). */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          return Object.assign({},ev,{bakiyeDevirBase:finansTutar(ev.bakiyeDevir),yeniDevirManuel:null});
+          var bakimYapildi=maints.find(function(m){
+            var d=new Date(m.tarih);
+            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
+          });
+          if(!bakimYapildi) return ev;
+          var yeniEski=finansTutar(ev.bakiyeDevir)+finansTutar(ev.aylikUcret);
+          return Object.assign({},ev,{bakiyeDevir:yeniEski,yeniDevirManuel:null});
         });
       });
     }
@@ -1393,12 +1400,12 @@ function App(){
     return finansTutar(e.bakiyeDevir);
   };
 
-  /* Aktif ayda bakım yapıldıysa güncel devir: bakiyeDevir (aylık ücret bakım sırasında eklendi) */
+  /* Aktif ayda bakım yapıldıysa güncel devir = Eski Devir + Aylık Ücret */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    return finansTutar(e.bakiyeDevir);
+    return finansTutar(e.bakiyeDevir)+finansTutar(e.aylikUcret);
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -2211,8 +2218,10 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    var gosterilen=bal(e.id);
+                    var eskiDevir=bal(e.id);
                     var aylikBakim=Number(e.aylikUcret)||0;
+                    var guncelDevir=eskiDevir+aylikBakim;
+                    var gosterilen=eBakimYapildi?guncelDevir:eskiDevir;
                     var etiket=eBakimYapildi?"🔄 Güncel Devir":"📊 Eski Devir";
                     var renk=gosterilen>0?"#ef4444":gosterilen<0?"#34d399":"#64748b";
                     var bg=gosterilen>0?"#3a1e1e":gosterilen<0?"#0d2f1d":"#1e2640";
