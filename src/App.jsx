@@ -1049,19 +1049,11 @@ function App(){
         if(yeni.length>12) yeni=yeni.slice(0,12);
         return yeni;
       });
-      /* Ay kapanışında bakım yapılan asansörler için aylık bakım ücreti eski devre eklenir.
-         Ödemeler ve ekstra işler zaten anlık olarak bakiyeDevir'i hareket ettirir. */
+      /* Ay kapanışı: bakiyeDevir snapshot olarak bakiyeDevirBase'e kopyalanır.
+         Aylık ücret bakım tamamlanırken eklendi, burada tekrar eklenmez. */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          var eskiDevir=finansTutar(ev.bakiyeDevir);
-          var aylikUcret=finansTutar(ev.aylikUcret);
-          var bakimYapildi=maints.find(function(m){
-            var d=new Date(m.tarih);
-            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
-          });
-          if(!bakimYapildi) return ev;
-          var yeniDevirHesap=eskiDevir+aylikUcret;
-          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
+          return Object.assign({},ev,{bakiyeDevirBase:finansTutar(ev.bakiyeDevir),yeniDevirManuel:null});
         });
       });
     }
@@ -1401,14 +1393,12 @@ function App(){
     return finansTutar(e.bakiyeDevir);
   };
 
-  /* Aktif ayda bakım yapıldıysa güncel devir hesaplanır: eskiDevir + aylikUcret */
+  /* Aktif ayda bakım yapıldıysa güncel devir: bakiyeDevir (aylık ücret bakım sırasında eklendi) */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    const eskiDevir=finansTutar(e.bakiyeDevir);
-    const aylikUcret=finansTutar(e.aylikUcret);
-    return eskiDevir+aylikUcret;
+    return finansTutar(e.bakiyeDevir);
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -2221,11 +2211,9 @@ function App(){
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
                 , (function(){
-                    var eskiDevir=bal(e.id);
+                    var gosterilen=bal(e.id);
                     var aylikBakim=Number(e.aylikUcret)||0;
-                    var guncelDevir=eskiDevir+aylikBakim;
-                    var gosterilen=eBakimYapildi?guncelDevir:eskiDevir;
-                    var etiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
+                    var etiket=eBakimYapildi?"🔄 Güncel Devir":"📊 Eski Devir";
                     var renk=gosterilen>0?"#ef4444":gosterilen<0?"#34d399":"#64748b";
                     var bg=gosterilen>0?"#3a1e1e":gosterilen<0?"#0d2f1d":"#1e2640";
                     return React.createElement('div', { style: {marginTop:8,display:"flex",flexDirection:"column",gap:6},}
@@ -2813,10 +2801,11 @@ function App(){
                                 if(o._fromMaint){
                                   if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                   setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                 } else {
                                   if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
                                   setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                   setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                 }
                               },
@@ -2904,10 +2893,11 @@ function App(){
                                         if(o._fromMaint){
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                         } else {
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                           setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                         }
                                       },
@@ -3017,10 +3007,11 @@ function App(){
                                       if(o._fromMaint){
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                       } else {
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                         setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                       }
                                     },
@@ -3809,7 +3800,7 @@ function App(){
                     }
                     /* Ödeme her zaman eski devirden düşer; güncel devir eski devir + aylık bakım olarak hesaplanır. */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,bakiyeDevirBase:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+                    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },

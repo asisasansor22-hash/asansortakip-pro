@@ -19,6 +19,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var eski=para(elev&&elev.bakiyeDevir);
     var aylik=para(elev&&elev.aylikUcret);
     return {
+      eskiDevirAnindaki:eski,
       eskiDevirOnce:eski,
       aylikBakimUcreti:aylik,
       guncelDevirOnce:eski+aylik,
@@ -115,7 +116,11 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     }
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-      setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-alinan,bakiyeDevirBase:para(e.bakiyeDevir)-alinan,yeniDevirManuel:null}):e;});});
+      setElevs(function(p){return p.map(function(e){
+        if(Number(e.id)!==Number(elev.id)) return e;
+        var aylik=maint?0:para(e.aylikUcret); // maint mevcut: bakım daha önce tamamlandı, sadece ödeme güncelleniyor
+        return Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)+aylik-alinan,yeniDevirManuel:null});
+      });});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -152,7 +157,11 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,bakiyeDevirBase:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+    setElevs(function(p){return p.map(function(e){
+      if(Number(e.id)!==Number(elev.id)) return e;
+      var aylik=para(e.aylikUcret);
+      return Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)+aylik-tutar,yeniDevirManuel:null});
+    });});
     setMakbuzSonBakim({m:Object.assign({},odemeSorModal.m,snap,{alinanTutar:tutar,odendi:odendiTam,yapildi:true,yapildiSaat:yapildiSaat}),elev:odemeSorModal.elev,tutar:tutar});
     setOdemeSorModal(null);
     setOdemeMiktar("");
@@ -523,6 +532,12 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                             var o=odemeSorModal;
                             var snap=odemeSnapshot(o.elev,0);
                             setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
+                            if(typeof setElevs==="function"){
+                              setElevs(function(p){return p.map(function(e){
+                                if(Number(e.id)!==Number(o.elev.id)) return e;
+                                return Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)+para(e.aylikUcret),yeniDevirManuel:null});
+                              });});
+                            }
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
