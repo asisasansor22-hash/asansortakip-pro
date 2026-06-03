@@ -1872,7 +1872,7 @@ function App(){
           /* Sağ: tema + çıkış */
           React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
             (rol==="yonetici"||isSuper)&&React.createElement('button', {
-              onClick:()=>{var d=isSuper?ASIS_FIRMA_DEFAULT:{};setFirmaAyarlariForm({ad:(tenantConfig&&tenantConfig.ad)||d.ad||"",adres:(tenantConfig&&tenantConfig.adres)||d.adres||"",tel:(tenantConfig&&tenantConfig.tel)||d.tel||"",tel2:(tenantConfig&&tenantConfig.tel2)||d.tel2||"",tel3:(tenantConfig&&tenantConfig.tel3)||d.tel3||"",email:(tenantConfig&&tenantConfig.email)||d.email||"",email2:(tenantConfig&&tenantConfig.email2)||d.email2||"",logoUrl:(tenantConfig&&tenantConfig.logoUrl)||""});setFirmaAyarlariAcik(true);},
+              onClick:()=>{var d=isSuper?ASIS_FIRMA_DEFAULT:{};setFirmaAyarlariForm({ad:d.ad||(tenantConfig&&tenantConfig.ad)||"",adres:d.adres||(tenantConfig&&tenantConfig.adres)||"",tel:d.tel||(tenantConfig&&tenantConfig.tel)||"",tel2:d.tel2||(tenantConfig&&tenantConfig.tel2)||"",tel3:d.tel3||(tenantConfig&&tenantConfig.tel3)||"",email:d.email||(tenantConfig&&tenantConfig.email)||"",email2:d.email2||(tenantConfig&&tenantConfig.email2)||"",logoUrl:(tenantConfig&&tenantConfig.logoUrl)||""});setFirmaAyarlariAcik(true);},
               title:"Firma Ayarları",
               style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "🏢"),
@@ -3413,7 +3413,7 @@ function App(){
 /* PERİYODİK MUAYENE TAKİBİ */
 , tab===10&&rol==="yonetici"&&(isSuper||limits.teklif)&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig?Object.assign({},tenantConfig,{_isAsis:isSuper}):null})
+    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT,{_isAsis:true}):(tenantConfig?Object.assign({},tenantConfig,{_isAsis:false}):null)})
   )
 )
 
