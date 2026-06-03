@@ -497,6 +497,43 @@ export async function appendReversalEvent(originalEvent, reason, meta) {
   });
 }
 
+// ------- Bakım bildirimleri (uygulama-içi, yöneticiye) ----------------------
+// Bakımcı bir bakımı tamamladığında küçük bir olay yazar. Firma yöneticisi
+// oturumu açıkken periyodik olarak okur ve yeni olanları toast gösterir.
+// (Option A — sadece uygulama açıkken, FCM/service worker yok.)
+export async function pushBakimBildirim(payload) {
+  var p = payload || {};
+  var evt = {
+    tip: "bakim_tamamlandi",
+    elevAd: p.elevAd || "",
+    ilce: p.ilce || "",
+    bakimciAd: p.bakimciAd || "",
+    tutar: Number(p.tutar) || 0,
+    ts: new Date().toISOString()
+  };
+  return dbPush("at_bakim_bildirimleri", evt);
+}
+
+export async function listBakimBildirimleri() {
+  var raw = await dbGet("at_bakim_bildirimleri");
+  if (!raw) return [];
+  var out = [];
+  if (Array.isArray(raw)) {
+    for (var i = 0; i < raw.length; i++) {
+      var a = raw[i];
+      if (a && typeof a === "object") { if (!a.id) a.id = String(i); out.push(a); }
+    }
+  } else if (typeof raw === "object") {
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (v && typeof v === "object") { if (!v.id) v.id = k; out.push(v); }
+    }
+  }
+  out.sort(function (a, b) { return String(a.ts || "").localeCompare(String(b.ts || "")); });
+  return out;
+}
+
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------
 export async function getUserProfile(uid) {
   if (!uid) return null;

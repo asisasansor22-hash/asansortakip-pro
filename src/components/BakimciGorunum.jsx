@@ -4,7 +4,12 @@ import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
+function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi,onBakimBildirim}){
+  // Bakım tamamlandığında yöneticiye uygulama-içi bildirim gönder
+  function bildirBakim(elev,tutar){
+    if(typeof onBakimBildirim!=="function"||!elev) return;
+    onBakimBildirim({elevAd:elev.ad||"Asansör",ilce:elev.ilce||"",bakimciAd:aktifBakimci?aktifBakimci.ad:"",tutar:Number(tutar)||0});
+  }
   var _firmaAdi=firmaAdi||"Şirketimiz";
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
@@ -114,6 +119,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
       var snap2=odemeSnapshot(elev,alinan);
       setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,...snap2,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{},tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}]);
     }
+    bildirBakim(elev,alinan);
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
       // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
@@ -157,6 +163,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
     setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
     setMakbuzSonBakim({m:Object.assign({},odemeSorModal.m,snap,{alinanTutar:tutar,odendi:odendiTam,yapildi:true,yapildiSaat:yapildiSaat}),elev:odemeSorModal.elev,tutar:tutar});
+    bildirBakim(elev,tutar);
     setOdemeSorModal(null);
     setOdemeMiktar("");
   };

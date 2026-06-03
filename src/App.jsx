@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -16,6 +16,7 @@ import BakimAtamaPaneli from './components/BakimAtamaPaneli.jsx'
 import EkstraIsEkrani from './components/EkstraIsEkrani.jsx'
 import ArizaYonetimiAdmin from './components/ArizaYonetimiAdmin.jsx'
 import BakimciGorunum from './components/BakimciGorunum.jsx'
+import BakimBildirimToast from './components/BakimBildirimToast.jsx'
 import NotlarEkrani from './components/NotlarEkrani.jsx'
 import MuayeneTakibi from './components/MuayeneTakibi.jsx'
 import SozlesmeYonetimi from './components/SozlesmeYonetimi.jsx'
@@ -665,6 +666,8 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
+  const [bakimBildirimleri,setBakimBildirimleri]=useState([]); // yönetici için uygulama-içi toast'lar
+  const bakimBildirimSeenRef=useRef(null); // oturum başı baz alınan son ts
   // ---- Çoklu firma (tenant) durumu ----
   const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
   // tenantConfig: login öncesi public (ad, adminEmail), login sonrası full config ile zenginleştirilir
@@ -711,7 +714,46 @@ function App(){
       setBaglantiDurum(siniflandirHata(err));
     });
     return function(){ setDbErrorHandler(null); };
-  },[]);
+  // eslint-disable-next-line
+  }, []);
+
+  // Uygulama-içi bakım bildirimi (sadece firma yöneticisi, uygulama açıkken).
+  // Bakımcı bakım tamamlayınca yazdığı olayı periyodik okur, yenileri toast yapar.
+  useEffect(function(){
+    if (rol !== "yonetici" || !tenantId) return;
+    var stopped = false;
+    bakimBildirimSeenRef.current = null;
+    async function tick(initial){
+      try {
+        var list = await listBakimBildirimleri();
+        if (stopped) return;
+        if (initial) {
+          // Oturum açılışı: geçmişi gösterme, en son olayı baz al
+          bakimBildirimSeenRef.current = list.length ? list[list.length-1].ts : new Date().toISOString();
+          return;
+        }
+        if (!list.length) return;
+        var baz = bakimBildirimSeenRef.current || "";
+        var yeni = list.filter(function(e){ return String(e.ts||"") > String(baz); });
+        if (yeni.length) {
+          bakimBildirimSeenRef.current = list[list.length-1].ts;
+          setBakimBildirimleri(function(prev){ return prev.concat(yeni); });
+        }
+      } catch(e){}
+    }
+    tick(true);
+    var iv = setInterval(function(){ tick(false); }, 45000);
+    return function(){ stopped = true; clearInterval(iv); };
+  // eslint-disable-next-line
+  }, [rol, tenantId]);
+
+  function bakimBildirimKapat(id){
+    setBakimBildirimleri(function(prev){ return prev.filter(function(b){ return b.id !== id; }); });
+  }
+  // Bakımcı bir bakımı tamamlayınca yöneticiye iletilecek olayı yazar.
+  function bakimTamamlandiBildir(payload){
+    try { pushBakimBildirim(payload); } catch(e){}
+  }
   // Tarayıcı online/offline event'leri — kullanıcı kabloyu çıkarınca anında bandı göster.
   useEffect(function(){
     function on(){
@@ -2321,7 +2363,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, setElevs: setElevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi,})
+  React.createElement(BakimciGorunum, { elevs: elevs, setElevs: setElevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi, onBakimBildirim: bakimTamamlandiBildir,})
 )
 
 /* ARIZALAR - YÖNETİCİ */
@@ -4052,6 +4094,8 @@ function App(){
 
       /* Ana Ekrana Ekle Banner */
       , React.createElement(InstallBanner, null)
+      /* Uygulama-içi bakım bildirimleri (yönetici) */
+      , React.createElement(BakimBildirimToast, { bildirimler: bakimBildirimleri, onDismiss: bakimBildirimKapat })
       /* Sürekli bağlantı durumu bandı (üstte) — ağ/yetki sorunu varsa görünür */
       , baglantiDurum !== "ok" && React.createElement('div', {
           style:{position:"fixed",top:0,left:0,right:0,background: baglantiDurum==="yetkiHatasi" ? "#3a2a1e" : "#3a1e1e",borderBottom:"1px solid "+(baglantiDurum==="yetkiHatasi" ? "#f59e0b" : "#ef4444"),color: baglantiDurum==="yetkiHatasi" ? "#fde68a" : "#fecaca",padding:"8px 14px",fontSize:13,fontWeight:600,zIndex:10000,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}
