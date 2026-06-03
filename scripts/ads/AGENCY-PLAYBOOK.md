@@ -278,3 +278,43 @@ Eski TechSol action'ları REMOVED ama temel sayım çalışıyor.
 ### Bekleyen müşteri aksiyonları
 - Netlify production branch → main (UI'dan)
 - (Opsiyonel) Google'ı telefonla ara, eski TechSol detay raporlaması için — ama kritik değil
+
+---
+
+## 14. 3-4 Haziran 2026 — Tamamlanan İşler
+
+### Dönüşüm takibi düzeltmesi (3 Haz)
+- "Tıkla ve ara" (CLICK_TO_CALL, id 7605108620) **primary_for_goal=True** yapıldı.
+  Önceden ikincildi → gerçek telefon aramaları (14 günde 4 adet) bidding'e dahil değildi.
+  Artık 6 dönüşüm eyleminin hepsi birincil. Max Conversions geçişi için önkoşul tamamlandı.
+- Panel "Conversions" sütunu sadece birincilleri gösterdiği için müşteri 1 görüyordu;
+  all_conversions 8'di. Şimdi düzeldi.
+
+### CPC tavan (3 Haz)
+- Max Clicks tavansızken CPC 60₺↔250₺ savruluyordu (4 gün dalgalanma).
+- **130₺ CPC tavan** kondu (TARGET_SPEND cpc_bid_ceiling). Strateji değişmedi.
+- Amaç: pahalı patlamaları kesmek, bütçeyi güne yaymak, CPA düşürmek.
+
+### Site + URL eşleştirme (3-4 Haz) — TAMAMLANDI
+- Netlify production branch claude/qs-landing-optimization → **main** yapıldı (müşteri UI'dan).
+- Yeni Next.js site (PR #51, d40c058) main'den otomatik yayında. asisasansor.com canlı.
+- Bölge sayfaları doğrulandı: /bolgeler/esenyurt kusursuz (H1 keyword'lü, bölgesel
+  içerik, tel+WhatsApp, 7yıl/45dk/garanti, SSS, teklif CTA, schema).
+- **65 bölgesel keyword** aktif grupta (190360442605) kendi /bolgeler/<ilce> sayfasına
+  yönlendirildi (11 bölge: esenyurt, avcilar, beylikduzu, bahcelievler, kucukcekmece,
+  zeytinburnu, bagcilar, bakirkoy, gungoren, esenler, buyukcekmece).
+- 74 genel keyword ana sayfada kaldı (doğru).
+
+### Beklenen etki (1-2 hafta)
+Bölgesel keyword → bölgesel sayfa = post-click QS↑ (önceden 29/43 BELOW_AVERAGE idi).
+QS 3-5 → 6-7 hedefi. QS↑ → CPC↓ → CPA↓.
+
+### Hâlâ sırada
+- Max Conversions geçişi (birkaç gün 130₺ tavanlı stabil veri sonrası)
+- QS bileşenlerini tekrar ölç (1-2 hafta sonra, landing etkisi otursun)
+- Netlify branch deploys "None" (opsiyonel, gürültü temizliği)
+
+### Güncel ayarlar (4 Haz itibarıyla)
+- Kampanya: ENABLED, Max Clicks (TARGET_SPEND), CPC tavan 130₺, bütçe 1.700₺
+- Tek aktif grup: Aylık Bakım - Genel (139 kw), diğerleri PAUSED
+- 6 dönüşüm eylemi, hepsi birincil
