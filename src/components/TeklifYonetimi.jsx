@@ -566,13 +566,27 @@ function teklifImzaParagraflari(docx, leftText, rightText) {
   ]
 }
 
-function teklifFooterParagraf(docx, text) {
-  return new docx.Paragraph({
+// Word sayfa altbilgisi (footer): tam genişlikte renkli bant, her sayfanın altına sabitlenir.
+// Eski satır-içi paragraf yöntemi kısa sayfalarda imza alanıyla çakışıyordu.
+function teklifWordFooter(docx, text) {
+  var nil = { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' }
+  var cell = new docx.TableCell({
     shading: { type: docx.ShadingType.CLEAR, fill: ACCENT_HEX, color: 'auto' },
-    alignment: docx.AlignmentType.CENTER,
-    spacing: { before: 260, after: 0 },
-    children: [new docx.TextRun({ text: text, font: 'Calibri', size: 16, color: 'DFE9F4' })]
+    margins: { top: 80, bottom: 80, left: 120, right: 120 },
+    children: [
+      new docx.Paragraph({
+        alignment: docx.AlignmentType.CENTER,
+        spacing: { after: 0, line: 240 },
+        children: [new docx.TextRun({ text: text, font: 'Calibri', size: 16, color: 'DFE9F4' })]
+      })
+    ]
   })
+  var table = new docx.Table({
+    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    borders: { top: nil, bottom: nil, left: nil, right: nil, insideHorizontal: nil, insideVertical: nil },
+    rows: [new docx.TableRow({ children: [cell] })]
+  })
+  return new docx.Footer({ children: [table] })
 }
 
 async function downloadWord(teklif, elev, config) {
@@ -606,7 +620,6 @@ async function downloadWord(teklif, elev, config) {
   if (data.company2) children.push(teklifParagraf(docx, data.company2, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 }))
   data.telLines.forEach(function(t) { children.push(teklifParagraf(docx, t, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 })) })
   children = children.concat(teklifImzaParagraflari(docx, data.signLeft, data.signRight))
-  if (data.footer) children.push(teklifFooterParagraf(docx, data.footer))
 
   var doc = new docx.Document({
     sections: [{
@@ -615,11 +628,13 @@ async function downloadWord(teklif, elev, config) {
           margin: {
             top: cmToTwip(1.3),
             right: cmToTwip(1.9),
-            bottom: cmToTwip(1.4),
-            left: cmToTwip(1.9)
+            bottom: cmToTwip(1.7),
+            left: cmToTwip(1.9),
+            footer: cmToTwip(0.4)
           }
         }
       },
+      footers: data.footer ? { default: teklifWordFooter(docx, data.footer) } : undefined,
       children: children
     }]
   })
