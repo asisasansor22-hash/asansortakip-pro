@@ -152,6 +152,17 @@ function odemeSnapshotBetween(sonOdemeler,maints,elevs,bas,son){
   });
 }
 
+// Asis Asansör (süper-admin) varsayılan firma bilgileri — Firma Ayarları boşsa öneri olarak doldurulur
+var ASIS_FIRMA_DEFAULT={
+  ad:"Asis Asansör Sistemleri",
+  adres:"Zafer Mahallesi Yüksel Sk. No:23, 34194 Bahçelievler / İstanbul",
+  tel:"0212 703 20 52",
+  tel2:"0536 565 92 23",
+  tel3:"0543 507 07 94",
+  email:"berat@asisasansor.com",
+  email2:"tolga@asisasansor.com"
+};
+
 var DASHBOARD_CARD_SIZES=["small","medium","full"];
 var DASHBOARD_CARDS_DEFAULT=[
   {id:"planBadge",icon:"🚀",label:"Plan Kullanım Badge",desc:"Paket ve asansör limiti",enabled:true,size:"small"},
@@ -1860,8 +1871,8 @@ function App(){
           ),
           /* Sağ: tema + çıkış */
           React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
-            rol==="yonetici"&&!isSuper&&React.createElement('button', {
-              onClick:()=>{setFirmaAyarlariForm({ad:tenantConfig&&tenantConfig.ad||"",adres:tenantConfig&&tenantConfig.adres||"",tel:tenantConfig&&tenantConfig.tel||"",tel2:tenantConfig&&tenantConfig.tel2||"",tel3:tenantConfig&&tenantConfig.tel3||"",email:tenantConfig&&tenantConfig.email||"",email2:tenantConfig&&tenantConfig.email2||"",logoUrl:tenantConfig&&tenantConfig.logoUrl||""});setFirmaAyarlariAcik(true);},
+            (rol==="yonetici"||isSuper)&&React.createElement('button', {
+              onClick:()=>{var d=isSuper?ASIS_FIRMA_DEFAULT:{};setFirmaAyarlariForm({ad:(tenantConfig&&tenantConfig.ad)||d.ad||"",adres:(tenantConfig&&tenantConfig.adres)||d.adres||"",tel:(tenantConfig&&tenantConfig.tel)||d.tel||"",tel2:(tenantConfig&&tenantConfig.tel2)||d.tel2||"",tel3:(tenantConfig&&tenantConfig.tel3)||d.tel3||"",email:(tenantConfig&&tenantConfig.email)||d.email||"",email2:(tenantConfig&&tenantConfig.email2)||d.email2||"",logoUrl:(tenantConfig&&tenantConfig.logoUrl)||""});setFirmaAyarlariAcik(true);},
               title:"Firma Ayarları",
               style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "🏢"),

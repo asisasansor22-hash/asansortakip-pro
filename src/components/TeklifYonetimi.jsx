@@ -135,24 +135,27 @@ function teklifVerisi(teklif, elev, config) {
   var itemsFirst = items.slice(0, 12)
   var itemsSecond = items.slice(12)
   var tutarSayi = +teklif.tutar || 0
-  var kdvDahil = teklif.kdvDahil !== false // varsayılan: KDV dahil
+  var _kv = teklif.kdvDahil
+  var kdv = (_kv === false || _kv === 'haric_goster') ? 'haric_goster' : (_kv === 'haric' ? 'haric' : 'dahil')
   function fmtTL(n) { return (Math.round(n) || 0).toLocaleString('tr-TR') + ' TL' }
   var totalRows
-  if (kdvDahil) {
-    totalRows = [{ label: 'TOPLAM TUTAR (KDV Dahil)', value: fmtTL(tutarSayi), big: true }]
-  } else {
+  if (kdv === 'haric_goster') {
     var kdvTutar = tutarSayi * 0.20
     totalRows = [
       { label: 'Ara Toplam', value: fmtTL(tutarSayi), big: false },
       { label: 'KDV (%20)', value: fmtTL(kdvTutar), big: false },
       { label: 'GENEL TOPLAM', value: fmtTL(tutarSayi + kdvTutar), big: true }
     ]
+  } else if (kdv === 'haric') {
+    totalRows = [{ label: 'TOPLAM TUTAR (KDV Dahil Değildir)', value: fmtTL(tutarSayi), big: true }]
+  } else {
+    totalRows = [{ label: 'TOPLAM TUTAR (KDV Dahil)', value: fmtTL(tutarSayi), big: true }]
   }
 
   var cfg = config || {}
   var isAsis = !!(cfg._isAsis)
   var company1 = (cfg.ad || '').trim() || (isAsis ? 'Asis Asansör Sistemleri' : '')
-  var company2 = (cfg.adres || '').trim() || (isAsis ? 'Zafer Mahallesi Yüksel Sokak No:23 Bahçelievler / İSTANBUL' : '')
+  var company2 = (cfg.adres || '').trim() || (isAsis ? 'Zafer Mahallesi Yüksel Sk. No:23, 34194 Bahçelievler / İstanbul' : '')
   var tel1 = (cfg.tel || '').trim() || (isAsis ? '0212-703-20-52' : '')
   var tel2 = (cfg.tel2 || '').trim() || (isAsis ? '0536-565-92-23' : '')
   var tel3 = (cfg.tel3 || '').trim() || (isAsis ? '0543-507-07-94' : '')
@@ -197,7 +200,7 @@ function teklifVerisi(teklif, elev, config) {
     itemsFirst: itemsFirst,
     itemsSecond: itemsSecond,
     secondStart: itemsFirst.length + 1,
-    kdvDahil: kdvDahil,
+    kdvDahil: kdv,
     totalRows: totalRows,
     delivery: 'ASANSÖR, SÖZLEŞME YAPILDIĞI TARİHTEN İTİBAREN 2 HAFTA İÇİNDE TESLİM EDİLECEKTİR.',
     company1: company1,
@@ -825,13 +828,23 @@ function TeklifModal(props) {
               </div>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 12, padding: '10px 12px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer' }}>
-              <input type="checkbox" checked={form.kdvDahil !== false} onChange={function(e) { F('kdvDahil', e.target.checked) }} style={{ width: 17, height: 17, cursor: 'pointer', accentColor: '#1f4e79' }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>KDV Dahil</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                {form.kdvDahil !== false ? 'Tutar KDV dahil tek satır gösterilir' : 'Ara Toplam + KDV %20 + Genel Toplam ayrı gösterilir'}
-              </span>
-            </label>
+            <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '.5px' }}>KDV</div>
+              {[
+                { value: 'dahil', label: 'KDV Dahil', desc: 'Tutar KDV dahil, tek satır' },
+                { value: 'haric_goster', label: 'KDV Hariç', desc: 'Ara Toplam + KDV %20 + Genel Toplam' },
+                { value: 'haric', label: 'KDV Dahil Değildir', desc: 'Tutar KDV hariç, tek satır' }
+              ].map(function(opt) {
+                var cur = (form.kdvDahil === false || form.kdvDahil === 'haric_goster') ? 'haric_goster' : (form.kdvDahil === 'haric' ? 'haric' : 'dahil')
+                return (
+                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 5 }}>
+                    <input type="radio" name="kdv" value={opt.value} checked={cur === opt.value} onChange={function() { F('kdvDahil', opt.value) }} style={{ accentColor: '#1f4e79' }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{opt.label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{opt.desc}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
 
           <div>
@@ -878,7 +891,7 @@ export default function TeklifYonetimi(props) {
   var _useState2 = useState(null), edit = _useState2[0], setEdit = _useState2[1]
   var _useState3 = useState('Tümü'), filtreIlce = _useState3[0], setFiltreIlce = _useState3[1]
   var _useState4 = useState(''), arama = _useState4[0], setArama = _useState4[1]
-  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: true }), form = _useState5[0], setForm = _useState5[1]
+  var _useState5 = useState({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: 'dahil' }), form = _useState5[0], setForm = _useState5[1]
   var _useState6 = useState(typeof window !== 'undefined' ? window.innerWidth : 1280), viewportWidth = _useState6[0], setViewportWidth = _useState6[1]
 
   var darModal = viewportWidth < 1100
@@ -944,7 +957,7 @@ export default function TeklifYonetimi(props) {
 
   function openAdd() {
     setEdit(null)
-    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: true })
+    setForm({ tarih: today, asansorId: '', apartmanAdi: '', yonetici: '', adres: '', yapilacakIsler: '', tutar: '', onayTarihi: '', ilce: '', kdvDahil: 'dahil' })
     setModal(true)
   }
 

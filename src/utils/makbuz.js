@@ -64,7 +64,7 @@ export function makbuzBakimYazdir(maint, elev) {
     '<div class="firma-adi">AS\u0130S ASANS\u00d6R</div>' +
     '<div class="firma-alt">Asans\u00f6r Sistemleri</div>' +
     '<div class="firma-bilgi">' +
-    'Zafer Mah. Y\u00fcks\u00f6l Sok. No:23/A Bah\u00e7elievler/\u0130ST<br>' +
+    'Zafer Mah. Y\u00fcksel Sk. No:23, 34194 Bah\u00e7elievler/\u0130stanbul<br>' +
     'Tel: 0212 703 20 52<br>' +
     'berat@asisasansor.com 0543 507 07 94<br>' +
     'tolga@asisasansor.com 0536 565 92 23</div>' +
@@ -150,7 +150,7 @@ export function makbuzEkstraYazdir(kayit, elev) {
     '<div class="firma-adi">AS\u0130S ASANS\u00d6R</div>' +
     '<div class="firma-alt">Asans\u00f6r Sistemleri</div>' +
     '<div class="firma-bilgi">' +
-    'Zafer Mah. Y\u00fcks\u00f6l Sok. No:23/A Bah\u00e7elievler/\u0130ST<br>' +
+    'Zafer Mah. Y\u00fcksel Sk. No:23, 34194 Bah\u00e7elievler/\u0130stanbul<br>' +
     'Tel: 0212 703 20 52<br>' +
     'berat@asisasansor.com 0543 507 07 94<br>' +
     'tolga@asisasansor.com 0536 565 92 23</div>' +
