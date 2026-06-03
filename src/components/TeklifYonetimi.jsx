@@ -319,6 +319,7 @@ function teklifHtmlDocument(teklif, elev, options, config) {
     '.signatures .sig-space{height:46px;border-bottom:1.5px solid #8a99ad;margin-bottom:8px;}' +
     '.signatures .sig-label{text-align:center;font-size:12px;font-weight:700;color:#3a4a5e;}' +
     '.footer-band{margin-top:18px;background:' + ACCENT + ';color:#dfe9f4;font-size:11px;text-align:center;padding:9px 18px;letter-spacing:.2px;}' +
+    '.footer-band a{color:#dfe9f4 !important;text-decoration:none !important;}' +
     '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
     '@media (max-width:760px){.content{padding:16px 16px 0;}.meta-top{flex-direction:column;gap:14px;}.meta-box{min-width:0;width:100%;}.recipient .rec-name{font-size:17px;}.intro{font-size:13px;}.signatures{flex-direction:column;gap:24px;}.total-box{min-width:0;width:100%;}}'
 
@@ -350,6 +351,7 @@ function teklifHtmlDocument(teklif, elev, options, config) {
 
   return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
+    '<meta name="format-detection" content="telephone=no,date=no,address=no,email=no">' +
     '<title>' + title + '</title>' +
     '<style>' + css + '</style></head><body>' +
     page1 + page2 + script +
