@@ -987,8 +987,12 @@ function App(){
         try { lsSet("ls_bakimcilar", bakimcilar); } catch(e) {}
         if(tenantId){
           var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
-          setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
-          if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
+          // Asis gerçek tenant değil → tenants/asis/public'e yazma (401). Sadece flat path.
+          if(tenantId==="asis"){
+            dbSetRaw("at_bakimcilar_pub", pubList);
+          } else {
+            setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
+          }
         }
       }
     })();
