@@ -47,6 +47,15 @@ function fetchImageDataUrl(url) {
     })
 }
 
+function dataUrlToBytes(dataUrl) {
+  var base64 = String(dataUrl || '').split(',')[1] || ''
+  var binary = atob(base64)
+  var len = binary.length
+  var bytes = new Uint8Array(len)
+  for (var i = 0; i < len; i += 1) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 function getTeklifHeaderBytes(customUrl) {
   if (customUrl) return fetchImageBytes(customUrl)
   if (!teklifHeaderBytesPromise) {
@@ -208,7 +217,10 @@ function teklifVerisi(teklif, elev, config) {
     telLines: telLines,
     footer: footerParts.join('   ·   '),
     signLeft: 'Sözleşme Onay Tarihi',
-    signRight: 'Kaşe / İmza'
+    signRight: 'Kaşe / İmza',
+    imza: teklif.imza || '',
+    imzaTarihi: teklif.imzaTarihi ? formatTarihTR(teklif.imzaTarihi) : '',
+    imzalayan: (teklif.imzalayan || teklif.yonetici || '').trim()
   }
 }
 
@@ -269,10 +281,19 @@ function teklifHtmlDocument(teklif, elev, options, config) {
   }).join('')
   var totalBox = '<div class="total-wrap"><div class="total-box' + (data.totalRows.length > 1 ? ' multi' : '') + '">' + totalRowsHtml + '</div></div>'
 
+  var leftSpace = data.imza
+    ? '<div class="sig-space filled"><span class="sig-date-text">' + escapeHtml(data.imzaTarihi || data.date) + '</span></div>'
+    : '<div class="sig-space"></div>'
+  var rightSpace = data.imza
+    ? '<div class="sig-space filled"><img class="sig-img" src="' + data.imza + '" alt="imza" /></div>'
+    : '<div class="sig-space"></div>'
+  var rightLabel = data.imza
+    ? escapeHtml(data.signRight) + (data.imzalayan ? ' · ' + escapeHtml(data.imzalayan) : '')
+    : escapeHtml(data.signRight)
   var signatures =
     '<div class="signatures">' +
-      '<div class="sig"><div class="sig-space"></div><div class="sig-label">' + escapeHtml(data.signLeft) + '</div></div>' +
-      '<div class="sig"><div class="sig-space"></div><div class="sig-label">' + escapeHtml(data.signRight) + '</div></div>' +
+      '<div class="sig">' + leftSpace + '<div class="sig-label">' + escapeHtml(data.signLeft) + '</div></div>' +
+      '<div class="sig">' + rightSpace + '<div class="sig-label">' + rightLabel + (data.imza ? ' <span class="sig-onay">✓ Onaylandı</span>' : '') + '</div></div>' +
     '</div>'
 
   var footerHtml = data.footer ? '<div class="footer-band">' + escapeHtml(data.footer) + '</div>' : ''
@@ -320,7 +341,11 @@ function teklifHtmlDocument(teklif, elev, options, config) {
     '.signatures{display:flex;gap:48px;margin-top:18px;}' +
     '.signatures .sig{flex:1;}' +
     '.signatures .sig-space{height:46px;border-bottom:1.5px solid #8a99ad;margin-bottom:8px;}' +
+    '.signatures .sig-space.filled{display:flex;align-items:flex-end;justify-content:center;}' +
+    '.signatures .sig-img{max-height:44px;max-width:100%;object-fit:contain;}' +
+    '.signatures .sig-date-text{font-size:14px;font-weight:700;color:' + ACCENT + ';padding-bottom:4px;}' +
     '.signatures .sig-label{text-align:center;font-size:12px;font-weight:700;color:#3a4a5e;}' +
+    '.signatures .sig-onay{color:#0a8a4a;font-weight:800;}' +
     '.footer-band{margin-top:18px;background:' + ACCENT + ';color:#dfe9f4;font-size:11px;text-align:center;padding:9px 18px;letter-spacing:.2px;}' +
     '.footer-band a{color:#dfe9f4 !important;text-decoration:none !important;}' +
     '@media print{@page{size:A4;margin:0;}body{background:#fff;padding:0;}.page{width:auto;margin:0;box-shadow:none;page-break-after:always;}.page:last-child{page-break-after:auto;}}' +
@@ -551,19 +576,52 @@ function teklifTotalTable(docx, rows) {
   })
 }
 
-function teklifImzaParagraflari(docx, leftText, rightText) {
-  return [
-    new docx.Paragraph({
-      alignment: docx.AlignmentType.CENTER,
-      spacing: { before: 760, after: 60 },
-      children: [new docx.TextRun({ text: '______________________                    ______________________', font: 'Calibri', size: 22, color: '8A99AD' })]
-    }),
-    new docx.Paragraph({
-      alignment: docx.AlignmentType.CENTER,
-      spacing: { after: 0 },
-      children: [new docx.TextRun({ text: leftText + '                         ' + rightText, bold: true, font: 'Calibri', size: 22, color: '3A4A5E' })]
-    })
-  ]
+function teklifImzaParagraflari(docx, data) {
+  var leftText = data.signLeft
+  var rightText = data.signRight
+  // İmza yoksa: eski boş çizgi düzeni
+  if (!data.imza) {
+    return [
+      new docx.Paragraph({
+        alignment: docx.AlignmentType.CENTER,
+        spacing: { before: 760, after: 60 },
+        children: [new docx.TextRun({ text: '______________________                    ______________________', font: 'Calibri', size: 22, color: '8A99AD' })]
+      }),
+      new docx.Paragraph({
+        alignment: docx.AlignmentType.CENTER,
+        spacing: { after: 0 },
+        children: [new docx.TextRun({ text: leftText + '                         ' + rightText, bold: true, font: 'Calibri', size: 22, color: '3A4A5E' })]
+      })
+    ]
+  }
+
+  // İmza varsa: sol hücre onay tarihi, sağ hücre imza görseli (kenarlıksız iki sütunlu tablo)
+  var nil = { style: docx.BorderStyle.NIL, size: 0, color: 'FFFFFF' }
+  var imgRun
+  try {
+    imgRun = new docx.ImageRun({ data: dataUrlToBytes(data.imza), transformation: { width: 200, height: 70 } })
+  } catch (_) { imgRun = new docx.TextRun({ text: '' }) }
+
+  var leftCell = new docx.TableCell({
+    width: { size: 50, type: docx.WidthType.PERCENTAGE },
+    children: [
+      new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 40 }, children: [new docx.TextRun({ text: data.imzaTarihi || data.date || '', bold: true, font: 'Calibri', size: 24, color: '1F4E79' })] }),
+      new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, border: { top: { style: docx.BorderStyle.SINGLE, size: 6, color: '8A99AD' } }, spacing: { before: 20 }, children: [new docx.TextRun({ text: leftText, bold: true, font: 'Calibri', size: 20, color: '3A4A5E' })] })
+    ]
+  })
+  var rightCell = new docx.TableCell({
+    width: { size: 50, type: docx.WidthType.PERCENTAGE },
+    children: [
+      new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { after: 40 }, children: [imgRun] }),
+      new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, border: { top: { style: docx.BorderStyle.SINGLE, size: 6, color: '8A99AD' } }, spacing: { before: 20 }, children: [new docx.TextRun({ text: rightText + (data.imzalayan ? ' · ' + data.imzalayan : '') + '   ✓ Onaylandı', bold: true, font: 'Calibri', size: 20, color: '0A8A4A' })] })
+    ]
+  })
+  var table = new docx.Table({
+    width: { size: 100, type: docx.WidthType.PERCENTAGE },
+    borders: { top: nil, bottom: nil, left: nil, right: nil, insideHorizontal: nil, insideVertical: nil },
+    rows: [new docx.TableRow({ children: [leftCell, rightCell] })]
+  })
+  return [new docx.Paragraph({ spacing: { before: 600 }, children: [] }), table]
 }
 
 // Word sayfa altbilgisi (footer): tam genişlikte renkli bant, her sayfanın altına sabitlenir.
@@ -619,7 +677,7 @@ async function downloadWord(teklif, elev, config) {
   if (data.company1) children.push(teklifParagraf(docx, data.company1, { font: 'Calibri', sizePt: 15, bold: true, afterPt: 2 }))
   if (data.company2) children.push(teklifParagraf(docx, data.company2, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 }))
   data.telLines.forEach(function(t) { children.push(teklifParagraf(docx, t, { font: 'Calibri', sizePt: 12, bold: true, afterPt: 2 })) })
-  children = children.concat(teklifImzaParagraflari(docx, data.signLeft, data.signRight))
+  children = children.concat(teklifImzaParagraflari(docx, data))
 
   var doc = new docx.Document({
     sections: [{
@@ -720,7 +778,10 @@ function TeklifKart(props) {
     <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>{teklif.apartmanAdi || (elev && elev.ad) || 'Teklif'}</div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {teklif.apartmanAdi || (elev && elev.ad) || 'Teklif'}
+            {teklif.imza || teklif.durum === 'onaylandi' ? <span style={{ fontSize: 10, fontWeight: 800, color: '#10b981', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 999, padding: '2px 8px' }}>✓ Onaylandı</span> : null}
+          </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
             {formatTarihTR(teklif.tarih)}
             {elev && elev.ilce ? ' · ' + elev.ilce : ''}
@@ -740,6 +801,115 @@ function TeklifKart(props) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={function() { onWord(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#1e3a5f', color: '#93c5fd', border: '1px solid #3b82f633', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>Word Olarak Indir</button>
           <button onClick={function() { onPdf(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#3a1e1e', color: '#fca5a5', border: '1px solid #ef444433', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>PDF Olarak Indir</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ImzaPedi(props) {
+  var onClose = props.onClose
+  var onSave = props.onSave
+  var canvasRef = React.useRef(null)
+  var drawingRef = React.useRef(false)
+  var dirtyRef = React.useRef(false)
+  var lastRef = React.useRef({ x: 0, y: 0 })
+
+  useEffect(function() {
+    var canvas = canvasRef.current
+    if (!canvas) return undefined
+    var ratio = window.devicePixelRatio || 1
+    var rect = canvas.getBoundingClientRect()
+    canvas.width = Math.round(rect.width * ratio)
+    canvas.height = Math.round(rect.height * ratio)
+    var ctx = canvas.getContext('2d')
+    ctx.scale(ratio, ratio)
+    ctx.lineWidth = 2.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#10243b'
+
+    function pos(e) {
+      var r = canvas.getBoundingClientRect()
+      var t = e.touches && e.touches[0]
+      var clientX = t ? t.clientX : e.clientX
+      var clientY = t ? t.clientY : e.clientY
+      return { x: clientX - r.left, y: clientY - r.top }
+    }
+    function start(e) {
+      e.preventDefault()
+      drawingRef.current = true
+      lastRef.current = pos(e)
+    }
+    function move(e) {
+      if (!drawingRef.current) return
+      e.preventDefault()
+      var p = pos(e)
+      ctx.beginPath()
+      ctx.moveTo(lastRef.current.x, lastRef.current.y)
+      ctx.lineTo(p.x, p.y)
+      ctx.stroke()
+      lastRef.current = p
+      dirtyRef.current = true
+    }
+    function end(e) {
+      if (e) e.preventDefault()
+      drawingRef.current = false
+    }
+
+    canvas.addEventListener('mousedown', start)
+    canvas.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', end)
+    canvas.addEventListener('touchstart', start, { passive: false })
+    canvas.addEventListener('touchmove', move, { passive: false })
+    canvas.addEventListener('touchend', end, { passive: false })
+    return function() {
+      canvas.removeEventListener('mousedown', start)
+      canvas.removeEventListener('mousemove', move)
+      window.removeEventListener('mouseup', end)
+      canvas.removeEventListener('touchstart', start)
+      canvas.removeEventListener('touchmove', move)
+      canvas.removeEventListener('touchend', end)
+    }
+  }, [])
+
+  function temizle() {
+    var canvas = canvasRef.current
+    if (!canvas) return
+    var ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    dirtyRef.current = false
+  }
+
+  function onayla() {
+    if (!dirtyRef.current) { alert('Lütfen önce imzanızı atın.'); return }
+    var canvas = canvasRef.current
+    // Beyaz zemin üzerine imzayı bas (PDF/Word'de saydam zemin sorununu önler)
+    var out = document.createElement('canvas')
+    out.width = canvas.width
+    out.height = canvas.height
+    var octx = out.getContext('2d')
+    octx.fillStyle = '#ffffff'
+    octx.fillRect(0, 0, out.width, out.height)
+    octx.drawImage(canvas, 0, 0)
+    onSave(out.toDataURL('image/png'))
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: '#000000d0', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ width: 'min(560px, 100%)', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 16, padding: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: '#3b82f6' }}>Ekranda İmzala</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Parmağınızla veya fare ile aşağıdaki alana imzanızı atın.</div>
+        <canvas ref={canvasRef} style={{ width: '100%', height: 220, background: '#fff', border: '2px dashed #94a3b8', borderRadius: 12, touchAction: 'none', cursor: 'crosshair', display: 'block' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <button onClick={temizle} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>Temizle</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>İptal</button>
+            <button onClick={onayla} style={{ padding: '10px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 800 }}>İmzayı Onayla</button>
+          </div>
         </div>
       </div>
     </div>
@@ -766,6 +936,7 @@ function TeklifModal(props) {
   var rawLogoUrl = customLogoUrl || (tenantConfig && tenantConfig._isAsis ? TEKLIF_HEADER_SRC : null)
 
   var _useStateH = useState(null), previewHeaderSrc = _useStateH[0], setPreviewHeaderSrc = _useStateH[1]
+  var _useStateImza = useState(false), imzaPedi = _useStateImza[0], setImzaPedi = _useStateImza[1]
 
   useEffect(function() {
     if (!rawLogoUrl) { setPreviewHeaderSrc(null); return }
@@ -779,6 +950,18 @@ function TeklifModal(props) {
   var previewHtml = teklifHtmlDocument(form, seciliElev, { preview: true, headerSrc: previewHeaderSrc }, tenantConfig)
 
   return (
+    <>
+    {imzaPedi ? (
+      <ImzaPedi
+        onClose={function() { setImzaPedi(false) }}
+        onSave={function(dataUrl) {
+          F('imza', dataUrl)
+          F('imzaTarihi', new Date().toISOString())
+          if (!form.imzalayan && form.yonetici) F('imzalayan', form.yonetici)
+          setImzaPedi(false)
+        }}
+      />
+    ) : null}
     <div style={{ position: 'fixed', inset: 0, background: '#000000b8', zIndex: 2000, display: 'flex', alignItems: darModal ? 'flex-start' : 'center', justifyContent: 'center', padding: darAlan ? 8 : 16, overflowY: 'auto' }}>
       <div style={{ width: 'min(1100px, 100%)', maxWidth: 'calc(100vw - ' + (darAlan ? 16 : 32) + 'px)', maxHeight: darModal ? 'none' : '90vh', overflowY: 'auto', overflowX: 'hidden', background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 18, margin: darModal ? '8px 0' : 0, boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'var(--bg-panel)', zIndex: 1 }}>
@@ -860,6 +1043,28 @@ function TeklifModal(props) {
                 )
               })}
             </div>
+
+            <div style={{ marginTop: 12, padding: '12px 14px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '.5px' }}>KAŞE / İMZA</div>
+              {form.imza ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <img src={form.imza} alt="imza" style={{ height: 50, maxWidth: 180, objectFit: 'contain', background: '#fff', borderRadius: 8, border: '1px solid var(--border)', padding: 4 }} />
+                    <div style={{ fontSize: 12, color: '#10b981', fontWeight: 800 }}>
+                      ✓ İmzalandı
+                      {form.imzaTarihi ? <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{formatTarihTR(form.imzaTarihi)}</div> : null}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={function() { setImzaPedi(true) }} style={{ padding: '7px 12px', borderRadius: 8, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>Yeniden İmzala</button>
+                    <button onClick={function() { F('imza', ''); F('imzaTarihi', ''); F('imzalayan', '') }} style={{ padding: '7px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>İmzayı Kaldır</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={function() { setImzaPedi(true) }} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>✍️ Ekranda İmzala</button>
+              )}
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>Bina yöneticisi imzaladığında teklif "Onaylandı" olur ve PDF/Word çıktısına işlenir.</div>
+            </div>
           </div>
 
           <div>
@@ -891,6 +1096,7 @@ function TeklifModal(props) {
         </div>
       </div>
     </div>
+    </>
   )
 }
 
@@ -1006,6 +1212,14 @@ export default function TeklifYonetimi(props) {
       tutar: +form.tutar || 0,
       guncellemeZamani: new Date().toLocaleString('tr-TR')
     })
+
+    // İmza varsa teklif onaylanmış sayılır; onay tarihi boşsa imza tarihinden doldur
+    if (form.imza) {
+      kayit.durum = 'onaylandi'
+      if (!kayit.onayTarihi && form.imzaTarihi) {
+        kayit.onayTarihi = String(form.imzaTarihi).split('T')[0]
+      }
+    }
 
     if (edit) {
       setTeklifler(function(prev) {
