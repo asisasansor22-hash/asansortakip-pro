@@ -318,3 +318,33 @@ QS 3-5 → 6-7 hedefi. QS↑ → CPC↓ → CPA↓.
 - Kampanya: ENABLED, Max Clicks (TARGET_SPEND), CPC tavan 130₺, bütçe 1.700₺
 - Tek aktif grup: Aylık Bakım - Genel (139 kw), diğerleri PAUSED
 - 6 dönüşüm eylemi, hepsi birincil
+
+---
+
+## 15. Bölge Performansı (son 30g — 4 Haz itibarıyla)
+
+12 hedef ilçe (İstanbul Avrupa Yakası). Gerçek performans:
+
+| Bölge | Gös | Tık | Maliyet | Dönş | CPA | Not |
+|---|---:|---:|---:|---:|---:|---|
+| Esenyurt | 1120 | 81 | 7.583₺ | 12 | 632₺ | 🥇 Ana pazar |
+| Zeytinburnu | 457 | 33 | 2.705₺ | 5 | 541₺ | Dengeli (+%10 teklif) |
+| Küçükçekmece | 406 | 30 | 3.180₺ | 4 | 795₺ | +%15 teklif ama pahalı |
+| Beylikdüzü | 777 | 29 | 2.823₺ | 3 | 941₺ | |
+| Bağcılar | 107 | 8 | 716₺ | 3 | **239₺** | 🏆 En verimli! |
+| Bahçelievler | 1129 | 37 | 3.848₺ | 2 | **1.924₺** | ⚠️ Çok pahalı, +%10 hak etmiyor |
+| Bakırköy | 246 | 9 | 773₺ | 2 | 387₺ | |
+| Yeşilköy | 122 | 5 | 356₺ | 1 | 356₺ | Mahalle (dar) |
+| Büyükçekmece | 56 | 6 | 562₺ | 1 | 562₺ | Yeni eklendi (22 May) |
+| Avcılar | 126 | 12 | 904₺ | 0 | — | Mahalle (dar), 0 dönüşüm |
+| Güngören | 37 | 3 | 446₺ | 0 | — | Neredeyse ölü |
+| Esenler | 20 | 1 | 87₺ | 0 | — | Neredeyse ölü |
+
+**Teklif ayarı tutarsızlığı:** Küçükçekmece +%15, Bahçelievler +%10, Zeytinburnu +%10
+alıyor. Ama en verimliler (Bağcılar 239₺, Zeytinburnu 541₺) ile pahalılar (Bahçelievler
+1.924₺) karışık. Max Conversions'a geçince algoritma bunu otomatik düzeltir — elle dokunma.
+
+**Avcılar & Yeşilköy "Neighborhood" tipinde** (İlçe değil) → dar kapsam. Google'da
+Avcılar district kaydı yok, neighborhood zaten tüm ilçeyi kapsıyor (reach 813K), sorun değil.
+
+Müşteri kararı (4 Haz): Bilgi olarak kalsın, bölge bazlı aksiyon alınmadı.
