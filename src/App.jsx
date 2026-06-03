@@ -742,8 +742,10 @@ function App(){
       } catch(e){}
     }
     tick(true);
-    var iv = setInterval(function(){ tick(false); }, 45000);
-    return function(){ stopped = true; clearInterval(iv); };
+    // İlk gerçek kontrol 8 saniye sonra, sonra her 25 saniyede bir
+    var firstTick = setTimeout(function(){ tick(false); }, 8000);
+    var iv = setInterval(function(){ tick(false); }, 25000);
+    return function(){ stopped = true; clearTimeout(firstTick); clearInterval(iv); };
   // eslint-disable-next-line
   }, [rol, tenantId]);
 
@@ -751,8 +753,8 @@ function App(){
     setBakimBildirimleri(function(prev){ return prev.filter(function(b){ return b.id !== id; }); });
   }
   // Bakımcı bir bakımı tamamlayınca yöneticiye iletilecek olayı yazar.
-  function bakimTamamlandiBildir(payload){
-    try { pushBakimBildirim(payload); } catch(e){}
+  async function bakimTamamlandiBildir(payload){
+    try { await pushBakimBildirim(payload); } catch(e){ console.warn("Bakım bildirimi yazılamadı:", e); }
   }
   // Tarayıcı online/offline event'leri — kullanıcı kabloyu çıkarınca anında bandı göster.
   useEffect(function(){
