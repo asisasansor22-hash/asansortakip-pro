@@ -44,12 +44,10 @@
 | 3 | Reklamlardan sesli arama | AD_CALL | Reklamdaki numaradan direkt arama (Google native, TechSol değil) | — |
 | 4 | Potansiyel müşteri formu | LEAD_FORM_SUBMIT | Reklamdaki Google formu | — |
 | 5 | Clicks to call | GOOGLE_HOSTED | Google Harita / İşletme Profili'nden arama | — |
-| 6 | Local - Directions | GOOGLE_HOSTED | Google Harita'da "yol tarifi" al | — |
+| 6 | Local - Directions | GOOGLE_HOSTED | Haritada "yol tarifi" al | — | **İKİNCİL** ✅ |
 
-### ⚠️ Önemli uyarı: 6'sı da "birincil"
-Tümü birincil olduğunda algoritma **yol tarifini** de gerçek müşteri adayıyla aynı ağırlıkta sayar.
-Directions (yol tarifi) düşük niyet sinyali — CPA hesaplamalarını ve bidding kararlarını kirletir.
-**Önerilecek aksiyon (ileride):** Directions → ikincil (secondary) yap; telefon + form birincil kalsın.
+> **5 birincil, 1 ikincil:** "Local - Directions" 5 Haziran 2026'da **ikincile** alındı.
+> Bidding artık yol tarifini optimizasyon hedefi olarak saymıyor.
 
 ### TechSol durumu
 - TechSol 5 Haziran 2026'da kalıcı iptal edildi (müşteri kararı)
