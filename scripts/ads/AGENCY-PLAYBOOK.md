@@ -40,15 +40,14 @@
 - CLICK_TO_CALL (siteden tıkla-ara butonu)
 - LEAD_FORM_SUBMIT (Google Ads lead form — onay bekliyor, 20 May'dan beri)
 
-### KAPALI dönüşüm tipleri (eksik!)
-- **AD_CALL (TechSol)** — 19 Mayıs'ta kaldırıldı. Bu **gerçek arama takibinin** tek yolu.
-  Müşteri TechSol'u Google Ads müşteri hizmetleri telefon desteği ile kurmuştu.
-  **Kritik aksiyon:** 444 4 600 ara, TechSol kurulumunu geri iste.
+### KAPALI dönüşüm tipleri
+- **AD_CALL (TechSol)** — 5 Haziran 2026 itibarıyla **kalıcı olarak iptal edildi** (müşteri kararı).
+  Yerine geçecek arama takibi yöntemi: belirlenmedi. Güncellenecek.
 
 ### Konvansiyon değerleri (önerilmiş, henüz atanmadı)
 - LEAD_FORM_SUBMIT: 250₺
-- AD_CALL: 200₺
 - CLICK_TO_CALL: 100₺
+- ~~AD_CALL: 200₺~~ (TechSol iptal, geçersiz)
 - Toplam atanınca → **Maximize Conversion Value** stratejisine geçilebilir.
 
 ## 5. Yapısal Durum Snapshot (21 Mayıs 2026)
@@ -83,6 +82,7 @@
 | 18 May | 1 dönüşüm |
 | **19 May 16:40-16:43** | **Büyük değişiklik:** 19 URL değişti, 3 yeni reklam, 30+ keyword düzenleme, negatifler eklendi, geo daraltıldı |
 | 19 May (tarih net değil) | **TechSol kaldırıldı** (önceki Claude session'ı yanlışlıkla kaldırmış) |
+| 5 Haz 2026 | **TechSol kalıcı iptal** (müşteri kararı) — AD_CALL takibi sonlandı |
 | 19-21 May | 0 dönüşüm/gün (takip kopuk) |
 | 21 May 19:00 | Bidding strategy: Max Conversions → **Max Clicks (max CPC 100₺)** geçişi |
 | 21 May 19:30 | 3 bölgesel grup (Esenyurt/Avcılar/Beylikdüzü) aktif edildi |
@@ -101,7 +101,7 @@
 - [x] Routine kurulumu (her sabah 09:00 GitHub issue + email)
 
 ### 🟡 Bekleyenler — müşteri aksiyonu gerekli
-- [ ] **TechSol kurulumu geri istenecek** (444 4 600)
+- [x] ~~TechSol kurulumu geri istenecek~~ — **iptal edildi (5 Haz)**; alternatif arama takibi çözümü değerlendirilecek
 - [ ] **Lead Form review** durumu kontrol edilecek (20 May'dan beri)
 - [ ] **Google Business Profile** Location extension için bağlanmalı
 - [ ] **Conversion value** atamaları (250/200/100₺)
