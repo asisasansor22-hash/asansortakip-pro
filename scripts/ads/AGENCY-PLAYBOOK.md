@@ -35,19 +35,34 @@
 
 ## 4. Dönüşüm Takibi
 
-### Aktif dönüşüm tipleri (sayılan)
-- WEBPAGE (form gönderimi)
-- CLICK_TO_CALL (siteden tıkla-ara butonu)
-- LEAD_FORM_SUBMIT (Google Ads lead form — onay bekliyor, 20 May'dan beri)
+### Aktif dönüşüm tipleri — 6 adet, tümü BİRİNCİL (5 Haz 2026 itibarıyla)
 
-### KAPALI dönüşüm tipleri
-- **AD_CALL (TechSol)** — 5 Haziran 2026 itibarıyla **kalıcı olarak iptal edildi** (müşteri kararı).
-  Yerine geçecek arama takibi yöntemi: belirlenmedi. Güncellenecek.
+| # | Dönüşüm Adı | Tür | Açıklama | Değer |
+|---|---|---|---|---|
+| 1 | Tıkla ve ara | CLICK_TO_CALL | Siteden telefon butonuna basınca — **en çok çalışan (%80)** | — |
+| 2 | WhatsApp İletişimi | WEBPAGE | Siteden WhatsApp butonuna tıklayınca | — |
+| 3 | Reklamlardan sesli arama | AD_CALL | Reklamdaki numaradan direkt arama (Google native, TechSol değil) | — |
+| 4 | Potansiyel müşteri formu | LEAD_FORM_SUBMIT | Reklamdaki Google formu | — |
+| 5 | Clicks to call | GOOGLE_HOSTED | Google Harita / İşletme Profili'nden arama | — |
+| 6 | Local - Directions | GOOGLE_HOSTED | Google Harita'da "yol tarifi" al | — |
+
+### ⚠️ Önemli uyarı: 6'sı da "birincil"
+Tümü birincil olduğunda algoritma **yol tarifini** de gerçek müşteri adayıyla aynı ağırlıkta sayar.
+Directions (yol tarifi) düşük niyet sinyali — CPA hesaplamalarını ve bidding kararlarını kirletir.
+**Önerilecek aksiyon (ileride):** Directions → ikincil (secondary) yap; telefon + form birincil kalsın.
+
+### TechSol durumu
+- TechSol 5 Haziran 2026'da kalıcı iptal edildi (müşteri kararı)
+- AD_CALL (#3) TechSol üzerinden değil, Google'ın native call asset mekanizmasıyla çalışıyor
+- Önceki "0 dönüşüm" dönemlerinde AD_CALL takibi eksikti; artık aktif
 
 ### Konvansiyon değerleri (önerilmiş, henüz atanmadı)
-- LEAD_FORM_SUBMIT: 250₺
-- CLICK_TO_CALL: 100₺
-- ~~AD_CALL: 200₺~~ (TechSol iptal, geçersiz)
+- CLICK_TO_CALL: 200₺ (en değerli — %80 hacim)
+- AD_CALL: 200₺
+- LEAD_FORM_SUBMIT: 150₺
+- WhatsApp: 100₺
+- GOOGLE_HOSTED calls: 150₺
+- GOOGLE_HOSTED directions: 30₺ (düşük niyet)
 - Toplam atanınca → **Maximize Conversion Value** stratejisine geçilebilir.
 
 ## 5. Yapısal Durum Snapshot (21 Mayıs 2026)
