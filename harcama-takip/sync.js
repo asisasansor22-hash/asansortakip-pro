@@ -15,7 +15,23 @@
   function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
   function del(key) { try { localStorage.removeItem(key); } catch (e) {} }
 
-  function getConfig() { return load(CFG_KEY); }
+  // Uygulamayla birlikte gelen varsayılan proje (spendy-1).
+  // NOT: Bu değerler GİZLİ DEĞİLDİR — Firebase web anahtarları herkese açıktır
+  // ve istemci kodunda durması normaldir. Güvenlik, Realtime Database kuralları
+  // (yalnızca giriş yapan kişi kendi /harcama/<uid> verisini görür) + kullanıcı
+  // girişiyle sağlanır. Kullanıcı dilerse Ayarlar'dan kendi projesini girip
+  // bunu geçersiz kılabilir.
+  var DEFAULT_CFG = {
+    apiKey: 'AIzaSyDNUwzPH156iixOOUhr77hrgrtm1Y1KRpA',
+    dbUrl: 'https://spendy-1-default-rtdb.europe-west1.firebasedatabase.app'
+  };
+
+  function getConfig() {
+    var c = load(CFG_KEY);
+    if (c && c.apiKey && c.dbUrl) return c;
+    if (DEFAULT_CFG.apiKey && DEFAULT_CFG.dbUrl) return DEFAULT_CFG;
+    return null;
+  }
   function setConfig(cfg) {
     if (!cfg || !cfg.apiKey || !cfg.dbUrl) return false;
     cfg.dbUrl = String(cfg.dbUrl).replace(/\/+$/, '');
