@@ -6,6 +6,7 @@
 
   // ── Sabitler ──────────────────────────────────────────────────
   var STORE_KEY = 'cuzdan_data_v1';
+  var PIN_KEY = 'spendy_pin_v1';   // PIN cihaza özel — buluta gönderilmez, yedekten gelmez
   var MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
   var MONTHS_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
   var DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -22,6 +23,7 @@
     { id: 'diger', name: 'Diğer', emoji: '💰', color: '#64748b' }
   ];
 
+  // (öğrenme + kategori tahmini fonksiyonları aşağıda guessCat ile birlikte)
   // İşyeri adından kategori tahmini (ekstre / SMS içe aktarma)
   var AUTO_RULES = [
     { cat: 'market', kw: ['migros', 'bim', 'a101', 'a 101', 'şok', 'sok mar', 'carrefour', 'file', 'tarim kredi', 'macrocenter', 'hakmar', 'onur', 'metro', 'market', 'bakkal', 'manav'] },
@@ -50,6 +52,8 @@
   var sheetState = {};
   var pushTimer = null;
   var toastTimer = null;
+  var unlocked = false;   // PIN kilidi açıldı mı?
+  var pinEntry = '';      // kilit ekranında girilen PIN
 
   // ── Yardımcılar ───────────────────────────────────────────────
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
@@ -107,7 +111,7 @@
   function freshState() {
     return {
       v: 1, updatedAt: Date.now(),
-      expenses: [], fixed: [],
+      expenses: [], incomes: [], fixed: [], learn: {},
       cats: DEFAULT_CATS.map(function (c) { return Object.assign({}, c); }),
       settings: { budget: 0, currency: '₺', theme: 'auto' }
     };
@@ -118,6 +122,8 @@
       if (raw && raw.expenses) {
         raw.cats = raw.cats && raw.cats.length ? raw.cats : DEFAULT_CATS.slice();
         raw.fixed = raw.fixed || [];
+        raw.incomes = raw.incomes || [];
+        raw.learn = raw.learn || {};
         raw.settings = Object.assign({ budget: 0, currency: '₺', theme: 'auto' }, raw.settings || {});
         return raw;
       }
@@ -182,6 +188,12 @@
     return state.expenses.filter(function (e) { return e.date === t; })
       .reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0);
   }
+  function incomeOfMonth(ymStr) {
+    return state.incomes.filter(function (e) { return ymOf(e.date) === ymStr; })
+      .reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0);
+  }
+  function incomeTotalAll() { return state.incomes.reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0); }
+  function expenseTotalAll() { return state.expenses.reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0); }
 
   // ── İşlemler (ekle / sil / düzenle) ───────────────────────────
   function addExpense(o) {
@@ -204,7 +216,25 @@
     if (!lastAction) return;
     if (lastAction.type === 'add') { var id = lastAction.id; lastAction = null; deleteExpense(id, true); }
     else if (lastAction.type === 'del') { state.expenses.push(lastAction.obj); lastAction = null; persist(); }
+    else if (lastAction.type === 'add-income') { var iid = lastAction.id; lastAction = null; deleteIncome(iid, true); }
+    else if (lastAction.type === 'del-income') { state.incomes.push(lastAction.obj); lastAction = null; persist(); }
     hideToast(); render();
+  }
+
+  // ── Gelir ─────────────────────────────────────────────────────
+  function addIncome(o) {
+    var amt = Number(o.amount) || 0; if (amt <= 0) return null;
+    var e = { id: uid(), ts: Date.now(), date: o.date || todayStr(), amount: amt, note: o.note || '' };
+    state.incomes.push(e); persist();
+    lastAction = { type: 'add-income', id: e.id };
+    return e;
+  }
+  function deleteIncome(id, silent) {
+    var i = state.incomes.findIndex(function (e) { return e.id === id; });
+    if (i < 0) return;
+    var removed = state.incomes.splice(i, 1)[0]; persist();
+    if (!silent) { lastAction = { type: 'del-income', obj: removed }; toast('Gelir silindi', 'Geri Al', undo); }
+    render();
   }
 
   // ── Quick-add (manuel) ────────────────────────────────────────
@@ -236,6 +266,7 @@
     if (amt <= 0) { var h = document.getElementById('qaHint'); if (h) { h.textContent = 'Önce tutarı yaz'; h.classList.add('warn'); setTimeout(function () { h.classList.remove('warn'); }, 1200); } return; }
     var cat = catId || ui.armedCat || 'diger';
     addExpense({ amount: amt, cat: cat, note: ui.note, date: ui.date });
+    learnCat(ui.note, cat);
     ui.amount = ''; ui.note = ''; ui.armedCat = cat;
     var c = catById(cat);
     render();
@@ -248,8 +279,29 @@
   function render() {
     applyTheme();
     var app = document.getElementById('app');
+    if (getPin() && !unlocked) { app.innerHTML = lockScreen(); return; }
     app.innerHTML = topbar() + screen() + tabbar();
     if (ui.tab === 'home') { patchAmount(); patchArmed(); }
+  }
+
+  // ── PIN kilidi ─────────────────────────────────────────────────
+  function hashPin(s) { var h = 5381; s = String(s); for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return 'h' + h.toString(36); }
+  function getPin() { try { return localStorage.getItem(PIN_KEY) || null; } catch (e) { return null; } }
+  function setPin(hash) { try { if (hash) localStorage.setItem(PIN_KEY, hash); else localStorage.removeItem(PIN_KEY); } catch (e) {} }
+  function patchPinDots() { var d = document.querySelectorAll('.pin-dot'); for (var i = 0; i < d.length; i++) d[i].classList.toggle('on', i < pinEntry.length); }
+  function lockScreen() {
+    var dots = '';
+    for (var i = 0; i < 4; i++) dots += '<span class="pin-dot' + (i < pinEntry.length ? ' on' : '') + '"></span>';
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'];
+    var kp = keys.map(function (k) {
+      if (k === '') return '<span></span>';
+      return '<button class="key" data-act="pin-key" data-k="' + k + '">' + (k === 'back' ? '⌫' : k) + '</button>';
+    }).join('');
+    return '<div class="lock"><div class="lock__logo">👛</div><div class="lock__title">Spendy</div>' +
+      '<div class="lock__sub" id="pinSub">PIN gir</div>' +
+      '<div class="pin-dots">' + dots + '</div>' +
+      '<div class="keypad keypad--pin">' + kp + '</div>' +
+      '<button class="lock__forgot" data-act="pin-forgot">PIN\'i unuttum</button></div>';
   }
 
   function topbar() {
@@ -294,13 +346,17 @@
     var mTotal = monthTotal(cym);
     var tTotal = todayTotal();
     var budget = Number(state.settings.budget) || 0;
+    var inc = incomeOfMonth(cym);
+    var net = inc - mTotal;
     var summary = '<div class="card card--brand">' +
       '<div class="summary__label">Bu ay harcanan</div>' +
       '<div class="summary__big">' + fmt(mTotal) + '</div>' +
       '<div class="summary__row">' +
       '<span class="summary__chip">Bugün: <b>' + fmt(tTotal) + '</b></span>' +
-      '<span class="summary__chip">Sabit gider: <b>' + fmt(fixedSumOfMonth(cym)) + '</b></span>' +
-      '</div>';
+      '<span class="summary__chip">Sabit: <b>' + fmt(fixedSumOfMonth(cym)) + '</b></span>' +
+      (inc > 0 ? '<span class="summary__chip">Gelir: <b>' + fmt(inc) + '</b></span>' : '') +
+      '</div>' +
+      (inc > 0 ? '<div class="summary__net">Bu ay net: <b>' + (net >= 0 ? '+' : '') + fmt(net) + '</b></div>' : '');
     if (budget > 0) {
       var pct = clamp((mTotal / budget) * 100, 0, 100);
       var over = mTotal > budget;
@@ -339,28 +395,39 @@
       '<div class="hint" id="qaHint"></div>' +
       '</div>';
 
-    return summary + quick + recentList();
+    var incomeBtn = '<button class="btn btn--ghost btn--block" data-act="add-income" style="margin:-2px 0 12px">＋ Gelir ekle</button>';
+    return summary + incomeBtn + quick + recentList();
   }
 
   function recentList() {
-    var list = state.expenses.slice().sort(function (a, b) { return (b.date + b.ts).localeCompare(a.date + a.ts); }).slice(0, 60);
-    if (!list.length) {
-      return '<div class="empty"><div class="empty__emoji">🧾</div><div class="empty__title">Henüz harcama yok</div><div class="empty__text">Yukarıdan tutarı yaz, kategoriye dokun.<br>Ya da Ayarlar → Vakıfbank ile SMS / ekstre aktar.</div></div>';
+    var outs = state.expenses.map(function (e) { return { k: 'out', e: e, date: e.date, ts: e.ts || 0 }; });
+    var ins = state.incomes.map(function (e) { return { k: 'in', e: e, date: e.date, ts: e.ts || 0 }; });
+    var all = outs.concat(ins).sort(function (a, b) { return (b.date + b.ts).localeCompare(a.date + a.ts); }).slice(0, 80);
+    if (!all.length) {
+      return '<div class="empty"><div class="empty__emoji">🧾</div><div class="empty__title">Henüz hareket yok</div><div class="empty__text">Yukarıdan tutarı yaz, kategoriye dokun.<br>Ya da Ayarlar → Vakıfbank ile SMS / ekstre aktar.</div></div>';
     }
     var groups = {}, order = [];
-    list.forEach(function (e) { if (!groups[e.date]) { groups[e.date] = []; order.push(e.date); } groups[e.date].push(e); });
-    var html = '<div class="section-title" style="margin-top:20px">Son harcamalar</div>';
+    all.forEach(function (it) { if (!groups[it.date]) { groups[it.date] = []; order.push(it.date); } groups[it.date].push(it); });
+    var html = '<div class="section-title" style="margin-top:20px">Son hareketler</div>';
     order.forEach(function (date) {
       var items = groups[date];
-      var sum = items.reduce(function (s, e) { return s + (Number(e.amount) || 0); }, 0);
+      var sum = items.reduce(function (s, it) { return s + (it.k === 'out' ? (Number(it.e.amount) || 0) : 0); }, 0);
       html += '<div class="day-group"><div class="day-head"><span class="day-head__date">' + dayLabel(date) + '</span><span class="day-head__sum">' + fmt(sum) + '</span></div><div class="tx-list">';
-      items.forEach(function (e) {
-        var c = catById(e.cat);
-        var badge = e.src && e.src !== 'manual' ? '<span class="tx__badge">' + (e.src === 'sms' ? 'SMS' : 'EKSTRE') + '</span>' : '';
-        html += '<button class="tx" data-act="edit" data-id="' + e.id + '">' +
-          '<span class="tx__emoji" style="background:' + hex2soft(c.color) + '">' + c.emoji + '</span>' +
-          '<span class="tx__main"><div class="tx__cat">' + esc(c.name) + badge + '</div>' + (e.note ? '<div class="tx__note">' + esc(e.note) + '</div>' : '') + '</span>' +
-          '<span class="tx__amt">' + fmt(e.amount) + '</span></button>';
+      items.forEach(function (it) {
+        var e = it.e;
+        if (it.k === 'in') {
+          html += '<button class="tx tx--in" data-act="edit-income" data-id="' + e.id + '">' +
+            '<span class="tx__emoji tx__emoji--in">▲</span>' +
+            '<span class="tx__main"><div class="tx__cat">Gelir</div>' + (e.note ? '<div class="tx__note">' + esc(e.note) + '</div>' : '') + '</span>' +
+            '<span class="tx__amt tx__amt--in">+' + fmt(e.amount) + '</span></button>';
+        } else {
+          var c = catById(e.cat);
+          var badge = e.src && e.src !== 'manual' ? '<span class="tx__badge">' + (e.src === 'sms' ? 'SMS' : 'EKSTRE') + '</span>' : '';
+          html += '<button class="tx" data-act="edit" data-id="' + e.id + '">' +
+            '<span class="tx__emoji" style="background:' + hex2soft(c.color) + '">' + c.emoji + '</span>' +
+            '<span class="tx__main"><div class="tx__cat">' + esc(c.name) + badge + '</div>' + (e.note ? '<div class="tx__note">' + esc(e.note) + '</div>' : '') + '</span>' +
+            '<span class="tx__amt">' + fmt(e.amount) + '</span></button>';
+        }
       });
       html += '</div></div>';
     });
@@ -495,6 +562,7 @@
       '<button class="set-row tappable" data-act="set-budget"><span class="set-row__ic">🎯</span><div class="set-row__main"><div class="set-row__title">Aylık bütçe</div></div><span class="set-row__val">' + (s.budget > 0 ? fmt0(s.budget) : 'Yok') + '</span><span class="set-row__chev">›</span></button>' +
       '<button class="set-row tappable" data-act="set-currency"><span class="set-row__ic">💱</span><div class="set-row__main"><div class="set-row__title">Para birimi</div></div><span class="set-row__val">' + esc(s.currency) + '</span><span class="set-row__chev">›</span></button>' +
       '<button class="set-row tappable" data-act="manage-cats"><span class="set-row__ic">🏷️</span><div class="set-row__main"><div class="set-row__title">Kategoriler</div></div><span class="set-row__val">' + state.cats.length + '</span><span class="set-row__chev">›</span></button>' +
+      '<button class="set-row tappable" data-act="set-pin"><span class="set-row__ic">🔒</span><div class="set-row__main"><div class="set-row__title">Uygulama kilidi (PIN)</div><div class="set-row__sub">Açılışta 4 haneli PIN iste</div></div><span class="set-row__val">' + (getPin() ? 'Açık' : 'Kapalı') + '</span><span class="set-row__chev">›</span></button>' +
       '<div class="set-row"><span class="set-row__ic">🌓</span><div class="set-row__main"><div class="set-row__title">Görünüm</div></div></div>' +
       '<div style="padding:0 14px 14px"><div class="seg">' +
       ['auto', 'light', 'dark'].map(function (t) { return '<button data-act="set-theme" data-theme="' + t + '" class="' + (s.theme === t ? 'active' : '') + '">' + ({ auto: 'Otomatik', light: 'Açık', dark: 'Koyu' }[t]) + '</button>'; }).join('') +
@@ -610,6 +678,22 @@
     openSheet('Para birimi', body);
   }
 
+  // ── Uygulama kilidi (PIN) ─────────────────────────────────────
+  function openPinSetup() {
+    var has = !!getPin();
+    sheetState = { pin: '', pin2: '' };
+    var intro = has
+      ? '<div class="note-box" style="margin-bottom:12px">Yeni bir PIN belirle ya da kilidi kaldır.</div>'
+      : '<div class="note-box" style="margin-bottom:12px">4 haneli bir PIN belirle; Spendy her açıldığında istenir. PIN <b>yalnızca bu cihazda</b> saklanır (buluta gönderilmez).</div>';
+    var body = intro +
+      '<div class="field"><label>Yeni PIN (4 rakam)</label><input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" data-bind="s.pin" placeholder="••••" autocomplete="off" /></div>' +
+      '<div class="field"><label>PIN (tekrar)</label><input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" data-bind="s.pin2" placeholder="••••" autocomplete="off" /></div>' +
+      '<div class="hint" id="pinErr" style="min-height:0;text-align:left"></div>' +
+      '<button class="btn btn--primary btn--block" data-act="save-pin">Kaydet</button>' +
+      (has ? '<button class="btn btn--danger btn--block" data-act="remove-pin" style="margin-top:8px">Kilidi kaldır</button>' : '');
+    openSheet(has ? 'Uygulama kilidi' : 'PIN belirle', body);
+  }
+
   // ── Bulut kurulum ─────────────────────────────────────────────
   function openCloudSetup() {
     var cfg = (window.Cloud && Cloud.getConfig()) || { apiKey: '', dbUrl: '' };
@@ -670,7 +754,29 @@
       '<div class="field"><label>Kategori (değiştirebilirsin)</label>' + catSelectChips(p.cat) + '</div>' +
       '<button class="btn btn--primary btn--block" data-act="sms-add">＋ Bu harcamayı ekle</button>';
   }
+  // İşyeri adından sade bir anahtar üret (öğrenme için)
+  function merchantKey(text) {
+    var l = (text || '').toLocaleLowerCase('tr-TR')
+      .replace(/[0-9]+/g, ' ')
+      .replace(/[^a-zçğıöşü ]/g, ' ')
+      .replace(/\b(?:tl|try|kart|kartinizla|ile|adli|isimli|isyeri|magaza|san|tic|ltd|sti|sti|as)\b/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+    if (l.length < 3) return '';
+    return l.split(' ').slice(0, 2).join(' '); // ilk 1-2 anlamlı kelime
+  }
+  // Kullanıcının seçtiği kategoriyi işyeriyle eşle → bir dahakine otomatik
+  function learnCat(note, cat) {
+    if (!cat) return;
+    var k = merchantKey(note);
+    if (!k) return;
+    if (!state.learn) state.learn = {};
+    state.learn[k] = cat;
+  }
   function guessCat(text) {
+    // 1) Öğrenilmiş eşleşme (kullanıcının daha önce seçtiği kategori)
+    var k = merchantKey(text);
+    if (k && state.learn && state.learn[k] && state.cats.some(function (c) { return c.id === state.learn[k]; })) return state.learn[k];
+    // 2) Hazır kurallar
     var l = (' ' + (text || '') + ' ').toLocaleLowerCase('tr-TR');
     for (var i = 0; i < AUTO_RULES.length; i++) {
       var r = AUTO_RULES[i];
@@ -913,6 +1019,42 @@
     'pick-currency': function (t) { state.settings.currency = t.getAttribute('data-cur'); persist(); closeSheet(); render(); },
     'set-theme': function (t) { state.settings.theme = t.getAttribute('data-theme'); persist(); render(); },
 
+    // uygulama kilidi (PIN)
+    'set-pin': function () { openPinSetup(); },
+    'pin-key': function (t) {
+      var k = t.getAttribute('data-k');
+      if (k === 'back') pinEntry = pinEntry.slice(0, -1);
+      else if (pinEntry.length < 4) pinEntry += k;
+      patchPinDots();
+      if (pinEntry.length === 4) {
+        if (hashPin(pinEntry) === getPin()) { pinEntry = ''; unlocked = true; render(); }
+        else {
+          pinEntry = '';
+          var sub = document.getElementById('pinSub');
+          var dots = document.querySelector('.pin-dots');
+          if (sub) { sub.textContent = 'Yanlış PIN, tekrar dene'; sub.classList.add('err'); }
+          if (dots) dots.classList.add('shake');
+          setTimeout(function () { patchPinDots(); if (dots) dots.classList.remove('shake'); }, 450);
+        }
+      }
+    },
+    'save-pin': function () {
+      var err = document.getElementById('pinErr');
+      var p = String(sheetState.pin || '').trim(), p2 = String(sheetState.pin2 || '').trim();
+      if (!/^\d{4}$/.test(p)) { if (err) { err.textContent = 'PIN tam 4 rakam olmalı.'; err.classList.add('warn'); } return; }
+      if (p !== p2) { if (err) { err.textContent = 'İki PIN aynı değil.'; err.classList.add('warn'); } return; }
+      setPin(hashPin(p)); unlocked = true; closeSheet(); render(); toast('Uygulama kilidi açıldı 🔒');
+    },
+    'remove-pin': function () { setPin(null); unlocked = true; closeSheet(); render(); toast('Kilit kaldırıldı'); },
+    'pin-forgot': function () {
+      openSheet('PIN\'i unuttum', '<div class="note-box" style="margin-bottom:14px">PIN yalnızca <b>bu cihazda</b> saklanır ve geri getirilemez. Sıfırlamak için bu cihazdaki Spendy verisi silinir. <b>Bulut yedeğin varsa</b> tekrar giriş yapınca tüm harcamaların geri gelir.</div><button class="btn btn--danger btn--block" data-act="pin-reset-local">PIN\'i sıfırla (bu cihazdaki veriyi sil)</button>');
+    },
+    'pin-reset-local': function () {
+      setPin(null);
+      try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+      unlocked = true; location.reload();
+    },
+
     // bulut
     'cloud-setup': function () { openCloudSetup(); },
     'cloud-save': async function () {
@@ -990,6 +1132,12 @@
       openSms(text);
     }
   }
+
+  // ── Otomatik kilit: arka plana geçince yeniden kilitle ────────
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { if (getPin()) unlocked = false; }
+    else if (getPin() && !unlocked) { closeSheet(); hideToast(); render(); }
+  });
 
   // ── Başlat ────────────────────────────────────────────────────
   render();
