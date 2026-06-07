@@ -348,3 +348,38 @@ alıyor. Ama en verimliler (Bağcılar 239₺, Zeytinburnu 541₺) ile pahalıla
 Avcılar district kaydı yok, neighborhood zaten tüm ilçeyi kapsıyor (reach 813K), sorun değil.
 
 Müşteri kararı (4 Haz): Bilgi olarak kalsın, bölge bazlı aksiyon alınmadı.
+
+---
+
+## 16. 7 Haziran 2026 — Max Conversions'a Geçiş
+
+### Karar
+TARGET_SPEND (Max Clicks, 130TL tavan) → **MAXIMIZE_CONVERSIONS** (sınırsız target CPA)
+Tarih: 7 Haziran 2026, akşam.
+
+### Tetikleyici doğrulama
+Müşteri 2 gerçek arama aldığını teyit etti (13:00 ve 17:36).
+"Tıkla ve ara" dönüşümlerinin gerçek aramalarla eşleştiği doğrulandı.
+
+### Veri yeterliliği (son 30g)
+- Birincil dönüşüm: 26 (min eşik 15, optimum 30, stabil 50)
+- Tüm dönüşüm: 33
+- Sınırda ama yeterli. Hafta başı (Pzt) öncesi geçiş için iyi zaman.
+
+### Beklentiler
+- 5-7 gün öğrenme, CPC ve hacim dalgalı.
+- CPC tavanı (130TL) artık geçersiz.
+- Algoritma "kim arar" optimizasyonu yapar:
+  - Saat: 10:00-16:00 altın pencere
+  - Bölge: Esenyurt > Bağcılar (CPA 239TL) > Zeytinburnu
+  - Gün: Çarşamba > Cuma > Cumartesi en kötü
+
+### İzleme
+- Müşteriden günlük teyit (gerçek arama geldi mi)
+- 7 gün sonra CPA / dönüşüm karşılaştırması (Max Clicks dönemi vs Max Conv dönemi)
+- Kötü giderse 2 hafta sonra geri Max Clicks'e dön
+
+### Hâlâ açık
+- "Local actions - Directions" birincil — gelecekte ikincil yapılabilir (panelden, API izin vermiyor)
+- WhatsApp dönüşümlerinin gerçek mesaj oranı bilinmiyor
+- AD_CALL (reklamdan direkt arama) hâlâ 0 — uzantı görünüyor ama ölçüm gelmiyor
