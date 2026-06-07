@@ -1,5 +1,5 @@
 /* ===================================================================
-   Cüzdan — Bulut yedek modülü  (window.Cloud)
+   Spendy — Bulut yedek modülü  (window.Cloud)
    Kendi (ayrı) Firebase projene REST ile bağlanır. SDK/derleme YOK.
    - Kimlik: Firebase Auth (e-posta + şifre)
    - Depo:   Realtime Database  /harcama/<uid>

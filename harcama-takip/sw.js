@@ -1,4 +1,4 @@
-/* Cüzdan — Service Worker
+/* Spendy — Service Worker
    Uygulama kabuğunu önbelleğe alır: hızlı açılır ve internet yokken de çalışır.
    (Veri yedeği buluttadır; bu yalnızca arayüz dosyaları içindir.)               */
 const CACHE = 'cuzdan-v1';

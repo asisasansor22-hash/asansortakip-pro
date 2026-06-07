@@ -1,5 +1,5 @@
 /* ===================================================================
-   Cüzdan — Harcama Takip  ·  uygulama mantığı (saf JS, derleme yok)
+   Spendy — Harcama Takip  ·  uygulama mantığı (saf JS, derleme yok)
    =================================================================== */
 (function () {
   'use strict';
@@ -258,7 +258,7 @@
       '<header class="topbar">' +
       '<div class="topbar__title">' +
       '<div class="topbar__logo">👛</div>' +
-      '<div><div class="topbar__name">Cüzdan</div><div class="topbar__sub">' + esc(sub) + '</div></div>' +
+      '<div><div class="topbar__name">Spendy</div><div class="topbar__sub">' + esc(sub) + '</div></div>' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:8px">' +
       '<span id="cloudBadge" style="font-size:11px;font-weight:700"></span>' +
@@ -508,7 +508,7 @@
       '<button class="set-row tappable danger" data-act="wipe"><span class="set-row__ic">🗑️</span><div class="set-row__main"><div class="set-row__title">Tüm verileri sil</div></div><span class="set-row__chev">›</span></button>' +
       '</div>';
 
-    var about = '<div class="note-box center">Cüzdan · sürüm 1.0<br>Verilerin yalnızca <b>senin cihazında</b> ve kurduğun <b>kendi bulutunda</b> saklanır. Banka şifren hiçbir yerde istenmez.</div>';
+    var about = '<div class="note-box center">Spendy · sürüm 1.0<br>Verilerin yalnızca <b>senin cihazında</b> ve kurduğun <b>kendi bulutunda</b> saklanır. Banka şifren hiçbir yerde istenmez.</div>';
 
     return cloud + vakif + prefs + data + '<input type="file" id="fileInput" accept=".json" style="display:none" />' + about;
   }
@@ -816,7 +816,7 @@
     var body = state.expenses.slice().sort(function (a, b) { return a.date.localeCompare(b.date); }).map(function (e) {
       return [e.date, catById(e.cat).name, '"' + (e.note || '').replace(/"/g, '""') + '"', String(e.amount).replace('.', ',')].join(';');
     }).join('\n');
-    download('cuzdan-harcamalar-' + todayStr() + '.csv', '﻿' + head + body, 'text/csv;charset=utf-8');
+    download('spendy-harcamalar-' + todayStr() + '.csv', '﻿' + head + body, 'text/csv;charset=utf-8');
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -948,7 +948,7 @@
     'stmt-add': function () { var n = importItems(sheetState.items || [], 'import'); closeSheet(); render(); toast(n + ' harcama içe aktarıldı'); },
 
     // veri
-    'export-json': function () { download('cuzdan-yedek-' + todayStr() + '.json', JSON.stringify(state, null, 2), 'application/json'); },
+    'export-json': function () { download('spendy-yedek-' + todayStr() + '.json', JSON.stringify(state, null, 2), 'application/json'); },
     'export-csv': function () { exportCSV(); },
     'import-json': function () { var f = document.getElementById('fileInput'); if (f) f.click(); },
     wipe: function () {

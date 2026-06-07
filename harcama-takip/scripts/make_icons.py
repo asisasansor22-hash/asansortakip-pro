@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cüzdan — uygulama ikonu üreteci (saf Python, harici kütüphane yok).
+Spendy — uygulama ikonu üreteci (saf Python, harici kütüphane yok).
 
 Emerald gradyan arka plan + beyaz cüzdan + para birimi tokası çizer.
 Supersampling (kenar yumuşatma) ile temiz PNG'ler üretir.
