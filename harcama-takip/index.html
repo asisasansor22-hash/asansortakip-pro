@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="tr" translate="no">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <title>Spendy — Harcama Takip</title>
+  <meta name="description" content="Günlük ve aylık harcamalarını saniyeler içinde tut." />
+  <meta name="theme-color" content="#059669" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- iPhone: ana ekrana eklenince tam ekran uygulama gibi açılsın -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Spendy" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <div id="overlay"></div>
+  <div id="toast"></div>
+
+  <script src="sync.js"></script>
+  <script src="app.js" defer></script>
+  <script>
+    // Service Worker — yalnızca güvenli kaynakta (https / localhost)
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>
