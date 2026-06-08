@@ -1,20 +1,20 @@
 # ADS Uzman Raporu — Asis Asansör Google Ads
 
 **Hazırlayan:** Claude (Google Ads uzmanı rolü)
-**Tarih:** 8 Haziran 2026
+**Tarih:** 8 Haziran 2026 | **Revize:** 8 Haziran akşam (AD_CALL teşhisi düzeltildi)
 **Hesap:** Asis Asansör (Customer ID: 7840558523)
 **Kampanya:** Asansör- Aylık Bakım (id: 23493351493)
-**Yöntem:** Hesap verisi (Google Ads API v20) + 2026 sektör araştırması (internet)
+**Yöntem:** Hesap verisi (Google Ads API v20) + 2026 sektör araştırması (internet) + müşteri operasyonel içgörüsü
 
 ---
 
 ## YÖNETİCİ ÖZETİ
 
-Hesap **iyi yolda** ama 3 önemli kaldıraç var:
+Hesap **iyi yolda** ama 2 önemli kaldıraç var:
 
-1. 🔴 **AD_CALL=0 sorunu** — gerçek arama uzantısı dönüşüm KAYDETMİYOR. Muhtemel sebep: çağrı süresi eşiği çok yüksek (varsayılan 60sn). **Bu, Max Conversions'ın en kritik eksiği.**
-2. 🟡 **~5.700₺/ay boşa harcama** — 3 keyword tık alıyor, 0 dönüşüm getiriyor.
-3. 🟢 **Mobil-first pazar** (%80 mobil, %12.4 dönüşüm oranı) — mobil deneyim CPA'yı belirliyor.
+1. 🔴 **~5.700₺/ay boşa harcama** — 3 keyword tık alıyor, 0 dönüşüm getiriyor. 18 Haz sonrası pause.
+2. 🟢 **Mobil-first pazar** (%80 mobil, %12.4 dönüşüm oranı) — mobil deneyim CPA'yı belirliyor.
+3. 🟡 **AD_CALL=0 normal** — kullanıcı reklamı görüp siteye gidiyor, oradan arıyor. 60sn ayarı kalite filtresi olarak doğru, dokunulmadı.
 
 **En verimli keyword:** "asansör firmaları" [EXACT] → CPA 284₺, %33 dönüşüm oranı.
 **Hedef:** CPA 707₺ (Mayıs) → 350-400₺ (Şubat seviyesi).
@@ -42,30 +42,51 @@ Hesap **iyi yolda** ama 3 önemli kaldıraç var:
 
 ---
 
-## 2. 🔴 KRİTİK BULGU: AD_CALL Dönüşümü Kaydedilmiyor
+## 2. 🟡 AD_CALL=0 — Önceki Teşhis REVİZE EDİLDİ (8 Haz akşam)
 
-### Sorun
+### Gözlem
 - Çağrı uzantısı (0543 507 07 94) **aktif ve reklamda görünüyor**
-- Ama "Reklamlardan sesli arama" (AD_CALL) son 14 günde **0 dönüşüm**
+- "Reklamlardan sesli arama" (AD_CALL) son 14 günde **0 dönüşüm**
 - Tüm telefon dönüşümleri "Tıkla ve ara" (siteden) üzerinden geliyor
 
-### İnternet araştırması ne diyor (2026 best practice)
-> "Varsayılan olarak 'Calls from ads' dönüşümü 60 saniyeden uzun aramaları sayar. Eşik çok yüksekse meşru aramalar filtrelenir. 60sn ayarlıysa ama müşteri aramaları 45sn sürüyorsa, hiçbiri sayılmaz."
-> — [Google Ads Help: Phone call conversion tracking](https://support.google.com/google-ads/answer/6100664)
+### İlk Teşhis (HATALI ÇIKTI)
+İnternet araştırması "60sn eşiği çok yüksek olabilir, 15sn'ye indir" diyordu.
+Önerimi uyguladım: 60sn → 15sn. **Sonra müşteri haklı bir itiraz getirdi.**
 
-### Muhtemel kök sebep
-Asansör acil arama davranışı: "Asansör arızalı, hemen gelir misiniz?" → 20-40 saniyelik kısa aramalar. **60sn eşiği bunları eler.**
+### Müşteri İçgörüsü (DOĞRU TEŞHİS)
+> "60sn ASLINDA İYİ BİR FİLTRE. Asansör müşterisinin gerçek arama akışı uzun:
+> - 'Asansör arızalı' (~10sn)
+> - Hangi bina/adres? (~20-30sn)
+> - Kaç katlı, ne tür asansör? (~15-20sn)
+> - Bakım/keşif planlaması (~20-30sn)
+> Toplam: 60+ saniye = ciddi alıcı.
+>
+> 60sn altı aramalar: fiyat soran (alıcı değil), yanlış arayan, vakit geçiren.
+> 15sn yapsam çer-çöp aramalar dönüşüm sayılır, algoritma yanlış kişiyi optimize eder."
 
-### Önerilen aksiyon (müşteri panelden yapmalı)
-1. Google Ads → **Hedefler → Dönüşümler**
-2. "Reklamlardan sesli arama yapma (2)" eylemini aç
-3. **"Çağrı uzunluğu"** ayarını bul
-4. **60sn → 15sn** indir (asansör acil aramaları kısa)
-5. Ayrıca "Call details" raporundan gerçek arama sürelerini kontrol et
+**Sektör genel tavsiyesi (15sn) ≠ Bu işin gerçeği.** Müşterinin operasyonel
+bilgisi internet kaynağından daha değerli.
 
-**Beklenen etki:** Gerçek aramalar sayılmaya başlar → Max Conversions doğru sinyal alır → optimizasyon kalitesi artar.
+### Yeniden Aksiyon
+- ✅ **60sn ayarına geri döndürüldü** (8 Haz akşam)
+- Ayara dokunulmayacak
 
-**Kaynak:** [Cometly: Google Ads Not Tracking Phone Call Conversions](https://www.cometly.com/post/google-ads-not-tracking-phone-call-conversions)
+### Asıl Sebep AD_CALL=0 (yeni hipotez)
+Eşik problemi değil, **kullanıcı davranışı:**
+1. Mobil kullanıcı reklamı görür
+2. **Numarayı çevirmek yerine başlığa tıklar** (siteye gider)
+3. Sayfayı tarar (güven kazanır)
+4. Sitedeki "Ara" butonuna basar → **CLICK_TO_CALL** dönüşümü
+
+Yani AD_CALL=0 problem değil, **akışın doğal sonucu.** Site güveni veriyor,
+sonra arıyorlar. Ana dönüşüm kanalı zaten "Tıkla ve ara" (%80).
+
+### Ders
+Sektör genel bilgisini her hesaba uygulamak yanlış. **Müşteri operasyonunu
+sormak şart.** Bu raporu hazırlarken aceleci davranıp önce uyguladım, sonra
+geri aldım. Gelecekte böyle değişiklikler önce müşteriye sorulacak.
+
+**Kaynak (ilk yanlış öneri için):** [Cometly: Google Ads Not Tracking Phone Call Conversions](https://www.cometly.com/post/google-ads-not-tracking-phone-call-conversions)
 
 ---
 
@@ -187,23 +208,29 @@ Bizim ana reklam zaten EXCELLENT, ama metin yenilemesi CTR'ı artıracak.
 
 ## 9. ÖNCELİKLENDİRİLMİŞ AKSİYON PLANI
 
-### 🔴 ACİL — Müşteri aksiyonu (panelden)
-1. **AD_CALL çağrı süresi eşiğini 60sn→15sn indir** (§2) — en yüksek etki
-2. **Lead Form review durumunu kontrol et** (20 May'dan beri)
+### ✅ TAMAMLANDI (8 Haz)
+1. 3 negatif eklendi (torbalı BROAD, belediyesi PHRASE, fupa asansör PHRASE)
+2. AD_CALL süre eşiği değerlendirildi → 60sn doğru, dokunulmadı (§2)
 
-### 🟢 ŞİMDİ — Yapıldı/yapılabilir (Max Conv'a zarar vermez)
-3. ✅ 3 negatif eklendi (torbalı, belediyesi, fupa)
-4. ⏳ Search Terms haftalık tarama (yeni negatif/keyword adayı)
+### 🔴 BEKLEYEN — Müşteri aksiyonu (panelden)
+3. **Lead Form review durumunu kontrol et** (20 May'dan beri incelemede)
+
+### 🟢 HAFTALIK — Düşük risk, sürekli
+4. Search Terms taraması (yeni negatif/keyword adayı)
+5. Performans izleme (dönüşüm geliyor mu, müşteri teyidi)
 
 ### 🟡 18 HAZ SONRASI — Max Conv stabilize olunca
-5. Verimsiz keyword pause (bahçelievler PHRASE, asansor bakim typo, vb.)
-6. Reklam metni yenileme (ADS-PLANI-1.md)
-7. Yüksek CR'li PHRASE → EXACT dönüşümü
+6. Verimsiz keyword pause:
+   - bahçelievler asansör (PHRASE) — 1.426₺/30g boşa
+   - asansor bakim (PHRASE, typo) — 1.029₺/30g boşa
+   - asansör bakım servisleri (PHRASE) — 704₺/30g boşa
+7. Reklam metni yenileme (ADS-PLANI-1.md)
+8. Yüksek CR'li PHRASE → EXACT dönüşümü (asansör bakım firmaları gibi)
 
 ### 🔵 1-2 AY SONRA — Sistem oturunca
-8. Maximize Conversion Value (dönüşümlere değer atayıp)
-9. Remarketing + In-market audience
-10. Yeni reklam grupları (acil arıza ayrı niyet)
+9. Maximize Conversion Value (dönüşümlere değer atayıp)
+10. Remarketing + In-market audience
+11. Yeni reklam grupları (acil arıza ayrı niyet)
 
 ---
 
