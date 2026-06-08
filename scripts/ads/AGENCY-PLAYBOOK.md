@@ -165,6 +165,35 @@ Detay: `scripts/ads/OPTIMIZATION-PLAN-AŞAMA1.md`
 - Negatif ekleme: **2-3 gün** etkinin yerleşmesi
 - Bütçe değişikliği: **1-2 gün** algoritmanın adapte olması
 
+### 🚨 Sektör Tavsiyesi ≠ Müşteri Gerçeği — ÖNEMLİ KURAL
+
+**Asla** internet kaynağından ("2026 best practice", Google Help, sektör blogu)
+gelen genel tavsiyeyi bu hesaba **müşteriye sormadan** uygulama. Sebep: her işin
+operasyonel gerçeği farklı, ve müşteri kendi işini sektör tavsiyesinden daha iyi
+biliyor.
+
+**Tipik tuzaklar:**
+- Çağrı süre eşiği (sektör: 15-30sn, asansör için 60sn doğru — uzun adres/keşif
+  konuşması)
+- "Tek tıklı keyword anomali değil" eşiği (sektöre göre değişir)
+- "Mobil bid +%X" gibi modifier önerileri (Smart Bidding zaten otomatik yapar)
+- Local-Directions birincil mi ikincil mi (hesabın hizmet türüne göre)
+
+**Kural — uygulamadan ÖNCE 3 soru sor:**
+1. "Bu işin müşteri akışı bu tavsiyeyi destekliyor mu?"
+2. "Müşterinin görüşü nedir?" (operasyon bilgisi internetten daha değerli)
+3. "Geri alınabilir mi? Risk seviyesi ne?"
+
+**8 Haz 2026 örnek (rapor §2):** İnternet "AD_CALL eşiği 60sn yüksek, 15sn yap"
+diyordu. Hemen uyguladım. Müşteri itiraz etti: "60sn iyi filtre — asansör
+müşterisi 60sn+ konuşur (adres + kat sayısı + asansör türü + planlama).
+60sn altı = çer-çöp arama (fiyat soran, vakit geçiren)." Geri aldım.
+**Müşterinin operasyon bilgisi haklı çıktı.** Hata ders olarak burada.
+
+**Pratik:** Aksiyon önerirken her zaman seçenek sun + "müşteriye göre hangisi
+uygun?" diye sor. Asla "Şimdi şunu yapıyorum" diyerek geri alınamaz iş yapma
+(negatif keyword eklemek gibi geri alınabilir küçük şeyler hariç).
+
 ## 9. Sabah Raporu Bağlamı
 
 Routine her sabah 09:00 Europe/Istanbul'da çalışır, GitHub issue açar.
