@@ -708,7 +708,7 @@ async function downloadWord(teklif, elev, config) {
   URL.revokeObjectURL(url)
 }
 
-async function downloadPdf(teklif, elev, config) {
+async function teklifPdfBlob(teklif, elev, config) {
   var dosyaAdi = teklifDosyaAdi(teklif, elev, 'pdf')
   var customLogoUrl = config && config.logoUrl ? config.logoUrl.trim() : ''
   var resolvedLogoUrl = customLogoUrl || (config && config._isAsis ? TEKLIF_HEADER_SRC : '')
@@ -760,10 +760,51 @@ async function downloadPdf(teklif, elev, config) {
       pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthMm, pageHeightMm, undefined, 'FAST')
     }
 
-    pdf.save(dosyaAdi)
+    return { blob: pdf.output('blob'), dosyaAdi: dosyaAdi }
   } finally {
     document.body.removeChild(iframe)
   }
+}
+
+async function downloadPdf(teklif, elev, config) {
+  var r = await teklifPdfBlob(teklif, elev, config)
+  var url = URL.createObjectURL(r.blob)
+  var a = document.createElement('a')
+  a.href = url
+  a.download = r.dosyaAdi
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// Teklif PDF'ini cihazın paylaşım menüsüyle (WhatsApp dahil) gönderir.
+// Web Share API dosya paylaşımını desteklemeyen tarayıcıda PDF indirilir
+// ve WhatsApp metin paylaşımı açılır.
+async function shareTeklifPdf(teklif, elev, config) {
+  var r = await teklifPdfBlob(teklif, elev, config)
+  var file
+  try { file = new File([r.blob], r.dosyaAdi, { type: 'application/pdf' }) } catch (e) { file = null }
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: r.dosyaAdi })
+      return
+    } catch (e) {
+      if (e && e.name === 'AbortError') return // kullanıcı vazgeçti
+      // paylaşım reddedildi → indirme fallback'ine düş
+    }
+  }
+  var url = URL.createObjectURL(r.blob)
+  var a = document.createElement('a')
+  a.href = url
+  a.download = r.dosyaAdi
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  var ad = (teklif.apartmanAdi || (elev && elev.ad) || '').trim()
+  var metin = 'Sayın yetkili, ' + (ad ? ad + ' için ' : '') + 'asansör bakım teklifimiz ektedir. İndirilen PDF dosyasını bu mesaja ekleyebilirsiniz.'
+  window.open('https://wa.me/?text=' + encodeURIComponent(metin), '_blank')
 }
 
 function TeklifKart(props) {
@@ -773,6 +814,7 @@ function TeklifKart(props) {
   var onDelete = props.onDelete
   var onWord = props.onWord
   var onPdf = props.onPdf
+  var onShare = props.onShare
 
   return (
     <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: 10 }}>
@@ -801,6 +843,7 @@ function TeklifKart(props) {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={function() { onWord(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#1e3a5f', color: '#93c5fd', border: '1px solid #3b82f633', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>Word Olarak Indir</button>
           <button onClick={function() { onPdf(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#3a1e1e', color: '#fca5a5', border: '1px solid #ef444433', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>PDF Olarak Indir</button>
+          <button onClick={function() { onShare(teklif) }} style={{ padding: '7px 11px', borderRadius: 8, background: '#0f2e1f', color: '#34d399', border: '1px solid #10b98133', cursor: 'pointer', fontWeight: 700, fontSize: 11 }}>📲 Paylaş</button>
         </div>
       </div>
     </div>
@@ -1088,6 +1131,7 @@ function TeklifModal(props) {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button onClick={function() { downloadWord(form, seciliElev, tenantConfig).catch(function(err) { console.error(err); alert('Word çıktısı hazırlanamadı.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#1e3a5f', border: '1px solid #3b82f633', color: '#93c5fd', cursor: 'pointer', fontWeight: 700 }}>Word Olarak Indir</button>
             <button onClick={function() { downloadPdf(form, seciliElev, tenantConfig).catch(function(err) { console.error(err); alert('PDF ciktisi hazirlanamadi.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#3a1e1e', border: '1px solid #ef444433', color: '#fca5a5', cursor: 'pointer', fontWeight: 700 }}>PDF Olarak Indir</button>
+            <button onClick={function() { shareTeklifPdf(form, seciliElev, tenantConfig).catch(function(err) { console.error(err); alert('Paylaşım hazırlanamadı.'); }) }} style={{ padding: '10px 14px', borderRadius: 10, background: '#0f2e1f', border: '1px solid #10b98133', color: '#34d399', cursor: 'pointer', fontWeight: 700 }}>📲 Paylaş</button>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <button onClick={closeModal} style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 700 }}>Iptal</button>
@@ -1309,6 +1353,12 @@ export default function TeklifYonetimi(props) {
                 downloadPdf(item, elevs.find(function(e) { return e.id === item.asansorId }), tenantConfig).catch(function(err) {
                   console.error(err)
                   alert('PDF ciktisi hazirlanamadi.')
+                })
+              }}
+              onShare={function(item) {
+                shareTeklifPdf(item, elevs.find(function(e) { return e.id === item.asansorId }), tenantConfig).catch(function(err) {
+                  console.error(err)
+                  alert('Paylaşım hazırlanamadı.')
                 })
               }}
             />

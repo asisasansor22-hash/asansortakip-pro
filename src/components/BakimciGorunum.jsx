@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { makbuzBakimYazdir } from '../utils/makbuz.js'
+import { makbuzBakimYazdir, makbuzWhatsAppGonder } from '../utils/makbuz.js'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
@@ -470,6 +470,10 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                 onClick:function(){makbuzBakimYazdir(makbuzSonBakim.m,makbuzSonBakim.elev);setMakbuzSonBakim(null);},
                 style:{padding:"14px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
               },"🖨️ Bakım Makbuzunu Yazdır")
+              ,React.createElement('button',{
+                onClick:function(){makbuzWhatsAppGonder(makbuzSonBakim.m,makbuzSonBakim.elev,_firmaAdi);setMakbuzSonBakim(null);},
+                style:{padding:"14px",background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
+              },"📲 WhatsApp ile Gönder")
               ,React.createElement('button',{
                 onClick:function(){setMakbuzSonBakim(null);},
                 style:{padding:"12px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
