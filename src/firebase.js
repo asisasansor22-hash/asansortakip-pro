@@ -362,6 +362,43 @@ export async function dbPush(key, value) {
   return dbPushResolvedPath(p, value);
 }
 
+// ------- ETag'li koşullu okuma/yazma (kapama kilidi) ------------------------
+// Aylık/haftalık kapama birden fazla cihazda aynı anda tetiklenebilir.
+// Firebase REST ETag desteğiyle "oku → değişmediyse yaz" yapılır; yarışı
+// kaybeden cihaz 412 alır ve kapamayı tekrarlamaz.
+export async function dbGetWithETag(key) {
+  var p = tenantKeyPath(key);
+  if (p === null) return null;
+  try {
+    var token = await getToken();
+    var url = buildDbUrl(p, token);
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
+    var res = await fetch(url, { headers: { "X-Firebase-ETag": "true" }, signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    var etag = res.headers.get("ETag");
+    var data = await res.json();
+    return { etag: etag || null, data: (data !== undefined) ? data : null };
+  } catch(e) { return null; }
+}
+
+export async function dbSetIfMatch(key, value, etag) {
+  var p = tenantKeyPath(key);
+  if (p === null) return false;
+  try {
+    var token = await getToken();
+    var url = buildDbUrl(p, token);
+    var headers = { "Content-Type": "application/json" };
+    if (etag) headers["if-match"] = etag;
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 15000);
+    var res = await fetch(url, { method: "PUT", headers: headers, body: JSON.stringify(value), signal: controller.signal });
+    clearTimeout(timer);
+    return res.ok; // 412 → başka cihaz önce yazdı
+  } catch(e) { return false; }
+}
+
 export async function dbDeleteRaw(path) {
   try {
     var token = await getToken();

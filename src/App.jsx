@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -58,6 +58,13 @@ function finansMaintAlinan(m){
   if(m.odendi===true) return finansTutar(m.tutar);
   return 0;
 }
+/** Bakımın fiilen yapıldığı tarih: yapildiSaat öncelikli, yoksa planlanan tarih.
+ *  Ay sınırında (31 Mayıs'a planlı, 1 Haziran'da yapılan bakım) tahsilatın
+ *  iki ayda birden sayılmasını önler — sonOdemeler kaydıyla aynı aya düşer. */
+function maintFiiliTarih(m){
+  if(!m) return null;
+  return parseFinansDate(m.yapildiSaat)||parseFinansDate(m.tarih);
+}
 /** Finans listesi: bakım sentetik satırında saat — m.saat yoksa yapildiSaat'ten (BakimciGorunum ile uyum) */
 function finansSaatFromMaint(m){
   if(!m) return "--:--";
@@ -86,7 +93,7 @@ function maintTahsilatNotInSonOdemeler(sonOdemeler,maints,ayBas,aySon){
   return maints.filter(function(m){
     var amt=finansMaintAlinan(m);
     if(!m.yapildi||amt<=0) return false;
-    var od=parseFinansDate(m.tarih);
+    var od=maintFiiliTarih(m);
     if(!od||od<ayBas||od>aySon) return false;
     return !hasSonOdemeMatchForMaint(sonOdemeler,m,ayBas,aySon,amt);
   }).reduce(function(s,m){ return s+finansMaintAlinan(m); },0);
@@ -124,7 +131,7 @@ function odemeSnapshotBetween(sonOdemeler,maints,elevs,bas,son){
   (maints||[]).filter(function(m){
     var amt=finansMaintAlinan(m);
     if(!m.yapildi||amt<=0) return false;
-    var od=parseFinansDate(m.tarih);
+    var od=maintFiiliTarih(m);
     if(!od||od<bas||od>son) return false;
     return !hasSonOdemeMatchForMaint(sonOdemeler,m,bas,son,amt);
   }).forEach(function(m){
@@ -1025,8 +1032,28 @@ function App(){
   // ═══════════════════════════════════════════════════════════
   useEffect(function(){
     if(ilkYukleme.current) return; // veriler yüklenmeden tetiklenme
+    // Kapama yalnızca yönetici oturumunda çalışır. Bakımcı cihazı kapamayı
+    // tetiklerse at_aylik yazımı rules'ta reddedilir ama at_elevs (devir
+    // artışı) yazılabildiğinden devirler kapama kaydı olmadan artar ve
+    // yönetici cihazı aynı ayı tekrar kapatırdı (çift artış).
+    if(rol!=="yonetici") return;
 
-    function yapHaftalikKapama(){
+    /* Sunucu-onaylı kapama kilidi: listenin güncel halini ETag ile okur,
+       kapamaKey yoksa koşullu PUT ile yazar. Yarışı kaybeden cihaz 412 alır.
+       Dönüş: {ok:true,list} | {ok:false,closed:true,list} | {ok:false} */
+    async function kapamaSunucuyaYaz(dbKey,kapamaKey,buildSnap,maxLen){
+      var srv=await dbGetWithETag(dbKey);
+      if(!srv) return {ok:false};
+      var serverList=Array.isArray(srv.data)?srv.data.filter(Boolean):[];
+      if(serverList.find(function(k){return k&&k.kapamaKey===kapamaKey;})) return {ok:false,closed:true,list:serverList};
+      var yeni=[buildSnap()].concat(serverList);
+      if(yeni.length>maxLen) yeni=yeni.slice(0,maxLen);
+      var yazildi=await dbSetIfMatch(dbKey,yeni,srv.etag);
+      if(!yazildi) return {ok:false};
+      return {ok:true,list:yeni};
+    }
+
+    async function yapHaftalikKapama(){
       if(kapamaTetiklendi.current.haftalik) return;
       kapamaTetiklendi.current.haftalik=true;
       var simdi=new Date();
@@ -1036,7 +1063,6 @@ function App(){
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var gun=simdi.getDay();
       var pazartesiFark=gun===0?-6:1-gun;
       var baslangic=new Date(simdi);
@@ -1045,18 +1071,14 @@ function App(){
       var bitis=new Date(baslangic);
       bitis.setDate(baslangic.getDate()+6);
       bitis.setHours(23,59,59,999);
-      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
-      setHaftalikKapamalar(function(prev){
-        var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
-        if(zatenVar) return prev;
-        var basStr=baslangic.toLocaleDateString("tr-TR");
-        var bitStr=bitis.toLocaleDateString("tr-TR");
-        var snap={
+      var sonuc=await kapamaSunucuyaYaz("at_haftalik",kapamaKey,function(){
+        var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
+        return {
           id:Date.now(),
           kapamaKey:kapamaKey,
           tip:"haftalik",
-          baslarken:basStr,
-          biterken:bitStr,
+          baslarken:baslangic.toLocaleDateString("tr-TR"),
+          biterken:bitis.toLocaleDateString("tr-TR"),
           baslangicISO:baslangic.toISOString(),
           bitisISO:bitis.toISOString(),
           kapamaZamani:simdi.toLocaleString("tr-TR"),
@@ -1064,13 +1086,18 @@ function App(){
           toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
-        var yeni=[snap,...prev];
-        if(yeni.length>26) yeni=yeni.slice(0,26);
-        return yeni;
-      });
+      },26);
+      if(sonuc.closed){
+        try{localStorage.setItem(lsKey,"1");}catch(e){}
+        setHaftalikKapamalar(sonuc.list);
+        return;
+      }
+      if(!sonuc.ok){ kapamaTetiklendi.current.haftalik=false; return; } // sonraki dakika tekrar dene
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
+      setHaftalikKapamalar(sonuc.list);
     }
 
-    function yapAylikKapama(){
+    async function yapAylikKapama(){
       if(kapamaTetiklendi.current.aylik) return;
       kapamaTetiklendi.current.aylik=true;
       var simdi=new Date();
@@ -1078,18 +1105,17 @@ function App(){
       var ay=simdi.getMonth()===0?11:simdi.getMonth()-1;
       var yil=simdi.getMonth()===0?simdi.getFullYear()-1:simdi.getFullYear();
       var kapamaKey="A"+yil+"-M"+(ay+1);
-      // Çift çalışma koruması: localStorage (Firebase gecikmesine karşı) + ref (stale closure'a karşı)
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||aylikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var ayBaslangic=new Date(yil,ay,1);ayBaslangic.setHours(0,0,0,0);
       var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
-      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
-      setAylikKapamalar(function(prev){
-        var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
-        if(zatenVar) return prev;
-        var snap={
+      /* Sunucu kilidi: localStorage cihaza özel olduğundan iki cihaz aynı ayı
+         iki kere kapatabiliyordu (devir iki kere artıyordu). Kapama kaydını
+         koşullu yazan TEK cihaz devir artışını da yapar; diğerleri eşitlenir. */
+      var sonuc=await kapamaSunucuyaYaz("at_aylik",kapamaKey,function(){
+        var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
+        return {
           id:Date.now(),
           kapamaKey:kapamaKey,
           tip:"aylik",
@@ -1104,18 +1130,26 @@ function App(){
           toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
-        var yeni=[snap,...prev];
-        if(yeni.length>12) yeni=yeni.slice(0,12);
-        return yeni;
-      });
+      },12);
+      if(sonuc.closed){
+        // Başka cihaz kapatmış — yereli sunucuyla eşitle, devire DOKUNMA
+        try{localStorage.setItem(lsKey,"1");}catch(e){}
+        setAylikKapamalar(sonuc.list);
+        return;
+      }
+      if(!sonuc.ok){ kapamaTetiklendi.current.aylik=false; return; } // sonraki dakika tekrar dene
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
+      setAylikKapamalar(sonuc.list);
       /* Ay kapanışı: bakım yapılan asansörlerde Aylık Ücret Eski Devir'e eklenir.
          Böylece bu ayın "Güncel Devir"i, gelecek ayın "Eski Devir"i olarak devreder.
-         Bu blok ayda bir kez çalışır (kapamaTetiklendi + localStorage guard ile korunur). */
+         Yalnızca sunucu kilidini kazanan cihaz çalıştırır.
+         Bakımın hangi aya sayılacağı fiili tarihe göre (maintFiiliTarih). */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
           var bakimYapildi=maints.find(function(m){
-            var d=new Date(m.tarih);
-            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
+            if(Number(m.asansorId)!==Number(ev.id)||!m.yapildi) return false;
+            var d=maintFiiliTarih(m);
+            return d&&d>=ayBaslangic&&d<=aySon;
           });
           if(!bakimYapildi) return ev;
           var yeniEski=finansTutar(ev.bakiyeDevir)+finansTutar(ev.aylikUcret);
@@ -1165,7 +1199,7 @@ function App(){
     kontrolEt();
     var timer=setInterval(kontrolEt,60000); // Her dakika kontrol et
     return function(){clearInterval(timer);};
-  },[sonOdemeler,maints,elevs]);
+  },[sonOdemeler,maints,elevs,rol]);
 
   // ═══════════════════════════════════════════════════════════
   // GİDER OTOMATİK HAFTALIK SIFIRLAMA & GÜNLÜK KAYIT
