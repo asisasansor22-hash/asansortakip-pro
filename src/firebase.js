@@ -593,7 +593,7 @@ export async function listBakimBildirimleri() {
 // ------- FCM web push (uygulama kapalıyken bildirim) ------------------------
 // Firebase Console → Proje Ayarları → Cloud Messaging → Web Push certificates
 // bölümünden "Key pair" değerini buraya yapıştırın.
-const FCM_VAPID_KEY = "";
+const FCM_VAPID_KEY = "BB67K3liRRkXwqOfseHSbwtduEigcTKS8rXEzSzRVszICVW9Obn7oHy7EQewH-llyvUc5EOmkNHrKwltAEfFBPo";
 
 /** Push bildirim durumu: "hazir-degil" (vapid yok / tarayıcı desteklemiyor),
  *  "granted" | "denied" | "default" (Notification.permission) */
