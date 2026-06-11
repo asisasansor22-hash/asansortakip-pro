@@ -1832,7 +1832,7 @@ function App(){
   const [kilitModal,setKilitModal]=useState(null); // {ozellik:"Finans", gerekenPlan:"Profesyonel"}
   const planAdi = isSuper ? "Asis (Sınırsız)" : (planLimits[tenantPlan] || planLimits.baslangic).ad;
 
-  const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar","👷 Takip"];
   const TABS_YON = isSuper ? TABS_YON_BASE.concat(["🏭 Firmalar"]) : TABS_YON_BASE;
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
@@ -3527,8 +3527,124 @@ function App(){
   )
 )
 
+/* BAKIMCI TAKİP */
+, tab===15&&rol==="yonetici"&&(function(){
+  var bugun=new Date();
+  var yyyy=bugun.getFullYear();
+  var mm=String(bugun.getMonth()+1).padStart(2,"0");
+  var dd=String(bugun.getDate()).padStart(2,"0");
+  var bugunStr=yyyy+"-"+mm+"-"+dd;
+  function parseTakipTarih(saat){
+    if(!saat) return null;
+    var s=String(saat).trim();
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+    var p=s.split(" ")[0].split(".");
+    if(p.length===3&&p[2].length===4) return p[2]+"-"+p[1].padStart(2,"0")+"-"+p[0].padStart(2,"0");
+    return null;
+  }
+  function saaatStr(saat){
+    if(!saat) return "--:--";
+    var s=String(saat).trim();
+    var parts=s.split(" ");
+    var t=parts.length>=2?parts[parts.length-1]:"";
+    if(/^\d{1,2}:\d{2}/.test(t)) return t.substring(0,5);
+    return "--:--";
+  }
+  var bugunYapilan=maints.filter(function(m){
+    return m.yapildi && parseTakipTarih(m.yapildiSaat)===bugunStr;
+  });
+  // Bakımcıya atanmamış ama bugün yapılanları da göster
+  var gruplar={};
+  bugunYapilan.forEach(function(m){
+    var kid=m.bakimciId||"__yonetici__";
+    var kad=m.bakimciAd||(m.bakimciId?"Bakımcı "+m.bakimciId:"Yönetici");
+    var krenk=m.bakimciRenk||"#64748b";
+    if(!gruplar[kid]) gruplar[kid]={id:kid,ad:kad,renk:krenk,bakimlar:[]};
+    gruplar[kid].bakimlar.push(m);
+  });
+  var grupList=Object.values(gruplar).sort(function(a,b){return a.ad.localeCompare(b.ad,"tr");});
+  var toplamBakim=bugunYapilan.length;
+  var toplamTahsilat=bugunYapilan.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
+  var tarihLabel=dd+"."+mm+"."+yyyy;
+  return React.createElement('div',{className:"ios-animate",style:{padding:"0 0 40px"}},
+    React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
+      React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:18,fontWeight:800,color:"#e0e6f0"}},"👷 Bakımcı Takip"),
+        React.createElement('div',{style:{fontSize:12,color:"#64748b",marginTop:2}},tarihLabel+" · Bugün tamamlanan bakımlar")
+      ),
+      React.createElement('div',{style:{display:"flex",gap:12}},
+        React.createElement('div',{style:{textAlign:"center",background:"#1a2236",borderRadius:12,padding:"8px 16px"}},
+          React.createElement('div',{style:{fontSize:20,fontWeight:800,color:"#3b82f6"}},toplamBakim),
+          React.createElement('div',{style:{fontSize:10,color:"#64748b",marginTop:1}},"Bakım")
+        ),
+        React.createElement('div',{style:{textAlign:"center",background:"#1a2236",borderRadius:12,padding:"8px 16px"}},
+          React.createElement('div',{style:{fontSize:20,fontWeight:800,color:"#10b981"}},toplamTahsilat.toLocaleString("tr-TR")+"₺"),
+          React.createElement('div',{style:{fontSize:10,color:"#64748b",marginTop:1}},"Tahsilat")
+        )
+      )
+    ),
+    grupList.length===0
+      ? React.createElement('div',{style:{textAlign:"center",padding:"60px 20px",color:"#64748b"}},
+          React.createElement('div',{style:{fontSize:36,marginBottom:12}},"📭"),
+          React.createElement('div',{style:{fontWeight:700,fontSize:15}},"Bugün henüz bakım tamamlanmamış"),
+          React.createElement('div',{style:{fontSize:12,marginTop:6}},"Bakımcılar bakım kaydettikçe burada görünecek")
+        )
+      : grupList.map(function(g){
+          var gToplam=g.bakimlar.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
+          return React.createElement('div',{key:g.id,style:{background:"#111827",borderRadius:16,marginBottom:14,overflow:"hidden",border:"1px solid #1e2d40"}},
+            React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:g.renk+"22",borderBottom:"1px solid "+g.renk+"44"}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+                React.createElement('div',{style:{width:10,height:10,borderRadius:"50%",background:g.renk,flexShrink:0}}),
+                React.createElement('div',{style:{fontWeight:800,fontSize:15,color:g.renk}},g.ad)
+              ),
+              (function(){
+                var odenenSay=g.bakimlar.filter(function(m){return m.odendi;}).length;
+                var odenmeyenSay=g.bakimlar.filter(function(m){return !m.odendi&&finansMaintAlinan(m)===0;}).length;
+                return React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+                  React.createElement('span',{style:{background:g.renk+"33",color:g.renk,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},g.bakimlar.length+" bakım"),
+                  odenenSay>0&&React.createElement('span',{style:{background:"#10b98122",color:"#10b981",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},"✅ "+odenenSay),
+                  odenmeyenSay>0&&React.createElement('span',{style:{background:"#ef444422",color:"#ef4444",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},"❌ "+odenmeyenSay),
+                  gToplam>0&&React.createElement('span',{style:{background:"#10b98122",color:"#10b981",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},gToplam.toLocaleString("tr-TR")+"₺")
+                );
+              }())
+            ),
+            g.bakimlar.map(function(m){
+              var elev=elevs.find(function(e){return Number(e.id)===Number(m.asansorId);})||{};
+              var alinan=finansMaintAlinan(m);
+              var saat=saaatStr(m.yapildiSaat);
+              return React.createElement('div',{key:m.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid #1e2d40"}},
+                React.createElement('div',{style:{flex:1,minWidth:0}},
+                  React.createElement('div',{style:{fontWeight:700,fontSize:13,color:"#e0e6f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},elev.ad||("Asansör #"+m.asansorId)),
+                  React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
+                    elev.ilce&&React.createElement('span',{style:{marginRight:6,color:"#8b5cf6"}},elev.ilce),
+                    React.createElement('span',null,"🕐 "+saat)
+                  )
+                ),
+                React.createElement('div',{style:{textAlign:"right",flexShrink:0,marginLeft:12}},
+                  m.odendi
+                    ? React.createElement('div',null,
+                        React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#10b981"}},"+"+alinan.toLocaleString("tr-TR")+"₺"),
+                        React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:1}},"✅ Ödendi")
+                      )
+                    : alinan>0
+                      ? React.createElement('div',null,
+                          React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#f59e0b"}},"+"+alinan.toLocaleString("tr-TR")+"₺"),
+                          React.createElement('div',{style:{fontSize:10,color:"#f59e0b",marginTop:1}},"⚠️ Kısmi · "+(finansTutar(m.tutar)-alinan).toLocaleString("tr-TR")+"₺ kalan")
+                        )
+                      : React.createElement('div',null,
+                          React.createElement('div',{style:{fontWeight:800,fontSize:12,color:"#ef4444"}},"0₺"),
+                          React.createElement('div',{style:{fontSize:10,color:"#ef4444",marginTop:1}},"❌ Ödeme alınmadı")
+                        )
+                )
+              );
+            })
+          );
+        })
+  );
+}())
+
 /* FIRMALAR (süper-admin) */
-, tab===15&&rol==="yonetici"&&isSuper&&(
+, tab===16&&rol==="yonetici"&&isSuper&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(FirmalarPaneli, { currentTenantId: tenantId })
   )
