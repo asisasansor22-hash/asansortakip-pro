@@ -342,18 +342,36 @@ export async function dbSetRaw(path, value) {
 }
 
 async function dbPushResolvedPath(path, value) {
-  try {
-    var token = await getToken();
-    var url = buildDbUrl(path, token);
-    var res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-    if (!res.ok) return null;
-    var data = await res.json();
-    return data && data.name ? data.name : null;
-  } catch (e) { return null; }
+  var attempts = 3;
+  var delay = 300;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var token = await getToken();
+      if (token) {
+        var url = buildDbUrl(path, token);
+        var controller = new AbortController();
+        var timer = setTimeout(function(){ controller.abort(); }, 12000);
+        var res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          var data = await res.json();
+          return data && data.name ? data.name : null;
+        }
+        // 4xx (izin/auth) — retry'la düzelmez
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) return null;
+      }
+    } catch (e) {}
+    if (i < attempts - 1) {
+      await new Promise(function(r){ setTimeout(r, delay); });
+      delay = delay * 3;
+    }
+  }
+  return null;
 }
 
 export async function dbPush(key, value) {

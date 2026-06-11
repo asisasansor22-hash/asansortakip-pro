@@ -730,22 +730,37 @@ function App(){
   useEffect(function(){
     if (rol !== "yonetici" || !tenantId) return;
     var stopped = false;
-    bakimBildirimSeenRef.current = null;
+    var lsKey = "at_bb_seen_" + tenantId;
+    // Son görülen bildirim zamanı cihazda kalıcı: yönetici moduna sonradan
+    // girilse bile aradaki bildirimler kaçmaz (aynı cihazda rol değişimi dahil).
+    bakimBildirimSeenRef.current = lsGet(lsKey) || null;
+    function ileriAl(ts){
+      bakimBildirimSeenRef.current = ts;
+      lsSet(lsKey, ts);
+    }
     async function tick(initial){
       try {
         var list = await listBakimBildirimleri();
         if (stopped) return;
-        if (initial) {
-          // Oturum açılışı: geçmişi gösterme, en son olayı baz al
-          bakimBildirimSeenRef.current = list.length ? list[list.length-1].ts : new Date().toISOString();
+        if (initial && !bakimBildirimSeenRef.current) {
+          // Bu cihazda ilk kullanım: geçmişi gösterme, en son olayı baz al
+          ileriAl(list.length ? list[list.length-1].ts : new Date().toISOString());
           return;
         }
         if (!list.length) return;
         var baz = bakimBildirimSeenRef.current || "";
-        var yeni = list.filter(function(e){ return String(e.ts||"") > String(baz); });
+        // 24 saatten eski olayları toast yapma (uzun aradan sonra yığılmasın)
+        var esik = new Date(Date.now() - 24*60*60*1000).toISOString();
+        var yeni = list.filter(function(e){
+          var ts = String(e.ts||"");
+          return ts > baz && ts > esik;
+        });
         if (yeni.length) {
-          bakimBildirimSeenRef.current = list[list.length-1].ts;
+          ileriAl(list[list.length-1].ts);
           setBakimBildirimleri(function(prev){ return prev.concat(yeni); });
+        } else if (list.length && String(list[list.length-1].ts||"") > baz) {
+          // Yeni ama eşikten eski olaylar: baz'ı ilerlet, toast üretme
+          ileriAl(list[list.length-1].ts);
         }
       } catch(e){}
     }
@@ -762,7 +777,10 @@ function App(){
   }
   // Bakımcı bir bakımı tamamlayınca yöneticiye iletilecek olayı yazar.
   async function bakimTamamlandiBildir(payload){
-    try { await pushBakimBildirim(payload); } catch(e){ console.warn("Bakım bildirimi yazılamadı:", e); }
+    try {
+      var key = await pushBakimBildirim(payload);
+      if (!key) console.warn("Bakım bildirimi yazılamadı (izin/ağ)");
+    } catch(e){ console.warn("Bakım bildirimi yazılamadı:", e); }
   }
   // Tarayıcı online/offline event'leri — kullanıcı kabloyu çıkarınca anında bandı göster.
   useEffect(function(){
