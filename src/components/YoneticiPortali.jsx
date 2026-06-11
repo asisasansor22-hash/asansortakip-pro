@@ -5,7 +5,7 @@ function ekstraSiraKey(k){
   return String(k.tarih||"") + " " + String(k.saat||"");
 }
 
-export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler, ekstraIsler}){
+export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler, ekstraIsler, sonOdemeler}){
   const [seciliId, setSeciliId] = useState(null);
   const [aramaText, setAramaText] = useState("");
   const [ilce, setIlce] = useState("Tümü");
@@ -33,6 +33,15 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
       : [],
     [ekstraIsler,seciliId]
   );
+  // Alınan ödemeler: sonOdemeler kayıtları (iptal edilmemiş), yeniden eskiye
+  const eOdemeler = useMemo(
+    ()=>seciliId
+      ? [...(sonOdemeler||[]).filter(o=>Number(o.aid)===Number(seciliId)&&!o.iptal)]
+          .sort((a,b)=>(String(b.tarih||"")+" "+String(b.saat||"")).localeCompare(String(a.tarih||"")+" "+String(a.saat||"")))
+      : [],
+    [sonOdemeler,seciliId]
+  );
+  const eOdemeToplam = useMemo(()=>eOdemeler.reduce((s,o)=>s+(Number(o.alinanTutar)||0),0),[eOdemeler]);
 
   if(secili){
     return (
@@ -61,6 +70,44 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
               {secili.tip&&<div style={{fontSize:11}}><span style={{color:"var(--text-muted)"}}>Tip: </span><b>{secili.tip}</b></div>}
             </div>
           )}
+          {/* Finansal Özet */}
+          <div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"10px 12px",background:"var(--bg-elevated)",borderRadius:10}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:(Number(secili.bakiyeDevir)||0)>0?"var(--ios-red)":"var(--ios-green)"}}>{(Number(secili.bakiyeDevir)||0).toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Devir Bakiye</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:"var(--accent)"}}>{(Number(secili.aylikUcret)||0).toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Aylık Ücret</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:"var(--ios-green)"}}>{eOdemeToplam.toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Toplam Tahsilat</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Alınan Ödemeler */}
+        <div style={{background:"var(--bg-panel)",borderRadius:14,overflow:"hidden",marginBottom:10}}>
+          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>💰 Alınan Ödemeler</span>
+            {eOdemeler.length>0&&<span style={{fontSize:11,fontWeight:700,color:"var(--ios-green)"}}>{eOdemeler.length} ödeme</span>}
+          </div>
+          {eOdemeler.length===0
+            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Ödeme kaydı yok.</div>
+            :eOdemeler.slice(0,15).map(o=>(
+              <div key={o.id} style={{padding:"10px 14px",borderTop:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>📅 {o.tarih}{o.saat?" · 🕐 "+o.saat:""}</div>
+                  {(o.not||o.tahsilatYapan)&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:2}}>
+                    {o.not?"📝 "+o.not:""}{o.not&&o.tahsilatYapan?" · ":""}{o.tahsilatYapan?"🔧 "+o.tahsilatYapan:""}
+                  </div>}
+                </div>
+                <div style={{fontSize:13,fontWeight:800,color:"var(--ios-green)",whiteSpace:"nowrap"}}>+{(Number(o.alinanTutar)||0).toLocaleString("tr-TR")} ₺</div>
+              </div>
+            ))
+          }
+          {eOdemeler.length>15&&<div style={{padding:"8px 14px",fontSize:11,color:"var(--text-muted)",textAlign:"center",borderTop:"0.5px solid var(--border-soft)"}}>+{eOdemeler.length-15} ödeme daha (Finans sekmesinde)</div>}
         </div>
 
         {/* Son Bakım Geçmişi */}
@@ -77,9 +124,12 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
                   {m.yapildiSaat&&<div style={{fontSize:11,color:"var(--text-dim)"}}>{m.yapildiSaat}</div>}
                   {m.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:2}}>📝 {m.notlar}</div>}
                 </div>
-                {m.yapildi&&<div style={{fontSize:12,fontWeight:700,color:"var(--ios-green)",whiteSpace:"nowrap"}}>
-                  {(m.alinanTutar||m.tutar||0).toLocaleString("tr-TR")} ₺
-                </div>}
+                {m.yapildi&&(function(){
+                  var alinan=(m.alinanTutar!==undefined&&m.alinanTutar!==null&&m.alinanTutar!=="")?(Number(m.alinanTutar)||0):(m.odendi?(Number(m.tutar)||0):0);
+                  return alinan>0
+                    ?<div style={{fontSize:12,fontWeight:700,color:"var(--ios-green)",whiteSpace:"nowrap"}}>+{alinan.toLocaleString("tr-TR")} ₺</div>
+                    :<div style={{fontSize:11,fontWeight:700,color:"var(--ios-red)",whiteSpace:"nowrap"}}>ödeme alınmadı</div>;
+                })()}
               </div>
             ))
           }
@@ -87,9 +137,9 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
 
         {/* Ekstra İş Geçmişi (Bakımın altında) */}
         <div style={{background:"var(--bg-panel)",borderRadius:14,overflow:"hidden",marginBottom:10}}>
-          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)"}}>🔩 Ekstra İş Geçmişi</div>
+          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)"}}>🔩 Takılan Parçalar & Ekstra İşler</div>
           {eEkstra.length===0
-            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Ekstra iş kaydı yok.</div>
+            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Parça / ekstra iş kaydı yok.</div>
             :eEkstra.slice(0,10).map(k=>(
               <div key={k.id} style={{padding:"10px 14px",borderTop:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
