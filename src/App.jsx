@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -16,6 +16,7 @@ import BakimAtamaPaneli from './components/BakimAtamaPaneli.jsx'
 import EkstraIsEkrani from './components/EkstraIsEkrani.jsx'
 import ArizaYonetimiAdmin from './components/ArizaYonetimiAdmin.jsx'
 import BakimciGorunum from './components/BakimciGorunum.jsx'
+import BakimBildirimToast from './components/BakimBildirimToast.jsx'
 import NotlarEkrani from './components/NotlarEkrani.jsx'
 import MuayeneTakibi from './components/MuayeneTakibi.jsx'
 import SozlesmeYonetimi from './components/SozlesmeYonetimi.jsx'
@@ -57,6 +58,13 @@ function finansMaintAlinan(m){
   if(m.odendi===true) return finansTutar(m.tutar);
   return 0;
 }
+/** Bakımın fiilen yapıldığı tarih: yapildiSaat öncelikli, yoksa planlanan tarih.
+ *  Ay sınırında (31 Mayıs'a planlı, 1 Haziran'da yapılan bakım) tahsilatın
+ *  iki ayda birden sayılmasını önler — sonOdemeler kaydıyla aynı aya düşer. */
+function maintFiiliTarih(m){
+  if(!m) return null;
+  return parseFinansDate(m.yapildiSaat)||parseFinansDate(m.tarih);
+}
 /** Finans listesi: bakım sentetik satırında saat — m.saat yoksa yapildiSaat'ten (BakimciGorunum ile uyum) */
 function finansSaatFromMaint(m){
   if(!m) return "--:--";
@@ -85,7 +93,7 @@ function maintTahsilatNotInSonOdemeler(sonOdemeler,maints,ayBas,aySon){
   return maints.filter(function(m){
     var amt=finansMaintAlinan(m);
     if(!m.yapildi||amt<=0) return false;
-    var od=parseFinansDate(m.tarih);
+    var od=maintFiiliTarih(m);
     if(!od||od<ayBas||od>aySon) return false;
     return !hasSonOdemeMatchForMaint(sonOdemeler,m,ayBas,aySon,amt);
   }).reduce(function(s,m){ return s+finansMaintAlinan(m); },0);
@@ -123,7 +131,7 @@ function odemeSnapshotBetween(sonOdemeler,maints,elevs,bas,son){
   (maints||[]).filter(function(m){
     var amt=finansMaintAlinan(m);
     if(!m.yapildi||amt<=0) return false;
-    var od=parseFinansDate(m.tarih);
+    var od=maintFiiliTarih(m);
     if(!od||od<bas||od>son) return false;
     return !hasSonOdemeMatchForMaint(sonOdemeler,m,bas,son,amt);
   }).forEach(function(m){
@@ -152,6 +160,17 @@ function odemeSnapshotBetween(sonOdemeler,maints,elevs,bas,son){
   });
 }
 
+// Asis Asansör (süper-admin) varsayılan firma bilgileri — Firma Ayarları boşsa öneri olarak doldurulur
+var ASIS_FIRMA_DEFAULT={
+  ad:"Asis Asansör Sistemleri",
+  adres:"Zafer Mahallesi Yüksel Sk. No:23, 34194 Bahçelievler / İstanbul",
+  tel:"0212 703 20 52",
+  tel2:"0536 565 92 23",
+  tel3:"0543 507 07 94",
+  email:"berat@asisasansor.com",
+  email2:"tolga@asisasansor.com"
+};
+
 var DASHBOARD_CARD_SIZES=["small","medium","full"];
 var DASHBOARD_CARDS_DEFAULT=[
   {id:"planBadge",icon:"🚀",label:"Plan Kullanım Badge",desc:"Paket ve asansör limiti",enabled:true,size:"small"},
@@ -163,7 +182,8 @@ var DASHBOARD_CARDS_DEFAULT=[
   {id:"faultTrend",icon:"📈",label:"Arıza Trendi",desc:"Son 6 ay arıza grafiği",enabled:true,size:"small"},
   {id:"maintenancePerformance",icon:"👨‍🔧",label:"Bakım Performansı",desc:"Bu ay / toplam / ödenmemiş",enabled:true,size:"small"},
   {id:"inspectionAlerts",icon:"🔍",label:"Muayene Uyarıları",desc:"Geciken ve yaklaşan",enabled:true,size:"small"},
-  {id:"contractAlerts",icon:"📄",label:"Sözleşme Uyarıları",desc:"Biten ve yaklaşan",enabled:true,size:"small"}
+  {id:"contractAlerts",icon:"📄",label:"Sözleşme Uyarıları",desc:"Biten ve yaklaşan",enabled:true,size:"small"},
+  {id:"overduePayments",icon:"🔴",label:"Geciken Ödemeler",desc:"Bakiyesi olan asansörler (yüksekten aza)",enabled:true,size:"medium"}
 ];
 function normalizeDashboardLayout(raw){
   var fallback=DASHBOARD_CARDS_DEFAULT.map(function(c){return {id:c.id,enabled:c.enabled!==false,size:c.size||"medium"};});
@@ -654,6 +674,12 @@ function App(){
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
+  const [bakimBildirimleri,setBakimBildirimleri]=useState([]); // yönetici için uygulama-içi toast'lar
+  const bakimBildirimSeenRef=useRef(null); // oturum başı baz alınan son ts
+  const [pushDurum,setPushDurum]=useState(function(){return pushBildirimDurumu();}); // FCM izin durumu
+  const [tumBildirimler,setTumBildirimler]=useState([]); // bildirim paneli: tüm geçmiş
+  const [bildirimPanelAcik,setBildirimPanelAcik]=useState(false);
+  const [bildirimPanelSeen,setBildirimPanelSeen]=useState(""); // panel için son okunan ts
   // ---- Çoklu firma (tenant) durumu ----
   const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
   // tenantConfig: login öncesi public (ad, adminEmail), login sonrası full config ile zenginleştirilir
@@ -675,6 +701,148 @@ function App(){
   function farkliFirma(){ setTenantId(null); setTenantIdState(null); setTenantConfig(null); setRol(null); firebaseLogout(); }
   const giderKapamaTetiklendi=React.useRef(false);
   const ilkYukleme=React.useRef(true);
+  // Her veri alanı için ayrı "yükleme tamam" bayrağı.
+  // Okuma başarısız olursa o alan false kalır → dbSet bloklanır;
+  // boş/varsayılan state'in Firebase'i ezmesi engellenir.
+  const yuklendi=React.useRef({
+    elevs:false, maints:false, faults:false, tasks:false, sozlesme:false,
+    hesapkayit:false, haftalik:false, aylik:false, sonodemeler:false,
+    giderler:false, giderhafta:false, notlar:false, ekstraisler:false,
+    teklifler:false, muayeneler:false, bakimcilar:false, payment_events:false
+  });
+  const [dbHata,setDbHata]=useState(null);
+  // Bağlantı durumu: "ok" | "agHatasi" | "yetkiHatasi"
+  // agHatasi → tarayıcı offline, fetch reddedildi veya timeout
+  // yetkiHatasi → 401/403 (auth/permission)
+  const [baglantiDurum,setBaglantiDurum]=useState("ok");
+  function siniflandirHata(err){
+    var s = String(err||"").toLowerCase();
+    if (s.indexOf("auth")>=0 || s.indexOf("http-401")>=0 || s.indexOf("http-403")>=0) return "yetkiHatasi";
+    return "agHatasi";
+  }
+  useEffect(function(){
+    setDbErrorHandler(function(path,err){
+      setDbHata({ path:path, err:err, t:Date.now() });
+      setBaglantiDurum(siniflandirHata(err));
+    });
+    return function(){ setDbErrorHandler(null); };
+  // eslint-disable-next-line
+  }, []);
+
+  // Uygulama-içi bakım bildirimi (sadece firma yöneticisi, uygulama açıkken).
+  // Bakımcı bakım tamamlayınca yazdığı olayı periyodik okur, yenileri toast yapar.
+  useEffect(function(){
+    if (rol !== "yonetici" || !tenantId) return;
+    var stopped = false;
+    var lsKey = "at_bb_seen_" + tenantId;
+    // Son görülen bildirim zamanı cihazda kalıcı: yönetici moduna sonradan
+    // girilse bile aradaki bildirimler kaçmaz (aynı cihazda rol değişimi dahil).
+    bakimBildirimSeenRef.current = lsGet(lsKey) || null;
+    setBildirimPanelSeen(lsGet("at_bb_panel_seen_" + tenantId) || "");
+    function ileriAl(ts){
+      bakimBildirimSeenRef.current = ts;
+      lsSet(lsKey, ts);
+    }
+    async function tick(initial){
+      try {
+        var list = await listBakimBildirimleri();
+        if (stopped) return;
+        setTumBildirimler(list);
+        if (initial && !bakimBildirimSeenRef.current) {
+          // Bu cihazda ilk kullanım: geçmişi gösterme, en son olayı baz al
+          ileriAl(list.length ? list[list.length-1].ts : new Date().toISOString());
+          return;
+        }
+        if (!list.length) return;
+        var baz = bakimBildirimSeenRef.current || "";
+        // 24 saatten eski olayları toast yapma (uzun aradan sonra yığılmasın)
+        var esik = new Date(Date.now() - 24*60*60*1000).toISOString();
+        var yeni = list.filter(function(e){
+          var ts = String(e.ts||"");
+          return ts > baz && ts > esik;
+        });
+        if (yeni.length) {
+          ileriAl(list[list.length-1].ts);
+          setBakimBildirimleri(function(prev){ return prev.concat(yeni); });
+        } else if (list.length && String(list[list.length-1].ts||"") > baz) {
+          // Yeni ama eşikten eski olaylar: baz'ı ilerlet, toast üretme
+          ileriAl(list[list.length-1].ts);
+        }
+      } catch(e){}
+    }
+    tick(true);
+    // İlk gerçek kontrol 8 saniye sonra, sonra her 25 saniyede bir
+    var firstTick = setTimeout(function(){ tick(false); }, 8000);
+    var iv = setInterval(function(){ tick(false); }, 25000);
+    return function(){ stopped = true; clearTimeout(firstTick); clearInterval(iv); };
+  // eslint-disable-next-line
+  }, [rol, tenantId]);
+
+  // İzin zaten verilmişse FCM token'ı sessizce tazele (cihaz/tenant değişimi)
+  useEffect(function(){
+    if (rol !== "yonetici" || !tenantId) return;
+    if (pushBildirimDurumu() !== "granted") return;
+    enablePushBildirim().then(function(r){
+      if (!r.ok) console.warn("Push token tazelenemedi:", r.reason);
+    });
+  }, [rol, tenantId]);
+
+  async function pushBildirimAc(){
+    var r = await enablePushBildirim();
+    setPushDurum(pushBildirimDurumu());
+    if (r.ok) {
+      alert("✅ Push bildirimleri açıldı. Bakımcı bir bakım tamamlayınca uygulama kapalıyken bile bildirim alacaksınız.");
+    } else if (r.reason === "izin-reddedildi") {
+      alert("Bildirim izni reddedildi. Tarayıcı/telefon ayarlarından bu site için bildirimlere izin verip tekrar deneyin.");
+    } else {
+      alert("Push bildirimi açılamadı: " + r.reason);
+    }
+  }
+
+  function bakimBildirimKapat(id){
+    setBakimBildirimleri(function(prev){ return prev.filter(function(b){ return b.id !== id; }); });
+  }
+
+  const bildirimOkunmamis=useMemo(function(){
+    if(!tumBildirimler.length) return 0;
+    return tumBildirimler.filter(function(e){ return String(e.ts||"") > String(bildirimPanelSeen||""); }).length;
+  },[tumBildirimler,bildirimPanelSeen]);
+
+  function bildirimPanelAc(){
+    setBildirimPanelAcik(true);
+    // Açılınca okundu say: en son olayın ts'ini kalıcı baz al
+    if(tumBildirimler.length){
+      var sonTs = tumBildirimler[tumBildirimler.length-1].ts || "";
+      setBildirimPanelSeen(sonTs);
+      lsSet("at_bb_panel_seen_" + tenantId, sonTs);
+    }
+    // Taze veri çek (25sn'lik polling'i bekletme)
+    listBakimBildirimleri().then(function(list){ setTumBildirimler(list); }).catch(function(){});
+  }
+  // Bakımcı bir bakımı tamamlayınca yöneticiye iletilecek olayı yazar.
+  async function bakimTamamlandiBildir(payload){
+    try {
+      var key = await pushBakimBildirim(payload);
+      if (!key) console.warn("Bakım bildirimi yazılamadı (izin/ağ)");
+    } catch(e){ console.warn("Bakım bildirimi yazılamadı:", e); }
+  }
+  // Tarayıcı online/offline event'leri — kullanıcı kabloyu çıkarınca anında bandı göster.
+  useEffect(function(){
+    function on(){
+      if (typeof navigator !== "undefined" && navigator.onLine === false) setBaglantiDurum("agHatasi");
+    }
+    function off(){ setBaglantiDurum("agHatasi"); }
+    function back(){ setBaglantiDurum("ok"); setDbHata(null); }
+    on();
+    if (typeof window !== "undefined") {
+      window.addEventListener("offline", off);
+      window.addEventListener("online", back);
+      return function(){
+        window.removeEventListener("offline", off);
+        window.removeEventListener("online", back);
+      };
+    }
+  },[]);
   // Tema uygula
   useEffect(function(){
     localStorage.setItem('at_tema',tema);
@@ -748,133 +916,158 @@ function App(){
     yukPublic();
   },[tenantId]);
 
-  // Login sonrası veri yükle (auth token gerekli)
+  // Login sonrası veri yükle (auth token gerekli).
+  // Her alan için "yuklendi" bayrağı ayrı tutulur. Okuma başarısız olursa
+  // (timeout/permission/ağ) o alanın dbSet'i ileride bloklanır → kullanıcının
+  // boş ekrana yeni kayıt eklemesi Firebase'deki dolu veriyi silemez.
   useEffect(function(){
-    if(rol===null) return; // henüz giriş yapılmadı
+    if(rol===null) return;
     async function yukle(){
-      try{
-        // Tüm Firebase okumalarını paralel yap — ilkYukleme bayrağı kapanana kadar
-        // kullanıcı değişiklik yaparsa kayıt atlanıyordu (race condition). Paralel
-        // sorgu ile yükleme süresi tek istek kadar kısalır.
-        function fb(v){return Array.isArray(v)?v:(v&&typeof v==='string'?JSON.parse(v):null);}
-        var sonuclar=await Promise.all([
-          dbGet("at_elevs"),    // r0
-          dbGet("at_maints"),   // r1
-          dbGet("at_faults"),   // r2
-          dbGet("at_tasks"),    // r3
-          dbGet("at_sozlesme"), // r4
-          dbGet("at_hesapkayit"),// r5
-          dbGet("at_haftalik"), // r6
-          dbGet("at_aylik"),    // r7
-          dbGet("at_sonodemeler"),// r8
-          dbGet("at_giderler"), // r9
-          dbGet("at_giderhafta"),// r10
-          dbGet("at_notlar"),      // r11
-          dbGet("at_ekstraisler"), // r12
-          dbGet("at_teklifler"),   // r13
-          dbGet("at_muayeneler"),  // r14
-          dbGet("at_bakimcilar"),  // r15
-          dbGet("at_payment_events"), // r16
-        ]);
-        var r1=sonuclar[0],r2=sonuclar[1],r3=sonuclar[2],r4=sonuclar[3];
-        var r5=sonuclar[4],r6=sonuclar[5],r7=sonuclar[6],r8=sonuclar[7];
-        var r9=sonuclar[8],r10=sonuclar[9],r11=sonuclar[10],r12=sonuclar[11],r13=sonuclar[12],r14=sonuclar[13],r15=sonuclar[14],r16=sonuclar[15],r17=sonuclar[16];
-        // ── Asansör listesi ──────────────────────────────────────
-        // Firebase erişilemezse veya boş dönerse localStorage yedeğine bak,
-        // o da yoksa ilk kez açılıyordur → EXCEL_ELEVS kullan.
-        // HİÇBİR DURUMDA Firebase null dönünce EXCEL_ELEVS yazılmaz.
-        (function(){
-          var lsBak=lsGet("ls_elevs");
-          if(r1){
-            try{
-              var d=fb(r1);
-              if(Array.isArray(d)&&d.length>0){
-                setElevs(d);
-                lsSet("ls_elevs",d); // yedeği güncelle
-              } else {
-                // Firebase boş/geçersiz döndü — yedekten yükle
-                if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-                else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
-                else{ setElevs([]); }
-              }
-            }catch(e){
-              if(lsBak&&lsBak.length>0){ setElevs(lsBak); }
-              else if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); }
-              else{ setElevs([]); }
+      function fb(v){return Array.isArray(v)?v:(v&&typeof v==='string'?JSON.parse(v):null);}
+      var okumaHatasi = { count: 0, lastErr: null };
+
+      // Genel yükleyici: Firebase başarılıysa setter'ı + ls yedeğini günceller,
+      // başarısızsa SADECE ls'den yükler ve yuklendi[key]=false bırakır.
+      async function yukleAlan(key, lsKey, setter, opts){
+        opts = opts || {};
+        var r;
+        try { r = await dbGetWithMeta("at_" + key); } catch(e) { r = { ok:false, data:null }; }
+        if (r && r.ok) {
+          var d = null;
+          try { d = fb(r.data); } catch(e) { d = null; }
+          if (Array.isArray(d)) {
+            if (d.length > 0 || opts.allowEmpty) {
+              setter(d);
+              if (lsKey && d.length > 0) lsSet(lsKey, d);
+              yuklendi.current[key] = true;
+              return;
             }
-          } else {
-            // Firebase erişilemedi (null) — asla EXCEL_ELEVS yazma, yedekten yükle
-            if(lsBak&&lsBak.length>0){
-              setElevs(lsBak);
-            } else if(tenantId==="asis") {
-              // İlk açılış: Firebase da yok, yedek de yok → Excel ile başlat (sadece Asis)
-              setElevs(EXCEL_ELEVS);
-              dbSet("at_elevs",EXCEL_ELEVS);
-            } else {
-              setElevs([]);
+            // Firebase boş dizi döndü
+            if (lsKey) {
+              var bak = lsGet(lsKey);
+              if (bak && bak.length > 0) { setter(bak); yuklendi.current[key] = true; return; }
             }
+            if (opts.firstInit) opts.firstInit();
+            yuklendi.current[key] = true;
+            return;
           }
-        })();
-        // ── Diğer veriler ─────────────────────────────────────
-        if(r2){try{var d=fb(r2);if(Array.isArray(d)){setMaints(d);lsSet("ls_maints",d);}}catch(e){}}
-        else{var b=lsGet("ls_maints");if(b)setMaints(b);}
-        if(r3){try{var d=fb(r3);if(Array.isArray(d))setFaults(d);}catch(e){}}
-        if(r4){try{var d=fb(r4);if(Array.isArray(d))setTasks(d);}catch(e){}}
-        if(r5){try{var d=fb(r5);if(Array.isArray(d))setSozlesmeler(d);}catch(e){}}
-        if(r6){try{var d=fb(r6);if(Array.isArray(d))setHesapKayitlari(d);}catch(e){}}
-        if(r7){try{var d=fb(r7);if(Array.isArray(d))setHaftalikKapamalar(d);}catch(e){}}
-        if(r8){try{var d=fb(r8);if(Array.isArray(d)){setAylikKapamalar(d);lsSet("ls_aylik",d);}}catch(e){}}
-        else{var b=lsGet("ls_aylik");if(b)setAylikKapamalar(b);}
-        if(r9){try{var d=fb(r9);if(Array.isArray(d)){setSonOdemeler(d);lsSet("ls_sonodemeler",d);}}catch(e){}}
-        else{var b=lsGet("ls_sonodemeler");if(b)setSonOdemeler(b);}
-        if(r10){try{var d=fb(r10);if(Array.isArray(d))setGiderler(d);}catch(e){}}
-        if(r11){try{var d=fb(r11);if(Array.isArray(d))setGiderHaftaArsiv(d);}catch(e){}}
-        if(r12){try{var d=fb(r12);if(Array.isArray(d))setNotlar(d);}catch(e){}}
-        if(r13){try{var d=fb(r13);if(Array.isArray(d))setEkstraIsler(d);}catch(e){}}
-        if(r14){try{var d=fb(r14);if(Array.isArray(d))setTeklifler(d);}catch(e){}}
-        if(r15){try{var d=fb(r15);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
-        if(r16){try{var d=fb(r16);if(Array.isArray(d)){setBakimcilar(d);lsSet("ls_bakimcilar",d);}}catch(e){}}
-        if(r17){try{var d=fb(r17);if(Array.isArray(d))setPaymentEvents(d);}catch(e){}}
-        // Login sonrası tam config + subscription yükle (auth gerektirir)
-        try{
-          var cfg=await getTenantConfig(tenantId);
-          if(cfg) setTenantConfig(function(prev){ return Object.assign({},prev||{},cfg); });
-          var sub=await getTenantSubscription(tenantId);
-          if(sub) setSubscription(sub);
-        }catch(e){}
+          // Veri yok / format bozuk
+          if (lsKey) {
+            var b2 = lsGet(lsKey);
+            if (b2 && b2.length > 0) { setter(b2); }
+          }
+          if (opts.firstInit && (!lsKey || !lsGet(lsKey))) opts.firstInit();
+          yuklendi.current[key] = true;
+          return;
+        }
+        // Okuma başarısız → ekrana ls yedeği BASMA (kullanıcının stale veri üzerinde
+        // çalışmasını engellemek için). dbSet de bloklu kalır. Kullanıcı sadece
+        // bağlantı bandını görür ve uygulama "veri yok" gibi davranır.
+        okumaHatasi.count++;
+        okumaHatasi.lastErr = (r && (r.error || r.status)) || "ag-hatasi";
+        yuklendi.current[key] = false;
+      }
+
+      await Promise.all([
+        yukleAlan("elevs","ls_elevs",setElevs,{
+          firstInit:function(){
+            if(tenantId==="asis"){ setElevs(EXCEL_ELEVS); dbSet("at_elevs",EXCEL_ELEVS); }
+            else { setElevs([]); }
+          }
+        }),
+        yukleAlan("maints","ls_maints",setMaints),
+        yukleAlan("faults","ls_faults",setFaults,{ allowEmpty:true }),
+        yukleAlan("tasks","ls_tasks",setTasks,{ allowEmpty:true }),
+        yukleAlan("sozlesme","ls_sozlesme",setSozlesmeler,{ allowEmpty:true }),
+        yukleAlan("hesapkayit","ls_hesapkayit",setHesapKayitlari,{ allowEmpty:true }),
+        yukleAlan("haftalik","ls_haftalik",setHaftalikKapamalar,{ allowEmpty:true }),
+        yukleAlan("aylik","ls_aylik",setAylikKapamalar,{ allowEmpty:true }),
+        yukleAlan("sonodemeler","ls_sonodemeler",setSonOdemeler,{ allowEmpty:true }),
+        yukleAlan("giderler","ls_giderler",setGiderler,{ allowEmpty:true }),
+        yukleAlan("giderhafta","ls_giderhafta",setGiderHaftaArsiv,{ allowEmpty:true }),
+        yukleAlan("notlar","ls_notlar",setNotlar,{ allowEmpty:true }),
+        yukleAlan("ekstraisler","ls_ekstraisler",setEkstraIsler,{ allowEmpty:true }),
+        yukleAlan("teklifler","ls_teklifler",setTeklifler,{ allowEmpty:true }),
+        yukleAlan("muayeneler","ls_muayeneler",setMuayeneler,{ allowEmpty:true }),
+        yukleAlan("bakimcilar","ls_bakimcilar",setBakimcilar,{ allowEmpty:true }),
+        // payment_events obje (push key'li) olabileceği için Array kontrolü
+        // yerine ayrı handle edilir; başarısızsa bayrak false kalır.
+        (async function(){
+          try {
+            var rp = await dbGetWithMeta("at_payment_events");
+            if (rp && rp.ok) {
+              var d = null; try { d = fb(rp.data); } catch(e) {}
+              if (Array.isArray(d)) setPaymentEvents(d);
+              yuklendi.current.payment_events = true;
+            }
+          } catch(e) {}
+        })()
+      ]);
+
+      // Login sonrası tam config + subscription yükle (auth gerektirir)
+      try{
+        var cfg=await getTenantConfig(tenantId);
+        if(cfg) setTenantConfig(function(prev){ return Object.assign({},prev||{},cfg); });
+        var sub=await getTenantSubscription(tenantId);
+        if(sub) setSubscription(sub);
       }catch(e){}
+      // Yükleme bitti — okuma hatalarına göre bağlantı durumunu güncelle
+      if (okumaHatasi.count > 0) {
+        setBaglantiDurum(siniflandirHata(okumaHatasi.lastErr));
+      } else {
+        setBaglantiDurum("ok");
+      }
       ilkYukleme.current=false;
     }
     yukle();
   },[rol]);
 
-  // Veri değişince Firebase'e kaydet (ilk yüklemede tetiklenmez)
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_elevs",elevs);if(elevs.length>0)lsSet("ls_elevs",elevs);}},[elevs]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_maints",maints);if(maints.length>0)lsSet("ls_maints",maints);}},[maints]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_faults",faults);}},[faults]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_tasks",tasks);}},[tasks]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_sozlesme",sozlesmeler);}},[sozlesmeler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_hesapkayit",hesapKayitlari);}},[hesapKayitlari]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_haftalik",haftalikKapamalar);}},[haftalikKapamalar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_aylik",aylikKapamalar);}},[aylikKapamalar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_sonodemeler",sonOdemeler);}},[sonOdemeler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderler",giderler);}},[giderler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_giderhafta",giderHaftaArsiv);}},[giderHaftaArsiv]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_notlar",notlar);}},[notlar]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_teklifler",teklifler);}},[teklifler]);
-  useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
-  useEffect(function(){
-    if(!ilkYukleme.current){
-      dbSet("at_bakimcilar",bakimcilar);
-      lsSet("ls_bakimcilar",bakimcilar);
-      if(tenantId){
-        var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
-        setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
-        // Asis için auth gerektirmeyen yedek public path'e de yaz
-        if(tenantId==="asis") dbSetRaw("at_bakimcilar_pub", pubList);
-      }
+  // Generic kaydedici: önce Firebase'e yazmayı dener; başarısızsa localStorage'a
+  // da yazmaz (kullanıcı bağlantı bandını görür, sahte "kaydedildi" izlenimi olmaz).
+  // Okuma başarısızsa (yuklendi[key]=false) hiç yazma yapılmaz — boş state
+  // Firebase'i ezemez ve yedek de bozulmaz.
+  async function kaydet(key, lsKey, value){
+    if (ilkYukleme.current) return;
+    if (!yuklendi.current[key]) return;
+    var ok = await dbSet("at_" + key, value);
+    if (ok && lsKey) {
+      try { if (Array.isArray(value) && value.length > 0) lsSet(lsKey, value); } catch(e) {}
     }
+  }
+
+  useEffect(function(){if(!ilkYukleme.current)kaydet("elevs","ls_elevs",elevs);},[elevs]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("maints","ls_maints",maints);},[maints]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("faults","ls_faults",faults);},[faults]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("tasks","ls_tasks",tasks);},[tasks]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("sozlesme","ls_sozlesme",sozlesmeler);},[sozlesmeler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("hesapkayit","ls_hesapkayit",hesapKayitlari);},[hesapKayitlari]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("haftalik","ls_haftalik",haftalikKapamalar);},[haftalikKapamalar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("aylik","ls_aylik",aylikKapamalar);},[aylikKapamalar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("sonodemeler","ls_sonodemeler",sonOdemeler);},[sonOdemeler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("giderler","ls_giderler",giderler);},[giderler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("giderhafta","ls_giderhafta",giderHaftaArsiv);},[giderHaftaArsiv]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("notlar","ls_notlar",notlar);},[notlar]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("ekstraisler","ls_ekstraisler",ekstraIsler);},[ekstraIsler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("teklifler","ls_teklifler",teklifler);},[teklifler]);
+  useEffect(function(){if(!ilkYukleme.current)kaydet("muayeneler","ls_muayeneler",muayeneler);},[muayeneler]);
+  useEffect(function(){
+    if(ilkYukleme.current) return;
+    if(!yuklendi.current.bakimcilar) return;
+    (async function(){
+      var ok = await dbSet("at_bakimcilar",bakimcilar);
+      if (ok) {
+        try { lsSet("ls_bakimcilar", bakimcilar); } catch(e) {}
+        if(tenantId){
+          var pubList=bakimcilar.map(function(b){return {id:b.id,ad:b.ad,renk:b.renk||"#3b82f6",hasSifre:!!(b.sifre)};});
+          // Asis gerçek tenant değil → tenants/asis/public'e yazma (401). Sadece flat path.
+          if(tenantId==="asis"){
+            dbSetRaw("at_bakimcilar_pub", pubList);
+          } else {
+            setTenantPublic(tenantId,Object.assign({},tenantConfig||{},{bakimcilar:pubList}));
+          }
+        }
+      }
+    })();
   },[bakimcilar]);
 
   // Finans sekmesi için canlı yenileme
@@ -902,8 +1095,28 @@ function App(){
   // ═══════════════════════════════════════════════════════════
   useEffect(function(){
     if(ilkYukleme.current) return; // veriler yüklenmeden tetiklenme
+    // Kapama yalnızca yönetici oturumunda çalışır. Bakımcı cihazı kapamayı
+    // tetiklerse at_aylik yazımı rules'ta reddedilir ama at_elevs (devir
+    // artışı) yazılabildiğinden devirler kapama kaydı olmadan artar ve
+    // yönetici cihazı aynı ayı tekrar kapatırdı (çift artış).
+    if(rol!=="yonetici") return;
 
-    function yapHaftalikKapama(){
+    /* Sunucu-onaylı kapama kilidi: listenin güncel halini ETag ile okur,
+       kapamaKey yoksa koşullu PUT ile yazar. Yarışı kaybeden cihaz 412 alır.
+       Dönüş: {ok:true,list} | {ok:false,closed:true,list} | {ok:false} */
+    async function kapamaSunucuyaYaz(dbKey,kapamaKey,buildSnap,maxLen){
+      var srv=await dbGetWithETag(dbKey);
+      if(!srv) return {ok:false};
+      var serverList=Array.isArray(srv.data)?srv.data.filter(Boolean):[];
+      if(serverList.find(function(k){return k&&k.kapamaKey===kapamaKey;})) return {ok:false,closed:true,list:serverList};
+      var yeni=[buildSnap()].concat(serverList);
+      if(yeni.length>maxLen) yeni=yeni.slice(0,maxLen);
+      var yazildi=await dbSetIfMatch(dbKey,yeni,srv.etag);
+      if(!yazildi) return {ok:false};
+      return {ok:true,list:yeni};
+    }
+
+    async function yapHaftalikKapama(){
       if(kapamaTetiklendi.current.haftalik) return;
       kapamaTetiklendi.current.haftalik=true;
       var simdi=new Date();
@@ -913,7 +1126,6 @@ function App(){
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var gun=simdi.getDay();
       var pazartesiFark=gun===0?-6:1-gun;
       var baslangic=new Date(simdi);
@@ -922,18 +1134,14 @@ function App(){
       var bitis=new Date(baslangic);
       bitis.setDate(baslangic.getDate()+6);
       bitis.setHours(23,59,59,999);
-      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
-      setHaftalikKapamalar(function(prev){
-        var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
-        if(zatenVar) return prev;
-        var basStr=baslangic.toLocaleDateString("tr-TR");
-        var bitStr=bitis.toLocaleDateString("tr-TR");
-        var snap={
+      var sonuc=await kapamaSunucuyaYaz("at_haftalik",kapamaKey,function(){
+        var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
+        return {
           id:Date.now(),
           kapamaKey:kapamaKey,
           tip:"haftalik",
-          baslarken:basStr,
-          biterken:bitStr,
+          baslarken:baslangic.toLocaleDateString("tr-TR"),
+          biterken:bitis.toLocaleDateString("tr-TR"),
           baslangicISO:baslangic.toISOString(),
           bitisISO:bitis.toISOString(),
           kapamaZamani:simdi.toLocaleString("tr-TR"),
@@ -941,13 +1149,18 @@ function App(){
           toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
-        var yeni=[snap,...prev];
-        if(yeni.length>26) yeni=yeni.slice(0,26);
-        return yeni;
-      });
+      },26);
+      if(sonuc.closed){
+        try{localStorage.setItem(lsKey,"1");}catch(e){}
+        setHaftalikKapamalar(sonuc.list);
+        return;
+      }
+      if(!sonuc.ok){ kapamaTetiklendi.current.haftalik=false; return; } // sonraki dakika tekrar dene
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
+      setHaftalikKapamalar(sonuc.list);
     }
 
-    function yapAylikKapama(){
+    async function yapAylikKapama(){
       if(kapamaTetiklendi.current.aylik) return;
       kapamaTetiklendi.current.aylik=true;
       var simdi=new Date();
@@ -955,18 +1168,17 @@ function App(){
       var ay=simdi.getMonth()===0?11:simdi.getMonth()-1;
       var yil=simdi.getMonth()===0?simdi.getFullYear()-1:simdi.getFullYear();
       var kapamaKey="A"+yil+"-M"+(ay+1);
-      // Çift çalışma koruması: localStorage (Firebase gecikmesine karşı) + ref (stale closure'a karşı)
       var lsKey="kapama_"+kapamaKey;
       var zatenKapandi=localStorage.getItem(lsKey)||aylikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
       if(zatenKapandi) return;
-      try{localStorage.setItem(lsKey,"1");}catch(e){}
       var ayBaslangic=new Date(yil,ay,1);ayBaslangic.setHours(0,0,0,0);
       var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
-      var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
-      setAylikKapamalar(function(prev){
-        var zatenVar=prev.find(function(k){return k.kapamaKey===kapamaKey;});
-        if(zatenVar) return prev;
-        var snap={
+      /* Sunucu kilidi: localStorage cihaza özel olduğundan iki cihaz aynı ayı
+         iki kere kapatabiliyordu (devir iki kere artıyordu). Kapama kaydını
+         koşullu yazan TEK cihaz devir artışını da yapar; diğerleri eşitlenir. */
+      var sonuc=await kapamaSunucuyaYaz("at_aylik",kapamaKey,function(){
+        var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
+        return {
           id:Date.now(),
           kapamaKey:kapamaKey,
           tip:"aylik",
@@ -981,23 +1193,30 @@ function App(){
           toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
           odemeAdedi:donemOdemeleri.length
         };
-        var yeni=[snap,...prev];
-        if(yeni.length>12) yeni=yeni.slice(0,12);
-        return yeni;
-      });
-      /* Ay kapanışında bakım yapılan asansörler için aylık bakım ücreti eski devre eklenir.
-         Ödemeler ve ekstra işler zaten anlık olarak bakiyeDevir'i hareket ettirir. */
+      },12);
+      if(sonuc.closed){
+        // Başka cihaz kapatmış — yereli sunucuyla eşitle, devire DOKUNMA
+        try{localStorage.setItem(lsKey,"1");}catch(e){}
+        setAylikKapamalar(sonuc.list);
+        return;
+      }
+      if(!sonuc.ok){ kapamaTetiklendi.current.aylik=false; return; } // sonraki dakika tekrar dene
+      try{localStorage.setItem(lsKey,"1");}catch(e){}
+      setAylikKapamalar(sonuc.list);
+      /* Ay kapanışı: bakım yapılan asansörlerde Aylık Ücret Eski Devir'e eklenir.
+         Böylece bu ayın "Güncel Devir"i, gelecek ayın "Eski Devir"i olarak devreder.
+         Yalnızca sunucu kilidini kazanan cihaz çalıştırır.
+         Bakımın hangi aya sayılacağı fiili tarihe göre (maintFiiliTarih). */
       setElevs(function(prevElevs){
         return prevElevs.map(function(ev){
-          var eskiDevir=finansTutar(ev.bakiyeDevir);
-          var aylikUcret=finansTutar(ev.aylikUcret);
           var bakimYapildi=maints.find(function(m){
-            var d=new Date(m.tarih);
-            return Number(m.asansorId)===Number(ev.id)&&m.yapildi&&d>=ayBaslangic&&d<=aySon;
+            if(Number(m.asansorId)!==Number(ev.id)||!m.yapildi) return false;
+            var d=maintFiiliTarih(m);
+            return d&&d>=ayBaslangic&&d<=aySon;
           });
           if(!bakimYapildi) return ev;
-          var yeniDevirHesap=eskiDevir+aylikUcret;
-          return Object.assign({},ev,{bakiyeDevir:yeniDevirHesap,bakiyeDevirBase:yeniDevirHesap,yeniDevirManuel:null});
+          var yeniEski=finansTutar(ev.bakiyeDevir)+finansTutar(ev.aylikUcret);
+          return Object.assign({},ev,{bakiyeDevir:yeniEski,yeniDevirManuel:null});
         });
       });
     }
@@ -1043,7 +1262,7 @@ function App(){
     kontrolEt();
     var timer=setInterval(kontrolEt,60000); // Her dakika kontrol et
     return function(){clearInterval(timer);};
-  },[sonOdemeler,maints,elevs]);
+  },[sonOdemeler,maints,elevs,rol]);
 
   // ═══════════════════════════════════════════════════════════
   // GİDER OTOMATİK HAFTALIK SIFIRLAMA & GÜNLÜK KAYIT
@@ -1337,14 +1556,12 @@ function App(){
     return finansTutar(e.bakiyeDevir);
   };
 
-  /* Aktif ayda bakım yapıldıysa güncel devir hesaplanır: eskiDevir + aylikUcret */
+  /* Aktif ayda bakım yapıldıysa güncel devir = Eski Devir + Aylık Ücret */
   const yeniDevir=(id)=>{
     const e=elevs.find(x=>x.id===id);if(!e) return null;
     const bakimKaydi=mMonth.find(m=>m.asansorId===id&&m.yapildi);
     if(!bakimKaydi) return null;
-    const eskiDevir=finansTutar(e.bakiyeDevir);
-    const aylikUcret=finansTutar(e.aylikUcret);
-    return eskiDevir+aylikUcret;
+    return finansTutar(e.bakiyeDevir)+finansTutar(e.aylikUcret);
   };
   const guncelBorc=(id)=>{
     const nd=yeniDevir(id);
@@ -1678,7 +1895,7 @@ function App(){
   const [kilitModal,setKilitModal]=useState(null); // {ozellik:"Finans", gerekenPlan:"Profesyonel"}
   const planAdi = isSuper ? "Asis (Sınırsız)" : (planLimits[tenantPlan] || planLimits.baslangic).ad;
 
-  const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar"];
+  const TABS_YON_BASE=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","📑 Teklif Oluşturma","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portali","👥 Bakımcılar","👷 Takip"];
   const TABS_YON = isSuper ? TABS_YON_BASE.concat(["🏭 Firmalar"]) : TABS_YON_BASE;
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
@@ -1799,8 +2016,21 @@ function App(){
           ),
           /* Sağ: tema + çıkış */
           React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
-            rol==="yonetici"&&!isSuper&&React.createElement('button', {
-              onClick:()=>{setFirmaAyarlariForm({ad:tenantConfig&&tenantConfig.ad||"",adres:tenantConfig&&tenantConfig.adres||"",tel:tenantConfig&&tenantConfig.tel||"",tel2:tenantConfig&&tenantConfig.tel2||"",tel3:tenantConfig&&tenantConfig.tel3||"",email:tenantConfig&&tenantConfig.email||"",email2:tenantConfig&&tenantConfig.email2||"",logoUrl:tenantConfig&&tenantConfig.logoUrl||""});setFirmaAyarlariAcik(true);},
+            rol==="yonetici"&&React.createElement('button', {
+              onClick:bildirimPanelAc,
+              title:"Bildirimler",
+              style:{position:"relative",width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
+            },
+              "🔔",
+              bildirimOkunmamis>0&&React.createElement('span',{style:{
+                position:"absolute",top:-5,right:-5,minWidth:16,height:16,borderRadius:9,
+                background:"#ef4444",color:"#fff",fontSize:9,fontWeight:900,
+                display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",
+                border:"1.5px solid var(--bg, #0f1117)"
+              }},bildirimOkunmamis>9?"9+":bildirimOkunmamis)
+            ),
+            (rol==="yonetici"||isSuper)&&React.createElement('button', {
+              onClick:()=>{var d=isSuper?ASIS_FIRMA_DEFAULT:{};setFirmaAyarlariForm({ad:d.ad||(tenantConfig&&tenantConfig.ad)||"",adres:d.adres||(tenantConfig&&tenantConfig.adres)||"",tel:d.tel||(tenantConfig&&tenantConfig.tel)||"",tel2:d.tel2||(tenantConfig&&tenantConfig.tel2)||"",tel3:d.tel3||(tenantConfig&&tenantConfig.tel3)||"",email:d.email||(tenantConfig&&tenantConfig.email)||"",email2:d.email2||(tenantConfig&&tenantConfig.email2)||"",logoUrl:(tenantConfig&&tenantConfig.logoUrl)||""});setFirmaAyarlariAcik(true);},
               title:"Firma Ayarları",
               style:{width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
             }, "🏢"),
@@ -1864,6 +2094,22 @@ function App(){
     , dashboardHiddenLabels.length>0&&React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginBottom:10,background:"var(--bg-elevated)",borderRadius:10,padding:"8px 10px"}},
       "Gizli kartlar: "+dashboardHiddenLabels.join(", ")+" (Dashboard Düzenle'den açabilirsiniz)."
     )
+    /* PUSH BİLDİRİM İZNİ BANNER'I */
+    , rol==="yonetici"&&pushDurum==="default"&&React.createElement('div',{
+        style:{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}
+      },
+        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+          React.createElement('span',{style:{fontSize:20}},"🔔"),
+          React.createElement('div',null,
+            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#3b82f6"}},"Telefon bildirimleri"),
+            React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},"Bakım tamamlanınca uygulama kapalıyken bile bildirim alın")
+          )
+        ),
+        React.createElement('button',{
+          onClick:pushBildirimAc,
+          style:{padding:"8px 16px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}
+        },"Bildirimleri Aç")
+      )
     /* PLAN KULLANIM BADGE'i */
     , dashboardEnabledMap.planBadge&&rol==="yonetici"&&!isSuper&&(function(){
         var oran = limits.elevLimit===Infinity ? 0 : (elevs.length / limits.elevLimit);
@@ -2092,6 +2338,33 @@ function App(){
           , yakin>0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)"}}, "🟡 "+yakin+" sözleşme 30 gün içinde bitiyor")
         );
       })()
+    /* Geciken Ödemeler */
+    , dashboardEnabledMap.overduePayments&&rol==="yonetici"&&(function(){
+        var geciken=elevs
+          .map(function(e){return {e:e,bakiye:finansTutar(e.bakiyeDevir)};})
+          .filter(function(x){return x.bakiye>0;})
+          .sort(function(a,b){return b.bakiye-a.bakiye;});
+        if(geciken.length===0) return null;
+        return React.createElement('div',{style:{background:"var(--bg-panel)",borderRadius:20,overflow:"hidden",marginBottom:10,boxShadow:"var(--shadow-sm)",border:"1px solid rgba(239,68,68,0.2)"}},
+          React.createElement('div',{style:{padding:"14px 16px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(239,68,68,0.07)"}},
+            React.createElement('div',{style:{fontSize:14,fontWeight:700,color:"#ef4444"}},"🔴 Geciken Ödemeler"),
+            React.createElement('span',{style:{background:"rgba(239,68,68,0.15)",color:"#ef4444",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20}},geciken.length+" bina")
+          ),
+          geciken.slice(0,10).map(function(x){
+            var e=x.e;
+            return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderTop:"0.5px solid var(--border-soft)"}},
+              React.createElement('div',{style:{flex:1,minWidth:0}},
+                React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.ad||"?"),
+                React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:1}},e.ilce||"")
+              ),
+              React.createElement('div',{style:{fontWeight:800,fontSize:14,color:"#ef4444",flexShrink:0,marginLeft:12}},x.bakiye.toLocaleString("tr-TR")+"₺")
+            );
+          }),
+          geciken.length>10&&React.createElement('div',{style:{padding:"8px 16px",fontSize:11,color:"var(--text-muted)",textAlign:"center",borderTop:"0.5px solid var(--border-soft)"}},
+            "+"+(geciken.length-10)+" daha · Finans sekmesinden görüntüleyin"
+          )
+        );
+      })()
     /* Sıfırla */
     , React.createElement('div', {style:{marginTop:20,textAlign:"center"}},
       React.createElement('div', {style:{fontSize:12,color:"var(--text-dim)",marginBottom:8}}, "⚠️ Tehlikeli Alan")
@@ -2161,14 +2434,14 @@ function App(){
                     var aylikBakim=Number(e.aylikUcret)||0;
                     var guncelDevir=eskiDevir+aylikBakim;
                     var gosterilen=eBakimYapildi?guncelDevir:eskiDevir;
-                    var etiket=eBakimYapildi?"Güncel Devir":"Eski Devir";
+                    var etiket=eBakimYapildi?"🔄 Güncel Devir":"📊 Eski Devir";
                     var renk=gosterilen>0?"#ef4444":gosterilen<0?"#34d399":"#64748b";
                     var bg=gosterilen>0?"#3a1e1e":gosterilen<0?"#0d2f1d":"#1e2640";
                     return React.createElement('div', { style: {marginTop:8,display:"flex",flexDirection:"column",gap:6},}
                       , React.createElement('div', {style:{display:"flex",gap:6,flexWrap:"wrap"}}
                         , React.createElement('span', { style: {fontSize:10,background:"#1e3a5f",color:"#3b82f6",padding:"2px 8px",borderRadius:6,fontWeight:700},}, aylikBakim.toLocaleString("tr-TR"), " ₺/ay")
                         , React.createElement('span', { style: {fontSize:10,background:bg,color:renk,padding:"2px 8px",borderRadius:6,fontWeight:900},},
-                          "📊 "+etiket+": "+(gosterilen>0?"+":"")+gosterilen.toLocaleString("tr-TR")+" ₺")
+                          etiket+": "+(gosterilen>0?"+":"")+gosterilen.toLocaleString("tr-TR")+" ₺")
                       )
                     );
                   })()
@@ -2249,7 +2522,7 @@ function App(){
 
 /* BAKIMCI GÖRÜNÜMÜ */
 , tab===2&&rol==="bakimci"&&(
-  React.createElement(BakimciGorunum, { elevs: elevs, setElevs: setElevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi,})
+  React.createElement(BakimciGorunum, { elevs: elevs, setElevs: setElevs, maints: maints, setMaints: setMaints, faults: faults, setFaults: setFaults, bal: bal, buAyToplamAlinan: buAyToplamAlinan, ilceler: ilceler, today: today, fMonth: fMonth, setFMonth: setFMonth, eName: eName, sonOdemeler: sonOdemeler, setSonOdemeler: setSonOdemeler, aktifBakimci: aktifBakimci, firmaAdi: firmaAdi, onBakimBildirim: bakimTamamlandiBildir,})
 )
 
 /* ARIZALAR - YÖNETİCİ */
@@ -2749,10 +3022,11 @@ function App(){
                                 if(o._fromMaint){
                                   if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                   setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                 } else {
                                   if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
                                   setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                   setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                 }
                               },
@@ -2840,10 +3114,11 @@ function App(){
                                         if(o._fromMaint){
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                         } else {
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                           setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                         }
                                       },
@@ -2953,10 +3228,11 @@ function App(){
                                       if(o._fromMaint){
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                       } else {
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),bakiyeDevirBase:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
                                         setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                       }
                                     },
@@ -3338,7 +3614,7 @@ function App(){
 /* PERİYODİK MUAYENE TAKİBİ */
 , tab===10&&rol==="yonetici"&&(isSuper||limits.teklif)&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:tenantConfig?Object.assign({},tenantConfig,{_isAsis:isSuper}):null})
+    React.createElement(TeklifYonetimi, {elevs:elevs,teklifler:teklifler,setTeklifler:setTeklifler,ilceler:ilceler,tenantConfig:isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT,{_isAsis:true}):(tenantConfig?Object.assign({},tenantConfig,{_isAsis:false}):null)})
   )
 )
 
@@ -3359,7 +3635,7 @@ function App(){
 /* YÖNETİCİ / BİNA PORTALI */
 , tab===13&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
-    React.createElement(YoneticiPortali, {elevs:elevs,maints:maints,faults:faults,muayeneler:muayeneler,sozlesmeler:sozlesmeler,ekstraIsler:ekstraIsler})
+    React.createElement(YoneticiPortali, {elevs:elevs,maints:maints,faults:faults,muayeneler:muayeneler,sozlesmeler:sozlesmeler,ekstraIsler:ekstraIsler,sonOdemeler:sonOdemeler})
   )
 )
 
@@ -3370,8 +3646,124 @@ function App(){
   )
 )
 
+/* BAKIMCI TAKİP */
+, tab===15&&rol==="yonetici"&&(function(){
+  var bugun=new Date();
+  var yyyy=bugun.getFullYear();
+  var mm=String(bugun.getMonth()+1).padStart(2,"0");
+  var dd=String(bugun.getDate()).padStart(2,"0");
+  var bugunStr=yyyy+"-"+mm+"-"+dd;
+  function parseTakipTarih(saat){
+    if(!saat) return null;
+    var s=String(saat).trim();
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+    var p=s.split(" ")[0].split(".");
+    if(p.length===3&&p[2].length===4) return p[2]+"-"+p[1].padStart(2,"0")+"-"+p[0].padStart(2,"0");
+    return null;
+  }
+  function saaatStr(saat){
+    if(!saat) return "--:--";
+    var s=String(saat).trim();
+    var parts=s.split(" ");
+    var t=parts.length>=2?parts[parts.length-1]:"";
+    if(/^\d{1,2}:\d{2}/.test(t)) return t.substring(0,5);
+    return "--:--";
+  }
+  var bugunYapilan=maints.filter(function(m){
+    return m.yapildi && parseTakipTarih(m.yapildiSaat)===bugunStr;
+  });
+  // Bakımcıya atanmamış ama bugün yapılanları da göster
+  var gruplar={};
+  bugunYapilan.forEach(function(m){
+    var kid=m.bakimciId||"__yonetici__";
+    var kad=m.bakimciAd||(m.bakimciId?"Bakımcı "+m.bakimciId:"Yönetici");
+    var krenk=m.bakimciRenk||"#64748b";
+    if(!gruplar[kid]) gruplar[kid]={id:kid,ad:kad,renk:krenk,bakimlar:[]};
+    gruplar[kid].bakimlar.push(m);
+  });
+  var grupList=Object.values(gruplar).sort(function(a,b){return a.ad.localeCompare(b.ad,"tr");});
+  var toplamBakim=bugunYapilan.length;
+  var toplamTahsilat=bugunYapilan.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
+  var tarihLabel=dd+"."+mm+"."+yyyy;
+  return React.createElement('div',{className:"ios-animate",style:{padding:"0 0 40px"}},
+    React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
+      React.createElement('div',null,
+        React.createElement('div',{style:{fontSize:18,fontWeight:800,color:"#e0e6f0"}},"👷 Bakımcı Takip"),
+        React.createElement('div',{style:{fontSize:12,color:"#64748b",marginTop:2}},tarihLabel+" · Bugün tamamlanan bakımlar")
+      ),
+      React.createElement('div',{style:{display:"flex",gap:12}},
+        React.createElement('div',{style:{textAlign:"center",background:"#1a2236",borderRadius:12,padding:"8px 16px"}},
+          React.createElement('div',{style:{fontSize:20,fontWeight:800,color:"#3b82f6"}},toplamBakim),
+          React.createElement('div',{style:{fontSize:10,color:"#64748b",marginTop:1}},"Bakım")
+        ),
+        React.createElement('div',{style:{textAlign:"center",background:"#1a2236",borderRadius:12,padding:"8px 16px"}},
+          React.createElement('div',{style:{fontSize:20,fontWeight:800,color:"#10b981"}},toplamTahsilat.toLocaleString("tr-TR")+"₺"),
+          React.createElement('div',{style:{fontSize:10,color:"#64748b",marginTop:1}},"Tahsilat")
+        )
+      )
+    ),
+    grupList.length===0
+      ? React.createElement('div',{style:{textAlign:"center",padding:"60px 20px",color:"#64748b"}},
+          React.createElement('div',{style:{fontSize:36,marginBottom:12}},"📭"),
+          React.createElement('div',{style:{fontWeight:700,fontSize:15}},"Bugün henüz bakım tamamlanmamış"),
+          React.createElement('div',{style:{fontSize:12,marginTop:6}},"Bakımcılar bakım kaydettikçe burada görünecek")
+        )
+      : grupList.map(function(g){
+          var gToplam=g.bakimlar.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
+          return React.createElement('div',{key:g.id,style:{background:"#111827",borderRadius:16,marginBottom:14,overflow:"hidden",border:"1px solid #1e2d40"}},
+            React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:g.renk+"22",borderBottom:"1px solid "+g.renk+"44"}},
+              React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+                React.createElement('div',{style:{width:10,height:10,borderRadius:"50%",background:g.renk,flexShrink:0}}),
+                React.createElement('div',{style:{fontWeight:800,fontSize:15,color:g.renk}},g.ad)
+              ),
+              (function(){
+                var odenenSay=g.bakimlar.filter(function(m){return m.odendi;}).length;
+                var odenmeyenSay=g.bakimlar.filter(function(m){return !m.odendi&&finansMaintAlinan(m)===0;}).length;
+                return React.createElement('div',{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+                  React.createElement('span',{style:{background:g.renk+"33",color:g.renk,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},g.bakimlar.length+" bakım"),
+                  odenenSay>0&&React.createElement('span',{style:{background:"#10b98122",color:"#10b981",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},"✅ "+odenenSay),
+                  odenmeyenSay>0&&React.createElement('span',{style:{background:"#ef444422",color:"#ef4444",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},"❌ "+odenmeyenSay),
+                  gToplam>0&&React.createElement('span',{style:{background:"#10b98122",color:"#10b981",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}},gToplam.toLocaleString("tr-TR")+"₺")
+                );
+              }())
+            ),
+            g.bakimlar.map(function(m){
+              var elev=elevs.find(function(e){return Number(e.id)===Number(m.asansorId);})||{};
+              var alinan=finansMaintAlinan(m);
+              var saat=saaatStr(m.yapildiSaat);
+              return React.createElement('div',{key:m.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid #1e2d40"}},
+                React.createElement('div',{style:{flex:1,minWidth:0}},
+                  React.createElement('div',{style:{fontWeight:700,fontSize:13,color:"#e0e6f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},elev.ad||("Asansör #"+m.asansorId)),
+                  React.createElement('div',{style:{fontSize:11,color:"#64748b",marginTop:2}},
+                    elev.ilce&&React.createElement('span',{style:{marginRight:6,color:"#8b5cf6"}},elev.ilce),
+                    React.createElement('span',null,"🕐 "+saat)
+                  )
+                ),
+                React.createElement('div',{style:{textAlign:"right",flexShrink:0,marginLeft:12}},
+                  m.odendi
+                    ? React.createElement('div',null,
+                        React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#10b981"}},"+"+alinan.toLocaleString("tr-TR")+"₺"),
+                        React.createElement('div',{style:{fontSize:10,color:"#10b981",marginTop:1}},"✅ Ödendi")
+                      )
+                    : alinan>0
+                      ? React.createElement('div',null,
+                          React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#f59e0b"}},"+"+alinan.toLocaleString("tr-TR")+"₺"),
+                          React.createElement('div',{style:{fontSize:10,color:"#f59e0b",marginTop:1}},"⚠️ Kısmi · "+(finansTutar(m.tutar)-alinan).toLocaleString("tr-TR")+"₺ kalan")
+                        )
+                      : React.createElement('div',null,
+                          React.createElement('div',{style:{fontWeight:800,fontSize:12,color:"#ef4444"}},"0₺"),
+                          React.createElement('div',{style:{fontSize:10,color:"#ef4444",marginTop:1}},"❌ Ödeme alınmadı")
+                        )
+                )
+              );
+            })
+          );
+        })
+  );
+}())
+
 /* FIRMALAR (süper-admin) */
-, tab===15&&rol==="yonetici"&&isSuper&&(
+, tab===16&&rol==="yonetici"&&isSuper&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(FirmalarPaneli, { currentTenantId: tenantId })
   )
@@ -3745,7 +4137,7 @@ function App(){
                     }
                     /* Ödeme her zaman eski devirden düşer; güncel devir eski devir + aylık bakım olarak hesaplanır. */
                     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
-                    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,bakiyeDevirBase:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+                    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },
@@ -3977,6 +4369,83 @@ function App(){
 
       /* Ana Ekrana Ekle Banner */
       , React.createElement(InstallBanner, null)
+      /* Uygulama-içi bakım bildirimleri (yönetici) */
+      , React.createElement(BakimBildirimToast, { bildirimler: bakimBildirimleri, onDismiss: bakimBildirimKapat })
+
+      /* BİLDİRİM PANELİ */
+      , bildirimPanelAcik&&rol==="yonetici"&&(function(){
+          function tsFormat(ts){
+            try{
+              var d=new Date(ts);
+              if(isNaN(d.getTime())) return "";
+              var bugun=new Date(); bugun.setHours(0,0,0,0);
+              var gun=new Date(d); gun.setHours(0,0,0,0);
+              var saat=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+              if(gun.getTime()===bugun.getTime()) return "Bugün "+saat;
+              if(gun.getTime()===bugun.getTime()-86400000) return "Dün "+saat;
+              return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+" "+saat;
+            }catch(e){ return ""; }
+          }
+          var liste=tumBildirimler.slice().reverse().slice(0,50);
+          return React.createElement('div',{
+            onClick:function(){setBildirimPanelAcik(false);},
+            style:{position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.5)",display:"flex",justifyContent:"flex-end"}
+          },
+            React.createElement('div',{
+              onClick:function(e){e.stopPropagation();},
+              className:"safe-top",
+              style:{width:"min(380px,92vw)",height:"100%",background:"var(--bg-panel, #111827)",boxShadow:"-8px 0 30px rgba(0,0,0,0.4)",display:"flex",flexDirection:"column"}
+            },
+              React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:"1px solid var(--border-soft, #1e2d40)"}},
+                React.createElement('div',{style:{fontWeight:800,fontSize:16,color:"var(--text)"}},"🔔 Bildirimler"),
+                React.createElement('button',{
+                  onClick:function(){setBildirimPanelAcik(false);},
+                  style:{width:30,height:30,borderRadius:8,background:"var(--bg-elevated, #1a2236)",border:"none",color:"var(--text-muted)",cursor:"pointer",fontSize:15}
+                },"✕")
+              ),
+              React.createElement('div',{className:"scroll-y",style:{flex:1,overflowY:"auto"}},
+                liste.length===0
+                  ? React.createElement('div',{style:{textAlign:"center",padding:"60px 20px",color:"var(--text-dim)"}},
+                      React.createElement('div',{style:{fontSize:36,marginBottom:10}},"📭"),
+                      React.createElement('div',{style:{fontSize:13,fontWeight:600}},"Henüz bildirim yok"),
+                      React.createElement('div',{style:{fontSize:11,marginTop:4}},"Bakımcı bakım tamamladıkça burada listelenecek")
+                    )
+                  : liste.map(function(b){
+                      var tutar=Number(b.tutar)||0;
+                      return React.createElement('div',{key:b.id,style:{padding:"12px 18px",borderBottom:"1px solid var(--border-soft, #1e2d40)",display:"flex",gap:10,alignItems:"flex-start"}},
+                        React.createElement('div',{style:{fontSize:18,flexShrink:0,marginTop:1}},"✅"),
+                        React.createElement('div',{style:{flex:1,minWidth:0}},
+                          React.createElement('div',{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},b.elevAd||"Asansör"),
+                          React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
+                            (b.ilce?b.ilce+" · ":"")+(b.bakimciAd?"🔧 "+b.bakimciAd:"")
+                          ),
+                          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginTop:3}},tsFormat(b.ts))
+                        ),
+                        tutar>0
+                          ? React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"var(--ios-green, #10b981)",flexShrink:0}},"+"+tutar.toLocaleString("tr-TR")+"₺")
+                          : React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--ios-red, #ef4444)",flexShrink:0,marginTop:3}},"ödeme yok")
+                      );
+                    })
+              )
+            )
+          );
+        })()
+      /* Sürekli bağlantı durumu bandı (üstte) — ağ/yetki sorunu varsa görünür */
+      , baglantiDurum !== "ok" && React.createElement('div', {
+          style:{position:"fixed",top:0,left:0,right:0,background: baglantiDurum==="yetkiHatasi" ? "#3a2a1e" : "#3a1e1e",borderBottom:"1px solid "+(baglantiDurum==="yetkiHatasi" ? "#f59e0b" : "#ef4444"),color: baglantiDurum==="yetkiHatasi" ? "#fde68a" : "#fecaca",padding:"8px 14px",fontSize:13,fontWeight:600,zIndex:10000,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}
+        },
+        baglantiDurum==="yetkiHatasi"
+          ? "🔒 Yetki hatası — sunucu erişimi reddetti. Çıkış yapıp tekrar giriş yapın."
+          : "⚠ Bağlantı hatası — sunucuya erişilemiyor. Yerel yedek gösteriliyor; değişiklikler kaydedilmeyecek. İnternetinizi kontrol edin."
+      )
+      /* Anlık yazma hatası popup'ı (alt) — dokununca kapanır */
+      , dbHata && React.createElement('div', {
+          key:'dbhata-'+dbHata.t,
+          onClick:function(){setDbHata(null);},
+          style:{position:"fixed",bottom:16,left:16,right:16,maxWidth:440,margin:"0 auto",background:"#3a1e1e",border:"1px solid #ef4444",color:"#fecaca",padding:"10px 14px",borderRadius:10,fontSize:13,zIndex:9999,boxShadow:"0 6px 20px rgba(0,0,0,0.4)",cursor:"pointer"}
+        },
+        "⚠ Veri kaydedilemedi: ", String(dbHata.path||""), " — ", String(dbHata.err||""), " · Yedek localStorage'da. Kapatmak için dokun."
+      )
     )
   );
 }
