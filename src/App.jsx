@@ -182,7 +182,8 @@ var DASHBOARD_CARDS_DEFAULT=[
   {id:"faultTrend",icon:"📈",label:"Arıza Trendi",desc:"Son 6 ay arıza grafiği",enabled:true,size:"small"},
   {id:"maintenancePerformance",icon:"👨‍🔧",label:"Bakım Performansı",desc:"Bu ay / toplam / ödenmemiş",enabled:true,size:"small"},
   {id:"inspectionAlerts",icon:"🔍",label:"Muayene Uyarıları",desc:"Geciken ve yaklaşan",enabled:true,size:"small"},
-  {id:"contractAlerts",icon:"📄",label:"Sözleşme Uyarıları",desc:"Biten ve yaklaşan",enabled:true,size:"small"}
+  {id:"contractAlerts",icon:"📄",label:"Sözleşme Uyarıları",desc:"Biten ve yaklaşan",enabled:true,size:"small"},
+  {id:"overduePayments",icon:"🔴",label:"Geciken Ödemeler",desc:"Bakiyesi olan asansörler (yüksekten aza)",enabled:true,size:"medium"}
 ];
 function normalizeDashboardLayout(raw){
   var fallback=DASHBOARD_CARDS_DEFAULT.map(function(c){return {id:c.id,enabled:c.enabled!==false,size:c.size||"medium"};});
@@ -2244,6 +2245,33 @@ function App(){
           , biten===0&&yakin===0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)"}}, "Sözleşmelerde yaklaşan/geciken kayıt yok.")
           , biten>0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)",marginBottom:2}}, "🔴 "+biten+" sözleşmenin süresi dolmuş")
           , yakin>0&&React.createElement('div', {style:{fontSize:12,color:"var(--text-muted)"}}, "🟡 "+yakin+" sözleşme 30 gün içinde bitiyor")
+        );
+      })()
+    /* Geciken Ödemeler */
+    , dashboardEnabledMap.overduePayments&&rol==="yonetici"&&(function(){
+        var geciken=elevs
+          .map(function(e){return {e:e,bakiye:finansTutar(e.bakiyeDevir)};})
+          .filter(function(x){return x.bakiye>0;})
+          .sort(function(a,b){return b.bakiye-a.bakiye;});
+        if(geciken.length===0) return null;
+        return React.createElement('div',{style:{background:"var(--bg-panel)",borderRadius:20,overflow:"hidden",marginBottom:10,boxShadow:"var(--shadow-sm)",border:"1px solid rgba(239,68,68,0.2)"}},
+          React.createElement('div',{style:{padding:"14px 16px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(239,68,68,0.07)"}},
+            React.createElement('div',{style:{fontSize:14,fontWeight:700,color:"#ef4444"}},"🔴 Geciken Ödemeler"),
+            React.createElement('span',{style:{background:"rgba(239,68,68,0.15)",color:"#ef4444",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20}},geciken.length+" bina")
+          ),
+          geciken.slice(0,10).map(function(x){
+            var e=x.e;
+            return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderTop:"0.5px solid var(--border-soft)"}},
+              React.createElement('div',{style:{flex:1,minWidth:0}},
+                React.createElement('div',{style:{fontSize:13,fontWeight:700,color:"var(--text)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.ad||"?"),
+                React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:1}},e.ilce||"")
+              ),
+              React.createElement('div',{style:{fontWeight:800,fontSize:14,color:"#ef4444",flexShrink:0,marginLeft:12}},x.bakiye.toLocaleString("tr-TR")+"₺")
+            );
+          }),
+          geciken.length>10&&React.createElement('div',{style:{padding:"8px 16px",fontSize:11,color:"var(--text-muted)",textAlign:"center",borderTop:"0.5px solid var(--border-soft)"}},
+            "+"+(geciken.length-10)+" daha · Finans sekmesinden görüntüleyin"
+          )
         );
       })()
     /* Sıfırla */
