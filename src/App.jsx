@@ -677,6 +677,9 @@ function App(){
   const [bakimBildirimleri,setBakimBildirimleri]=useState([]); // yönetici için uygulama-içi toast'lar
   const bakimBildirimSeenRef=useRef(null); // oturum başı baz alınan son ts
   const [pushDurum,setPushDurum]=useState(function(){return pushBildirimDurumu();}); // FCM izin durumu
+  const [tumBildirimler,setTumBildirimler]=useState([]); // bildirim paneli: tüm geçmiş
+  const [bildirimPanelAcik,setBildirimPanelAcik]=useState(false);
+  const [bildirimPanelSeen,setBildirimPanelSeen]=useState(""); // panel için son okunan ts
   // ---- Çoklu firma (tenant) durumu ----
   const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
   // tenantConfig: login öncesi public (ad, adminEmail), login sonrası full config ile zenginleştirilir
@@ -735,6 +738,7 @@ function App(){
     // Son görülen bildirim zamanı cihazda kalıcı: yönetici moduna sonradan
     // girilse bile aradaki bildirimler kaçmaz (aynı cihazda rol değişimi dahil).
     bakimBildirimSeenRef.current = lsGet(lsKey) || null;
+    setBildirimPanelSeen(lsGet("at_bb_panel_seen_" + tenantId) || "");
     function ileriAl(ts){
       bakimBildirimSeenRef.current = ts;
       lsSet(lsKey, ts);
@@ -743,6 +747,7 @@ function App(){
       try {
         var list = await listBakimBildirimleri();
         if (stopped) return;
+        setTumBildirimler(list);
         if (initial && !bakimBildirimSeenRef.current) {
           // Bu cihazda ilk kullanım: geçmişi gösterme, en son olayı baz al
           ileriAl(list.length ? list[list.length-1].ts : new Date().toISOString());
@@ -796,6 +801,23 @@ function App(){
 
   function bakimBildirimKapat(id){
     setBakimBildirimleri(function(prev){ return prev.filter(function(b){ return b.id !== id; }); });
+  }
+
+  const bildirimOkunmamis=useMemo(function(){
+    if(!tumBildirimler.length) return 0;
+    return tumBildirimler.filter(function(e){ return String(e.ts||"") > String(bildirimPanelSeen||""); }).length;
+  },[tumBildirimler,bildirimPanelSeen]);
+
+  function bildirimPanelAc(){
+    setBildirimPanelAcik(true);
+    // Açılınca okundu say: en son olayın ts'ini kalıcı baz al
+    if(tumBildirimler.length){
+      var sonTs = tumBildirimler[tumBildirimler.length-1].ts || "";
+      setBildirimPanelSeen(sonTs);
+      lsSet("at_bb_panel_seen_" + tenantId, sonTs);
+    }
+    // Taze veri çek (25sn'lik polling'i bekletme)
+    listBakimBildirimleri().then(function(list){ setTumBildirimler(list); }).catch(function(){});
   }
   // Bakımcı bir bakımı tamamlayınca yöneticiye iletilecek olayı yazar.
   async function bakimTamamlandiBildir(payload){
@@ -1994,6 +2016,19 @@ function App(){
           ),
           /* Sağ: tema + çıkış */
           React.createElement('div', { style:{display:"flex",gap:4,alignItems:"center",flexShrink:0}},
+            rol==="yonetici"&&React.createElement('button', {
+              onClick:bildirimPanelAc,
+              title:"Bildirimler",
+              style:{position:"relative",width:30,height:30,borderRadius:8,background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.10)",color:"rgba(255,255,255,0.70)",cursor:"pointer",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}
+            },
+              "🔔",
+              bildirimOkunmamis>0&&React.createElement('span',{style:{
+                position:"absolute",top:-5,right:-5,minWidth:16,height:16,borderRadius:9,
+                background:"#ef4444",color:"#fff",fontSize:9,fontWeight:900,
+                display:"flex",alignItems:"center",justifyContent:"center",padding:"0 4px",
+                border:"1.5px solid var(--bg, #0f1117)"
+              }},bildirimOkunmamis>9?"9+":bildirimOkunmamis)
+            ),
             (rol==="yonetici"||isSuper)&&React.createElement('button', {
               onClick:()=>{var d=isSuper?ASIS_FIRMA_DEFAULT:{};setFirmaAyarlariForm({ad:d.ad||(tenantConfig&&tenantConfig.ad)||"",adres:d.adres||(tenantConfig&&tenantConfig.adres)||"",tel:d.tel||(tenantConfig&&tenantConfig.tel)||"",tel2:d.tel2||(tenantConfig&&tenantConfig.tel2)||"",tel3:d.tel3||(tenantConfig&&tenantConfig.tel3)||"",email:d.email||(tenantConfig&&tenantConfig.email)||"",email2:d.email2||(tenantConfig&&tenantConfig.email2)||"",logoUrl:(tenantConfig&&tenantConfig.logoUrl)||""});setFirmaAyarlariAcik(true);},
               title:"Firma Ayarları",
@@ -4336,6 +4371,65 @@ function App(){
       , React.createElement(InstallBanner, null)
       /* Uygulama-içi bakım bildirimleri (yönetici) */
       , React.createElement(BakimBildirimToast, { bildirimler: bakimBildirimleri, onDismiss: bakimBildirimKapat })
+
+      /* BİLDİRİM PANELİ */
+      , bildirimPanelAcik&&rol==="yonetici"&&(function(){
+          function tsFormat(ts){
+            try{
+              var d=new Date(ts);
+              if(isNaN(d.getTime())) return "";
+              var bugun=new Date(); bugun.setHours(0,0,0,0);
+              var gun=new Date(d); gun.setHours(0,0,0,0);
+              var saat=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+              if(gun.getTime()===bugun.getTime()) return "Bugün "+saat;
+              if(gun.getTime()===bugun.getTime()-86400000) return "Dün "+saat;
+              return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0")+" "+saat;
+            }catch(e){ return ""; }
+          }
+          var liste=tumBildirimler.slice().reverse().slice(0,50);
+          return React.createElement('div',{
+            onClick:function(){setBildirimPanelAcik(false);},
+            style:{position:"fixed",inset:0,zIndex:1000,background:"rgba(0,0,0,0.5)",display:"flex",justifyContent:"flex-end"}
+          },
+            React.createElement('div',{
+              onClick:function(e){e.stopPropagation();},
+              className:"safe-top",
+              style:{width:"min(380px,92vw)",height:"100%",background:"var(--bg-panel, #111827)",boxShadow:"-8px 0 30px rgba(0,0,0,0.4)",display:"flex",flexDirection:"column"}
+            },
+              React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 18px",borderBottom:"1px solid var(--border-soft, #1e2d40)"}},
+                React.createElement('div',{style:{fontWeight:800,fontSize:16,color:"var(--text)"}},"🔔 Bildirimler"),
+                React.createElement('button',{
+                  onClick:function(){setBildirimPanelAcik(false);},
+                  style:{width:30,height:30,borderRadius:8,background:"var(--bg-elevated, #1a2236)",border:"none",color:"var(--text-muted)",cursor:"pointer",fontSize:15}
+                },"✕")
+              ),
+              React.createElement('div',{className:"scroll-y",style:{flex:1,overflowY:"auto"}},
+                liste.length===0
+                  ? React.createElement('div',{style:{textAlign:"center",padding:"60px 20px",color:"var(--text-dim)"}},
+                      React.createElement('div',{style:{fontSize:36,marginBottom:10}},"📭"),
+                      React.createElement('div',{style:{fontSize:13,fontWeight:600}},"Henüz bildirim yok"),
+                      React.createElement('div',{style:{fontSize:11,marginTop:4}},"Bakımcı bakım tamamladıkça burada listelenecek")
+                    )
+                  : liste.map(function(b){
+                      var tutar=Number(b.tutar)||0;
+                      return React.createElement('div',{key:b.id,style:{padding:"12px 18px",borderBottom:"1px solid var(--border-soft, #1e2d40)",display:"flex",gap:10,alignItems:"flex-start"}},
+                        React.createElement('div',{style:{fontSize:18,flexShrink:0,marginTop:1}},"✅"),
+                        React.createElement('div',{style:{flex:1,minWidth:0}},
+                          React.createElement('div',{style:{fontWeight:700,fontSize:13,color:"var(--text)"}},b.elevAd||"Asansör"),
+                          React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},
+                            (b.ilce?b.ilce+" · ":"")+(b.bakimciAd?"🔧 "+b.bakimciAd:"")
+                          ),
+                          React.createElement('div',{style:{fontSize:10,color:"var(--text-dim)",marginTop:3}},tsFormat(b.ts))
+                        ),
+                        tutar>0
+                          ? React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"var(--ios-green, #10b981)",flexShrink:0}},"+"+tutar.toLocaleString("tr-TR")+"₺")
+                          : React.createElement('div',{style:{fontSize:10,fontWeight:700,color:"var(--ios-red, #ef4444)",flexShrink:0,marginTop:3}},"ödeme yok")
+                      );
+                    })
+              )
+            )
+          );
+        })()
       /* Sürekli bağlantı durumu bandı (üstte) — ağ/yetki sorunu varsa görünür */
       , baglantiDurum !== "ok" && React.createElement('div', {
           style:{position:"fixed",top:0,left:0,right:0,background: baglantiDurum==="yetkiHatasi" ? "#3a2a1e" : "#3a1e1e",borderBottom:"1px solid "+(baglantiDurum==="yetkiHatasi" ? "#f59e0b" : "#ef4444"),color: baglantiDurum==="yetkiHatasi" ? "#fde68a" : "#fecaca",padding:"8px 14px",fontSize:13,fontWeight:600,zIndex:10000,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,0.4)"}
