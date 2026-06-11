@@ -1,5 +1,6 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+import { getMessaging, getToken as getFcmToken, isSupported as fcmIsSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAWU95hhLKUKc_bTX5fqlLjDyPtOJ8w5r4",
@@ -587,6 +588,42 @@ export async function listBakimBildirimleri() {
   }
   out.sort(function (a, b) { return String(a.ts || "").localeCompare(String(b.ts || "")); });
   return out;
+}
+
+// ------- FCM web push (uygulama kapalıyken bildirim) ------------------------
+// Firebase Console → Proje Ayarları → Cloud Messaging → Web Push certificates
+// bölümünden "Key pair" değerini buraya yapıştırın.
+const FCM_VAPID_KEY = "";
+
+/** Push bildirim durumu: "hazir-degil" (vapid yok / tarayıcı desteklemiyor),
+ *  "granted" | "denied" | "default" (Notification.permission) */
+export function pushBildirimDurumu() {
+  if (!FCM_VAPID_KEY) return "hazir-degil";
+  if (typeof Notification === "undefined" || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return "hazir-degil";
+  return Notification.permission;
+}
+
+/** İzin ister, FCM token alır ve at_push_tokens/{uid} altına yazar.
+ *  Tenant'larda tenants/{tid}/at_push_tokens, Asis'te flat at_push_tokens. */
+export async function enablePushBildirim() {
+  try {
+    if (pushBildirimDurumu() === "hazir-degil") return { ok: false, reason: "desteklenmiyor" };
+    if (!(await fcmIsSupported())) return { ok: false, reason: "desteklenmiyor" };
+    var perm = await Notification.requestPermission();
+    if (perm !== "granted") return { ok: false, reason: "izin-reddedildi" };
+    var reg = await navigator.serviceWorker.ready;
+    var messaging = getMessaging(app);
+    var token = await getFcmToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return { ok: false, reason: "token-alinamadi" };
+    var user = auth.currentUser;
+    if (!user) return { ok: false, reason: "oturum-yok" };
+    var p = tenantKeyPath("at_push_tokens/" + user.uid);
+    if (!p) return { ok: false, reason: "tenant-yok" };
+    var ok = await dbSetRaw(p, { token: token, email: user.email || "", ts: new Date().toISOString() });
+    return ok ? { ok: true } : { ok: false, reason: "kayit-yazilamadi" };
+  } catch (e) {
+    return { ok: false, reason: (e && e.message) || "hata" };
+  }
 }
 
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------

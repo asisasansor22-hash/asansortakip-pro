@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -676,6 +676,7 @@ function App(){
   const [aktifBakimci,setAktifBakimci]=useState(null); // giriş yapan bakımcı objesi
   const [bakimBildirimleri,setBakimBildirimleri]=useState([]); // yönetici için uygulama-içi toast'lar
   const bakimBildirimSeenRef=useRef(null); // oturum başı baz alınan son ts
+  const [pushDurum,setPushDurum]=useState(function(){return pushBildirimDurumu();}); // FCM izin durumu
   // ---- Çoklu firma (tenant) durumu ----
   const [tenantId,setTenantIdState]=useState(function(){return getTenantId();});
   // tenantConfig: login öncesi public (ad, adminEmail), login sonrası full config ile zenginleştirilir
@@ -771,6 +772,27 @@ function App(){
     return function(){ stopped = true; clearTimeout(firstTick); clearInterval(iv); };
   // eslint-disable-next-line
   }, [rol, tenantId]);
+
+  // İzin zaten verilmişse FCM token'ı sessizce tazele (cihaz/tenant değişimi)
+  useEffect(function(){
+    if (rol !== "yonetici" || !tenantId) return;
+    if (pushBildirimDurumu() !== "granted") return;
+    enablePushBildirim().then(function(r){
+      if (!r.ok) console.warn("Push token tazelenemedi:", r.reason);
+    });
+  }, [rol, tenantId]);
+
+  async function pushBildirimAc(){
+    var r = await enablePushBildirim();
+    setPushDurum(pushBildirimDurumu());
+    if (r.ok) {
+      alert("✅ Push bildirimleri açıldı. Bakımcı bir bakım tamamlayınca uygulama kapalıyken bile bildirim alacaksınız.");
+    } else if (r.reason === "izin-reddedildi") {
+      alert("Bildirim izni reddedildi. Tarayıcı/telefon ayarlarından bu site için bildirimlere izin verip tekrar deneyin.");
+    } else {
+      alert("Push bildirimi açılamadı: " + r.reason);
+    }
+  }
 
   function bakimBildirimKapat(id){
     setBakimBildirimleri(function(prev){ return prev.filter(function(b){ return b.id !== id; }); });
@@ -2037,6 +2059,22 @@ function App(){
     , dashboardHiddenLabels.length>0&&React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginBottom:10,background:"var(--bg-elevated)",borderRadius:10,padding:"8px 10px"}},
       "Gizli kartlar: "+dashboardHiddenLabels.join(", ")+" (Dashboard Düzenle'den açabilirsiniz)."
     )
+    /* PUSH BİLDİRİM İZNİ BANNER'I */
+    , rol==="yonetici"&&pushDurum==="default"&&React.createElement('div',{
+        style:{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.3)",borderRadius:14,padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}
+      },
+        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:10}},
+          React.createElement('span',{style:{fontSize:20}},"🔔"),
+          React.createElement('div',null,
+            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:"#3b82f6"}},"Telefon bildirimleri"),
+            React.createElement('div',{style:{fontSize:11,color:"var(--text-muted)",marginTop:2}},"Bakım tamamlanınca uygulama kapalıyken bile bildirim alın")
+          )
+        ),
+        React.createElement('button',{
+          onClick:pushBildirimAc,
+          style:{padding:"8px 16px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:9,fontSize:12,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}
+        },"Bildirimleri Aç")
+      )
     /* PLAN KULLANIM BADGE'i */
     , dashboardEnabledMap.planBadge&&rol==="yonetici"&&!isSuper&&(function(){
         var oran = limits.elevLimit===Infinity ? 0 : (elevs.length / limits.elevLimit);
