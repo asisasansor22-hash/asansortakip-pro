@@ -1,0 +1,13 @@
+# FitProgram için bağımsız Netlify yapılandırması.
+# Bu dosya yalnızca, Netlify'da "Base directory = fitness" olan AYRI bir site
+# bağladığında devreye girer. Kökteki netlify.toml (website/ Next.js sitesi) etkilenmez.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback: sayfa yenilemede 404 olmaması için tüm yolları index.html'e yönlendir.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
