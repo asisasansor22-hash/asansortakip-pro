@@ -14,7 +14,7 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram }) {
     <div>
       <button className="btn-back" onClick={onBack}>← Geri</button>
       <div className="detail-hero">
-        <ExerciseAnimation type={ex.anim} size={220} />
+        <ExerciseAnimation type={ex.anim} gear={ex.equip} size={220} />
       </div>
       <h2>{ex.name}</h2>
       <div className="row" style={{ marginBottom: 12 }}>
