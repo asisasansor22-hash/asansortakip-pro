@@ -1,0 +1,211 @@
+/* ============ TEMA ============ */
+:root {
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --card: #1e293b;
+  --card2: #273449;
+  --line: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #22d3ee;
+  --accent2: #0ea5e9;
+  --ok: #10b981;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; }
+h1, h2, h3 { margin: 0 0 8px; }
+
+/* ============ DÜZEN ============ */
+.app { max-width: 720px; margin: 0 auto; padding: 0 14px 90px; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 4px 8px; position: sticky; top: 0; z-index: 20;
+  background: linear-gradient(180deg, #0b1120 70%, transparent);
+}
+.brand { font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
+.brand span { color: var(--accent); }
+.btn-ghost { background: var(--card2); color: var(--text); padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+
+/* alt navigasyon */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; justify-content: space-around;
+  background: rgba(15,23,42,.96); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line); padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+}
+.tabbar button {
+  background: none; color: var(--muted); font-size: 11px; font-weight: 600;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; padding: 4px;
+}
+.tabbar button .ic { font-size: 20px; }
+.tabbar button.active { color: var(--accent); }
+
+/* ============ KARTLAR ============ */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px; transition: transform .12s, border-color .12s;
+}
+.card:active { transform: scale(.98); }
+.region-card { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left; }
+.region-card .emoji { font-size: 28px; }
+.region-card .rname { font-weight: 700; font-size: 15px; }
+.region-card .rcount { color: var(--muted); font-size: 12px; }
+
+.ex-card { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.ex-card .exname { font-weight: 700; font-size: 14px; }
+.ex-card .exmeta { color: var(--muted); font-size: 11px; }
+.figbox { background: var(--card2); border-radius: 14px; width: 100%; display: flex; justify-content: center; padding: 6px 0; }
+
+.pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--card2); color: var(--muted); }
+.pill.lvl { color: #fde68a; }
+.section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 18px 4px 10px; }
+
+/* ============ DETAY ============ */
+.detail-hero { background: var(--card2); border-radius: 20px; padding: 18px; display: flex; justify-content: center; margin-bottom: 14px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tips li { margin: 6px 0; color: var(--muted); font-size: 14px; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #042f3a;
+  font-weight: 800; padding: 14px; border-radius: 14px; width: 100%; font-size: 15px;
+}
+.btn-back { background: none; color: var(--accent); font-size: 14px; font-weight: 600; padding: 6px 0; margin: 6px 0; }
+
+/* form / login */
+.login-wrap { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; gap: 14px; }
+.input { width: 100%; padding: 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--text); font-size: 15px; }
+.input::placeholder { color: var(--muted); }
+.err { color: var(--danger); font-size: 13px; }
+
+/* program builder */
+.prog-ex-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
+.prog-ex-row .grow { flex: 1; }
+.icon-btn { background: var(--card2); color: var(--text); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 700; }
+.icon-btn.danger { color: var(--danger); }
+.empty { text-align: center; color: var(--muted); padding: 40px 20px; }
+
+/* beslenme */
+.macro { display: flex; gap: 8px; }
+.macro .m { flex: 1; background: var(--card2); border-radius: 12px; padding: 10px; text-align: center; }
+.macro .m b { display: block; font-size: 18px; color: var(--accent); }
+.macro .m s { display: block; font-size: 11px; color: var(--muted); text-decoration: none; }
+.meal { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+.meal h4 { margin: 0 0 4px; font-size: 14px; }
+.meal p { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* ============ FİGÜR İSKELETİ ============ */
+.exfig { display: block; }
+.exfig .bone { stroke-width: 7; stroke-linecap: round; fill: none; }
+.exfig .ground { stroke: #475569; stroke-width: 4; stroke-linecap: round; }
+.exfig .bench { fill: #475569; }
+
+/* eklem dönme merkezleri (viewBox koordinatları) */
+.exfig .figure    { transform-box: view-box; transform-origin: 100px 115px; }
+.exfig .leg       { transform-box: view-box; transform-origin: 100px 130px; }
+.exfig .shin      { transform-box: view-box; transform-origin: 100px 168px; }
+.exfig .upperbody { transform-box: view-box; transform-origin: 100px 130px; }
+.exfig .arm       { transform-box: view-box; transform-origin: 100px 78px; }
+.exfig .forearm   { transform-box: view-box; transform-origin: 100px 104px; }
+
+/* ---- IDLE (varsayılan nefes) ---- */
+.fig-idle .figure { animation: idle 3s ease-in-out infinite; }
+@keyframes idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
+
+/* ---- SQUAT ---- */
+.fig-squat .figure    { animation: sq-body 1.6s ease-in-out infinite; }
+.fig-squat .leg       { animation: sq-thigh 1.6s ease-in-out infinite; }
+.fig-squat .shin      { animation: sq-shin 1.6s ease-in-out infinite; }
+.fig-squat .upperbody { animation: sq-upper 1.6s ease-in-out infinite; }
+@keyframes sq-body  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(24px); } }
+@keyframes sq-thigh { 0%,100% { transform: rotate(0); } 50% { transform: rotate(20deg); } }
+@keyframes sq-shin  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-42deg); } }
+@keyframes sq-upper { 0%,100% { transform: rotate(0); } 50% { transform: rotate(15deg); } }
+
+/* ---- ŞINAV (pushup) ---- */
+.fig-pushup .figure  { animation: pu-body 1.6s ease-in-out infinite; }
+.fig-pushup .forearm { animation: pu-arm 1.6s ease-in-out infinite; }
+.fig-pushup .leg     { transform: rotate(2deg); }
+@keyframes pu-body { 0%,100% { transform: rotate(-72deg) translateY(0); } 50% { transform: rotate(-72deg) translateY(16px); } }
+@keyframes pu-arm  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(42deg); } }
+
+/* ---- BENCH PRESS ---- */
+.fig-benchpress .figure  { transform: rotate(-90deg) translateY(-26px); }
+.fig-benchpress .arm     { animation: bp-arm 1.6s ease-in-out infinite; }
+.fig-benchpress .forearm { animation: bp-fore 1.6s ease-in-out infinite; }
+.fig-benchpress .leg     { transform: rotate(28deg); }
+.fig-benchpress .shin    { transform: rotate(-55deg); }
+@keyframes bp-arm  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-32deg); } }
+@keyframes bp-fore { 0%,100% { transform: rotate(62deg); } 50% { transform: rotate(2deg); } }
+
+/* ---- BİCEPS CURL ---- */
+.fig-curl .forearm { animation: cu-fore 1.4s ease-in-out infinite; }
+@keyframes cu-fore { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-128deg); } }
+
+/* ---- MEKİK (crunch) ---- */
+.fig-crunch .figure    { transform: rotate(-90deg) translateY(-20px); }
+.fig-crunch .upperbody { animation: cr-up 1.8s ease-in-out infinite; }
+.fig-crunch .leg       { transform: rotate(46deg); }
+.fig-crunch .shin      { transform: rotate(-92deg); }
+@keyframes cr-up { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-38deg); } }
+
+/* ---- JUMPING JACK ---- */
+.fig-jumpingjack .figure { animation: jj-body .8s ease-in-out infinite; }
+.fig-jumpingjack .arm    { animation: jj-arm .8s ease-in-out infinite; }
+.fig-jumpingjack .leg    { animation: jj-leg .8s ease-in-out infinite; }
+@keyframes jj-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes jj-arm  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-158deg); } }
+@keyframes jj-leg  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(22deg); } }
+
+/* ---- LUNGE ---- */
+.fig-lunge .figure    { animation: lu-body 1.7s ease-in-out infinite; }
+.fig-lunge .leg       { animation: lu-thigh 1.7s ease-in-out infinite; }
+.fig-lunge .shin      { animation: lu-shin 1.7s ease-in-out infinite; }
+@keyframes lu-body  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(20px); } }
+@keyframes lu-thigh { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-30deg); } }
+@keyframes lu-shin  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(44deg); } }
+
+/* ---- OMUZ PRESS ---- */
+.fig-shoulderpress .arm     { animation: sp-arm 1.6s ease-in-out infinite; }
+.fig-shoulderpress .forearm { animation: sp-fore 1.6s ease-in-out infinite; }
+@keyframes sp-arm  { 0%,100% { transform: rotate(-30deg); } 50% { transform: rotate(-158deg); } }
+@keyframes sp-fore { 0%,100% { transform: rotate(40deg); } 50% { transform: rotate(0); } }
+
+/* ---- DEADLIFT ---- */
+.fig-deadlift .upperbody { animation: dl-up 1.9s ease-in-out infinite; }
+.fig-deadlift .arm       { animation: dl-arm 1.9s ease-in-out infinite; }
+.fig-deadlift .leg       { animation: dl-leg 1.9s ease-in-out infinite; }
+.fig-deadlift .shin      { animation: dl-shin 1.9s ease-in-out infinite; }
+@keyframes dl-up   { 0%,100% { transform: rotate(0); } 50% { transform: rotate(62deg); } }
+@keyframes dl-arm  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-60deg); } }
+@keyframes dl-leg  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(12deg); } }
+@keyframes dl-shin { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-16deg); } }
+
+/* ---- CALF RAISE ---- */
+.fig-calfraise .figure { animation: ca-body 1s ease-in-out infinite; }
+@keyframes ca-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-11px); } }
+
+/* ---- BARFİKS (pullup) ---- */
+.fig-pullup .figure  { animation: pl-body 1.9s ease-in-out infinite; }
+.fig-pullup .arm     { transform: rotate(-160deg); }
+.fig-pullup .forearm { animation: pl-fore 1.9s ease-in-out infinite; }
+@keyframes pl-body { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-24px); } }
+@keyframes pl-fore { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-44deg); } }
+
+/* ---- PLANK ---- */
+.fig-plank .figure  { transform: rotate(-72deg) translateY(8px); animation: pk-breath 3.2s ease-in-out infinite; }
+.fig-plank .forearm { transform: rotate(88deg); }
+@keyframes pk-breath { 0%,100% { transform: rotate(-72deg) translateY(8px); } 50% { transform: rotate(-72deg) translateY(11px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .exfig * { animation: none !important; }
+}
