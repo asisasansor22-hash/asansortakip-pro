@@ -1,8 +1,12 @@
 import React from "react";
+import Lottie from "lottie-react";
+import { getLottie } from "../data/lottieMap";
 
-// Kaslı (bodybuilder) stilize karakter figürü — "Atlas Prime" tarzı.
-// Eklem yapısı ve dönme merkezleri önceki sürümle birebir aynıdır;
-// böylece index.css'teki tüm ".fig-<type>" keyframe'leri değişmeden çalışır.
+// Egzersiz animasyonu.
+// 1) Eğer bu hareket tipi için lottieMap.js'te profesyonel bir Lottie tanımlıysa
+//    onu oynatır (birebir kalite).
+// 2) Yoksa, aşağıdaki kaslı (bodybuilder) stilize SVG karakterine düşer —
+//    "Atlas Prime" tarzı; eklem yapısı index.css'teki ".fig-<type>" keyframe'leriyle canlanır.
 //
 // Eklemler (viewBox 0 0 200 230):
 //   omuz (100,78) · dirsek (100,104) · el (100,132)
@@ -17,6 +21,14 @@ const LINE = "rgba(33,42,54,.40)"; // kas çizgisi / gölge
 
 export default function ExerciseAnimation({ type = "idle", size = 180, color = SKIN }) {
   const t = type || "idle";
+
+  // 1) Profesyonel Lottie varsa onu kullan
+  const lottie = getLottie(t);
+  if (lottie) {
+    return <Lottie animationData={lottie} loop autoplay style={{ width: size, height: size }} />;
+  }
+
+  // 2) Yedek: kaslı SVG karakter
   const lying = LYING[t];
   const floor = ON_FLOOR[t];
   const dx = -7; // arka uzuv ötelemesi (derinlik)
