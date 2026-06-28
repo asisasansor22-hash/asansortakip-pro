@@ -103,11 +103,13 @@ h1, h2, h3 { margin: 0 0 8px; }
 .meal h4 { margin: 0 0 4px; font-size: 14px; }
 .meal p { margin: 0; color: var(--muted); font-size: 13px; }
 
-/* ============ FİGÜR İSKELETİ ============ */
-.exfig { display: block; }
-.exfig .bone { stroke-width: 7; stroke-linecap: round; fill: none; }
+/* ============ KARAKTER FİGÜRÜ ============ */
+.exfig { display: block; overflow: visible; }
+.exfig .figure { stroke: rgba(0,0,0,.22); stroke-width: 1.5; stroke-linejoin: round; }
+.exfig .part { stroke: inherit; }
+.exfig .far { filter: brightness(.68); }      /* arka taraftaki uzuvlar (derinlik) */
 .exfig .ground { stroke: #475569; stroke-width: 4; stroke-linecap: round; }
-.exfig .bench { fill: #475569; }
+.exfig .bench { fill: #475569; stroke: none; }
 
 /* eklem dönme merkezleri (viewBox koordinatları) */
 .exfig .figure    { transform-box: view-box; transform-origin: 100px 115px; }
