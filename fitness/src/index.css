@@ -123,22 +123,25 @@ h1, h2, h3 { margin: 0 0 8px; }
 .fig-idle .figure { animation: idle 3s ease-in-out infinite; }
 @keyframes idle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(2px); } }
 
-/* ---- SQUAT ---- */
-.fig-squat .figure    { animation: sq-body 1.6s ease-in-out infinite; }
-.fig-squat .leg       { animation: sq-thigh 1.6s ease-in-out infinite; }
-.fig-squat .shin      { animation: sq-shin 1.6s ease-in-out infinite; }
-.fig-squat .upperbody { animation: sq-upper 1.6s ease-in-out infinite; }
-@keyframes sq-body  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(24px); } }
-@keyframes sq-thigh { 0%,100% { transform: rotate(0); } 50% { transform: rotate(20deg); } }
-@keyframes sq-shin  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-42deg); } }
-@keyframes sq-upper { 0%,100% { transform: rotate(0); } 50% { transform: rotate(15deg); } }
+/* ---- SQUAT (ayak sabit, diz öne, kalça aşağı) ---- */
+/* IK: kalça H kadar düşerken bacak açısı T ile kısalır; cos(T)=(75-H)/75.
+   H=20px, T=43° -> ayak yerde kalır. */
+.fig-squat .figure    { animation: sq-body 1.8s ease-in-out infinite; }
+.fig-squat .leg       { animation: sq-thigh 1.8s ease-in-out infinite; }
+.fig-squat .shin      { animation: sq-shin 1.8s ease-in-out infinite; }
+.fig-squat .upperbody { animation: sq-upper 1.8s ease-in-out infinite; }
+@keyframes sq-body  { 0%,100% { transform: translateY(0); }  50% { transform: translateY(20px); } }
+@keyframes sq-thigh { 0%,100% { transform: rotate(0); }      50% { transform: rotate(43deg); } }
+@keyframes sq-shin  { 0%,100% { transform: rotate(0); }      50% { transform: rotate(-86deg); } }
+@keyframes sq-upper { 0%,100% { transform: rotate(0); }      50% { transform: rotate(18deg); } }
 
-/* ---- ŞINAV (pushup) ---- */
-.fig-pushup .figure  { animation: pu-body 1.6s ease-in-out infinite; }
-.fig-pushup .forearm { animation: pu-arm 1.6s ease-in-out infinite; }
-.fig-pushup .leg     { transform: rotate(2deg); }
-@keyframes pu-body { 0%,100% { transform: rotate(-72deg) translateY(0); } 50% { transform: rotate(-72deg) translateY(16px); } }
-@keyframes pu-arm  { 0%,100% { transform: rotate(0); } 50% { transform: rotate(42deg); } }
+/* ---- ŞINAV (pushup) — yere yakın, yatay, dirsek bük ---- */
+.fig-pushup .figure  { animation: pu-body 1.7s ease-in-out infinite; }
+.fig-pushup .arm     { animation: pu-arm 1.7s ease-in-out infinite; }
+.fig-pushup .forearm { animation: pu-fore 1.7s ease-in-out infinite; }
+@keyframes pu-body { 0%,100% { transform: translateY(54px) rotate(-83deg); } 50% { transform: translateY(68px) rotate(-83deg); } }
+@keyframes pu-arm  { 0%,100% { transform: rotate(0); }  50% { transform: rotate(-18deg); } }
+@keyframes pu-fore { 0%,100% { transform: rotate(0); }  50% { transform: rotate(54deg); } }
 
 /* ---- BENCH PRESS ---- */
 .fig-benchpress .figure  { transform: rotate(-90deg) translateY(-26px); }
