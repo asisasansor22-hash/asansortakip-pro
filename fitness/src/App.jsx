@@ -8,6 +8,7 @@ import Nutrition from "./components/Nutrition";
 import Splash from "./components/Splash";
 import Onboarding from "./components/Onboarding";
 import Profile from "./components/Profile";
+import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
 
 const TABS = [
@@ -33,6 +34,7 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [profile, setProfile] = useState(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [workout, setWorkout] = useState(null);
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -163,6 +165,7 @@ export default function App() {
     <div className="app">
       {splash && <Splash hiding={splashHide} />}
       {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
+      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>
         <button className="btn-ghost" onClick={() => setTab("profile")}>👤</button>
@@ -178,6 +181,7 @@ export default function App() {
           onDelete={deleteProgram}
           onSetActive={setActiveId}
           onRemoveExercise={removeExercise}
+          onStart={(p) => setWorkout(p)}
         />
       )}
       {tab === "nutrition" && <Nutrition />}
