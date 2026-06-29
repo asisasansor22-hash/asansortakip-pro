@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ProfileForm, { GENDERS, GOALS, STYLES } from "./ProfileForm";
 import { firebaseLogout, changePassword } from "../firebase";
+import PasswordInput from "./PasswordInput";
 
 const labelOf = (arr, id) => { const x = arr.find((a) => a.id === id); return x ? x.label : "—"; };
 
@@ -27,11 +28,11 @@ function ChangePassword() {
 
   return (
     <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <input className="input" type="password" placeholder="Mevcut şifre" value={cur}
+      <PasswordInput placeholder="Mevcut şifre" value={cur}
         onChange={(e) => setCur(e.target.value)} autoComplete="current-password" />
-      <input className="input" type="password" placeholder="Yeni şifre (min. 6 hane)" value={pw}
+      <PasswordInput placeholder="Yeni şifre (min. 6 hane)" value={pw}
         onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
-      <input className="input" type="password" placeholder="Yeni şifre (tekrar)" value={pw2}
+      <PasswordInput placeholder="Yeni şifre (tekrar)" value={pw2}
         onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
       {err && <div className="err">{err}</div>}
       {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
