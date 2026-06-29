@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import ExerciseAnimation from "./ExerciseAnimation";
 import { topNote, getAlternatives } from "../data/exercises";
+import { getMuscles } from "../data/exerciseMuscles";
 
 export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise }) {
   const [added, setAdded] = useState(false);
   const top = topNote(ex.id);
   const alts = getAlternatives(ex.id);
+  const muscles = getMuscles(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
@@ -26,6 +28,17 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
         <span className="pill">{ex.sets}</span>
       </div>
       <p style={{ color: "var(--text)", lineHeight: 1.5 }}>{ex.desc}</p>
+
+      {muscles && (muscles.p.length > 0 || muscles.s.length > 0) && (
+        <div style={{ marginTop: 12 }}>
+          <div className="section-title" style={{ marginTop: 0 }}>Çalışan kaslar</div>
+          <div className="row">
+            {muscles.p.map((m) => <span key={m} className="pill musc-p">{m}</span>)}
+            {muscles.s.map((m) => <span key={m} className="pill musc-s">{m}</span>)}
+          </div>
+          <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 6 }}>● Birincil &nbsp; ○ İkincil</div>
+        </div>
+      )}
 
       {top && (
         <div className="evidence">⭐ <b>En Etkili</b> — {top}</div>
