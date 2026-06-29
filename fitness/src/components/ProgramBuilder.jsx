@@ -3,7 +3,7 @@ import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 
 export default function ProgramBuilder({
-  programs, activeId, onCreate, onDelete, onSetActive, onRemoveExercise,
+  programs, activeId, onCreate, onDelete, onSetActive, onRemoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(activeId);
@@ -47,6 +47,12 @@ export default function ProgramBuilder({
                 : <button className="icon-btn" onClick={() => onSetActive(p.id)}>Aktif yap</button>}
               <button className="icon-btn danger" onClick={() => onDelete(p.id)}>Sil</button>
             </div>
+
+            {p.exercises.length > 0 && (
+              <button className="btn-primary" style={{ marginTop: 10, padding: 12 }} onClick={() => onStart(p)}>
+                ▶ Antrenmanı Başlat
+              </button>
+            )}
 
             {open && (
               <div style={{ marginTop: 12 }}>
