@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Mevcut asansortakip projesiyle aynı Firebase projesi kullanılıyor.
 // Spor verileri ayrı bir kök altında (/fitness) tutulur, böylece karışmaz.
@@ -87,6 +88,32 @@ export function onAuthChange(cb) {
 }
 
 export { auth };
+
+// --- Admin (Cloud Functions) ---
+export const ADMIN_EMAIL = "berat_1994ozt@hotmail.com";
+export function isAdmin(user) {
+  return !!user && (user.email || "").toLowerCase() === ADMIN_EMAIL;
+}
+const fns = getFunctions(app);
+
+export async function adminListUsers() {
+  try {
+    const r = await httpsCallable(fns, "adminListUsers")();
+    return { success: true, users: (r.data && r.data.users) || [] };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+export async function adminSetPassword(uid, password) {
+  try {
+    await httpsCallable(fns, "adminSetPassword")({ uid, password });
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+export async function adminSetDisabled(uid, disabled) {
+  try {
+    await httpsCallable(fns, "adminSetDisabled")({ uid, disabled });
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
 
 // --- Realtime Database (REST, auth token ile) ---
 // Her kullanıcının verisi /fitness/users/{uid}/{key} altında saklanır.
