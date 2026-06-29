@@ -23,6 +23,14 @@ function uid() {
   return "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+// Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
+function lsGetProfile() {
+  try { const d = localStorage.getItem("fitbe_profile"); return d ? JSON.parse(d) : null; } catch (e) { return null; }
+}
+function lsSetProfile(p) {
+  try { localStorage.setItem("fitbe_profile", JSON.stringify(p)); } catch (e) {}
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
@@ -32,7 +40,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const loaded = useRef(false);
   const [toast, setToast] = useState("");
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(lsGetProfile);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [workout, setWorkout] = useState(null);
   const [history, setHistory] = useState([]);
@@ -60,6 +68,10 @@ export default function App() {
     if (!user) return;
     let cancelled = false;
     (async () => {
+      // Cihazdaki profili anında uygula (Firebase beklemeden)
+      const localProf = lsGetProfile();
+      if (localProf && !cancelled) setProfile(localProf);
+
       const data = await dbGet("programs");
       const prof = await dbGet("profile");
       const hist = await dbGet("workouts");
@@ -68,7 +80,8 @@ export default function App() {
         setPrograms(data.list);
         setActiveId(data.activeId || (data.list[0] && data.list[0].id) || null);
       }
-      if (prof && prof.gender) setProfile(prof);
+      if (prof && prof.gender) { setProfile(prof); lsSetProfile(prof); }
+      else if (localProf) { dbSet("profile", localProf); } // buluta da yedekle
       if (Array.isArray(hist)) setHistory(hist);
       setProfileLoaded(true);
       loaded.current = true;
@@ -78,6 +91,7 @@ export default function App() {
 
   function saveProfile(p) {
     setProfile(p);
+    lsSetProfile(p);
     dbSet("profile", p);
   }
 
