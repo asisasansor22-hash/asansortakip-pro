@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { firebaseLogin, sendPasswordReset } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
+import PasswordInput from "./PasswordInput";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,7 @@ export default function Login() {
       <form onSubmit={submit} style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 10 }}>
         <input className="input" type="email" placeholder="E-posta" value={email}
           onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-        <input className="input" type="password" placeholder="Şifre (min. 6 hane)" value={pass}
+        <PasswordInput placeholder="Şifre (min. 6 hane)" value={pass}
           onChange={(e) => setPass(e.target.value)} autoComplete="current-password" />
         {err && <div className="err">{err}</div>}
         {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
