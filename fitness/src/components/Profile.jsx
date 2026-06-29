@@ -1,8 +1,44 @@
-import React from "react";
+import React, { useState } from "react";
 import ProfileForm, { GENDERS, GOALS, STYLES } from "./ProfileForm";
-import { firebaseLogout } from "../firebase";
+import { firebaseLogout, changePassword } from "../firebase";
 
 const labelOf = (arr, id) => { const x = arr.find((a) => a.id === id); return x ? x.label : "—"; };
+
+function ChangePassword() {
+  const [cur, setCur] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setMsg(""); setErr("");
+    if (!cur) { setErr("Mevcut şifreni gir."); return; }
+    if (pw.length < 6) { setErr("Yeni şifre en az 6 hane olmalı."); return; }
+    if (pw !== pw2) { setErr("Yeni şifreler eşleşmiyor."); return; }
+    setBusy(true);
+    const res = await changePassword(cur, pw);
+    setBusy(false);
+    if (res.success) { setMsg("Şifren güncellendi ✓"); setCur(""); setPw(""); setPw2(""); }
+    else setErr(res.error || "Bir hata oluştu.");
+  }
+
+  return (
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <input className="input" type="password" placeholder="Mevcut şifre" value={cur}
+        onChange={(e) => setCur(e.target.value)} autoComplete="current-password" />
+      <input className="input" type="password" placeholder="Yeni şifre (min. 6 hane)" value={pw}
+        onChange={(e) => setPw(e.target.value)} autoComplete="new-password" />
+      <input className="input" type="password" placeholder="Yeni şifre (tekrar)" value={pw2}
+        onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+      {err && <div className="err">{err}</div>}
+      {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
+      <button className="btn-primary" disabled={busy}>{busy ? "Güncelleniyor..." : "Şifreyi Değiştir"}</button>
+    </form>
+  );
+}
 
 const fmtDate = (ts) => {
   try { return new Date(ts).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
@@ -45,6 +81,12 @@ export default function Profile({ profile, email, onSave, history = [] }) {
         Bu seçimler yalnızca <b>Hazır (otomatik) programları</b> filtreler. Kendi programını oluştururken hiçbir kısıtlama yoktur.
       </p>
       <ProfileForm initial={profile} onSave={onSave} submitLabel="Güncelle" />
+
+      <div className="section-title">Şifre Değiştir</div>
+      <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
+        Yeni bir şifre belirle. (Şifreni unuttuysan giriş ekranındaki "Şifremi unuttum?"u kullan.)
+      </p>
+      <ChangePassword />
 
       <button className="btn-ghost" style={{ width: "100%", marginTop: 20, padding: 14 }} onClick={firebaseLogout}>
         Çıkış Yap
