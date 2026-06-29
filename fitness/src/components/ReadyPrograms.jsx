@@ -3,9 +3,10 @@ import { READY_PROGRAMS } from "../data/programs";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 
-export default function ReadyPrograms({ onCopy }) {
+export default function ReadyPrograms({ onCopy, profile }) {
   const [open, setOpen] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [showAll, setShowAll] = useState(false);
 
   function copy(p) {
     if (onCopy) onCopy(p);
@@ -13,12 +14,34 @@ export default function ReadyPrograms({ onCopy }) {
     setTimeout(() => setCopied(null), 1800);
   }
 
+  // Profil filtresi: cinsiyet (uygun veya herkes) + stil eşleşmesi.
+  // Hedef eşleşmesi sıralamada öne alır. "Tümünü gör" tüm programları açar.
+  let list = READY_PROGRAMS;
+  if (profile && !showAll) {
+    list = READY_PROGRAMS.filter((p) =>
+      (p.gender === "herkes" || p.gender === profile.gender) && p.style === profile.style
+    );
+    if (list.length === 0) {
+      list = READY_PROGRAMS.filter((p) => p.gender === "herkes" || p.gender === profile.gender);
+    }
+    list = [...list].sort((a, b) => (b.goalTag === profile.goal) - (a.goalTag === profile.goal));
+  }
+
   return (
     <div>
       <h2>Hazır Programlar</h2>
-      <p style={{ color: "var(--muted)", marginTop: -4 }}>Hedefine uygun programı seç, kopyala ve "Programlarım"da düzenle.</p>
+      <p style={{ color: "var(--muted)", marginTop: -4 }}>
+        {profile && !showAll ? "Profiline göre önerilen programlar." : "Tüm hazır programlar."} Kopyala, "Programım"da düzenle.
+      </p>
 
-      {READY_PROGRAMS.map((p) => {
+      {profile && (
+        <div className="row" style={{ marginBottom: 14 }}>
+          <button className={"seg" + (!showAll ? " on" : "")} onClick={() => setShowAll(false)}>Bana özel</button>
+          <button className={"seg" + (showAll ? " on" : "")} onClick={() => setShowAll(true)}>Tümünü gör</button>
+        </div>
+      )}
+
+      {list.map((p) => {
         const isOpen = open === p.id;
         return (
           <div key={p.id} className="card" style={{ marginBottom: 12 }}>
@@ -45,18 +68,21 @@ export default function ReadyPrograms({ onCopy }) {
                 {p.days.map((d, di) => (
                   <div key={di} style={{ marginBottom: 14 }}>
                     <div className="section-title" style={{ margin: "6px 4px" }}>{d.name}</div>
-                    <div className="grid">
-                      {d.exercises.map((exId) => {
-                        const ex = getExercise(exId);
-                        if (!ex) return null;
-                        return (
-                          <div key={exId} className="card ex-card" style={{ padding: 8 }}>
-                            <div className="figbox"><ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={84} /></div>
-                            <div className="exname" style={{ fontSize: 12 }}>{ex.name}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {d.note && <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 4px 8px" }}>{d.note}</p>}
+                    {d.exercises && d.exercises.length > 0 && (
+                      <div className="grid">
+                        {d.exercises.map((exId) => {
+                          const ex = getExercise(exId);
+                          if (!ex) return null;
+                          return (
+                            <div key={exId} className="card ex-card" style={{ padding: 8 }}>
+                              <div className="figbox"><ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={84} /></div>
+                              <div className="exname" style={{ fontSize: 12 }}>{ex.name}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

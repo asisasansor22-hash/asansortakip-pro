@@ -105,6 +105,15 @@ h1, h2, h3 { margin: 0 0 8px; }
 .meal h4 { margin: 0 0 4px; font-size: 14px; }
 .meal p { margin: 0; color: var(--muted); font-size: 13px; }
 
+/* ============ ONBOARDING ============ */
+.onboarding {
+  position: fixed; inset: 0; z-index: 200; overflow-y: auto;
+  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  display: flex; align-items: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+}
+.onboarding-inner { max-width: 420px; width: 100%; margin: auto; display: flex; flex-direction: column; gap: 10px; }
+
 /* ============ AÇILIŞ (SPLASH) ============ */
 .splash {
   position: fixed; inset: 0; z-index: 999;

@@ -6,6 +6,8 @@ import ProgramBuilder from "./components/ProgramBuilder";
 import ReadyPrograms from "./components/ReadyPrograms";
 import Nutrition from "./components/Nutrition";
 import Splash from "./components/Splash";
+import Onboarding from "./components/Onboarding";
+import Profile from "./components/Profile";
 import { getExercise } from "./data/exercises";
 
 const TABS = [
@@ -13,6 +15,7 @@ const TABS = [
   { id: "ready", ic: "📋", label: "Hazır" },
   { id: "mine", ic: "📝", label: "Programım" },
   { id: "nutrition", ic: "🥗", label: "Beslenme" },
+  { id: "profile", ic: "👤", label: "Profil" },
 ];
 
 function uid() {
@@ -28,6 +31,8 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const loaded = useRef(false);
   const [toast, setToast] = useState("");
+  const [profile, setProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -43,25 +48,33 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); }
     });
   }, []);
 
-  // --- Kullanıcı verisini yükle ---
+  // --- Kullanıcı verisini yükle (programlar + profil) ---
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     (async () => {
       const data = await dbGet("programs");
+      const prof = await dbGet("profile");
       if (cancelled) return;
       if (data && Array.isArray(data.list)) {
         setPrograms(data.list);
         setActiveId(data.activeId || (data.list[0] && data.list[0].id) || null);
       }
+      if (prof && prof.gender) setProfile(prof);
+      setProfileLoaded(true);
       loaded.current = true;
     })();
     return () => { cancelled = true; };
   }, [user]);
+
+  function saveProfile(p) {
+    setProfile(p);
+    dbSet("profile", p);
+  }
 
   // --- Değişiklikte Firebase'e kaydet ---
   useEffect(() => {
@@ -126,13 +139,14 @@ export default function App() {
   return (
     <div className="app">
       {splash && <Splash hiding={splashHide} />}
+      {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
       <div className="topbar">
         <div className="brand">Fit<span>be</span></div>
-        <button className="btn-ghost" onClick={firebaseLogout}>Çıkış</button>
+        <button className="btn-ghost" onClick={() => setTab("profile")}>👤</button>
       </div>
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} />}
-      {tab === "ready" && <ReadyPrograms onCopy={copyReady} />}
+      {tab === "ready" && <ReadyPrograms onCopy={copyReady} profile={profile} />}
       {tab === "mine" && (
         <ProgramBuilder
           programs={programs}
@@ -144,6 +158,7 @@ export default function App() {
         />
       )}
       {tab === "nutrition" && <Nutrition />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} />}
 
       {toast && (
         <div style={{
