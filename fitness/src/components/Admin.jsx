@@ -16,7 +16,7 @@ export default function Admin() {
     const r = await adminListUsers();
     setLoading(false);
     if (r.success) setUsers(r.users);
-    else setErr(r.error || "Yüklenemedi. (Cloud Function deploy edildi mi?)");
+    else setErr("Yüklenemedi (" + (r.error || "hata") + "). Cloud Function henüz deploy edilmemiş olabilir — Blaze planı + repo kökünde: firebase deploy --only functions");
   }
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(""), 2600); }
