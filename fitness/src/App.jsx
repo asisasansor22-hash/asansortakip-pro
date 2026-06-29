@@ -116,7 +116,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="topbar">
-        <div className="brand">Fit<span>Program</span></div>
+        <div className="brand">Fit<span>be</span></div>
         <button className="btn-ghost" onClick={firebaseLogout}>Çıkış</button>
       </div>
 

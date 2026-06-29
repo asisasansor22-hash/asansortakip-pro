@@ -1,4 +1,4 @@
-# FitProgram — Antrenman & Beslenme Uygulaması
+# Fitbe — Antrenman & Beslenme Uygulaması
 
 Asansör takip projesinden bağımsız, kendi başına çalışan bir spor/fitness uygulaması.
 React + Vite + Firebase ile yazıldı.
