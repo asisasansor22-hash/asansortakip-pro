@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import ProfileForm, { GENDERS, GOALS, STYLES } from "./ProfileForm";
-import { firebaseLogout, changePassword } from "../firebase";
+import { firebaseLogout, changePassword, ADMIN_EMAIL } from "../firebase";
 import PasswordInput from "./PasswordInput";
+import Admin from "./Admin";
 
 const labelOf = (arr, id) => { const x = arr.find((a) => a.id === id); return x ? x.label : "—"; };
 
@@ -48,10 +49,17 @@ const fmtDate = (ts) => {
 
 // Profil sekmesi — tercihleri değiştir + antrenman geçmişi + çıkış.
 export default function Profile({ profile, email, onSave, history = [] }) {
+  const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
       <h2>Profil</h2>
       {email && <p style={{ color: "var(--muted)", marginTop: -4 }}>{email}</p>}
+
+      {admin && (
+        <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>
+          <Admin />
+        </div>
+      )}
 
       {history.length > 0 && (
         <div style={{ marginBottom: 16 }}>
