@@ -79,7 +79,26 @@ export const EXERCISE_IMG = {
   "box-jump": "Front_Box_Jump",
   "mountain-climber": "Mountain_Climbers",
   "jump-rope": "Rope_Jumping",
+  "burpee": "Plyo_Push-up",
+  "skater": "Bodyweight_Walking_Lunge",
+  "butt-kicks": "Single_Leg_Butt_Kick",
 };
+
+// Bölge seçim kartları için temsili görseller (bölge id -> egzersiz klasörü)
+export const REGION_IMG = {
+  gogus: "Barbell_Bench_Press_-_Medium_Grip",
+  sirt: "Wide-Grip_Lat_Pulldown",
+  omuz: "Dumbbell_Shoulder_Press",
+  kol: "Barbell_Curl",
+  bacak: "Barbell_Squat",
+  karin: "Crunches",
+  kardiyo: "Rope_Jumping",
+};
+
+export function regionImage(id) {
+  const folder = REGION_IMG[id];
+  return folder ? CDN + folder + "/0.jpg" : null;
+}
 
 // Bir egzersiz için [başlangıç, bitiş] görsel URL'leri (yoksa null)
 export function exerciseFrames(id) {

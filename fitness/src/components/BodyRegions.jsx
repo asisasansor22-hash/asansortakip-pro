@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { REGIONS, exercisesByRegion } from "../data/exercises";
+import { regionImage } from "../data/exerciseImages";
 import ExerciseCard from "./ExerciseCard";
 import ExerciseDetail from "./ExerciseDetail";
 
@@ -33,10 +34,14 @@ export default function BodyRegions({ onAddToProgram }) {
       <div className="grid">
         {REGIONS.map((r) => {
           const count = exercisesByRegion(r.id).length;
+          const img = regionImage(r.id);
           return (
             <button key={r.id} className="card region-card" onClick={() => setRegion(r)}>
-              <span className="emoji">{r.emoji}</span>
-              <span className="rname">{r.name}</span>
+              <div className="region-thumb">
+                <span className="region-emoji">{r.emoji}</span>
+                {img && <img src={img} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+                <span className="region-tag">{r.name}</span>
+              </div>
               <span className="rcount">{count} hareket</span>
             </button>
           );
