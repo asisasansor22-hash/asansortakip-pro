@@ -163,6 +163,61 @@ export const EXERCISES = [
     sets: "3 x 40 sn", desc: "Yana sıçrayışlarla denge ve kondisyon.", tips: ["Yumuşak in"] },
   { id: "jump-rope", name: "İp Atlama", region: "kardiyo", anim: "calfraise", equip: "İp", level: "Başlangıç",
     sets: "3 x 60 sn", desc: "Klasik yağ yakım ve baldır kardiyosu.", tips: ["Bileğinden çevir", "Küçük sıçra"] },
+
+  // ============ EK HAREKETLER ============
+  // göğüs
+  { id: "incline-dumbbell-press", name: "Eğimli Dumbbell Press", region: "gogus", anim: "benchpress", equip: "Dumbbell", level: "Orta",
+    sets: "4 x 10", desc: "Eğimli sehpada dumbbell ile üst göğüs.", tips: ["30-45° eğim", "Tepede sıkıştır"] },
+  { id: "machine-chest-press", name: "Machine Chest Press", region: "gogus", anim: "benchpress", equip: "Makine", level: "Başlangıç",
+    sets: "4 x 12", desc: "Makinede güvenli göğüs itişi; başlangıç dostu.", tips: ["Tam aç-kapa", "Omuz geride"] },
+  { id: "pec-deck", name: "Pec Deck (Butterfly)", region: "gogus", anim: "benchpress", equip: "Makine", level: "Başlangıç",
+    sets: "3 x 15", desc: "Makinede kolları önde birleştirerek göğüs izolasyonu.", tips: ["Tepede sık", "Yavaş aç"] },
+  // sırt
+  { id: "good-morning", name: "Good Morning", region: "sirt", anim: "deadlift", equip: "Halter", level: "Orta",
+    sets: "3 x 10", desc: "Kalça menteşesiyle bel ve hamstring.", tips: ["Bel düz", "Dizler hafif kırık"] },
+  { id: "rack-pull", name: "Rack Pull", region: "sirt", anim: "deadlift", equip: "Halter", level: "İleri",
+    sets: "4 x 6", desc: "Kısmi deadlift; üst sırt ve trapez gücü.", tips: ["Bara yakın", "Kalçayı it"] },
+  { id: "v-bar-pulldown", name: "V-Bar Pulldown", region: "sirt", anim: "pullup", equip: "Makine", level: "Başlangıç",
+    sets: "4 x 12", desc: "Dar tutuşla orta sırt yoğunluğu.", tips: ["Göğse çek", "Sallanma"] },
+  // omuz
+  { id: "face-pull", name: "Face Pull", region: "omuz", anim: "deadlift", equip: "Makine", level: "Başlangıç",
+    sets: "3 x 15", desc: "Halatı yüze çekerek arka omuz ve postür.", tips: ["Dirsek yüksek", "Sık"] },
+  { id: "cable-lateral", name: "Cable Yan Kaldırış", region: "omuz", anim: "shoulderpress", equip: "Makine", level: "Başlangıç",
+    sets: "3 x 15", desc: "Makarada sabit gerginlikle yan omuz.", tips: ["Kontrollü kaldır"] },
+  // kol
+  { id: "close-grip-bench", name: "Close-Grip Bench Press", region: "kol", anim: "benchpress", equip: "Halter", level: "Orta",
+    sets: "3 x 8", desc: "Dar tutuş bench; triceps vurgusu.", tips: ["Dirsekler gövdeye yakın"] },
+  { id: "triceps-kickback", name: "Triceps Kickback", region: "kol", anim: "curl", equip: "Dumbbell", level: "Başlangıç",
+    sets: "3 x 15", desc: "Öne eğilip kolu geriye uzatarak triceps.", tips: ["Üst kol sabit", "Tepede sık"] },
+  { id: "cable-hammer-curl", name: "Cable Hammer Curl", region: "kol", anim: "curl", equip: "Makine", level: "Başlangıç",
+    sets: "3 x 12", desc: "Halatla nötr tutuş biceps/ön kol.", tips: ["Dirsek sabit"] },
+  { id: "spider-curl", name: "Spider Curl", region: "kol", anim: "curl", equip: "Dumbbell", level: "Orta",
+    sets: "3 x 12", desc: "Eğimli sehpaya yüzükoyun yatıp biceps izolasyonu.", tips: ["Tam izolasyon", "Sallanma yok"] },
+  { id: "zottman-curl", name: "Zottman Curl", region: "kol", anim: "curl", equip: "Dumbbell", level: "Orta",
+    sets: "3 x 10", desc: "Yukarı normal, aşağı ters tutuş; biceps + ön kol.", tips: ["Tepede bileği çevir"] },
+  // bacak
+  { id: "hack-squat", name: "Hack Squat", region: "bacak", anim: "squat", equip: "Makine", level: "Orta",
+    sets: "4 x 10", desc: "Makinede quadriceps odaklı squat.", tips: ["Derin in", "Sırt desteğe yaslı"] },
+  { id: "sumo-deadlift", name: "Sumo Deadlift", region: "bacak", anim: "deadlift", equip: "Halter", level: "İleri",
+    sets: "4 x 6", desc: "Geniş duruş deadlift; iç bacak ve kalça.", tips: ["Göğüs dik", "Bara yakın"] },
+  { id: "glute-kickback", name: "Glute Kickback", region: "bacak", anim: "lunge", equip: "Makine", level: "Başlangıç",
+    sets: "3 x 15", desc: "Bacağı geriye iterek kalça (glute) izolasyonu.", tips: ["Tepede sık", "Beli koru"] },
+  { id: "seated-calf-raise", name: "Seated Calf Raise", region: "bacak", anim: "calfraise", equip: "Makine", level: "Başlangıç",
+    sets: "4 x 20", desc: "Oturarak baldır (soleus) çalışması.", tips: ["Tam aşağı in", "Tepede dur"] },
+  { id: "glute-bridge", name: "Glute Bridge", region: "bacak", anim: "deadlift", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 15", desc: "Sırt üstü kalçayı yukarı iterek glute.", tips: ["Tepede sık", "Çene içeride"] },
+  // karın
+  { id: "cable-crunch", name: "Cable Crunch", region: "karin", anim: "crunch", equip: "Makine", level: "Orta",
+    sets: "3 x 15", desc: "Makarada diz çöküp gövdeyi büküp üst karın.", tips: ["Karınla çek", "Kalça sabit"] },
+  { id: "reverse-crunch", name: "Reverse Crunch", region: "karin", anim: "crunch", equip: "Vücut ağırlığı", level: "Orta",
+    sets: "3 x 15", desc: "Kalçayı yukarı sararak alt karın.", tips: ["Sallanma", "Kontrollü"] },
+  { id: "toe-touches", name: "Toe Touches", region: "karin", anim: "crunch", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 20", desc: "Bacaklar havada el-ayak ucuna uzanma; üst karın.", tips: ["Karnı sık"] },
+  { id: "ab-roller", name: "Ab Wheel", region: "karin", anim: "plank", equip: "Ekipman", level: "İleri",
+    sets: "3 x 10", desc: "Tekerlekle öne açılıp toplanarak tüm core.", tips: ["Bel çökmesin", "Yavaş aç"] },
+  // kardiyo
+  { id: "stairmaster", name: "Stairmaster", region: "kardiyo", anim: "lunge", equip: "Makine", level: "Başlangıç",
+    sets: "10-20 dk", desc: "Merdiven makinesinde sürekli tempolu kardiyo.", tips: ["Korkuluğa yaslanma", "Tempolu"] },
 ];
 
 export function exercisesByRegion(regionId) {
