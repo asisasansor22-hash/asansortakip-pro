@@ -76,7 +76,7 @@ export default function ReadyPrograms({ onCopy, profile }) {
                           if (!ex) return null;
                           return (
                             <div key={exId} className="card ex-card" style={{ padding: 8 }}>
-                              <div className="figbox"><ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={84} /></div>
+                              <div className="figbox"><ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={84} still /></div>
                               <div className="exname" style={{ fontSize: 12 }}>{ex.name}</div>
                             </div>
                           );

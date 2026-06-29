@@ -1,3 +1,5 @@
+import { GENERATED } from "./exercisesGenerated";
+
 // Vücut bölgeleri ve egzersiz veritabanı.
 // Her egzersizin "anim" alanı, ExerciseAnimation bileşenindeki animasyon tipine karşılık gelir.
 // Mevcut animasyon tipleri: squat, pushup, benchpress, curl, crunch, jumpingjack,
@@ -13,7 +15,8 @@ export const REGIONS = [
   { id: "kardiyo", name: "Kardiyo", emoji: "🏃", color: "#06b6d4" },
 ];
 
-export const EXERCISES = [
+// El ile özenle hazırlanmış hareketler (zengin açıklama/ipucu + muadil + en etkili rozeti).
+const CURATED = [
   // ============ GÖĞÜS ============
   { id: "bench-press", name: "Bench Press", region: "gogus", anim: "benchpress", equip: "Halter", level: "Orta",
     sets: "4 x 8-10", desc: "Sırt üstü uzanıp halteri göğüsten yukarı it. Göğüs kasının temel hareketidir.",
@@ -219,6 +222,9 @@ export const EXERCISES = [
   { id: "stairmaster", name: "Stairmaster", region: "kardiyo", anim: "lunge", equip: "Makine", level: "Başlangıç",
     sets: "10-20 dk", desc: "Merdiven makinesinde sürekli tempolu kardiyo.", tips: ["Korkuluğa yaslanma", "Tempolu"] },
 ];
+
+// Tüm hareketler = el ile hazırlananlar + free-exercise-db'den içe aktarılanlar.
+export const EXERCISES = [...CURATED, ...GENERATED];
 
 export function exercisesByRegion(regionId) {
   return EXERCISES.filter(function (e) { return e.region === regionId; });
