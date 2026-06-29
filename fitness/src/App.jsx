@@ -85,6 +85,8 @@ export default function App() {
       if (Array.isArray(hist)) setHistory(hist);
       setProfileLoaded(true);
       loaded.current = true;
+      // Kullanıcı kimliğini (e-posta) kaydet — admin paneli için. Şifre ASLA saklanmaz.
+      dbSet("info", { email: user.email || "", lastSeen: Date.now() });
     })();
     return () => { cancelled = true; };
   }, [user]);
