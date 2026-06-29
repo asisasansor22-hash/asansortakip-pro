@@ -9,7 +9,8 @@ export default function BodyRegions({ onAddToProgram }) {
   const [exercise, setExercise] = useState(null);
 
   if (exercise) {
-    return <ExerciseDetail ex={exercise} onBack={() => setExercise(null)} onAddToProgram={onAddToProgram} />;
+    return <ExerciseDetail key={exercise.id} ex={exercise} onBack={() => setExercise(null)}
+      onAddToProgram={onAddToProgram} onOpenExercise={(ex) => setExercise(ex)} />;
   }
 
   if (region) {

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import ExerciseAnimation from "./ExerciseAnimation";
-import { topNote } from "../data/exercises";
+import { topNote, getAlternatives } from "../data/exercises";
 
-export default function ExerciseDetail({ ex, onBack, onAddToProgram }) {
+export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise }) {
   const [added, setAdded] = useState(false);
   const top = topNote(ex.id);
+  const alts = getAlternatives(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
@@ -34,6 +35,22 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram }) {
       <ul className="tips">
         {ex.tips.map((t, i) => <li key={i}>✅ {t}</li>)}
       </ul>
+
+      {alts.length > 0 && (
+        <div>
+          <div className="section-title">🔄 Alet yoksa alternatif</div>
+          <div className="grid">
+            {alts.map((a) => (
+              <button key={a.id} className="card ex-card" style={{ padding: 8 }}
+                onClick={() => onOpenExercise && onOpenExercise(a)}>
+                <div className="figbox"><ExerciseAnimation type={a.anim} gear={a.equip} exId={a.id} size={84} /></div>
+                <div className="exname" style={{ fontSize: 12 }}>{a.name}</div>
+                <div className="exmeta">{a.equip}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 18 }}>
         <button className="btn-primary" onClick={add}>
