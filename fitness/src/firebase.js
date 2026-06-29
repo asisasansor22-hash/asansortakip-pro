@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
 
 // Mevcut asansortakip projesiyle aynı Firebase projesi kullanılıyor.
 // Spor verileri ayrı bir kök altında (/fitness) tutulur, böylece karışmaz.
@@ -46,6 +46,16 @@ export async function firebaseLogin(email, password) {
 
 export async function firebaseLogout() {
   try { await signOut(auth); } catch (e) {}
+}
+
+// Şifre sıfırlama maili gönder (kullanıcı kendi yeni şifresini belirler)
+export async function sendPasswordReset(email) {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
 export function onAuthChange(cb) {
