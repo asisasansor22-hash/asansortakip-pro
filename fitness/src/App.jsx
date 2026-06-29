@@ -35,6 +35,7 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [workout, setWorkout] = useState(null);
+  const [history, setHistory] = useState([]);
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -50,7 +51,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); }
     });
   }, []);
 
@@ -61,12 +62,14 @@ export default function App() {
     (async () => {
       const data = await dbGet("programs");
       const prof = await dbGet("profile");
+      const hist = await dbGet("workouts");
       if (cancelled) return;
       if (data && Array.isArray(data.list)) {
         setPrograms(data.list);
         setActiveId(data.activeId || (data.list[0] && data.list[0].id) || null);
       }
       if (prof && prof.gender) setProfile(prof);
+      if (Array.isArray(hist)) setHistory(hist);
       setProfileLoaded(true);
       loaded.current = true;
     })();
@@ -76,6 +79,26 @@ export default function App() {
   function saveProfile(p) {
     setProfile(p);
     dbSet("profile", p);
+  }
+
+  // Antrenman oturumunu kaydet (en yeni başta, son 50 tutulur)
+  function saveWorkout(session) {
+    setHistory((prev) => {
+      const next = [session, ...prev].slice(0, 50);
+      dbSet("workouts", next);
+      return next;
+    });
+  }
+
+  // Bir hareket için en son girilen kilo/tekrar
+  function lastLog(exId) {
+    for (const s of history) {
+      if (!s.sets) continue;
+      for (let k = s.sets.length - 1; k >= 0; k--) {
+        if (s.sets[k].exId === exId) return s.sets[k];
+      }
+    }
+    return null;
   }
 
   // --- Değişiklikte Firebase'e kaydet ---
@@ -165,7 +188,7 @@ export default function App() {
     <div className="app">
       {splash && <Splash hiding={splashHide} />}
       {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
-      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} />}
+      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} onFinish={saveWorkout} lastLog={lastLog} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>
         <button className="btn-ghost" onClick={() => setTab("profile")}>👤</button>
@@ -185,7 +208,7 @@ export default function App() {
         />
       )}
       {tab === "nutrition" && <Nutrition />}
-      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} />}
 
       {toast && (
         <div style={{
