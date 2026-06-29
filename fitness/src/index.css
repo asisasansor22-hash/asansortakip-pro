@@ -105,6 +105,20 @@ h1, h2, h3 { margin: 0 0 8px; }
 .meal h4 { margin: 0 0 4px; font-size: 14px; }
 .meal p { margin: 0; color: var(--muted); font-size: 13px; }
 
+/* ============ AÇILIŞ (SPLASH) ============ */
+.splash {
+  position: fixed; inset: 0; z-index: 999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  transition: opacity .45s ease;
+}
+.splash.hide { opacity: 0; pointer-events: none; }
+.splash svg { animation: splashPulse 1.2s ease-in-out infinite; }
+.splash-word { font-size: 40px; font-weight: 800; letter-spacing: -1px; color: var(--text); margin-top: 4px; }
+.splash-word span { color: var(--accent); }
+.splash-sub { color: var(--muted); font-size: 14px; }
+@keyframes splashPulse { 0%,100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.08); opacity: 1; } }
+
 /* ============ ALT SEKMELER / FORM / ROZET ============ */
 .subtabs { display: flex; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 4px 0 16px; }
 .subtab { flex: 1; background: none; color: var(--muted); font-weight: 700; font-size: 13px; padding: 9px; border-radius: 9px; }
