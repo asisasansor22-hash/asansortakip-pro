@@ -1,4 +1,4 @@
-# FitProgram için bağımsız Netlify yapılandırması.
+# Fitbe için bağımsız Netlify yapılandırması.
 # Bu dosya yalnızca, Netlify'da "Base directory = fitness" olan AYRI bir site
 # bağladığında devreye girer. Kökteki netlify.toml (website/ Next.js sitesi) etkilenmez.
 
