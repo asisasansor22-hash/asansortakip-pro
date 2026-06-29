@@ -7,6 +7,7 @@ export default function ReadyPrograms({ onCopy, profile }) {
   const [open, setOpen] = useState(null);
   const [copied, setCopied] = useState(null);
   const [showAll, setShowAll] = useState(false);
+  const [princ, setPrinc] = useState(false);
 
   function copy(p) {
     if (onCopy) onCopy(p);
@@ -33,6 +34,24 @@ export default function ReadyPrograms({ onCopy, profile }) {
       <p style={{ color: "var(--muted)", marginTop: -4 }}>
         {profile && !showAll ? "Profiline göre önerilen programlar." : "Tüm hazır programlar."} Kopyala, "Programım"da düzenle.
       </p>
+
+      <div className="card" style={{ marginBottom: 14, borderColor: "var(--accent2)" }}>
+        <button onClick={() => setPrinc((v) => !v)} style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left", fontWeight: 700, fontSize: 15 }}>
+          🔬 Temel İlkeler (bilimsel) {princ ? "▲" : "▼"}
+        </button>
+        {princ && (
+          <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.5, color: "var(--text)" }}>
+            <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>📈 Progresif yüklenme</b> — En kritik ilke. Her hafta kilo, tekrar veya seti azar azar artır. İlerleme olmazsa kas da olmaz.</p>
+            <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>📊 Hacim</b> — Kas başına haftada <b>10–20 set</b> hipertrofi için etkili aralık.</p>
+            <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🔁 Frekans</b> — Her kası haftada <b>en az 2 kez</b> çalış (hacmi güne yay).</p>
+            <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🔢 Tekrar aralığı</b> — Ağır bileşik 5–8, hipertrofi 8–15, izolasyon 15–30. Her set'i yetmezliğe <b>1–3 tekrar</b> kala bitir.</p>
+            <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🧘 Form &gt; ağırlık</b> — Doğru form + tam hareket açıklığı, ego liftten önce gelir. Dinlenme: güç 2–3 dk, hipertrofi 1–2 dk.</p>
+            <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
+              ⚧ Egzersizler kadın ve erkekte <b>aynı</b> çalışır (2025 meta-analizi: kadınlar aynı oranda kas yapar). Cinsiyet seçimi yalnızca program <b>vurgusunu</b> belirler, zorunluluk değildir.
+            </p>
+          </div>
+        )}
+      </div>
 
       {profile && (
         <div className="row" style={{ marginBottom: 14 }}>

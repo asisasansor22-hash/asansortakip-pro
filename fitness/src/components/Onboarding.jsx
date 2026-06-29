@@ -10,7 +10,8 @@ export default function Onboarding({ onSave }) {
         <h2 style={{ textAlign: "center", marginTop: 6 }}>Seni tanıyalım</h2>
         <p style={{ color: "var(--muted)", textAlign: "center", marginTop: -2, marginBottom: 6 }}>
           Sana uygun <b style={{ color: "var(--accent)" }}>otomatik programları</b> önerebilmemiz için.
-          İstediğin zaman Profil'den değiştirebilirsin.
+          İstediğin zaman Profil'den değiştirebilirsin. Cinsiyet yalnızca program vurgusunu belirler —
+          egzersizler herkeste aynı çalışır.
         </p>
         <ProfileForm onSave={onSave} submitLabel="Başla →" />
       </div>

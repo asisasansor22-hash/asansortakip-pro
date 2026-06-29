@@ -35,7 +35,8 @@ export default function CalorieCalculator() {
     const fat = Math.round(w * 0.9);                 // g
     const fatKcal = fat * 9, proKcal = protein * 4;
     const carb = Math.max(0, Math.round((kcal - fatKcal - proKcal) / 4));
-    setRes({ bmr: Math.round(bmr), tdee: Math.round(tdee), kcal, protein, fat, carb });
+    const weekly = ((kcal - tdee) * 7) / 7700; // kg/hafta (7700 kcal ≈ 1 kg)
+    setRes({ bmr: Math.round(bmr), tdee: Math.round(tdee), kcal, protein, fat, carb, weekly });
   }
 
   return (
@@ -68,9 +69,15 @@ export default function CalorieCalculator() {
       {res && !res.err && (
         <div style={{ marginTop: 16 }}>
           <div className="kcal-big">{res.kcal} <span>kcal/gün</span></div>
-          <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", marginBottom: 12 }}>
+          <div style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", marginBottom: 10 }}>
             BMR {res.bmr} · Korunum (TDEE) {res.tdee} kcal
           </div>
+          {Math.abs(res.weekly) >= 0.05 && (
+            <div style={{ textAlign: "center", fontSize: 13, marginBottom: 12, color: res.weekly < 0 ? "var(--ok)" : "var(--accent)" }}>
+              ≈ haftada {Math.abs(res.weekly).toFixed(2)} kg {res.weekly < 0 ? "verirsin" : "alırsın"}
+              <span style={{ color: "var(--muted)" }}> (güvenli aralık 0.25–1 kg)</span>
+            </div>
+          )}
           <div className="macro">
             <div className="m"><b>{res.protein} g</b><s>Protein</s></div>
             <div className="m"><b>{res.carb} g</b><s>Karbonhidrat</s></div>
