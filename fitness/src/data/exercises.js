@@ -227,3 +227,21 @@ export function exercisesByRegion(regionId) {
 export function getExercise(id) {
   return EXERCISES.find(function (e) { return e.id === id; }) || null;
 }
+
+// Araştırmaya (EMG çalışmaları / meta-analizler) dayalı en etkili hareketler.
+export const TOP_EXERCISES = {
+  "squat": "EMG çalışmaları: bacak kaslarında en yüksek aktivasyon.",
+  "bench-press": "Meta-analiz: geniş tutuş düz bench, göğüste en yüksek aktivasyonu sağlar.",
+  "incline-press": "15-30° eğim üst göğsü, omuzu fazla katmadan optimal çalıştırır.",
+  "pec-deck": "Makineli göğüs hareketleri arasında EMG'de en yüksek aktivasyon.",
+  "barfiks": "EMG verisi: sırt için en etkili hareket.",
+  "barbell-row": "Sırt kalınlığı için en yüksek aktivasyonlu çekişlerden.",
+  "deadlift": "Tüm arka zinciri çalıştıran en verimli bileşik hareket.",
+  "military-press": "EMG: omuz için en etkili — overhead barbell press.",
+  "shoulder-press": "Omuz kütlesi için en yüksek aktivasyonlu preslerden.",
+  "romanian-deadlift": "Hamstring ve glute için en etkili hareketlerden.",
+};
+
+export function topNote(id) {
+  return TOP_EXERCISES[id] || null;
+}

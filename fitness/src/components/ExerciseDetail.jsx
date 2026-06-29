@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import ExerciseAnimation from "./ExerciseAnimation";
+import { topNote } from "../data/exercises";
 
 export default function ExerciseDetail({ ex, onBack, onAddToProgram }) {
   const [added, setAdded] = useState(false);
+  const top = topNote(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
@@ -23,6 +25,10 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram }) {
         <span className="pill">{ex.sets}</span>
       </div>
       <p style={{ color: "var(--text)", lineHeight: 1.5 }}>{ex.desc}</p>
+
+      {top && (
+        <div className="evidence">⭐ <b>En Etkili</b> — {top}</div>
+      )}
 
       <div className="section-title">İpuçları</div>
       <ul className="tips">
