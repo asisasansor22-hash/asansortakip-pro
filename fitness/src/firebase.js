@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 
 // Mevcut asansortakip projesiyle aynı Firebase projesi kullanılıyor.
 // Spor verileri ayrı bir kök altında (/fitness) tutulur, böylece karışmaz.
@@ -54,6 +54,30 @@ export async function sendPasswordReset(email) {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+// Giriş yapmış kullanıcı mevcut şifresini doğrulayıp yeni şifre belirler
+export async function changePassword(currentPassword, newPassword) {
+  try {
+    var user = auth.currentUser;
+    if (!user) return { success: false, error: "Oturum yok. Tekrar giriş yap." };
+    // Güvenlik için mevcut şifreyle yeniden kimlik doğrula
+    var cred = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, cred);
+    await updatePassword(user, newPassword);
+    return { success: true };
+  } catch (e) {
+    if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") {
+      return { success: false, error: "Mevcut şifre yanlış." };
+    }
+    if (e.code === "auth/weak-password") {
+      return { success: false, error: "Yeni şifre çok zayıf (en az 6 hane)." };
+    }
+    if (e.code === "auth/too-many-requests") {
+      return { success: false, error: "Çok fazla deneme. Biraz bekleyip tekrar dene." };
+    }
     return { success: false, error: e.message };
   }
 }
