@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { adminListUsers, adminSetPassword, adminSetDisabled } from "../firebase";
+import { adminListUsers, dbListUsers, adminSetPassword, adminSetDisabled } from "../firebase";
 
 const fmt = (s) => { try { return s ? new Date(s).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"; } catch (e) { return "—"; } };
 
@@ -10,13 +10,27 @@ export default function Admin() {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
   const [q, setQ] = useState("");
+  const [limited, setLimited] = useState(false);
 
   async function load() {
     setErr(""); setLoading(true);
+    // Önce Cloud Function (tam yetki: kayıt tarihi, askıya alma vb.)
     const r = await adminListUsers();
+    if (r.success) {
+      setLimited(false);
+      setUsers(r.users);
+      setLoading(false);
+      return;
+    }
+    // Cloud Function yoksa: doğrudan veritabanından listele (deploy gerektirmez)
+    const d = await dbListUsers();
     setLoading(false);
-    if (r.success) setUsers(r.users);
-    else setErr("Yüklenemedi (" + (r.error || "hata") + "). Cloud Function henüz deploy edilmemiş olabilir — Blaze planı + repo kökünde: firebase deploy --only functions");
+    if (d.success) {
+      setLimited(true);
+      setUsers(d.users);
+    } else {
+      setErr("Yüklenemedi (" + (d.error || r.error || "hata") + "). Veritabanı kuralında admin okuma izni olduğundan emin ol.");
+    }
   }
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(""), 2600); }
@@ -58,6 +72,13 @@ export default function Admin() {
             <span style={{ color: "var(--muted)", fontSize: 13 }}>{list.length} kullanıcı</span>
             <button className="icon-btn" onClick={load}>↻ Yenile</button>
           </div>
+          {limited && (
+            <div className="card" style={{ padding: 10, marginBottom: 8, fontSize: 12, color: "var(--muted)" }}>
+              ℹ️ Sınırlı mod: kullanıcılar veritabanından listeleniyor (giriş yapmış olanlar görünür).
+              Şifre atama ve askıya alma için Cloud Functions deploy gerekir
+              (Blaze planı + repo kökünde <code>firebase deploy --only functions</code>).
+            </div>
+          )}
           <input className="search-input" placeholder="🔍 E-posta ara…" value={q} onChange={(e) => setQ(e.target.value)} />
           {list.map((u) => (
             <div key={u.uid} className="card" style={{ marginBottom: 8, padding: 12, opacity: u.disabled ? 0.6 : 1 }}>
@@ -68,9 +89,9 @@ export default function Admin() {
                 Son giriş: {fmt(u.lastSignIn)} · Kayıt: {fmt(u.created)}
               </div>
               <div className="row">
-                <button className="icon-btn" disabled={busy === u.uid} onClick={() => setPw(u)}>🔑 Şifre Ata</button>
+                <button className="icon-btn" disabled={limited || busy === u.uid} onClick={() => setPw(u)}>🔑 Şifre Ata</button>
                 <button className="icon-btn" style={{ color: u.disabled ? "var(--ok)" : "var(--danger)" }}
-                  disabled={busy === u.uid} onClick={() => toggle(u)}>
+                  disabled={limited || busy === u.uid} onClick={() => toggle(u)}>
                   {u.disabled ? "✓ Aktifleştir" : "⛔ Askıya Al"}
                 </button>
               </div>

@@ -102,6 +102,35 @@ export async function adminListUsers() {
     return { success: true, users: (r.data && r.data.users) || [] };
   } catch (e) { return { success: false, error: e.message }; }
 }
+// Cloud Function GEREKTİRMEZ: Kayıtlı kullanıcıları doğrudan Realtime DB'den
+// listele. Her kullanıcı girişte /fitness/users/{uid}/info = {email,lastSeen}
+// yazıyor. Admin DB kuralıyla tüm /fitness/users ağacını okuyabilir.
+export async function dbListUsers() {
+  try {
+    const token = await getToken();
+    let url = FIREBASE_DB_URL + "/fitness/users.json";
+    if (token) url += "?auth=" + token + "&shallow=false";
+    const res = await fetch(url);
+    if (!res.ok) return { success: false, error: "DB " + res.status };
+    const data = await res.json();
+    if (!data) return { success: true, users: [] };
+    const users = Object.keys(data).map((uid) => {
+      const info = (data[uid] && data[uid].info) || {};
+      const profile = (data[uid] && data[uid].profile) || null;
+      return {
+        uid,
+        email: info.email || "",
+        lastSignIn: info.lastSeen || "",
+        created: "",
+        disabled: false,
+        profile,
+      };
+    });
+    users.sort((a, b) => (b.lastSignIn || 0) - (a.lastSignIn || 0));
+    return { success: true, users };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
 export async function adminSetPassword(uid, password) {
   try {
     await httpsCallable(fns, "adminSetPassword")({ uid, password });
