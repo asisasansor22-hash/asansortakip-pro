@@ -82,6 +82,29 @@ export default function App() {
     dbSet("programs", { list: programs, activeId });
   }, [programs, activeId, user]);
 
+  // --- Otomatik güncelleme: yeni sürüm yayınlandıysa algıla, bildir, yenile ---
+  useEffect(() => {
+    let triggered = false;
+    async function check() {
+      if (triggered) return;
+      try {
+        const r = await fetch("/version.json?ts=" + Date.now(), { cache: "no-store" });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (j && j.v && typeof __BUILD_ID__ !== "undefined" && j.v !== __BUILD_ID__) {
+          triggered = true;
+          setToast("Yeni sürüm yüklendi, güncelleniyor…");
+          setTimeout(() => window.location.reload(), 1800);
+        }
+      } catch (e) {}
+    }
+    check();
+    const iv = setInterval(check, 90000);
+    const onVis = () => { if (document.visibilityState === "visible") check(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, []);
+
   function flash(msg) {
     setToast(msg);
     setTimeout(() => setToast(""), 1800);
@@ -141,7 +164,7 @@ export default function App() {
       {splash && <Splash hiding={splashHide} />}
       {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
       <div className="topbar">
-        <div className="brand">Fit<span>be</span></div>
+        <div className="brand">Fit<span>+be</span></div>
         <button className="btn-ghost" onClick={() => setTab("profile")}>👤</button>
       </div>
 
