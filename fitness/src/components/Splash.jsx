@@ -11,7 +11,7 @@ export default function Splash({ hiding }) {
         <rect x="20" y="21" width="9" height="18" rx="3" />
         <rect x="71" y="21" width="9" height="18" rx="3" />
       </svg>
-      <div className="splash-word">Fit<span>be</span></div>
+      <div className="splash-word">Fit<span>+be</span></div>
       <div className="splash-sub">Antrenman & Beslenme</div>
     </div>
   );
