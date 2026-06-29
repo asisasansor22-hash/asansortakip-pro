@@ -63,7 +63,7 @@ export default function ProgramBuilder({
                   return (
                     <div key={i} className="prog-ex-row">
                       <div className="figbox" style={{ width: 56, height: 56, padding: 0 }}>
-                        <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={52} />
+                        <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={52} still />
                       </div>
                       <div className="grow">
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{ex.name}</div>

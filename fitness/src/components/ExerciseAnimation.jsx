@@ -3,18 +3,27 @@ import Lottie from "lottie-react";
 import { getLottie } from "../data/lottieMap";
 import { exerciseFrames } from "../data/exerciseImages";
 
-// Gerçek egzersiz fotoğrafı: başlangıç (0) ve bitiş (1) kareleri arasında
-// yumuşak geçişle (cross-fade) döner -> gerçek hareket animasyonu.
-function PhotoFlip({ frames, size, onError }) {
+// Gerçek egzersiz fotoğrafı. still=true ise tek kare (liste/kart performansı için);
+// değilse başlangıç↔bitiş kareleri cross-fade ile döner (detay/antrenman).
+function PhotoFlip({ frames, size, onError, still }) {
   const [i, setI] = useState(0);
   useEffect(() => {
+    if (still) return;
     const t = setInterval(() => setI((p) => (p === 0 ? 1 : 0)), 1100);
     return () => clearInterval(t);
-  }, []);
+  }, [still]);
   const imgStyle = {
     position: "absolute", inset: 0, width: "100%", height: "100%",
     objectFit: "cover", borderRadius: 12, transition: "opacity .4s ease",
   };
+  if (still) {
+    return (
+      <div style={{ position: "relative", width: size, height: size, borderRadius: 12, overflow: "hidden" }}>
+        <img src={frames[0]} alt="" loading="lazy" onError={onError}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
+      </div>
+    );
+  }
   return (
     <div style={{ position: "relative", width: size, height: size, borderRadius: 12, overflow: "hidden" }}>
       <img src={frames[0]} alt="" loading="lazy" onError={onError}
@@ -91,7 +100,7 @@ function InHandGear({ gt }) {
   return null;
 }
 
-export default function ExerciseAnimation({ type = "idle", size = 180, color = SKIN, gear = null, exId = null }) {
+export default function ExerciseAnimation({ type = "idle", size = 180, color = SKIN, gear = null, exId = null, still = false }) {
   const t = type || "idle";
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -104,7 +113,7 @@ export default function ExerciseAnimation({ type = "idle", size = 180, color = S
   // 2) Gerçek egzersiz fotoğrafı (varsa). Yüklenemezse SVG'ye düşer.
   const frames = !imgFailed && exId ? exerciseFrames(exId) : null;
   if (frames) {
-    return <PhotoFlip frames={frames} size={size} onError={() => setImgFailed(true)} />;
+    return <PhotoFlip frames={frames} size={size} still={still} onError={() => setImgFailed(true)} />;
   }
 
   // 3) Yedek: kaslı SVG karakter

@@ -178,6 +178,19 @@ export const READY_PROGRAMS = [
       { name: "Denge & Glute", note: "Tek bacak ve denge odaklı; yavaş çalış.", exercises: ["glute-bridge", "bulgarian", "leg-raise", "plank"] },
     ],
   },
+
+  // ---------- KALİSTENİK ----------
+  {
+    id: "kalistenik", name: "Kalistenik · Vücut Ağırlığı",
+    gender: "herkes", style: "ev", goalTag: "kasyap",
+    level: "Orta", goal: "Ekipmansız güç & kontrol", freq: "Haftada 3-4 gün",
+    desc: "Sadece vücut ağırlığıyla itme, çekme ve bacak; kalistenik temel program.",
+    days: [
+      { name: "İtme (Push)", exercises: ["sinav", "diamond-pushup", "chest-dips", "triceps-dips", "plank"] },
+      { name: "Çekme (Pull)", exercises: ["barfiks", "chin-up", "hanging-leg-raise"] },
+      { name: "Bacak & Core", exercises: ["squat", "bulgarian", "jump-squat", "glute-bridge", "leg-raise"] },
+    ],
+  },
 ];
 
 export function getReadyProgram(id) {
