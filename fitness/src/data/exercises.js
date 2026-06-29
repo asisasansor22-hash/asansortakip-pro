@@ -245,3 +245,88 @@ export const TOP_EXERCISES = {
 export function topNote(id) {
   return TOP_EXERCISES[id] || null;
 }
+
+// Muadil (alternatif) hareketler — salonda alet yoksa aynı kası çalıştıran seçenekler.
+export const ALTERNATIVES = {
+  // göğüs
+  "bench-press": ["dumbbell-press", "machine-chest-press", "sinav"],
+  "incline-press": ["incline-dumbbell-press", "sinav"],
+  "decline-press": ["dumbbell-press", "chest-dips"],
+  "dumbbell-press": ["bench-press", "machine-chest-press", "sinav"],
+  "machine-chest-press": ["dumbbell-press", "sinav"],
+  "cable-crossover": ["dumbbell-fly", "pec-deck"],
+  "pec-deck": ["dumbbell-fly", "cable-crossover"],
+  "dumbbell-fly": ["pec-deck", "cable-crossover"],
+  "chest-dips": ["sinav", "triceps-dips"],
+  "sinav": ["machine-chest-press", "dumbbell-press", "chest-dips"],
+  "incline-dumbbell-press": ["incline-press", "dumbbell-press"],
+  // sırt
+  "lat-pulldown": ["barfiks", "v-bar-pulldown", "dumbbell-row"],
+  "v-bar-pulldown": ["lat-pulldown", "barfiks"],
+  "barfiks": ["lat-pulldown", "v-bar-pulldown"],
+  "chin-up": ["barfiks", "lat-pulldown"],
+  "barbell-row": ["dumbbell-row", "t-bar-row", "seated-row"],
+  "t-bar-row": ["barbell-row", "dumbbell-row"],
+  "seated-row": ["dumbbell-row", "barbell-row"],
+  "dumbbell-row": ["barbell-row", "seated-row"],
+  "deadlift": ["romanian-deadlift", "sumo-deadlift", "rack-pull"],
+  "rack-pull": ["deadlift", "romanian-deadlift"],
+  "good-morning": ["romanian-deadlift", "hyperextension"],
+  "hyperextension": ["good-morning", "glute-bridge"],
+  "romanian-deadlift": ["good-morning", "leg-curl", "deadlift"],
+  // omuz
+  "shoulder-press": ["military-press", "arnold-press"],
+  "military-press": ["shoulder-press", "arnold-press"],
+  "arnold-press": ["shoulder-press", "military-press"],
+  "lateral-raise": ["cable-lateral"],
+  "cable-lateral": ["lateral-raise"],
+  "front-raise": ["lateral-raise"],
+  "face-pull": ["rear-delt-fly", "upright-row"],
+  "rear-delt-fly": ["face-pull"],
+  "upright-row": ["lateral-raise", "shrug"],
+  "shrug": ["upright-row"],
+  // kol
+  "biceps-curl": ["barbell-curl", "hammer-curl", "cable-hammer-curl"],
+  "barbell-curl": ["biceps-curl", "hammer-curl"],
+  "hammer-curl": ["biceps-curl", "cable-hammer-curl"],
+  "cable-hammer-curl": ["hammer-curl", "biceps-curl"],
+  "preacher-curl": ["barbell-curl", "concentration-curl", "spider-curl"],
+  "concentration-curl": ["biceps-curl", "preacher-curl"],
+  "spider-curl": ["preacher-curl", "concentration-curl"],
+  "zottman-curl": ["hammer-curl", "biceps-curl"],
+  "triceps-pushdown": ["triceps-dips", "overhead-extension", "skull-crusher"],
+  "overhead-extension": ["triceps-pushdown", "skull-crusher"],
+  "skull-crusher": ["triceps-pushdown", "overhead-extension", "close-grip-bench"],
+  "close-grip-bench": ["triceps-dips", "skull-crusher"],
+  "triceps-kickback": ["triceps-pushdown", "overhead-extension"],
+  "triceps-dips": ["sinav", "triceps-pushdown"],
+  // bacak
+  "squat": ["goblet-squat", "leg-press", "hack-squat", "front-squat"],
+  "front-squat": ["squat", "goblet-squat"],
+  "goblet-squat": ["squat", "leg-press"],
+  "leg-press": ["squat", "goblet-squat", "hack-squat", "lunge"],
+  "hack-squat": ["squat", "leg-press", "front-squat"],
+  "leg-extension": ["squat", "lunge", "leg-press"],
+  "leg-curl": ["romanian-deadlift", "glute-bridge", "good-morning"],
+  "lunge": ["bulgarian", "step-up", "squat"],
+  "bulgarian": ["lunge", "step-up"],
+  "step-up": ["lunge", "bulgarian"],
+  "hip-thrust": ["glute-bridge", "romanian-deadlift"],
+  "glute-bridge": ["hip-thrust", "glute-kickback"],
+  "glute-kickback": ["glute-bridge", "hip-thrust"],
+  "sumo-deadlift": ["deadlift", "romanian-deadlift"],
+  "calf-raise": ["seated-calf-raise"],
+  "seated-calf-raise": ["calf-raise"],
+  // karın
+  "cable-crunch": ["crunch", "situp", "reverse-crunch"],
+  "ab-roller": ["plank", "crunch"],
+  "hanging-leg-raise": ["leg-raise", "reverse-crunch"],
+  // kardiyo
+  "stairmaster": ["high-knees", "jump-rope", "step-up"],
+  "box-jump": ["jump-squat", "squat"],
+};
+
+export function getAlternatives(id) {
+  const ids = ALTERNATIVES[id] || [];
+  return ids.map(getExercise).filter(Boolean);
+}
