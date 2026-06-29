@@ -5,6 +5,7 @@ import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
 import ReadyPrograms from "./components/ReadyPrograms";
 import Nutrition from "./components/Nutrition";
+import Splash from "./components/Splash";
 import { getExercise } from "./data/exercises";
 
 const TABS = [
@@ -27,6 +28,15 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const loaded = useRef(false);
   const [toast, setToast] = useState("");
+
+  // --- Açılış (splash) ekranı ---
+  const [splash, setSplash] = useState(true);
+  const [splashHide, setSplashHide] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplashHide(true), 1300);
+    const t2 = setTimeout(() => setSplash(false), 1750);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
 
   // --- Auth ---
   useEffect(() => {
@@ -109,12 +119,13 @@ export default function App() {
   }
 
   if (!authReady) {
-    return <div className="login-wrap"><div style={{ color: "var(--muted)" }}>Yükleniyor…</div></div>;
+    return <>{splash && <Splash hiding={splashHide} />}<div className="login-wrap"><div style={{ color: "var(--muted)" }}>Yükleniyor…</div></div></>;
   }
-  if (!user) return <Login />;
+  if (!user) return <>{splash && <Splash hiding={splashHide} />}<Login /></>;
 
   return (
     <div className="app">
+      {splash && <Splash hiding={splashHide} />}
       <div className="topbar">
         <div className="brand">Fit<span>be</span></div>
         <button className="btn-ghost" onClick={firebaseLogout}>Çıkış</button>
