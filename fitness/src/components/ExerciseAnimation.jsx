@@ -1,6 +1,29 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Lottie from "lottie-react";
 import { getLottie } from "../data/lottieMap";
+import { exerciseFrames } from "../data/exerciseImages";
+
+// Gerçek egzersiz fotoğrafı: başlangıç (0) ve bitiş (1) kareleri arasında
+// yumuşak geçişle (cross-fade) döner -> gerçek hareket animasyonu.
+function PhotoFlip({ frames, size, onError }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((p) => (p === 0 ? 1 : 0)), 1100);
+    return () => clearInterval(t);
+  }, []);
+  const imgStyle = {
+    position: "absolute", inset: 0, width: "100%", height: "100%",
+    objectFit: "cover", borderRadius: 12, transition: "opacity .4s ease",
+  };
+  return (
+    <div style={{ position: "relative", width: size, height: size, borderRadius: 12, overflow: "hidden" }}>
+      <img src={frames[0]} alt="" loading="lazy" onError={onError}
+        style={{ ...imgStyle, opacity: i === 0 ? 1 : 0 }} />
+      <img src={frames[1]} alt="" loading="lazy" onError={onError}
+        style={{ ...imgStyle, opacity: i === 1 ? 1 : 0 }} />
+    </div>
+  );
+}
 
 // Egzersiz animasyonu.
 // 1) lottieMap.js'te profesyonel Lottie tanımlıysa onu oynatır (birebir kalite).
@@ -68,8 +91,9 @@ function InHandGear({ gt }) {
   return null;
 }
 
-export default function ExerciseAnimation({ type = "idle", size = 180, color = SKIN, gear = null }) {
+export default function ExerciseAnimation({ type = "idle", size = 180, color = SKIN, gear = null, exId = null }) {
   const t = type || "idle";
+  const [imgFailed, setImgFailed] = useState(false);
 
   // 1) Profesyonel Lottie varsa onu kullan
   const lottie = getLottie(t);
@@ -77,7 +101,13 @@ export default function ExerciseAnimation({ type = "idle", size = 180, color = S
     return <Lottie animationData={lottie} loop autoplay style={{ width: size, height: size }} />;
   }
 
-  // 2) Yedek: kaslı SVG karakter
+  // 2) Gerçek egzersiz fotoğrafı (varsa). Yüklenemezse SVG'ye düşer.
+  const frames = !imgFailed && exId ? exerciseFrames(exId) : null;
+  if (frames) {
+    return <PhotoFlip frames={frames} size={size} onError={() => setImgFailed(true)} />;
+  }
+
+  // 3) Yedek: kaslı SVG karakter
   const lying = LYING[t];
   const floor = ON_FLOOR[t];
   const dx = -7; // arka uzuv ötelemesi (derinlik)
