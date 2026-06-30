@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
+import WeeklyPlan from "./WeeklyPlan";
 
 export default function ProgramBuilder({
-  programs, activeId, onCreate, onDelete, onSetActive, onRemoveExercise, onStart,
+  programs, activeId, schedule, history, onSetSchedule, onCreate, onDelete, onSetActive, onRemoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(activeId);
@@ -27,6 +28,11 @@ export default function ProgramBuilder({
           value={newName} onChange={(e) => setNewName(e.target.value)} />
         <button className="icon-btn" onClick={create}>+ Oluştur</button>
       </div>
+
+      {programs.length > 0 && (
+        <WeeklyPlan programs={programs} schedule={schedule} history={history}
+          onSetSchedule={onSetSchedule} onStart={onStart} />
+      )}
 
       {programs.length === 0 && (
         <div className="empty">Henüz programın yok.<br />Yukarıdan bir program oluştur, sonra bölgelerden hareket ekle. 💪</div>
