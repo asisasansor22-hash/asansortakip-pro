@@ -212,6 +212,34 @@ export async function feedDelete(id) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// Bir gönderiyi HERKESE AÇIK kopyala (/fitness/public_feed/{id}) — link ile
+// giriş yapmadan görüntülenebilir. Sadece gönderi sahibi/admin yazabilir.
+export async function feedSharePublic(post) {
+  try {
+    var token = await getToken();
+    if (!token) return { success: false, error: "Oturum yok." };
+    var body = {
+      uid: post.uid, email: post.email || "", t: post.t || Date.now(),
+      text: post.text || "", media: post.media || null, avatar: post.avatar || null,
+    };
+    var url = FIREBASE_DB_URL + "/fitness/public_feed/" + post.id + ".json?auth=" + token;
+    var res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) return { success: false, error: "PUB " + res.status };
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+// Herkese açık tek gönderiyi getir (GİRİŞ GEREKMEZ — anonim okunur)
+export async function publicPostGet(id) {
+  try {
+    var url = FIREBASE_DB_URL + "/fitness/public_feed/" + encodeURIComponent(id) + ".json";
+    var res = await fetch(url);
+    if (!res.ok) return null;
+    var d = await res.json();
+    return d || null;
+  } catch (e) { return null; }
+}
+
 // --- Realtime Database (REST, auth token ile) ---
 // Her kullanıcının verisi /fitness/users/{uid}/{key} altında saklanır.
 async function userPath(key) {

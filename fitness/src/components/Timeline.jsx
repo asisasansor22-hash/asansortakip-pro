@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { feedList, feedPost, feedDelete, currentUid, isAdmin, auth } from "../firebase";
+import { feedList, feedPost, feedDelete, feedSharePublic, currentUid, isAdmin, auth } from "../firebase";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -56,6 +56,7 @@ export default function Timeline() {
   const [busy, setBusy] = useState(false);
   const [prep, setPrep] = useState("");
   const [viewer, setViewer] = useState(null);
+  const [shareMsg, setShareMsg] = useState("");
   const closedAt = useRef(0);
 
   const me = currentUid();
@@ -103,6 +104,17 @@ export default function Timeline() {
     else setErr("Silinemedi (" + r.error + ").");
   }
 
+  async function share(post) {
+    if (!window.confirm("Bu gönderi herkese açık bir bağlantıyla paylaşılacak; linke sahip herkes (giriş yapmadan) görebilir. Devam edilsin mi?")) return;
+    const r = await feedSharePublic(post);
+    if (!r.success) { setErr("Paylaşılamadı (" + r.error + "). /fitness/public_feed kuralı eklenmiş olmalı."); return; }
+    const url = window.location.origin + window.location.pathname + "#/p/" + post.id;
+    try {
+      if (navigator.share) await navigator.share({ title: "Fit+be", text: "Fit+be'de bir gönderi:", url });
+      else { await navigator.clipboard.writeText(url); setShareMsg("Bağlantı kopyalandı: " + url); setTimeout(() => setShareMsg(""), 4000); }
+    } catch (e) { /* kullanıcı paylaşmayı iptal etti */ }
+  }
+
   const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
   const openViewer = (m) => { if (Date.now() - closedAt.current < 450) return; setViewer(m); };
 
@@ -147,6 +159,7 @@ export default function Timeline() {
       </div>
 
       {err && <div className="err" style={{ marginBottom: 12 }}>{err}</div>}
+      {shareMsg && <div style={{ color: "var(--ok)", fontSize: 12, marginBottom: 12, wordBreak: "break-all" }}>{shareMsg}</div>}
 
       {posts === null ? (
         <p style={{ color: "var(--muted)" }}>Yükleniyor…</p>
@@ -167,9 +180,14 @@ export default function Timeline() {
                   <div style={{ color: "var(--muted)", fontSize: 11 }}>{timeAgo(post.t)}</div>
                 </div>
               </div>
-              {(post.uid === me || admin) && (
-                <button className="icon-btn danger" style={{ padding: "4px 10px" }} onClick={() => remove(post)}>Sil</button>
-              )}
+              <div className="row" style={{ gap: 6 }}>
+                {(post.uid === me || admin) && (
+                  <button className="icon-btn" style={{ padding: "4px 10px", color: "var(--accent)" }} onClick={() => share(post)}>↗ Paylaş</button>
+                )}
+                {(post.uid === me || admin) && (
+                  <button className="icon-btn danger" style={{ padding: "4px 10px" }} onClick={() => remove(post)}>Sil</button>
+                )}
+              </div>
             </div>
             {post.text && <p style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{post.text}</p>}
             {post.media && post.media.type === "image" && (
