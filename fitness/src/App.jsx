@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbSet } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -58,6 +58,7 @@ export default function App() {
   const [progress, setProgress] = useState({ weights: [], measures: [] });
   const [schedule, setSchedule] = useState({});
   const [avatar, setAvatar] = useState(lsGetAvatar);
+  const [mentionCount, setMentionCount] = useState(0);
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -196,6 +197,40 @@ export default function App() {
     setTimeout(() => setToast(""), 1800);
   }
 
+  // --- @etiket bildirimi (uygulama içi): akışta adımın geçtiği yeni gönderiler ---
+  useEffect(() => {
+    if (!user) { setMentionCount(0); return; }
+    const myName = (user.email || "").split("@")[0].toLowerCase();
+    if (!myName) return;
+    const seenKey = "fitbe_feedseen_" + (user.email || "");
+    let stopped = false;
+    async function scan() {
+      if (stopped) return;
+      const r = await feedList();
+      if (!r.success || stopped) return;
+      let seen = 0;
+      try { seen = Number(localStorage.getItem(seenKey) || 0); } catch (e) {}
+      const n = r.posts.filter((p) => {
+        if (p.uid === user.uid || (p.t || 0) <= seen) return false;
+        const tags = (p.text || "").match(/@[a-zA-Z0-9_.çğıöşüÇĞİÖŞÜ]+/g) || [];
+        return tags.some((tag) => tag.slice(1).toLowerCase() === myName);
+      }).length;
+      setMentionCount(n);
+    }
+    scan();
+    const iv = setInterval(scan, 60000);
+    const onVis = () => { if (document.visibilityState === "visible") scan(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stopped = true; clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [user]);
+
+  // Akış sekmesi açılınca etiketleri "görüldü" işaretle
+  useEffect(() => {
+    if (tab !== "feed" || !user) return;
+    try { localStorage.setItem("fitbe_feedseen_" + (user.email || ""), String(Date.now())); } catch (e) {}
+    setMentionCount(0);
+  }, [tab, user]);
+
   // --- Program işlemleri ---
   function createProgram(name) {
     const p = { id: uid(), name, exercises: [] };
@@ -315,8 +350,16 @@ export default function App() {
 
       <nav className="tabbar">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)}>
+          <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)} style={{ position: "relative" }}>
             <span className="ic">{t.ic}</span>
+            {t.id === "feed" && mentionCount > 0 && (
+              <span style={{
+                position: "absolute", top: 0, right: "50%", marginRight: -22,
+                background: "var(--danger)", color: "#fff", fontSize: 9, fontWeight: 800,
+                minWidth: 15, height: 15, borderRadius: 999, padding: "0 4px",
+                display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
+              }}>{mentionCount > 9 ? "9+" : mentionCount}</span>
+            )}
             {t.label}
           </button>
         ))}
