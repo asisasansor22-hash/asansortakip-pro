@@ -38,6 +38,13 @@ export async function firebaseLogin(email, password) {
         var result2 = await createUserWithEmailAndPassword(auth, email, password);
         return { success: true, user: result2.user };
       } catch (e2) {
+        // Hesap zaten varsa, demek ki ilk hata yanlış şifredendi
+        if (e2.code === "auth/email-already-in-use") {
+          return { success: false, error: "Şifre yanlış. (Hesabın varsa şifreni kontrol et veya 'Şifremi unuttum'u kullan.)" };
+        }
+        if (e2.code === "auth/weak-password") {
+          return { success: false, error: "Şifre çok zayıf (en az 6 hane)." };
+        }
         return { success: false, error: e2.message };
       }
     }
