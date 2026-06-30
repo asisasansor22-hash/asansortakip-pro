@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
-import { swallowNextClick } from "../utils/overlay";
 
 // Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
 function resizeImage(file, maxDim = 900, quality = 0.72) {
@@ -141,7 +140,7 @@ export default function Progress({ data, history = [], onSave }) {
   // Mobil "hayalet tıklama" koruması (kapatınca alttaki foto yeniden açılmasın)
   const closedAt = useRef(0);
   const justClosed = () => Date.now() - closedAt.current < 450;
-  const closeViewer = () => { closedAt.current = Date.now(); swallowNextClick(); setViewer(null); };
+  const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
 
   useEffect(() => {
     let alive = true;
