@@ -8,6 +8,7 @@ import Nutrition from "./components/Nutrition";
 import Splash from "./components/Splash";
 import Onboarding from "./components/Onboarding";
 import Profile from "./components/Profile";
+import Progress from "./components/Progress";
 import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
 
@@ -16,6 +17,7 @@ const TABS = [
   { id: "ready", ic: "📋", label: "Hazır" },
   { id: "mine", ic: "📝", label: "Programım" },
   { id: "nutrition", ic: "🥗", label: "Beslenme" },
+  { id: "progress", ic: "📈", label: "İlerleme" },
   { id: "profile", ic: "👤", label: "Profil" },
 ];
 
@@ -44,6 +46,7 @@ export default function App() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [workout, setWorkout] = useState(null);
   const [history, setHistory] = useState([]);
+  const [progress, setProgress] = useState({ weights: [], measures: [] });
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -59,7 +62,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); }
     });
   }, []);
 
@@ -75,7 +78,11 @@ export default function App() {
       const data = await dbGet("programs");
       const prof = await dbGet("profile");
       const hist = await dbGet("workouts");
+      const prog = await dbGet("progress");
       if (cancelled) return;
+      if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
+        setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
+      }
       if (data && Array.isArray(data.list)) {
         setPrograms(data.list);
         setActiveId(data.activeId || (data.list[0] && data.list[0].id) || null);
@@ -104,6 +111,12 @@ export default function App() {
       dbSet("workouts", next);
       return next;
     });
+  }
+
+  // İlerleme verisini kaydet (kilo + ölçüler)
+  function saveProgress(next) {
+    setProgress(next);
+    dbSet("progress", next);
   }
 
   // Bir hareket için en son girilen kilo/tekrar
@@ -224,6 +237,7 @@ export default function App() {
         />
       )}
       {tab === "nutrition" && <Nutrition />}
+      {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} />}
 
       {toast && (
