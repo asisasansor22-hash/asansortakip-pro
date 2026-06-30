@@ -153,6 +153,64 @@ export async function adminSetDisabled(uid, disabled) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// --- Ortak Akış (Timeline) ---
+// Tüm kullanıcılar /fitness/feed altına gönderi (yazı/foto/video) ekleyebilir.
+// Kurallar: herkes okur; herkes kendi gönderisini ekler/siler; admin hepsini siler.
+export function currentUid() {
+  var u = auth.currentUser;
+  return u ? u.uid : null;
+}
+
+export async function feedList(limit) {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return { success: false, error: "FEED " + res.status };
+    var data = await res.json();
+    if (!data) return { success: true, posts: [] };
+    var posts = Object.keys(data).map(function (id) {
+      var p = data[id] || {};
+      return { id: id, uid: p.uid || "", email: p.email || "", t: p.t || 0, text: p.text || "", media: p.media || null };
+    });
+    posts.sort(function (a, b) { return (b.t || 0) - (a.t || 0); });
+    return { success: true, posts: posts.slice(0, limit || 80) };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+export async function feedPost(post) {
+  try {
+    var user = auth.currentUser;
+    if (!user) return { success: false, error: "Oturum yok." };
+    var token = await getToken();
+    var id = "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var body = {
+      uid: user.uid,
+      email: user.email || "",
+      t: Date.now(),
+      text: post.text || "",
+      media: post.media || null,
+    };
+    var url = FIREBASE_DB_URL + "/fitness/feed/" + id + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) return { success: false, error: "POST " + res.status };
+    return { success: true, post: Object.assign({ id: id }, body) };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+export async function feedDelete(id) {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed/" + id + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, { method: "DELETE" });
+    if (!res.ok) return { success: false, error: "DEL " + res.status };
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
 // --- Realtime Database (REST, auth token ile) ---
 // Her kullanıcının verisi /fitness/users/{uid}/{key} altında saklanır.
 async function userPath(key) {
