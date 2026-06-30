@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { NUTRITION_PLANS } from "../data/nutrition";
 import { SUPPLEMENTS } from "../data/supplements";
 import CalorieCalculator from "./CalorieCalculator";
+import NutritionDiary from "./NutritionDiary";
 
 const SUBTABS = [
+  { id: "diary", label: "Günlük" },
   { id: "plans", label: "Diyet" },
   { id: "calorie", label: "Kalori" },
   { id: "supps", label: "Supplement" },
@@ -85,7 +87,7 @@ function Supplements() {
 }
 
 export default function Nutrition() {
-  const [tab, setTab] = useState("plans");
+  const [tab, setTab] = useState("diary");
   return (
     <div>
       <h2>Beslenme</h2>
@@ -94,6 +96,7 @@ export default function Nutrition() {
           <button key={t.id} className={"subtab" + (tab === t.id ? " on" : "")} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </div>
+      {tab === "diary" && <NutritionDiary />}
       {tab === "plans" && <DietPlans />}
       {tab === "calorie" && <CalorieCalculator />}
       {tab === "supps" && <Supplements />}
