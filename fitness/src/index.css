@@ -14,7 +14,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body, #root { height: 100%; margin: 0; min-height: 100%; }
+html, body, #root { margin: 0; min-height: 100%; }
 /* iOS PWA'da safe-area / overscroll bölgesinin beyaz görünmemesi için kök arka plan koyu */
 html { background: #0f172a; }
 body {
@@ -29,7 +29,9 @@ button { font-family: inherit; cursor: pointer; border: none; }
 h1, h2, h3 { margin: 0 0 8px; }
 
 /* ============ DÜZEN ============ */
-.app { max-width: 720px; margin: 0 auto; padding: 0 14px 90px; }
+/* Tam ekran yüksekliğinde dikey kolon: içerik kısa olsa bile (örn. boş
+   "Programlarım") alt bar her zaman ekranın en altına oturur. */
+.app { max-width: 720px; margin: 0 auto; padding: 0 14px; min-height: 100dvh; display: flex; flex-direction: column; }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: calc(14px + env(safe-area-inset-top)) 4px 8px; position: sticky; top: 0; z-index: 20;
@@ -41,7 +43,10 @@ h1, h2, h3 { margin: 0 0 8px; }
 
 /* alt navigasyon */
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  position: sticky; bottom: 0; z-index: 30;
+  /* margin-top:auto kısa içerikte barı en alta iter; -14px ile .app
+     yan boşluğunu iptal edip kenardan kenara uzanır. */
+  margin: auto -14px 0;
   display: flex; justify-content: space-around;
   background: rgba(15,23,42,.96); backdrop-filter: blur(8px);
   border-top: 1px solid var(--line); padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
