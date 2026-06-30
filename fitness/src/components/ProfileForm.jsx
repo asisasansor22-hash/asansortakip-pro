@@ -12,6 +12,7 @@ export const GOALS = [
 export const STYLES = [
   { id: "salon", label: "🏋️ Salon" },
   { id: "ev", label: "🏠 Evde" },
+  { id: "kalistenik", label: "🤸 Kalistenik" },
   { id: "kosu", label: "🏃 Koşu" },
   { id: "pilates", label: "🧘 Pilates" },
 ];
