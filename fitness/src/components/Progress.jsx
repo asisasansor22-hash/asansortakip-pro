@@ -155,7 +155,7 @@ export default function Progress({ data, history = [], onSave }) {
     try {
       const src = await resizeImage(file);
       const entry = { id: "ph_" + Date.now().toString(36), t: Date.now(), src };
-      const next = [entry, ...photos].slice(0, 12);
+      const next = [entry, ...photos].slice(0, 50);
       setPhotos(next);
       dbSet("photos", next);
     } catch (err) { /* yoksay */ }
@@ -333,7 +333,7 @@ export default function Progress({ data, history = [], onSave }) {
                 style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, cursor: "pointer" }} />
             ))}
           </div>
-          <p style={{ color: "var(--muted)", fontSize: 11, margin: "4px 4px 0" }}>En fazla 12 fotoğraf saklanır. Fotoğrafa dokununca büyür.</p>
+          <p style={{ color: "var(--muted)", fontSize: 11, margin: "4px 4px 0" }}>Fotoğrafa dokununca büyür.</p>
         </>
       )}
 
