@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { feedList, feedPost, feedDelete, feedSharePublic, currentUid, isAdmin, auth } from "../firebase";
+import { feedList, feedPost, feedDelete, feedSharePublic, publicAvatarsGet, currentUid, isAdmin, auth } from "../firebase";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -69,6 +69,7 @@ export default function Timeline() {
   const [viewer, setViewer] = useState(null);
   const [shareMsg, setShareMsg] = useState("");
   const [mention, setMention] = useState(null); // {start, query}
+  const [avatars, setAvatars] = useState({}); // uid -> dataURL (herkese açık güncel)
   const closedAt = useRef(0);
   const taRef = useRef(null);
 
@@ -123,6 +124,11 @@ export default function Timeline() {
     else { setPosts([]); setErr("Akış yüklenemedi (" + r.error + "). Veritabanı kuralında /fitness/feed izni gerekiyor."); }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => { const a = await publicAvatarsGet(); if (alive) setAvatars(a || {}); })();
+    return () => { alive = false; };
+  }, []);
 
   async function onPhoto(e) {
     const f = e.target.files && e.target.files[0]; e.target.value = "";
@@ -236,7 +242,8 @@ export default function Timeline() {
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div style={{ width: 32, height: 32, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
                   {(() => {
-                    const av = post.uid === me ? (myAvatar || post.avatar) : post.avatar;
+                    // Öncelik: herkese açık güncel avatar → (kendi gönderinse) yerel → gönderiye eklenmiş anlık
+                    const av = avatars[post.uid] || (post.uid === me ? myAvatar : null) || post.avatar;
                     return av
                       ? <img src={av} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       : nameOf(post.email).slice(0, 1).toUpperCase();

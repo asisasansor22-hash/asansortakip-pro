@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList, setPublicAvatar } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -95,7 +95,7 @@ export default function App() {
       const av = await dbGet("avatar");
       if (cancelled) return;
       if (sched && typeof sched === "object") setSchedule(sched);
-      if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); }
+      if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); /* herkese açık kopyaya yedekle */ }
       if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
         setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
       }
@@ -140,6 +140,7 @@ export default function App() {
     setAvatar(dataUrl || null);
     lsSetAvatar(dataUrl || null);
     dbSet("avatar", dataUrl || "");
+    setPublicAvatar(dataUrl || null); // herkese açık avatar düğümü
   }
 
   // Haftalık plana program ata (day: 0=Pzt … 6=Paz)
