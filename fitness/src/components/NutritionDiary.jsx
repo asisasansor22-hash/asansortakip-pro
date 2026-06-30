@@ -55,9 +55,12 @@ export default function NutritionDiary() {
 
   function persist(next) { setDiary(next); dbSet("diary", next); }
 
-  const day = diary.days[today] || { items: [], water: 0 };
-  const totKcal = day.items.reduce((s, x) => s + (x.kcal || 0), 0);
-  const totProt = day.items.reduce((s, x) => s + (x.p || 0), 0);
+  // Firebase boş dizileri kaydetmez; okurken items/water eksik gelebilir → normalize et
+  const rawDay = diary.days[today] || {};
+  const dayItems = Array.isArray(rawDay.items) ? rawDay.items : (rawDay.items ? Object.values(rawDay.items) : []);
+  const day = { items: dayItems, water: rawDay.water || 0 };
+  const totKcal = day.items.reduce((s, x) => s + ((x && x.kcal) || 0), 0);
+  const totProt = day.items.reduce((s, x) => s + ((x && x.p) || 0), 0);
   const goal = diary.goal || { kcal: 0, protein: 0 };
 
   function setDay(patch) {
