@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
 
@@ -137,6 +137,10 @@ export default function Progress({ data, history = [], onSave }) {
   const [photos, setPhotos] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [viewer, setViewer] = useState(null); // tam ekran gösterilen foto
+  // Mobil "hayalet tıklama" koruması (kapatınca alttaki foto yeniden açılmasın)
+  const closedAt = useRef(0);
+  const justClosed = () => Date.now() - closedAt.current < 450;
+  const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
 
   useEffect(() => {
     let alive = true;
@@ -165,7 +169,7 @@ export default function Progress({ data, history = [], onSave }) {
     const next = photos.filter((p) => p.id !== id);
     setPhotos(next);
     dbSet("photos", next);
-    setViewer(null);
+    closeViewer();
   }
 
   function addMeasure() {
@@ -319,7 +323,7 @@ export default function Progress({ data, history = [], onSave }) {
               <div className="row" style={{ gap: 8 }}>
                 {[photos[photos.length - 1], photos[0]].map((p, k) => (
                   <div key={k} style={{ flex: 1, textAlign: "center" }}>
-                    <img src={p.src} alt="" onClick={() => setViewer(p)}
+                    <img src={p.src} alt="" onClick={() => { if (justClosed()) return; setViewer(p); }}
                       style={{ width: "100%", borderRadius: 10, aspectRatio: "3/4", objectFit: "cover", cursor: "pointer" }} />
                     <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>{k === 0 ? "İlk · " : "Son · "}{fmtDay(p.t)}</div>
                   </div>
@@ -329,7 +333,7 @@ export default function Progress({ data, history = [], onSave }) {
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 4 }}>
             {photos.map((p) => (
-              <img key={p.id} src={p.src} alt="" onClick={() => setViewer(p)}
+              <img key={p.id} src={p.src} alt="" onClick={() => { if (justClosed()) return; setViewer(p); }}
                 style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, cursor: "pointer" }} />
             ))}
           </div>
@@ -338,7 +342,7 @@ export default function Progress({ data, history = [], onSave }) {
       )}
 
       {viewer && (
-        <div onClick={() => setViewer(null)} style={{
+        <div onClick={closeViewer} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 60,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16, gap: 12,
         }}>
@@ -346,7 +350,7 @@ export default function Progress({ data, history = [], onSave }) {
           <div style={{ color: "#cbd5e1", fontSize: 13 }}>{fmtDay(viewer.t)}</div>
           <div className="row" style={{ gap: 10 }}>
             <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={(e) => { e.stopPropagation(); delPhoto(viewer.id); }}>🗑️ Sil</button>
-            <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={() => setViewer(null)}>Kapat</button>
+            <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={closeViewer}>Kapat</button>
           </div>
         </div>
       )}

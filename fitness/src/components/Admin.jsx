@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { adminListUsers, dbListUsers, adminSetPassword, adminSetDisabled } from "../firebase";
 
 const fmt = (s) => { try { return s ? new Date(s).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"; } catch (e) { return "—"; } };
@@ -13,6 +13,11 @@ export default function Admin() {
   const [limited, setLimited] = useState(false);
   const [gallery, setGallery] = useState(null); // {email, photos}
   const [zoom, setZoom] = useState(null);
+  // Mobil "hayalet tıklama" koruması: katman kapandıktan hemen sonra
+  // alttaki öğeye düşen sahte tıklamayı yok say.
+  const closedAt = useRef(0);
+  const justClosed = () => Date.now() - closedAt.current < 450;
+  const closeNow = (setter) => { closedAt.current = Date.now(); setter(null); };
 
   async function load() {
     setErr(""); setLoading(true);
@@ -97,7 +102,7 @@ export default function Admin() {
                   {u.disabled ? "✓ Aktifleştir" : "⛔ Askıya Al"}
                 </button>
                 {u.photos && u.photos.length > 0 && (
-                  <button className="icon-btn" onClick={() => setGallery({ email: u.email, photos: u.photos })}>📷 {u.photos.length}</button>
+                  <button className="icon-btn" onClick={() => { if (justClosed()) return; setGallery({ email: u.email, photos: u.photos }); }}>📷 {u.photos.length}</button>
                 )}
               </div>
             </div>
@@ -106,18 +111,18 @@ export default function Admin() {
       )}
 
       {gallery && (
-        <div onClick={() => setGallery(null)} style={{
+        <div onClick={() => closeNow(setGallery)} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 60, padding: 16,
           overflowY: "auto",
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720, margin: "0 auto" }}>
             <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{gallery.email}</div>
-              <button className="icon-btn" onClick={() => setGallery(null)}>Kapat ✕</button>
+              <button className="icon-btn" onClick={() => closeNow(setGallery)}>Kapat ✕</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
               {gallery.photos.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).map((p) => (
-                <img key={p.id || p.t} src={p.src} alt="" onClick={() => setZoom(p.src)}
+                <img key={p.id || p.t} src={p.src} alt="" onClick={() => { if (justClosed()) return; setZoom(p.src); }}
                   style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, cursor: "pointer" }} />
               ))}
             </div>
@@ -125,7 +130,7 @@ export default function Admin() {
         </div>
       )}
       {zoom && (
-        <div onClick={() => setZoom(null)} style={{
+        <div onClick={() => closeNow(setZoom)} style={{
           position: "fixed", inset: 0, background: "rgba(0,0,0,.96)", zIndex: 70,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
         }}>
