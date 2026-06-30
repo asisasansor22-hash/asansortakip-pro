@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { adminListUsers, dbListUsers, adminSetPassword, adminSetDisabled } from "../firebase";
-import { swallowNextClick } from "../utils/overlay";
 
 const fmt = (s) => { try { return s ? new Date(s).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"; } catch (e) { return "—"; } };
 
@@ -18,7 +17,7 @@ export default function Admin() {
   // alttaki öğeye düşen sahte tıklamayı yok say.
   const closedAt = useRef(0);
   const justClosed = () => Date.now() - closedAt.current < 450;
-  const closeNow = (setter) => { closedAt.current = Date.now(); swallowNextClick(); setter(null); };
+  const closeNow = (setter) => { closedAt.current = Date.now(); setter(null); };
 
   // Escape tuşu açık katmanı kapatsın (önce zoom, sonra galeri)
   useEffect(() => {

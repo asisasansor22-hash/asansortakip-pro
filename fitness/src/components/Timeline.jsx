@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import { feedList, feedPost, feedDelete, currentUid, isAdmin, auth } from "../firebase";
-import { swallowNextClick } from "../utils/overlay";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -102,7 +101,7 @@ export default function Timeline() {
     else setErr("Silinemedi (" + r.error + ").");
   }
 
-  const closeViewer = () => { closedAt.current = Date.now(); swallowNextClick(); setViewer(null); };
+  const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
   const openViewer = (m) => { if (Date.now() - closedAt.current < 450) return; setViewer(m); };
 
   useEffect(() => {
