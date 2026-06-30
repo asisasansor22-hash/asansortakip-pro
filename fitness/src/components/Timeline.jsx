@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { feedList, feedPost, feedDelete, currentUid, isAdmin, auth } from "../firebase";
+import { swallowNextClick } from "../utils/overlay";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -101,8 +102,15 @@ export default function Timeline() {
     else setErr("Silinemedi (" + r.error + ").");
   }
 
-  const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
+  const closeViewer = () => { closedAt.current = Date.now(); swallowNextClick(); setViewer(null); };
   const openViewer = (m) => { if (Date.now() - closedAt.current < 450) return; setViewer(m); };
+
+  useEffect(() => {
+    if (!viewer) return;
+    function onKey(e) { if (e.key === "Escape") closeViewer(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [viewer]);
 
   return (
     <div>
@@ -124,7 +132,7 @@ export default function Timeline() {
         )}
         {prep && <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 6 }}>{prep}</div>}
         <div className="row" style={{ gap: 8, marginTop: 10, alignItems: "center" }}>
-          <label className="icon-btn" style={{ cursor: "pointer" }}>📷 Foto
+          <label className="icon-btn" style={{ cursor: "pointer" }}>📷 Fotoğraf
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={onPhoto} />
           </label>
           <label className="icon-btn" style={{ cursor: "pointer" }}>🎬 Video
@@ -178,7 +186,9 @@ export default function Timeline() {
           position: "fixed", inset: 0, background: "rgba(0,0,0,.93)", zIndex: 60,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 12,
         }}>
-          <img src={viewer.src} alt="" style={{ maxWidth: "100%", maxHeight: "92vh", borderRadius: 12 }} />
+          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); closeViewer(); }}
+            style={{ position: "fixed", top: 14, right: 14, background: "rgba(255,255,255,.12)", zIndex: 61 }}>Kapat ✕</button>
+          <img src={viewer.src} alt="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "100%", maxHeight: "92vh", borderRadius: 12 }} />
         </div>
       )}
     </div>

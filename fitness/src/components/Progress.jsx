@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
+import { swallowNextClick } from "../utils/overlay";
 
 // Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
 function resizeImage(file, maxDim = 900, quality = 0.72) {
@@ -140,7 +141,7 @@ export default function Progress({ data, history = [], onSave }) {
   // Mobil "hayalet tıklama" koruması (kapatınca alttaki foto yeniden açılmasın)
   const closedAt = useRef(0);
   const justClosed = () => Date.now() - closedAt.current < 450;
-  const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
+  const closeViewer = () => { closedAt.current = Date.now(); swallowNextClick(); setViewer(null); };
 
   useEffect(() => {
     let alive = true;
@@ -150,6 +151,14 @@ export default function Progress({ data, history = [], onSave }) {
     })();
     return () => { alive = false; };
   }, []);
+
+  useEffect(() => {
+    if (!viewer) return;
+    function onKey(e) { if (e.key === "Escape") closeViewer(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer]);
 
   async function onPhoto(e) {
     const file = e.target.files && e.target.files[0];
@@ -346,7 +355,9 @@ export default function Progress({ data, history = [], onSave }) {
           position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 60,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16, gap: 12,
         }}>
-          <img src={viewer.src} alt="" style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: 12 }} />
+          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); closeViewer(); }}
+            style={{ position: "fixed", top: 14, right: 14, background: "rgba(255,255,255,.12)", zIndex: 61 }}>Kapat ✕</button>
+          <img src={viewer.src} alt="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: 12 }} />
           <div style={{ color: "#cbd5e1", fontSize: 13 }}>{fmtDay(viewer.t)}</div>
           <div className="row" style={{ gap: 10 }}>
             <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={(e) => { e.stopPropagation(); delPhoto(viewer.id); }}>🗑️ Sil</button>
