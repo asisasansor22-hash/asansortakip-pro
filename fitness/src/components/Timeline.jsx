@@ -74,6 +74,8 @@ export default function Timeline() {
 
   const me = currentUid();
   const admin = isAdmin(auth.currentUser);
+  let myAvatar = null;
+  try { myAvatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
 
   // @etiketleme önerileri: akışa katılmış (gönderi atmış) kullanıcı adları + kendi adın.
   const knownNames = useMemo(() => {
@@ -233,9 +235,12 @@ export default function Timeline() {
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
                 <div style={{ width: 32, height: 32, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
-                  {post.avatar
-                    ? <img src={post.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    : nameOf(post.email).slice(0, 1).toUpperCase()}
+                  {(() => {
+                    const av = post.uid === me ? (myAvatar || post.avatar) : post.avatar;
+                    return av
+                      ? <img src={av} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : nameOf(post.email).slice(0, 1).toUpperCase();
+                  })()}
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{nameOf(post.email)}</div>
