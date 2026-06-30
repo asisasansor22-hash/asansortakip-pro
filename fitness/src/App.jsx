@@ -47,6 +47,7 @@ export default function App() {
   const [workout, setWorkout] = useState(null);
   const [history, setHistory] = useState([]);
   const [progress, setProgress] = useState({ weights: [], measures: [] });
+  const [schedule, setSchedule] = useState({});
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -62,7 +63,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); }
     });
   }, []);
 
@@ -79,7 +80,9 @@ export default function App() {
       const prof = await dbGet("profile");
       const hist = await dbGet("workouts");
       const prog = await dbGet("progress");
+      const sched = await dbGet("schedule");
       if (cancelled) return;
+      if (sched && typeof sched === "object") setSchedule(sched);
       if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
         setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
       }
@@ -117,6 +120,16 @@ export default function App() {
   function saveProgress(next) {
     setProgress(next);
     dbSet("progress", next);
+  }
+
+  // Haftalık plana program ata (day: 0=Pzt … 6=Paz)
+  function setScheduleDay(day, programId) {
+    setSchedule((prev) => {
+      const next = { ...prev };
+      if (programId) next[day] = programId; else delete next[day];
+      dbSet("schedule", next);
+      return next;
+    });
   }
 
   // Bir hareket için en son girilen kilo/tekrar
@@ -229,6 +242,9 @@ export default function App() {
         <ProgramBuilder
           programs={programs}
           activeId={activeId}
+          schedule={schedule}
+          history={history}
+          onSetSchedule={setScheduleDay}
           onCreate={createProgram}
           onDelete={deleteProgram}
           onSetActive={setActiveId}
