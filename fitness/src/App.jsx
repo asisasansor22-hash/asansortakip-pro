@@ -10,6 +10,7 @@ import Onboarding from "./components/Onboarding";
 import Profile from "./components/Profile";
 import Progress from "./components/Progress";
 import Timeline from "./components/Timeline";
+import PublicPost from "./components/PublicPost";
 import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
 
@@ -259,6 +260,10 @@ export default function App() {
     flash("“" + d.name + "” programlarına eklendi");
     setTab("mine");
   }
+
+  // Herkese açık tek gönderi linki (#/p/<id>) — giriş gerektirmez
+  const pubMatch = (typeof window !== "undefined" ? (window.location.hash || "") : "").match(/^#\/p\/(.+)$/);
+  if (pubMatch) return <PublicPost id={decodeURIComponent(pubMatch[1])} />;
 
   if (!authReady) {
     return <>{splash && <Splash hiding={splashHide} />}<div className="login-wrap"><div style={{ color: "var(--muted)" }}>Yükleniyor…</div></div></>;
