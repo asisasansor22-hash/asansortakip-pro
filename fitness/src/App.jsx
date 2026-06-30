@@ -34,6 +34,12 @@ function lsGetProfile() {
 function lsSetProfile(p) {
   try { localStorage.setItem("fitbe_profile", JSON.stringify(p)); } catch (e) {}
 }
+function lsGetAvatar() {
+  try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
+}
+function lsSetAvatar(v) {
+  try { if (v) localStorage.setItem("fitbe_avatar", v); else localStorage.removeItem("fitbe_avatar"); } catch (e) {}
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -50,6 +56,7 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [progress, setProgress] = useState({ weights: [], measures: [] });
   const [schedule, setSchedule] = useState({});
+  const [avatar, setAvatar] = useState(lsGetAvatar);
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -65,7 +72,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); }
     });
   }, []);
 
@@ -83,8 +90,10 @@ export default function App() {
       const hist = await dbGet("workouts");
       const prog = await dbGet("progress");
       const sched = await dbGet("schedule");
+      const av = await dbGet("avatar");
       if (cancelled) return;
       if (sched && typeof sched === "object") setSchedule(sched);
+      if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); }
       if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
         setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
       }
@@ -122,6 +131,13 @@ export default function App() {
   function saveProgress(next) {
     setProgress(next);
     dbSet("progress", next);
+  }
+
+  // Profil fotoğrafı (avatar) kaydet/sil
+  function saveAvatar(dataUrl) {
+    setAvatar(dataUrl || null);
+    lsSetAvatar(dataUrl || null);
+    dbSet("avatar", dataUrl || "");
   }
 
   // Haftalık plana program ata (day: 0=Pzt … 6=Paz)
@@ -235,7 +251,11 @@ export default function App() {
       {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} onFinish={saveWorkout} lastLog={lastLog} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>
-        <button className="btn-ghost" onClick={() => setTab("profile")}>👤</button>
+        <button className="btn-ghost" onClick={() => setTab("profile")} style={{ padding: avatar ? 4 : undefined }}>
+          {avatar
+            ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />
+            : "👤"}
+        </button>
       </div>
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} />}
@@ -257,7 +277,7 @@ export default function App() {
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Timeline />}
-      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} avatar={avatar} onSaveAvatar={saveAvatar} />}
 
       {toast && (
         <div style={{
