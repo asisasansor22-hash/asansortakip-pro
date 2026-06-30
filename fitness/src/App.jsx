@@ -229,13 +229,34 @@ export default function App() {
     flash("“" + ex.name + "” programına eklendi");
   }
 
+  // Hazır programın HER GÜNÜNÜ ayrı bir program olarak ekle
+  // (ör. PPL → "PPL — Push", "PPL — Pull", "PPL — Legs"). Böylece Haftalık
+  // Plan'dan her gün ayrı bir güne atanabilir.
   function copyReady(rp) {
-    const allIds = [];
-    rp.days.forEach((d) => d.exercises.forEach((id) => { if (getExercise(id)) allIds.push(id); }));
-    const p = { id: uid(), name: rp.name, exercises: allIds };
+    const newOnes = rp.days
+      .map((d) => ({
+        id: uid(),
+        name: rp.name + " — " + d.name,
+        exercises: (d.exercises || []).filter((id) => getExercise(id)),
+      }))
+      .filter((p) => p.exercises.length > 0);
+    if (newOnes.length === 0) { flash("Bu programda eklenebilir hareket yok"); return; }
+    setPrograms((prev) => [...prev, ...newOnes]);
+    setActiveId(newOnes[0].id);
+    flash(newOnes.length + " gün ayrı program olarak eklendi — Haftalık Plan'dan günlere ata");
+    setTab("mine");
+  }
+
+  // Hazır programın TEK bir gününü program olarak ekle
+  function copyReadyDay(rp, dayIndex) {
+    const d = rp.days[dayIndex];
+    if (!d) return;
+    const ids = (d.exercises || []).filter((id) => getExercise(id));
+    if (ids.length === 0) { flash("Bu günde eklenebilir hareket yok"); return; }
+    const p = { id: uid(), name: rp.name + " — " + d.name, exercises: ids };
     setPrograms((prev) => [...prev, p]);
     setActiveId(p.id);
-    flash("“" + rp.name + "” programlarına kopyalandı");
+    flash("“" + d.name + "” programlarına eklendi");
     setTab("mine");
   }
 
@@ -259,7 +280,7 @@ export default function App() {
       </div>
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} />}
-      {tab === "ready" && <ReadyPrograms onCopy={copyReady} profile={profile} />}
+      {tab === "ready" && <ReadyPrograms onCopy={copyReady} onCopyDay={copyReadyDay} profile={profile} />}
       {tab === "mine" && (
         <ProgramBuilder
           programs={programs}

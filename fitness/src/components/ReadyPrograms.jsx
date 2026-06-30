@@ -3,9 +3,10 @@ import { READY_PROGRAMS } from "../data/programs";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 
-export default function ReadyPrograms({ onCopy, profile }) {
+export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [open, setOpen] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [copiedDay, setCopiedDay] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [princ, setPrinc] = useState(false);
 
@@ -13,6 +14,11 @@ export default function ReadyPrograms({ onCopy, profile }) {
     if (onCopy) onCopy(p);
     setCopied(p.id);
     setTimeout(() => setCopied(null), 1800);
+  }
+  function copyDay(p, di) {
+    if (onCopyDay) onCopyDay(p, di);
+    setCopiedDay(p.id + "-" + di);
+    setTimeout(() => setCopiedDay(null), 1800);
   }
 
   // Profil filtresi: cinsiyet (uygun veya herkes) + stil eşleşmesi.
@@ -78,15 +84,27 @@ export default function ReadyPrograms({ onCopy, profile }) {
                 {isOpen ? "Gizle" : "Detay"}
               </button>
               <button className="icon-btn" style={{ color: "var(--accent)" }} onClick={() => copy(p)}>
-                {copied === p.id ? "✓ Kopyalandı" : "Programlarıma Kopyala"}
+                {copied === p.id ? "✓ Eklendi" : (p.days.length > 1 ? "Tüm günleri ekle" : "Programıma ekle")}
               </button>
             </div>
 
             {isOpen && (
               <div style={{ marginTop: 12 }}>
+                {p.days.length > 1 && (
+                  <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 4px 10px" }}>
+                    💡 Her günü ayrı program olarak ekleyip <b>Haftalık Plan</b>'dan istediğin güne atayabilirsin (ör. Push→Salı, Pull→Cuma).
+                  </p>
+                )}
                 {p.days.map((d, di) => (
                   <div key={di} style={{ marginBottom: 14 }}>
-                    <div className="section-title" style={{ margin: "6px 4px" }}>{d.name}</div>
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center", margin: "6px 4px" }}>
+                      <div className="section-title" style={{ margin: 0 }}>{d.name}</div>
+                      {d.exercises && d.exercises.length > 0 && (
+                        <button className="icon-btn" style={{ color: "var(--accent)", padding: "4px 10px", fontSize: 12 }} onClick={() => copyDay(p, di)}>
+                          {copiedDay === p.id + "-" + di ? "✓ Eklendi" : "+ Bu günü ekle"}
+                        </button>
+                      )}
+                    </div>
                     {d.note && <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 4px 8px" }}>{d.note}</p>}
                     {d.exercises && d.exercises.length > 0 && (
                       <div className="grid">
