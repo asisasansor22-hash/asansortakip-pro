@@ -221,6 +221,50 @@ const CURATED = [
   // kardiyo
   { id: "stairmaster", name: "Stairmaster", region: "kardiyo", anim: "lunge", equip: "Makine", level: "Başlangıç",
     sets: "10-20 dk", desc: "Merdiven makinesinde sürekli tempolu kardiyo.", tips: ["Korkuluğa yaslanma", "Tempolu"] },
+
+  // ============ KALİSTENİK (vücut ağırlığı) ============
+  // İtme
+  { id: "wide-pushup", name: "Geniş Şınav", region: "gogus", anim: "pushup", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 12-20", desc: "Elleri omuzdan geniş açarak dış göğsü daha çok vurgulayan şınav.", tips: ["Vücut düz bir çizgi", "Dirsekleri ~45° aç", "Tam in-çık"] },
+  { id: "decline-pushup", name: "Ayak Yüksek Şınav (Decline)", region: "gogus", anim: "pushup", equip: "Vücut ağırlığı", level: "Orta",
+    sets: "3 x 12-15", desc: "Ayaklar yüksek bir yüzeyde; üst göğüs ve ön omuz vurgusu artar.", tips: ["Kalçayı düşürme", "Kontrollü in", "Core sıkı"] },
+  { id: "archer-pushup", name: "Archer Şınav", region: "gogus", anim: "pushup", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 6-10", desc: "Ağırlığı tek kola verip diğer kolu yana açarak yapılan şınav; tek kol şınava köprü.", tips: ["Açık kol düz kalsın", "Yükü çalışan kola ver", "Yavaş kontrol"] },
+  { id: "pseudo-planche-pushup", name: "Pseudo Planche Şınav", region: "gogus", anim: "pushup", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 6-10", desc: "Eller bele yakın, gövde öne eğik; ön omuz ve iç göğse yüklenir, planche hazırlığı.", tips: ["Eller bel hizasında", "Öne eğil", "Omuzları öne it"] },
+  { id: "pike-pushup", name: "Pike Şınav", region: "omuz", anim: "shoulderpress", equip: "Vücut ağırlığı", level: "Orta",
+    sets: "3 x 8-12", desc: "Kalça yukarıda ters V; başı yere indirerek omuzu hedefler, amuda şınava hazırlık.", tips: ["Kalça yukarı", "Başı ellerin önüne indir", "Dirsekleri çok açma"] },
+  { id: "handstand-pushup", name: "Amuda Şınav (Duvar)", region: "omuz", anim: "shoulderpress", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 3-8", desc: "Duvara yaslı amuda kalkıp başı indirerek omuz pres; güçlü omuz hareketi.", tips: ["Duvar desteği al", "Kontrollü in", "Core ve glute sıkı"] },
+  // Çekme
+  { id: "inverted-row", name: "Avustralya Barfiksi (Inverted Row)", region: "sirt", anim: "pullup", equip: "Bar", level: "Başlangıç",
+    sets: "3 x 8-15", desc: "Bara yatay asılıp göğsü bara çekmek; barfikse hazırlık ve yatay çekiş.", tips: ["Vücut düz", "Kürekleri sık", "Bar göğse değsin"] },
+  { id: "scapular-pull", name: "Skapular Çekiş", region: "sirt", anim: "pullup", equip: "Bar", level: "Başlangıç",
+    sets: "3 x 8-12", desc: "Bara asılıyken sadece kürek kemiklerini aşağı-geri çekmek; barfiks için sırt-omuz bağı.", tips: ["Kolları düz tut", "Omuzları kulaktan uzaklaştır", "Küçük ama kontrollü"] },
+  { id: "negative-pullup", name: "Negatif Barfiks", region: "sirt", anim: "pullup", equip: "Bar", level: "Başlangıç",
+    sets: "3 x 4-6", desc: "Çene bar üstündeyken 3-5 sn yavaşça inmek; barfiks gücü kazanmanın en etkili yolu.", tips: ["Yavaş in (3-5 sn)", "Tam aşağı uzan", "Sıçrayarak yukarı çık"] },
+  { id: "muscle-up", name: "Muscle-up", region: "sirt", anim: "pullup", equip: "Bar", level: "İleri",
+    sets: "3 x 3-6", desc: "Barfiks + dip birleşimi; barın üstüne çıkan ileri kalistenik hareket.", tips: ["Patlayıcı çekiş", "Bileği çevir", "Önce barfiks+dip güçlensin"] },
+  // Bacak
+  { id: "pistol-squat", name: "Tek Bacak Squat (Pistol)", region: "bacak", anim: "squat", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 5-8", desc: "Tek bacak üzerinde tam çömelme; bacak gücü ve dengenin zirvesi.", tips: ["Topuk yerde", "Karşı bacak önde düz", "Önce destekli dene"] },
+  { id: "wall-sit", name: "Duvar Oturuşu (Wall Sit)", region: "bacak", anim: "squat", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 30-60 sn", desc: "Duvara yaslı 90° oturuş izometrik tutuşu; quadriceps dayanıklılığı.", tips: ["Diz 90°", "Sırt duvarda düz", "Nefes al"] },
+  { id: "nordic-curl", name: "Nordic Hamstring", region: "bacak", anim: "lunge", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 4-8", desc: "Diz çökükken ayaklar sabitken gövdeyi yavaş öne bırakma; hamstring için en güçlü eksantrik hareket.", tips: ["Çok yavaş in", "Kalça düz (menteşe yapma)", "Elle iterek geri kalk"] },
+  { id: "single-leg-glute-bridge", name: "Tek Bacak Glute Bridge", region: "bacak", anim: "deadlift", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 10-15", desc: "Tek bacakla kalçayı yukarı itme; glute izolasyonu ve denge.", tips: ["Tepede sık", "Kalçayı eşit kaldır", "Çene içeride"] },
+  // Core
+  { id: "hollow-body-hold", name: "Hollow Body Hold", region: "karin", anim: "crunch", equip: "Vücut ağırlığı", level: "Orta",
+    sets: "3 x 20-40 sn", desc: "Sırt üstü kol-bacak uzanmış içbükey gövde tutuşu; jimnastik core temeli.", tips: ["Bel yere yapışık", "Omuz ve bacak hafif havada", "Nefesi tutma"] },
+  { id: "l-sit", name: "L-Sit", region: "karin", anim: "plank", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 10-20 sn", desc: "Eller yerde/paralelde vücudu kaldırıp bacakları L şeklinde tutmak; güçlü core ve kalça fleksörü.", tips: ["Omuzları aşağı bas", "Bacaklar düz", "Önce diz çekili (tuck) dene"] },
+  { id: "v-up", name: "V-Up", region: "karin", anim: "crunch", equip: "Vücut ağırlığı", level: "Orta",
+    sets: "3 x 12-15", desc: "Kol ve bacakları aynı anda kaldırıp V oluşturmak; tüm karın.", tips: ["Kontrollü kalk-in", "Bacaklar düz", "Sallanma"] },
+  { id: "dragon-flag", name: "Dragon Flag", region: "karin", anim: "plank", equip: "Vücut ağırlığı", level: "İleri",
+    sets: "3 x 5-8", desc: "Omuzlardan destek alıp tüm vücudu düz tutarak indirme; çok güçlü core hareketi.", tips: ["Vücut tek parça düz", "Yavaş in", "Bel çökmesin"] },
+  { id: "superman", name: "Superman", region: "sirt", anim: "plank", equip: "Vücut ağırlığı", level: "Başlangıç",
+    sets: "3 x 12-15", desc: "Yüzüstü kol-bacak yukarı kaldırma; bel (erector spinae) ve glute.", tips: ["Tepede 1-2 sn dur", "Boynu zorlama", "Kontrollü"] },
 ];
 
 // Tüm hareketler = el ile hazırlananlar + free-exercise-db'den içe aktarılanlar.
@@ -246,6 +290,10 @@ export const TOP_EXERCISES = {
   "military-press": "EMG: omuz için en etkili — overhead barbell press.",
   "shoulder-press": "Omuz kütlesi için en yüksek aktivasyonlu preslerden.",
   "romanian-deadlift": "Hamstring ve glute için en etkili hareketlerden.",
+  "sinav": "Araştırma: yeterli zorlukta (başarısızlığa yakın) yapılan şınav, göğüs gelişiminde bench press'e yakın sonuç verir.",
+  "inverted-row": "Yatay çekişin en erişilebilir hali; itme hacmini dengelemek ve duruş için kanıtlı seçim.",
+  "pistol-squat": "Tek taraflı bacak gücü ve denge için en etkili vücut ağırlığı hareketi.",
+  "nordic-curl": "Eksantrik hamstring çalışması; hamstring gücü ve sakatlık önlemede öne çıkar.",
 };
 
 export function topNote(id) {
@@ -263,14 +311,14 @@ export const ALTERNATIVES = {
   "cable-crossover": ["dumbbell-fly", "pec-deck"],
   "pec-deck": ["dumbbell-fly", "cable-crossover"],
   "dumbbell-fly": ["pec-deck", "cable-crossover"],
-  "chest-dips": ["sinav", "triceps-dips"],
-  "sinav": ["machine-chest-press", "dumbbell-press", "chest-dips"],
+  "chest-dips": ["sinav", "triceps-dips", "archer-pushup"],
+  "sinav": ["machine-chest-press", "dumbbell-press", "chest-dips", "wide-pushup", "decline-pushup"],
   "incline-dumbbell-press": ["incline-press", "dumbbell-press"],
   // sırt
-  "lat-pulldown": ["barfiks", "v-bar-pulldown", "dumbbell-row"],
+  "lat-pulldown": ["barfiks", "v-bar-pulldown", "dumbbell-row", "inverted-row"],
   "v-bar-pulldown": ["lat-pulldown", "barfiks"],
-  "barfiks": ["lat-pulldown", "v-bar-pulldown"],
-  "chin-up": ["barfiks", "lat-pulldown"],
+  "barfiks": ["lat-pulldown", "v-bar-pulldown", "inverted-row", "negative-pullup"],
+  "chin-up": ["barfiks", "lat-pulldown", "negative-pullup"],
   "barbell-row": ["dumbbell-row", "t-bar-row", "seated-row"],
   "t-bar-row": ["barbell-row", "dumbbell-row"],
   "seated-row": ["dumbbell-row", "barbell-row"],
@@ -281,8 +329,8 @@ export const ALTERNATIVES = {
   "hyperextension": ["good-morning", "glute-bridge"],
   "romanian-deadlift": ["good-morning", "leg-curl", "deadlift"],
   // omuz
-  "shoulder-press": ["military-press", "arnold-press"],
-  "military-press": ["shoulder-press", "arnold-press"],
+  "shoulder-press": ["military-press", "arnold-press", "pike-pushup"],
+  "military-press": ["shoulder-press", "arnold-press", "pike-pushup"],
   "arnold-press": ["shoulder-press", "military-press"],
   "lateral-raise": ["cable-lateral"],
   "cable-lateral": ["lateral-raise"],
@@ -307,13 +355,13 @@ export const ALTERNATIVES = {
   "triceps-kickback": ["triceps-pushdown", "overhead-extension"],
   "triceps-dips": ["sinav", "triceps-pushdown"],
   // bacak
-  "squat": ["goblet-squat", "leg-press", "hack-squat", "front-squat"],
+  "squat": ["goblet-squat", "leg-press", "hack-squat", "front-squat", "pistol-squat", "wall-sit"],
   "front-squat": ["squat", "goblet-squat"],
   "goblet-squat": ["squat", "leg-press"],
   "leg-press": ["squat", "goblet-squat", "hack-squat", "lunge"],
   "hack-squat": ["squat", "leg-press", "front-squat"],
   "leg-extension": ["squat", "lunge", "leg-press"],
-  "leg-curl": ["romanian-deadlift", "glute-bridge", "good-morning"],
+  "leg-curl": ["romanian-deadlift", "glute-bridge", "good-morning", "nordic-curl"],
   "lunge": ["bulgarian", "step-up", "squat"],
   "bulgarian": ["lunge", "step-up"],
   "step-up": ["lunge", "bulgarian"],
@@ -330,6 +378,26 @@ export const ALTERNATIVES = {
   // kardiyo
   "stairmaster": ["high-knees", "jump-rope", "step-up"],
   "box-jump": ["jump-squat", "squat"],
+  // kalistenik (muadiller: alet yoksa / zorluk ayarı)
+  "wide-pushup": ["sinav", "decline-pushup", "chest-dips"],
+  "decline-pushup": ["sinav", "archer-pushup", "pike-pushup"],
+  "archer-pushup": ["sinav", "diamond-pushup", "decline-pushup"],
+  "pseudo-planche-pushup": ["archer-pushup", "pike-pushup", "sinav"],
+  "pike-pushup": ["handstand-pushup", "shoulder-press", "decline-pushup"],
+  "handstand-pushup": ["pike-pushup", "military-press", "shoulder-press"],
+  "inverted-row": ["barfiks", "negative-pullup", "dumbbell-row"],
+  "scapular-pull": ["negative-pullup", "inverted-row", "barfiks"],
+  "negative-pullup": ["inverted-row", "scapular-pull", "lat-pulldown"],
+  "muscle-up": ["barfiks", "chest-dips", "negative-pullup"],
+  "pistol-squat": ["bulgarian", "squat", "wall-sit"],
+  "wall-sit": ["squat", "leg-extension", "goblet-squat"],
+  "nordic-curl": ["leg-curl", "romanian-deadlift", "glute-bridge"],
+  "single-leg-glute-bridge": ["glute-bridge", "hip-thrust"],
+  "hollow-body-hold": ["plank", "leg-raise", "dead-bug"],
+  "l-sit": ["hanging-leg-raise", "hollow-body-hold", "v-up"],
+  "v-up": ["crunch", "hollow-body-hold", "toe-touches"],
+  "dragon-flag": ["hanging-leg-raise", "reverse-crunch", "l-sit"],
+  "superman": ["hyperextension", "good-morning", "glute-bridge"],
 };
 
 export function getAlternatives(id) {
