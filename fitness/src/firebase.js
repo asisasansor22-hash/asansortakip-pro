@@ -229,6 +229,32 @@ export async function feedSharePublic(post) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// Herkese açık profil resmi: kendi avatarını /fitness/public_avatars/{uid}
+// altına yaz (herkes okur). null verilirse silinir.
+export async function setPublicAvatar(dataUrl) {
+  try {
+    var user = auth.currentUser;
+    if (!user) return;
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/public_avatars/" + user.uid + ".json";
+    if (token) url += "?auth=" + token;
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dataUrl || null) });
+  } catch (e) {}
+}
+
+// Tüm herkese açık avatarları getir: { uid: dataURL }
+export async function publicAvatarsGet() {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/public_avatars.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
 // Herkese açık tek gönderiyi getir (GİRİŞ GEREKMEZ — anonim okunur)
 export async function publicPostGet(id) {
   try {
