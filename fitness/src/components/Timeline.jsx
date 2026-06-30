@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { feedList, feedPost, feedDelete, feedSharePublic, currentUid, isAdmin, auth } from "../firebase";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
@@ -47,6 +47,17 @@ function timeAgo(t) {
   catch (e) { return ""; }
 }
 const nameOf = (email) => (email || "").split("@")[0] || "kullanıcı";
+const MENTION_CHARS = "a-zA-Z0-9_.çğıöşüÇĞİÖŞÜ";
+
+// Gönderi metnindeki @etiketleri vurgula
+function renderText(t) {
+  const re = new RegExp("(@[" + MENTION_CHARS + "]+)", "g");
+  return String(t).split(re).map((part, i) =>
+    new RegExp("^@[" + MENTION_CHARS + "]+$").test(part)
+      ? <span key={i} style={{ color: "var(--accent)", fontWeight: 600 }}>{part}</span>
+      : part
+  );
+}
 
 export default function Timeline() {
   const [posts, setPosts] = useState(null);
@@ -57,10 +68,51 @@ export default function Timeline() {
   const [prep, setPrep] = useState("");
   const [viewer, setViewer] = useState(null);
   const [shareMsg, setShareMsg] = useState("");
+  const [mention, setMention] = useState(null); // {start, query}
   const closedAt = useRef(0);
+  const taRef = useRef(null);
 
   const me = currentUid();
   const admin = isAdmin(auth.currentUser);
+
+  // @etiketleme önerileri: akışa katılmış (gönderi atmış) kullanıcı adları + kendi adın.
+  const knownNames = useMemo(() => {
+    const map = new Map();
+    const add = (email) => { const n = nameOf(email); if (n && n !== "kullanıcı") map.set(n.toLowerCase(), n); };
+    (posts || []).forEach((p) => add(p.email));
+    try { add(auth.currentUser && auth.currentUser.email); } catch (e) {}
+    return [...map.values()];
+  }, [posts]);
+
+  // İmleç konumuna göre yazılmakta olan @etiketi yakala
+  function onText(e) {
+    const v = e.target.value;
+    setText(v);
+    const caret = (e.target.selectionStart != null) ? e.target.selectionStart : v.length;
+    const upto = v.slice(0, caret);
+    const m = upto.match(new RegExp("(?:^|\\s)@([" + MENTION_CHARS + "]*)$"));
+    if (m) setMention({ start: caret - m[1].length, query: m[1].toLowerCase() });
+    else setMention(null);
+  }
+
+  const suggestions = mention
+    ? knownNames.filter((n) => n.toLowerCase().includes(mention.query)).slice(0, 6)
+    : [];
+
+  function pickMention(name) {
+    if (!mention) return;
+    const before = text.slice(0, mention.start);          // "@" dahil önceki kısım
+    const after = text.slice(mention.start + mention.query.length);
+    const next = before + name + " " + after;
+    setText(next);
+    setMention(null);
+    setTimeout(() => {
+      const ta = taRef.current; if (!ta) return;
+      const pos = (before + name + " ").length;
+      ta.focus();
+      try { ta.setSelectionRange(pos, pos); } catch (e) {}
+    }, 0);
+  }
 
   async function load() {
     setErr("");
@@ -93,7 +145,7 @@ export default function Timeline() {
     try { avatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
     const r = await feedPost({ text: text.trim(), media, avatar });
     setBusy(false);
-    if (r.success) { setPosts((p) => [r.post, ...(p || [])]); setText(""); setMedia(null); }
+    if (r.success) { setPosts((p) => [r.post, ...(p || [])]); setText(""); setMedia(null); setMention(null); }
     else setErr("Gönderilemedi (" + r.error + ").");
   }
 
@@ -132,8 +184,18 @@ export default function Timeline() {
 
       {/* Gönderi oluştur */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <textarea className="input" rows={3} placeholder="Bir şeyler yaz…" value={text}
-          onChange={(e) => setText(e.target.value)} style={{ resize: "none", width: "100%" }} />
+        <textarea ref={taRef} className="input" rows={3} placeholder="Bir şeyler yaz… (@ ile etiketle)" value={text}
+          onChange={onText} onKeyUp={onText} onClick={onText} style={{ resize: "none", width: "100%" }} />
+        {mention && suggestions.length > 0 && (
+          <div className="card" style={{ padding: 6, marginTop: 6 }}>
+            <div style={{ color: "var(--muted)", fontSize: 11, margin: "2px 6px 4px" }}>Etiketle:</div>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+              {suggestions.map((n) => (
+                <button key={n} className="chip on" onClick={() => pickMention(n)}>@{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
         {media && (
           <div style={{ position: "relative", marginTop: 8 }}>
             {media.type === "image"
@@ -189,7 +251,7 @@ export default function Timeline() {
                 )}
               </div>
             </div>
-            {post.text && <p style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{post.text}</p>}
+            {post.text && <p style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{renderText(post.text)}</p>}
             {post.media && post.media.type === "image" && (
               <img src={post.media.src} alt="" onClick={() => openViewer(post.media)}
                 style={{ width: "100%", borderRadius: 10, marginTop: 10, maxHeight: 420, objectFit: "cover", cursor: "pointer" }} />
