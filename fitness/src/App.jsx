@@ -9,6 +9,7 @@ import Splash from "./components/Splash";
 import Onboarding from "./components/Onboarding";
 import Profile from "./components/Profile";
 import Progress from "./components/Progress";
+import Timeline from "./components/Timeline";
 import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
 
@@ -18,6 +19,7 @@ const TABS = [
   { id: "mine", ic: "📝", label: "Programım" },
   { id: "nutrition", ic: "🥗", label: "Beslenme" },
   { id: "progress", ic: "📈", label: "İlerleme" },
+  { id: "feed", ic: "💬", label: "Akış" },
   { id: "profile", ic: "👤", label: "Profil" },
 ];
 
@@ -254,6 +256,7 @@ export default function App() {
       )}
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
+      {tab === "feed" && <Timeline />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} />}
 
       {toast && (
