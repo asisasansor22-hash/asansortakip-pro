@@ -47,13 +47,65 @@ const fmtDate = (ts) => {
   catch (e) { return ""; }
 };
 
+// Avatar'ı kare olarak ~256px'e küçült (JPEG)
+function resizeAvatar(file, size = 256, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        c.width = size; c.height = size;
+        const ctx = c.getContext("2d");
+        const m = Math.min(img.width, img.height);
+        const sx = (img.width - m) / 2, sy = (img.height - m) / 2;
+        ctx.drawImage(img, sx, sy, m, m, 0, 0, size, size);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function Avatar({ avatar, email, onSaveAvatar }) {
+  const [busy, setBusy] = useState(false);
+  async function pick(e) {
+    const f = e.target.files && e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    setBusy(true);
+    try { onSaveAvatar(await resizeAvatar(f)); } catch (x) {}
+    setBusy(false);
+  }
+  const initial = (email || "?").slice(0, 1).toUpperCase();
+  return (
+    <div className="row" style={{ gap: 14, alignItems: "center", marginBottom: 16 }}>
+      <div style={{ width: 64, height: 64, borderRadius: "50%", overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        {avatar
+          ? <img src={avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : <span style={{ fontWeight: 800, fontSize: 24, color: "var(--accent)" }}>{initial}</span>}
+      </div>
+      <div className="row" style={{ gap: 8 }}>
+        <label className="icon-btn" style={{ cursor: "pointer" }}>{busy ? "…" : (avatar ? "Değiştir" : "📷 Fotoğraf ekle")}
+          <input type="file" accept="image/*" style={{ display: "none" }} disabled={busy} onChange={pick} />
+        </label>
+        {avatar && <button className="icon-btn danger" onClick={() => onSaveAvatar(null)}>Kaldır</button>}
+      </div>
+    </div>
+  );
+}
+
 // Profil sekmesi — tercihleri değiştir + antrenman geçmişi + çıkış.
-export default function Profile({ profile, email, onSave, history = [] }) {
+export default function Profile({ profile, email, onSave, history = [], avatar, onSaveAvatar }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
       <h2>Profil</h2>
-      {email && <p style={{ color: "var(--muted)", marginTop: -4 }}>{email}</p>}
+      {email && <p style={{ color: "var(--muted)", marginTop: -4, marginBottom: 12 }}>{email}</p>}
+
+      {onSaveAvatar && <Avatar avatar={avatar} email={email} onSaveAvatar={onSaveAvatar} />}
 
       {admin && (
         <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>

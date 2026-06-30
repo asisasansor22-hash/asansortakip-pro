@@ -88,7 +88,9 @@ export default function Timeline() {
   async function submit() {
     if (!text.trim() && !media) return;
     setBusy(true); setErr("");
-    const r = await feedPost({ text: text.trim(), media });
+    let avatar = null;
+    try { avatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
+    const r = await feedPost({ text: text.trim(), media, avatar });
     setBusy(false);
     if (r.success) { setPosts((p) => [r.post, ...(p || [])]); setText(""); setMedia(null); }
     else setErr("Gönderilemedi (" + r.error + ").");
@@ -155,8 +157,10 @@ export default function Timeline() {
           <div key={post.id} className="card" style={{ marginBottom: 12 }}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div className="row" style={{ gap: 8, alignItems: "center" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 999, background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--accent)" }}>
-                  {nameOf(post.email).slice(0, 1).toUpperCase()}
+                <div style={{ width: 32, height: 32, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
+                  {post.avatar
+                    ? <img src={post.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : nameOf(post.email).slice(0, 1).toUpperCase()}
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13 }}>{nameOf(post.email)}</div>

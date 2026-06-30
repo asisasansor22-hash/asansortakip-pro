@@ -172,7 +172,7 @@ export async function feedList(limit) {
     if (!data) return { success: true, posts: [] };
     var posts = Object.keys(data).map(function (id) {
       var p = data[id] || {};
-      return { id: id, uid: p.uid || "", email: p.email || "", t: p.t || 0, text: p.text || "", media: p.media || null };
+      return { id: id, uid: p.uid || "", email: p.email || "", t: p.t || 0, text: p.text || "", media: p.media || null, avatar: p.avatar || null };
     });
     posts.sort(function (a, b) { return (b.t || 0) - (a.t || 0); });
     return { success: true, posts: posts.slice(0, limit || 80) };
@@ -191,6 +191,7 @@ export async function feedPost(post) {
       t: Date.now(),
       text: post.text || "",
       media: post.media || null,
+      avatar: post.avatar || null,
     };
     var url = FIREBASE_DB_URL + "/fitness/feed/" + id + ".json";
     if (token) url += "?auth=" + token;
