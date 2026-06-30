@@ -1,5 +1,29 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { getExercise } from "../data/exercises";
+import { dbGet, dbSet } from "../firebase";
+
+// Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
+function resizeImage(file, maxDim = 900, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, maxDim / Math.max(w, h));
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // --- yardımcılar ---
 const DAY = 86400000;
@@ -108,6 +132,41 @@ export default function Progress({ data, history = [], onSave }) {
   const [mDate, setMDate] = useState(todayInput());
   const [mVals, setMVals] = useState({});
   const [mSel, setMSel] = useState("waist");
+
+  // --- Gelişim fotoğrafları (ayrı saklanır: /fitness/users/{uid}/photos) ---
+  const [photos, setPhotos] = useState([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [viewer, setViewer] = useState(null); // tam ekran gösterilen foto
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const p = await dbGet("photos");
+      if (alive && Array.isArray(p)) setPhotos(p);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  async function onPhoto(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const src = await resizeImage(file);
+      const entry = { id: "ph_" + Date.now().toString(36), t: Date.now(), src };
+      const next = [entry, ...photos].slice(0, 12);
+      setPhotos(next);
+      dbSet("photos", next);
+    } catch (err) { /* yoksay */ }
+    setPhotoBusy(false);
+  }
+  function delPhoto(id) {
+    const next = photos.filter((p) => p.id !== id);
+    setPhotos(next);
+    dbSet("photos", next);
+    setViewer(null);
+  }
 
   function addMeasure() {
     const entry = { t: parseDay(mDate) };
@@ -243,6 +302,54 @@ export default function Progress({ data, history = [], onSave }) {
           <button className="btn-primary" style={{ width: "auto", padding: "0 18px" }} onClick={addMeasure}>Kaydet</button>
         </div>
       </div>
+
+      {/* Gelişim fotoğrafları */}
+      <div className="section-title">Gelişim Fotoğrafları</div>
+      <label className="btn-primary" style={{ display: "block", textAlign: "center", marginBottom: 10, opacity: photoBusy ? 0.6 : 1 }}>
+        {photoBusy ? "Ekleniyor…" : "📷 Fotoğraf Ekle"}
+        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={photoBusy} onChange={onPhoto} />
+      </label>
+      {photos.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 13 }}>Düzenli aralıklarla fotoğraf ekle; zamanla değişimini yan yana görürsün.</p>
+      ) : (
+        <>
+          {photos.length >= 2 && (
+            <div className="card" style={{ marginBottom: 10, padding: 10 }}>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>Önce → Sonra</div>
+              <div className="row" style={{ gap: 8 }}>
+                {[photos[photos.length - 1], photos[0]].map((p, k) => (
+                  <div key={k} style={{ flex: 1, textAlign: "center" }}>
+                    <img src={p.src} alt="" onClick={() => setViewer(p)}
+                      style={{ width: "100%", borderRadius: 10, aspectRatio: "3/4", objectFit: "cover", cursor: "pointer" }} />
+                    <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>{k === 0 ? "İlk · " : "Son · "}{fmtDay(p.t)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 4 }}>
+            {photos.map((p) => (
+              <img key={p.id} src={p.src} alt="" onClick={() => setViewer(p)}
+                style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, cursor: "pointer" }} />
+            ))}
+          </div>
+          <p style={{ color: "var(--muted)", fontSize: 11, margin: "4px 4px 0" }}>En fazla 12 fotoğraf saklanır. Fotoğrafa dokununca büyür.</p>
+        </>
+      )}
+
+      {viewer && (
+        <div onClick={() => setViewer(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 60,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16, gap: 12,
+        }}>
+          <img src={viewer.src} alt="" style={{ maxWidth: "100%", maxHeight: "78vh", borderRadius: 12 }} />
+          <div style={{ color: "#cbd5e1", fontSize: 13 }}>{fmtDay(viewer.t)}</div>
+          <div className="row" style={{ gap: 10 }}>
+            <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={(e) => { e.stopPropagation(); delPhoto(viewer.id); }}>🗑️ Sil</button>
+            <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={() => setViewer(null)}>Kapat</button>
+          </div>
+        </div>
+      )}
 
       {/* Antrenman hacmi */}
       <div className="section-title">Antrenman Hacmi (8 hafta)</div>

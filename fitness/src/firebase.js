@@ -117,6 +117,7 @@ export async function dbListUsers() {
     const users = Object.keys(data).map((uid) => {
       const info = (data[uid] && data[uid].info) || {};
       const profile = (data[uid] && data[uid].profile) || null;
+      const photos = (data[uid] && Array.isArray(data[uid].photos)) ? data[uid].photos : [];
       return {
         uid,
         email: info.email || "",
@@ -124,6 +125,7 @@ export async function dbListUsers() {
         created: "",
         disabled: false,
         profile,
+        photos,
       };
     });
     users.sort((a, b) => (b.lastSignIn || 0) - (a.lastSignIn || 0));

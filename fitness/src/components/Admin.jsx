@@ -11,6 +11,8 @@ export default function Admin() {
   const [busy, setBusy] = useState("");
   const [q, setQ] = useState("");
   const [limited, setLimited] = useState(false);
+  const [gallery, setGallery] = useState(null); // {email, photos}
+  const [zoom, setZoom] = useState(null);
 
   async function load() {
     setErr(""); setLoading(true);
@@ -94,9 +96,40 @@ export default function Admin() {
                   disabled={limited || busy === u.uid} onClick={() => toggle(u)}>
                   {u.disabled ? "✓ Aktifleştir" : "⛔ Askıya Al"}
                 </button>
+                {u.photos && u.photos.length > 0 && (
+                  <button className="icon-btn" onClick={() => setGallery({ email: u.email, photos: u.photos })}>📷 {u.photos.length}</button>
+                )}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {gallery && (
+        <div onClick={() => setGallery(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.92)", zIndex: 60, padding: 16,
+          overflowY: "auto",
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720, margin: "0 auto" }}>
+            <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{gallery.email}</div>
+              <button className="icon-btn" onClick={() => setGallery(null)}>Kapat ✕</button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+              {gallery.photos.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).map((p) => (
+                <img key={p.id || p.t} src={p.src} alt="" onClick={() => setZoom(p.src)}
+                  style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, cursor: "pointer" }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {zoom && (
+        <div onClick={() => setZoom(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.96)", zIndex: 70,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        }}>
+          <img src={zoom} alt="" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />
         </div>
       )}
     </div>
