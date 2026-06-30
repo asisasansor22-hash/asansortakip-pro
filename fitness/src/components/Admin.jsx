@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { adminListUsers, dbListUsers, adminSetPassword, adminSetDisabled } from "../firebase";
+import { swallowNextClick } from "../utils/overlay";
 
 const fmt = (s) => { try { return s ? new Date(s).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"; } catch (e) { return "—"; } };
 
@@ -17,7 +18,18 @@ export default function Admin() {
   // alttaki öğeye düşen sahte tıklamayı yok say.
   const closedAt = useRef(0);
   const justClosed = () => Date.now() - closedAt.current < 450;
-  const closeNow = (setter) => { closedAt.current = Date.now(); setter(null); };
+  const closeNow = (setter) => { closedAt.current = Date.now(); swallowNextClick(); setter(null); };
+
+  // Escape tuşu açık katmanı kapatsın (önce zoom, sonra galeri)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== "Escape") return;
+      if (zoom) closeNow(setZoom);
+      else if (gallery) closeNow(setGallery);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [zoom, gallery]);
 
   async function load() {
     setErr(""); setLoading(true);
@@ -134,7 +146,9 @@ export default function Admin() {
           position: "fixed", inset: 0, background: "rgba(0,0,0,.96)", zIndex: 70,
           display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
         }}>
-          <img src={zoom} alt="" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />
+          <button className="icon-btn" onClick={(e) => { e.stopPropagation(); closeNow(setZoom); }}
+            style={{ position: "fixed", top: 14, right: 14, background: "rgba(255,255,255,.12)", zIndex: 71 }}>Kapat ✕</button>
+          <img src={zoom} alt="" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 12 }} />
         </div>
       )}
     </div>
