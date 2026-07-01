@@ -28,7 +28,7 @@ export default function WeeklyPlan({ programs, schedule, onSetSchedule, history,
   const sch = schedule || {};
   const { streak, week } = useMemo(() => computeStreak(history), [history]);
 
-  const progName = (id) => { const p = programs.find((x) => x.id === id); return p ? p.name : null; };
+  const selProg = programs.find((p) => p.id === sch[sel]);
   const todayProg = programs.find((p) => p.id === sch[ti]);
 
   return (
@@ -64,13 +64,18 @@ export default function WeeklyPlan({ programs, schedule, onSetSchedule, history,
         })}
       </div>
 
-      <div className="row" style={{ gap: 8, alignItems: "center" }}>
-        <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 84 }}>{DAYS_FULL[sel]}</span>
-        <select className="input" style={{ flex: 1 }} value={sch[sel] || ""}
-          onChange={(e) => onSetSchedule(sel, e.target.value || null)}>
-          <option value="">Dinlenme</option>
-          {programs.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+      <div>
+        <span style={{ color: "var(--muted)", fontSize: 13 }}>{DAYS_FULL[sel]}</span>
+        {selProg ? (
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+            <div style={{ fontWeight: 700 }}>{selProg.name}</div>
+            <button className="icon-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => onSetSchedule(sel, null)}>Kaldır</button>
+          </div>
+        ) : (
+          <div style={{ marginTop: 4, color: "var(--muted)" }}>
+            Dinlenme günü 🧘 — atamak için aşağıda bir programın <b>📅 Güne ata</b> düğmesini kullan.
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
@@ -83,7 +88,7 @@ export default function WeeklyPlan({ programs, schedule, onSetSchedule, history,
             )}
           </div>
         ) : (
-          <div style={{ marginTop: 4, fontWeight: 700, color: "var(--muted)" }}>{sch[ti] === undefined ? "Plan atanmadı" : "Dinlenme günü 🧘"}</div>
+          <div style={{ marginTop: 4, fontWeight: 700, color: "var(--muted)" }}>Dinlenme günü 🧘</div>
         )}
       </div>
     </div>

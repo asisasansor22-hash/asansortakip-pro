@@ -129,6 +129,10 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog }) {
         <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 48, textAlign: "right" }}>{i + 1}/{exIds.length}</span>
       </div>
 
+      {program.note && (
+        <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", margin: "8px 12px 0" }}>ℹ️ {program.note}</p>
+      )}
+
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
         <div className="figbox" style={{ width: 200, height: 200 }}>
           <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={190} />

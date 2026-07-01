@@ -35,6 +35,15 @@ function lsGetProfile() {
 function lsSetProfile(p) {
   try { localStorage.setItem("fitbe_profile", JSON.stringify(p)); } catch (e) {}
 }
+// Firebase, tüm alt anahtarları ardışık sayı (0,1,2…) olan objeleri diziye
+// çevirir; bu yüzden {0:"a",2:"b"} gibi bir plan geri okunduğunda [ "a", null, "b" ]
+// olarak gelebilir. Her zaman temiz bir obje haline getir (boş günleri at).
+function normalizeSchedule(v) {
+  const out = {};
+  if (!v || typeof v !== "object") return out;
+  Object.keys(v).forEach((k) => { if (v[k]) out[k] = v[k]; });
+  return out;
+}
 function lsGetAvatar() {
   try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
 }
@@ -59,6 +68,7 @@ export default function App() {
   const [schedule, setSchedule] = useState({});
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
+  const scheduleWrite = useRef(Promise.resolve());
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -94,7 +104,7 @@ export default function App() {
       const sched = await dbGet("schedule");
       const av = await dbGet("avatar");
       if (cancelled) return;
-      if (sched && typeof sched === "object") setSchedule(sched);
+      if (sched && typeof sched === "object") setSchedule(normalizeSchedule(sched));
       if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); /* herkese açık kopyaya yedekle */ }
       if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
         setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
@@ -144,11 +154,14 @@ export default function App() {
   }
 
   // Haftalık plana program ata (day: 0=Pzt … 6=Paz)
+  // dbSet çağrıları sırayla (bir öncekinin ağ isteği bitmeden yenisi atılmadan)
+  // gönderilir; art arda hızlı gün atamalarında isteklerin sırası karışıp
+  // eski (eksik) bir halin son yazılan veriyi ezmesini önler.
   function setScheduleDay(day, programId) {
     setSchedule((prev) => {
       const next = { ...prev };
       if (programId) next[day] = programId; else delete next[day];
-      dbSet("schedule", next);
+      scheduleWrite.current = scheduleWrite.current.then(() => dbSet("schedule", next));
       return next;
     });
   }
@@ -243,6 +256,18 @@ export default function App() {
   function deleteProgram(id) {
     setPrograms((prev) => prev.filter((p) => p.id !== id));
     setActiveId((cur) => (cur === id ? null : cur));
+    // Silinen programa atanmış gün varsa haftalık plandan da temizle
+    setSchedule((prev) => {
+      const next = {};
+      let changed = false;
+      Object.keys(prev).forEach((k) => {
+        if (prev[k] === id) { changed = true; return; }
+        next[k] = prev[k];
+      });
+      if (!changed) return prev;
+      scheduleWrite.current = scheduleWrite.current.then(() => dbSet("schedule", next));
+      return next;
+    });
   }
 
   function removeExercise(programId, index) {
@@ -274,6 +299,7 @@ export default function App() {
       .map((d) => ({
         id: uid(),
         name: rp.name + " — " + d.name,
+        note: d.note || null,
         exercises: (d.exercises || []).filter((id) => getExercise(id)),
       }))
       .filter((p) => p.exercises.length > 0);
@@ -290,7 +316,7 @@ export default function App() {
     if (!d) return;
     const ids = (d.exercises || []).filter((id) => getExercise(id));
     if (ids.length === 0) { flash("Bu günde eklenebilir hareket yok"); return; }
-    const p = { id: uid(), name: rp.name + " — " + d.name, exercises: ids };
+    const p = { id: uid(), name: rp.name + " — " + d.name, note: d.note || null, exercises: ids };
     setPrograms((prev) => [...prev, p]);
     setActiveId(p.id);
     flash("“" + d.name + "” programlarına eklendi");
