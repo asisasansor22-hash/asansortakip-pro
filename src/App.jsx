@@ -1075,8 +1075,8 @@ function App(){
     setFinansYenileniyor(true);
     try{
       var [rO,rM]=await Promise.all([dbGet("at_sonodemeler"),dbGet("at_maints")]);
-      if(rO){var d=Array.isArray(rO)?rO:(typeof rO==='string'?JSON.parse(rO):null);if(Array.isArray(d)){setSonOdemeler(d);lsSet("ls_sonodemeler",d);}}
-      if(rM){var d2=Array.isArray(rM)?rM:(typeof rM==='string'?JSON.parse(rM):null);if(Array.isArray(d2)){setMaints(d2);lsSet("ls_maints",d2);}}
+      if(rO){var d=Array.isArray(rO)?rO:(typeof rO==='string'?JSON.parse(rO):null);if(Array.isArray(d)){setSonOdemeler(d);lsSet("ls_sonodemeler",d);yuklendi.current.sonodemeler=true;}}
+      if(rM){var d2=Array.isArray(rM)?rM:(typeof rM==='string'?JSON.parse(rM):null);if(Array.isArray(d2)){setMaints(d2);lsSet("ls_maints",d2);yuklendi.current.maints=true;}}
     }catch(e){}
     setFinansYenileniyor(false);
   },[]);
@@ -1100,6 +1100,14 @@ function App(){
     // artışı) yazılabildiğinden devirler kapama kaydı olmadan artar ve
     // yönetici cihazı aynı ayı tekrar kapatırdı (çift artış).
     if(rol!=="yonetici") return;
+
+    /* KRİTİK: Kapama, bakım (maints) ve asansör (elevs) verileri sunucudan
+       DOĞRULANARAK yüklenmeden ASLA çalışmamalı. maints okuma hatası alıp boş
+       kalırsa, kapama hiçbir binaya aylık ücreti eklemez; ama ödemeler zaten
+       düşülmüş olduğundan tüm ödeme alınan binalar hatalı biçimde eksiye düşer
+       ("fazla ödeme" görünümü). Bu yüzden veri gelmeden kapamayı erteliyoruz. */
+    if(!yuklendi.current.maints || !yuklendi.current.elevs) return;
+    if(!Array.isArray(elevs) || elevs.length===0) return;
 
     /* Sunucu-onaylı kapama kilidi: listenin güncel halini ETag ile okur,
        kapamaKey yoksa koşullu PUT ile yazar. Yarışı kaybeden cihaz 412 alır.
@@ -1176,8 +1184,28 @@ function App(){
       /* Sunucu kilidi: localStorage cihaza özel olduğundan iki cihaz aynı ayı
          iki kere kapatabiliyordu (devir iki kere artıyordu). Kapama kaydını
          koşullu yazan TEK cihaz devir artışını da yapar; diğerleri eşitlenir. */
+      // Kapama anındaki bina bazında devir denetimi (aylık ücret eklenmeden ÖNCE
+      // okunur; setElevs artışıyla birebir aynı bakimYapildi koşulu). Böylece
+      // hangi binaya ne eklendi, öncesi/sonrası devir kalıcı olarak izlenebilir.
+      function kapamaDevirOzeti(){
+        return elevs.map(function(ev){
+          var bakimYapildi=!!maints.find(function(m){
+            if(Number(m.asansorId)!==Number(ev.id)||!m.yapildi) return false;
+            var d=maintFiiliTarih(m);
+            return d&&d>=ayBaslangic&&d<=aySon;
+          });
+          var eski=finansTutar(ev.bakiyeDevir);
+          var aylik=finansTutar(ev.aylikUcret);
+          return {
+            id:ev.id, ad:ev.ad||"", ilce:ev.ilce||"",
+            eskiDevir:eski, aylikUcret:aylik, bakimYapildi:bakimYapildi,
+            yeniDevir: eski + (bakimYapildi?aylik:0)
+          };
+        }).filter(function(x){ return x.bakimYapildi || x.eskiDevir!==0; });
+      }
       var sonuc=await kapamaSunucuyaYaz("at_aylik",kapamaKey,function(){
         var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,ayBaslangic,aySon);
+        var ozet=kapamaDevirOzeti();
         return {
           id:Date.now(),
           kapamaKey:kapamaKey,
@@ -1191,7 +1219,10 @@ function App(){
           kapamaZamani:simdi.toLocaleString("tr-TR"),
           odemeler:donemOdemeleri.slice(),
           toplam:donemOdemeleri.reduce(function(s,o){return s+finansTutar(o.alinanTutar);},0),
-          odemeAdedi:donemOdemeleri.length
+          odemeAdedi:donemOdemeleri.length,
+          devirOzeti:ozet,
+          bakimYapilanAdet:ozet.filter(function(x){return x.bakimYapildi;}).length,
+          eklenenAylikToplam:ozet.reduce(function(s,x){return s+(x.bakimYapildi?x.aylikUcret:0);},0)
         };
       },12);
       if(sonuc.closed){
@@ -3293,6 +3324,53 @@ function App(){
                 })
             )
       )
+      /* EKSİ BAKİYE TEŞHİS PANELİ — "fazla ödeme" görünen binaları incele */
+      , (function(){
+          var eksiler=elevs
+            .map(function(e){return {e:e,bakiye:finansTutar(e.bakiyeDevir)};})
+            .filter(function(x){return x.bakiye<0;})
+            .sort(function(a,b){return a.bakiye-b.bakiye;});
+          if(eksiler.length===0) return null;
+          // Son kapanan ay (şu ana göre önceki ay) aralığı
+          var s=new Date();
+          var oAy=s.getMonth()===0?11:s.getMonth()-1;
+          var oYil=s.getMonth()===0?s.getFullYear()-1:s.getFullYear();
+          var oBas=new Date(oYil,oAy,1);oBas.setHours(0,0,0,0);
+          var oSon=new Date(oYil,oAy+1,0);oSon.setHours(23,59,59,999);
+          function bakimVarMi(id){
+            return !!maints.find(function(m){
+              if(Number(m.asansorId)!==Number(id)||!m.yapildi) return false;
+              var d=maintFiiliTarih(m);
+              return d&&d>=oBas&&d<=oSon;
+            });
+          }
+          var supheli=eksiler.filter(function(x){return bakimVarMi(x.e.id);});
+          var toplamEksi=eksiler.reduce(function(t,x){return t+x.bakiye;},0);
+          return React.createElement('div',{style:{background:"#2a1215",border:"1px solid #ef444455",borderRadius:12,padding:"12px 14px",marginBottom:16}},
+            React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:8}},
+              React.createElement('div',null,
+                React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#ef4444"}},"⚠️ Eksi Bakiye Kontrolü ("+eksiler.length+" bina)"),
+                React.createElement('div',{style:{fontSize:10,color:"#94a3b8",marginTop:2}},"Toplam eksi: "+toplamEksi.toLocaleString("tr-TR")+" ₺ · "+MONTHS[oAy]+" ayında bakımı yapıldığı halde eksi görünen: "+supheli.length+" bina")
+              )
+            ),
+            supheli.length>0&&React.createElement('div',{style:{fontSize:11,color:"#fca5a5",background:"#3a1a1d",borderRadius:8,padding:"8px 10px",marginBottom:8}},
+              "🔎 "+supheli.length+" bina "+MONTHS[oAy]+" ayında bakım aldığı halde eksi bakiyede — bunlarda ay kapanışında aylık ücret büyük olasılıkla eklenmedi (kapama hatası). Aşağıda 🔴 ile işaretli."
+            ),
+            React.createElement('div',{style:{maxHeight:260,overflowY:"auto"}},
+              eksiler.slice(0,40).map(function(x){
+                var e=x.e; var sup=bakimVarMi(e.id);
+                return React.createElement('div',{key:e.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #3a1a1d"}},
+                  React.createElement('div',{style:{flex:1,minWidth:0}},
+                    React.createElement('div',{style:{fontSize:12,fontWeight:700,color:"#e0e6f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(sup?"🔴 ":"")+e.ad),
+                    React.createElement('div',{style:{fontSize:10,color:"#64748b",marginTop:1}},(e.ilce||"")+" · aylık: "+finansTutar(e.aylikUcret).toLocaleString("tr-TR")+"₺"+(sup?" · "+MONTHS[oAy]+" bakım ✓":""))
+                  ),
+                  React.createElement('div',{style:{fontWeight:800,fontSize:13,color:"#ef4444",flexShrink:0,marginLeft:10}},x.bakiye.toLocaleString("tr-TR")+"₺")
+                );
+              })
+            ),
+            eksiler.length>40&&React.createElement('div',{style:{fontSize:10,color:"#64748b",textAlign:"center",marginTop:6}},"+"+(eksiler.length-40)+" bina daha")
+          );
+        })()
       /* Aylık */
       , React.createElement('div', null
         , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}
@@ -3319,7 +3397,23 @@ function App(){
                         , React.createElement('span',{style:{fontSize:12,color:acik?"#8b5cf6":"#64748b"}},acik?"▲":"▼")
                       )
                     )
-                    , acik&&React.createElement('div',{style:{borderTop:"1px solid #2a3050",overflowX:"auto"}}
+                    , acik&&React.createElement('div',{style:{borderTop:"1px solid #2a3050"}}
+                        , Array.isArray(k.devirOzeti)&&k.devirOzeti.length>0&&React.createElement('div',{style:{padding:"8px 14px",background:"#161226",borderBottom:"1px solid #2a3050"}}
+                            , React.createElement('div',{style:{fontSize:11,fontWeight:800,color:"#a78bfa",marginBottom:6}},"📊 Devir Özeti — "+(k.bakimYapilanAdet||0)+" binaya aylık ücret eklendi ("+(k.eklenenAylikToplam||0).toLocaleString("tr-TR")+"₺)")
+                            , React.createElement('div',{style:{overflowX:"auto"}}
+                              , React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:10}}
+                                , React.createElement('thead',null,React.createElement('tr',null,["Bina","Bakım","Önceki Devir","+Aylık","Sonraki Devir"].map(function(h){return React.createElement('th',{key:h,style:{padding:"5px 8px",textAlign:"left",color:"#64748b",fontWeight:700,borderBottom:"1px solid #2a3050",whiteSpace:"nowrap"}},h);})))
+                                , React.createElement('tbody',null,k.devirOzeti.slice().sort(function(a,b){return (a.ad||"").localeCompare(b.ad||"","tr");}).map(function(x){return React.createElement('tr',{key:x.id,style:{borderBottom:"1px solid #1e2640"}}
+                                  ,React.createElement('td',{style:{padding:"4px 8px",fontWeight:600,maxWidth:120}},React.createElement('div',{style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},x.ad))
+                                  ,React.createElement('td',{style:{padding:"4px 8px",whiteSpace:"nowrap"}},x.bakimYapildi?"✅":"—")
+                                  ,React.createElement('td',{style:{padding:"4px 8px",color:x.eskiDevir>0?"#ef4444":x.eskiDevir<0?"#f59e0b":"#94a3b8",whiteSpace:"nowrap"}},x.eskiDevir.toLocaleString("tr-TR"))
+                                  ,React.createElement('td',{style:{padding:"4px 8px",color:"#3b82f6",whiteSpace:"nowrap"}},x.bakimYapildi?("+"+x.aylikUcret.toLocaleString("tr-TR")):"—")
+                                  ,React.createElement('td',{style:{padding:"4px 8px",fontWeight:800,color:x.yeniDevir>0?"#ef4444":x.yeniDevir<0?"#f59e0b":"#10b981",whiteSpace:"nowrap"}},x.yeniDevir.toLocaleString("tr-TR"))
+                                );}))
+                              )
+                            )
+                          )
+                        , React.createElement('div',{style:{overflowX:"auto"}}
                         , React.createElement('table',{style:{width:"100%",borderCollapse:"collapse",fontSize:11}}
                           , React.createElement('thead',null,React.createElement('tr',null,["Tarih","Saat","Bina","İlçe","Tutar","Not"].map(function(h){return React.createElement('th',{key:h,style:{padding:"7px 10px",textAlign:"left",color:"#64748b",fontWeight:700,borderBottom:"1px solid #2a3050",whiteSpace:"nowrap"}},h);})))
                           , React.createElement('tbody',null,odemeler.slice().reverse().map(function(o){var c=getIlceRenk(o.ilce||"");return React.createElement('tr',{key:o.id,style:{borderBottom:"1px solid #1e2640"}}
@@ -3330,6 +3424,7 @@ function App(){
                             ,React.createElement('td',{style:{padding:"6px 10px",fontWeight:800,color:"#8b5cf6",whiteSpace:"nowrap"}},(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")
                             ,React.createElement('td',{style:{padding:"6px 10px",color:"#64748b"}},o.not||"-")
                           );}))
+                        )
                         )
                       )
                   );
