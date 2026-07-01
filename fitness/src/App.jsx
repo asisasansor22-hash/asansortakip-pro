@@ -372,13 +372,11 @@ export default function App() {
       {tab === "mine" && (
         <ProgramBuilder
           programs={programs}
-          activeId={activeId}
           schedule={schedule}
           history={history}
           onSetSchedule={setScheduleDay}
           onCreate={createProgram}
           onDelete={deleteProgram}
-          onSetActive={setActiveId}
           onRemoveExercise={removeExercise}
           onStart={(p) => setWorkout(p)}
         />
