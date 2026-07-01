@@ -44,6 +44,21 @@ function normalizeSchedule(v) {
   Object.keys(v).forEach((k) => { if (v[k]) out[k] = v[k]; });
   return out;
 }
+// Service worker'ları kaldırıp sayfayı ağdan tazeleyerek zorla güncelle.
+async function hardReload() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) {}
+  window.location.reload();
+}
+
 function lsGetAvatar() {
   try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
 }
@@ -195,7 +210,7 @@ export default function App() {
         if (j && j.v && typeof __BUILD_ID__ !== "undefined" && j.v !== __BUILD_ID__) {
           triggered = true;
           setToast("Yeni sürüm yüklendi, güncelleniyor…");
-          setTimeout(() => window.location.reload(), 1800);
+          setTimeout(hardReload, 1500);
         }
       } catch (e) {}
     }

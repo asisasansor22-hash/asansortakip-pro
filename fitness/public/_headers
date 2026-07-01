@@ -1,0 +1,10 @@
+# Otomatik güncellemenin takılmaması için: sürüm dosyası, index ve service
+# worker asla önbelleğe alınmasın. Hash'li JS/CSS zaten immutable'dır.
+/version.json
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+/sw.js
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
