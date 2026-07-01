@@ -876,6 +876,24 @@ export const EXERCISE_IMG = {
   "Yoke_Walk": "Yoke_Walk",
   "Zercher_Squats": "Zercher_Squats",
   "Zottman_Preacher_Curl": "Zottman_Preacher_Curl",
+
+  // Küratörlü kalistenik hareketler -> free-exercise-db klasörleri
+  // (görsel yüklenmezse ExerciseAnimation otomatik SVG figüre düşer)
+  "wide-pushup": "Push-Up_Wide",
+  "decline-pushup": "Decline_Push-Up",
+  "archer-pushup": "Pushups_Close_and_Wide_Hand_Positions",
+  "pseudo-planche-pushup": "Pushups_Close_and_Wide_Hand_Positions",
+  "pike-pushup": "Handstand_Push-Ups",
+  "handstand-pushup": "Handstand_Push-Ups",
+  "inverted-row": "Inverted_Row",
+  "scapular-pull": "Scapular_Pull-Up",
+  "negative-pullup": "Pullups",
+  "muscle-up": "Muscle_Up",
+  "pistol-squat": "Kettlebell_Pistol_Squat",
+  "nordic-curl": "Natural_Glute_Ham_Raise",
+  "single-leg-glute-bridge": "Single_Leg_Glute_Bridge",
+  "v-up": "Jackknife_Sit-Up",
+  "superman": "Superman",
 };
 
 export const REGION_IMG = {
