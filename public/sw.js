@@ -1,10 +1,16 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
+import { clientsClaim } from 'workbox-core'
 import { registerRoute } from 'workbox-routing'
 import { CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
+
+// Yeni sürüm yüklenince beklemeden devreye gir + açık sayfaların kontrolünü al.
+// Böylece uygulamayı silip yeniden kurmaya gerek kalmaz; sayfa kendini yeniler.
+self.skipWaiting()
+clientsClaim()
 
 // SheetJS CDN önbelleği
 registerRoute(
