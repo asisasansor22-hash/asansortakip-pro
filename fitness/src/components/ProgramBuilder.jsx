@@ -6,7 +6,7 @@ import WeeklyPlan from "./WeeklyPlan";
 const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
 export default function ProgramBuilder({
-  programs, activeId, schedule, history, onSetSchedule, onCreate, onDelete, onSetActive, onRemoveExercise, onStart,
+  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(activeId);
@@ -52,18 +52,14 @@ export default function ProgramBuilder({
       )}
 
       {programs.map((p) => {
-        const isActive = p.id === activeId;
         const open = p.id === openId;
         return (
-          <div key={p.id} className="card" style={{ marginBottom: 12, borderColor: isActive ? "var(--accent)" : "var(--line)" }}>
+          <div key={p.id} className="card" style={{ marginBottom: 12 }}>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <button onClick={() => setOpenId(open ? null : p.id)}
                 style={{ background: "none", color: "var(--text)", fontWeight: 700, fontSize: 16, flex: 1, textAlign: "left" }}>
                 {p.name} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 13 }}>({p.exercises.length})</span>
               </button>
-              {isActive
-                ? <span className="pill" style={{ color: "var(--accent)" }}>Aktif</span>
-                : <button className="icon-btn" onClick={() => onSetActive(p.id)}>Aktif yap</button>}
               <button className="icon-btn danger" onClick={() => onDelete(p.id)}>Sil</button>
             </div>
 
