@@ -3,17 +3,30 @@ import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 
+const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
 export default function ProgramBuilder({
   programs, activeId, schedule, history, onSetSchedule, onCreate, onDelete, onSetActive, onRemoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(activeId);
+  const [dayPickerId, setDayPickerId] = useState(null);
+  const sch = schedule || {};
 
   function create() {
     const n = newName.trim();
     if (!n) return;
     onCreate(n);
     setNewName("");
+  }
+
+  // Bu program hangi günlere atanmış (birden fazla olabilir, ör. Full Body Pzt+Çar+Cum)
+  function daysOf(programId) {
+    return Object.keys(sch).filter((k) => sch[k] === programId).map(Number);
+  }
+  function toggleDay(program, dayIdx) {
+    const isAssigned = sch[dayIdx] === program.id;
+    onSetSchedule(dayIdx, isAssigned ? null : program.id);
   }
 
   return (
@@ -52,6 +65,34 @@ export default function ProgramBuilder({
                 ? <span className="pill" style={{ color: "var(--accent)" }}>Aktif</span>
                 : <button className="icon-btn" onClick={() => onSetActive(p.id)}>Aktif yap</button>}
               <button className="icon-btn danger" onClick={() => onDelete(p.id)}>Sil</button>
+            </div>
+
+            {p.note && (
+              <p style={{ color: "var(--muted)", fontSize: 12, margin: "8px 0 0" }}>ℹ️ {p.note}</p>
+            )}
+
+            <div style={{ marginTop: 10 }}>
+              <button className="icon-btn" style={{ fontSize: 12, padding: "5px 10px" }}
+                onClick={() => setDayPickerId(dayPickerId === p.id ? null : p.id)}>
+                📅 {daysOf(p.id).length > 0
+                  ? daysOf(p.id).map((d) => DAY_LETTERS[d]).join(", ")
+                  : "Güne ata"}
+              </button>
+              {dayPickerId === p.id && (
+                <div className="row" style={{ gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+                  {DAY_LETTERS.map((d, i) => {
+                    const on = sch[i] === p.id;
+                    return (
+                      <button key={i} onClick={() => toggleDay(p, i)}
+                        style={{
+                          padding: "6px 10px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          background: on ? "var(--accent)" : "var(--card2)",
+                          color: on ? "#04321f" : "var(--text)",
+                        }}>{d}</button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {p.exercises.length > 0 && (
