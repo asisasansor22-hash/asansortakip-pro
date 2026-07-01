@@ -83,6 +83,7 @@ export default function App() {
   const [schedule, setSchedule] = useState({});
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
+  const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const scheduleWrite = useRef(Promise.resolve());
 
   // --- Açılış (splash) ekranı ---
@@ -291,19 +292,24 @@ export default function App() {
     ));
   }
 
+  // Hareket eklerken hangi programa ekleneceğini sor. Program yoksa uyar.
   function addToProgram(ex) {
-    setPrograms((prev) => {
-      let list = prev;
-      let targetId = activeId;
-      if (!targetId || !list.find((p) => p.id === targetId)) {
-        const np = { id: uid(), name: "Favori Hareketlerim", exercises: [] };
-        list = [...list, np];
-        targetId = np.id;
-        setActiveId(np.id);
-      }
-      return list.map((p) => p.id === targetId ? { ...p, exercises: [...p.exercises, ex.id] } : p);
-    });
-    flash("“" + ex.name + "” programına eklendi");
+    if (programs.length === 0) {
+      flash("Önce “Programım” sekmesinden bir program oluştur.");
+      setTab("mine");
+      return;
+    }
+    setAddPick(ex);
+  }
+  // Seçilen programa hareketi ekle
+  function addExerciseToProgram(programId, ex) {
+    setPrograms((prev) => prev.map((p) =>
+      p.id === programId ? { ...p, exercises: [...p.exercises, ex.id] } : p
+    ));
+    setActiveId(programId);
+    const prog = programs.find((p) => p.id === programId);
+    flash("“" + ex.name + "” → " + (prog ? prog.name : "program") + " eklendi");
+    setAddPick(null);
   }
 
   // Hazır programın HER GÜNÜNÜ ayrı bir program olarak ekle
@@ -381,6 +387,36 @@ export default function App() {
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Timeline />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} avatar={avatar} onSaveAvatar={saveAvatar} />}
+
+      {addPick && (
+        <div onClick={() => setAddPick(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 55,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{
+            width: "100%", maxWidth: 560, borderRadius: "16px 16px 0 0", maxHeight: "70vh", overflowY: "auto",
+            paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+          }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>Hangi programa?</div>
+              <button className="icon-btn" onClick={() => setAddPick(null)}>✕</button>
+            </div>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>
+              “{addPick.name}” eklenecek program:
+            </div>
+            {programs.map((p) => (
+              <button key={p.id} className="card" style={{
+                width: "100%", textAlign: "left", marginBottom: 8, padding: 12,
+                borderColor: p.id === activeId ? "var(--accent)" : "var(--line)",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }} onClick={() => addExerciseToProgram(p.id, addPick)}>
+                <span style={{ fontWeight: 700 }}>{p.name} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 13 }}>({p.exercises.length})</span></span>
+                {p.id === activeId && <span className="pill" style={{ color: "var(--accent)" }}>Aktif</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div style={{

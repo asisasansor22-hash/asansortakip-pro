@@ -4,15 +4,12 @@ import { topNote, getAlternatives } from "../data/exercises";
 import { getMuscles } from "../data/exerciseMuscles";
 
 export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise }) {
-  const [added, setAdded] = useState(false);
   const top = topNote(ex.id);
   const alts = getAlternatives(ex.id);
   const muscles = getMuscles(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1800);
   }
 
   return (
@@ -66,9 +63,7 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
       )}
 
       <div style={{ marginTop: 18 }}>
-        <button className="btn-primary" onClick={add}>
-          {added ? "✓ Programına eklendi" : "+ Programıma Ekle"}
-        </button>
+        <button className="btn-primary" onClick={add}>+ Programıma Ekle</button>
       </div>
     </div>
   );
