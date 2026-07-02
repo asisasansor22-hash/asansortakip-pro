@@ -28,6 +28,8 @@ function uid() {
   return "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
 // Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
 function lsGetProfile() {
   try { const d = localStorage.getItem("fitbe_profile"); return d ? JSON.parse(d) : null; } catch (e) { return null; }
@@ -84,6 +86,7 @@ export default function App() {
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
+  const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
   const scheduleWrite = useRef(Promise.resolve());
 
@@ -359,35 +362,46 @@ export default function App() {
     setAddPick(null);
   }
 
-  // Hazır programın HER GÜNÜNÜ ayrı bir program olarak ekle
-  // (ör. PPL → "PPL — Push", "PPL — Pull", "PPL — Legs"). Böylece Haftalık
-  // Plan'dan her gün ayrı bir güne atanabilir.
+  // Hazır program ekleme: önce gün atama penceresi aç (her gün ayrı program
+  // olur; kullanıcı isterse eklerken haftanın gününe de atar).
   function copyReady(rp) {
-    const newOnes = rp.days
-      .map((d) => ({
-        id: uid(),
-        name: rp.name + " — " + d.name,
-        note: d.note || null,
-        exercises: (d.exercises || []).filter((id) => getExercise(id)),
-      }))
-      .filter((p) => p.exercises.length > 0);
-    if (newOnes.length === 0) { flash("Bu programda eklenebilir hareket yok"); return; }
-    setPrograms((prev) => [...prev, ...newOnes]);
-    setActiveId(newOnes[0].id);
-    flash(newOnes.length + " gün ayrı program olarak eklendi — Haftalık Plan'dan günlere ata");
-    setTab("mine");
+    const days = rp.days
+      .map((d, idx) => idx)
+      .filter((idx) => (rp.days[idx].exercises || []).some((id) => getExercise(id)));
+    if (days.length === 0) { flash("Bu programda eklenebilir hareket yok"); return; }
+    setCopyPick({ rp, days, sel: {} });
   }
 
-  // Hazır programın TEK bir gününü program olarak ekle
+  // Hazır programın TEK bir gününü ekle (yine gün atama penceresiyle)
   function copyReadyDay(rp, dayIndex) {
     const d = rp.days[dayIndex];
-    if (!d) return;
-    const ids = (d.exercises || []).filter((id) => getExercise(id));
-    if (ids.length === 0) { flash("Bu günde eklenebilir hareket yok"); return; }
-    const p = { id: uid(), name: rp.name + " — " + d.name, note: d.note || null, exercises: ids };
-    setPrograms((prev) => [...prev, p]);
-    setActiveId(p.id);
-    flash("“" + d.name + "” programlarına eklendi");
+    if (!d || !(d.exercises || []).some((id) => getExercise(id))) { flash("Bu günde eklenebilir hareket yok"); return; }
+    setCopyPick({ rp, days: [dayIndex], sel: {} });
+  }
+
+  // Gün atama penceresinde "Ekle" — programları oluştur, seçilen günlere ata
+  function confirmCopy() {
+    if (!copyPick) return;
+    const { rp, days, sel } = copyPick;
+    const created = days.map((di) => {
+      const d = rp.days[di];
+      return {
+        weekday: (sel[di] != null) ? sel[di] : null,
+        p: { id: uid(), name: rp.name + " — " + d.name, note: d.note || null, exercises: (d.exercises || []).filter((x) => getExercise(x)) },
+      };
+    });
+    setPrograms((prev) => [...prev, ...created.map((c) => c.p)]);
+    setSchedule((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      created.forEach(({ p, weekday }) => { if (weekday != null) { next[weekday] = p.id; changed = true; } });
+      if (!changed) return prev;
+      scheduleWrite.current = scheduleWrite.current.then(() => dbSet("schedule", next));
+      return next;
+    });
+    const assigned = created.filter((c) => c.weekday != null).length;
+    setCopyPick(null);
+    flash(created.length + " program eklendi" + (assigned ? " · " + assigned + " güne atandı" : ""));
     setTab("mine");
   }
 
@@ -449,16 +463,88 @@ export default function App() {
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12 }}>
               “{addPick.name}” eklenecek program:
             </div>
-            {programs.map((p) => (
-              <button key={p.id} className="card" style={{
-                width: "100%", textAlign: "left", marginBottom: 8, padding: 12,
-                borderColor: p.id === activeId ? "var(--accent)" : "var(--line)",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }} onClick={() => addExerciseToProgram(p.id, addPick)}>
-                <span style={{ fontWeight: 700 }}>{p.name} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 13 }}>({p.exercises.length})</span></span>
-                {p.id === activeId && <span className="pill" style={{ color: "var(--accent)" }}>Aktif</span>}
-              </button>
-            ))}
+
+            {Object.keys(schedule).some((k) => programs.find((p) => p.id === schedule[k])) && (
+              <>
+                <div style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 6px" }}>📅 Haftalık plandan güne ekle:</div>
+                {DAY_SHORT.map((dn, di) => {
+                  const p = programs.find((x) => x.id === schedule[di]);
+                  if (!p) return null;
+                  return (
+                    <button key={"d" + di} className="card" style={{
+                      width: "100%", textAlign: "left", marginBottom: 6, padding: 10,
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                    }} onClick={() => addExerciseToProgram(p.id, addPick)}>
+                      <span style={{ fontSize: 14 }}><b style={{ color: "var(--accent)" }}>{dn}</b> · {p.name}</span>
+                      <span style={{ color: "var(--muted)", fontSize: 12 }}>({p.exercises.length})</span>
+                    </button>
+                  );
+                })}
+                <div style={{ color: "var(--muted)", fontSize: 12, margin: "10px 0 6px" }}>Tüm programlar:</div>
+              </>
+            )}
+
+            {programs.map((p) => {
+              const pDays = DAY_SHORT.filter((_, di) => schedule[di] === p.id);
+              return (
+                <button key={p.id} className="card" style={{
+                  width: "100%", textAlign: "left", marginBottom: 8, padding: 12,
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                }} onClick={() => addExerciseToProgram(p.id, addPick)}>
+                  <span style={{ fontWeight: 700 }}>{p.name} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 13 }}>({p.exercises.length})</span></span>
+                  {pDays.length > 0 && <span className="pill" style={{ color: "var(--accent2)" }}>{pDays.join(", ")}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {copyPick && (
+        <div onClick={() => setCopyPick(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 55,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <div onClick={(e) => e.stopPropagation()} className="card" style={{
+            width: "100%", maxWidth: 560, borderRadius: "16px 16px 0 0", maxHeight: "78vh", overflowY: "auto",
+            paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+          }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>📅 Günlere ata ve ekle</div>
+              <button className="icon-btn" onClick={() => setCopyPick(null)}>✕</button>
+            </div>
+            <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 12 }}>
+              Her gün ayrı bir program olarak eklenecek. İstersen şimdi haftanın gününe ata — sonradan da değiştirebilirsin.
+            </div>
+            {copyPick.days.map((di) => {
+              const d = copyPick.rp.days[di];
+              return (
+                <div key={di} style={{ marginBottom: 14 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{d.name}
+                    <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12 }}> ({(d.exercises || []).filter((x) => getExercise(x)).length} hareket)</span>
+                  </div>
+                  <div className="row" style={{ gap: 4, flexWrap: "wrap" }}>
+                    {DAY_SHORT.map((dn, wi) => {
+                      const on = copyPick.sel[di] === wi;
+                      const takenElsewhere = Object.keys(copyPick.sel).some((k) => Number(k) !== di && copyPick.sel[k] === wi);
+                      return (
+                        <button key={wi} disabled={takenElsewhere}
+                          onClick={() => setCopyPick((c) => ({ ...c, sel: { ...c.sel, [di]: on ? null : wi } }))}
+                          style={{
+                            padding: "7px 11px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: on ? "var(--accent)" : "var(--card2)",
+                            color: on ? "#04321f" : "var(--text)",
+                            opacity: takenElsewhere ? 0.35 : 1,
+                          }}>{dn}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            <button className="btn-primary" onClick={confirmCopy}>
+              ✓ Ekle ({copyPick.days.length} program{Object.values(copyPick.sel).filter((v) => v != null).length > 0 ? " · " + Object.values(copyPick.sel).filter((v) => v != null).length + " güne atanacak" : ""})
+            </button>
           </div>
         </div>
       )}
