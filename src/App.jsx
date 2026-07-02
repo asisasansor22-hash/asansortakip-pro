@@ -1124,24 +1124,14 @@ function App(){
       return {ok:true,list:yeni};
     }
 
-    async function yapHaftalikKapama(){
-      if(kapamaTetiklendi.current.haftalik) return;
-      kapamaTetiklendi.current.haftalik=true;
-      var simdi=new Date();
-      var hafta=getISOWeek(simdi);
-      var yil=simdi.getFullYear();
-      var kapamaKey="H"+yil+"-W"+hafta;
+    /* Haftalık kapama — parametreli: kaçırılan geçmiş haftalar da kapatılır.
+       Eski kod yalnızca Cumartesi 16:00-24:00 arasında uygulama açıksa
+       çalışıyordu; o pencere kaçınca hafta sonsuza dek kapanmıyordu.
+       true döner: kapandı/zaten kapalı. false: geçici hata (sonra tekrar). */
+    async function yapHaftalikKapama(baslangic,bitis,kapamaKey){
       var lsKey="kapama_"+kapamaKey;
-      var zatenKapandi=localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;});
-      if(zatenKapandi) return;
-      var gun=simdi.getDay();
-      var pazartesiFark=gun===0?-6:1-gun;
-      var baslangic=new Date(simdi);
-      baslangic.setDate(simdi.getDate()+pazartesiFark);
-      baslangic.setHours(0,0,0,0);
-      var bitis=new Date(baslangic);
-      bitis.setDate(baslangic.getDate()+6);
-      bitis.setHours(23,59,59,999);
+      if(localStorage.getItem(lsKey)||haftalikKapamaRef.current.find(function(k){return k.kapamaKey===kapamaKey;})) return true;
+      var simdi=new Date();
       var sonuc=await kapamaSunucuyaYaz("at_haftalik",kapamaKey,function(){
         var donemOdemeleri=odemeSnapshotBetween(sonOdemeler,maints,elevs,baslangic,bitis);
         return {
@@ -1161,11 +1151,12 @@ function App(){
       if(sonuc.closed){
         try{localStorage.setItem(lsKey,"1");}catch(e){}
         setHaftalikKapamalar(sonuc.list);
-        return;
+        return true;
       }
-      if(!sonuc.ok){ kapamaTetiklendi.current.haftalik=false; return; } // sonraki dakika tekrar dene
+      if(!sonuc.ok) return false; // sonraki dakika tekrar dene
       try{localStorage.setItem(lsKey,"1");}catch(e){}
       setHaftalikKapamalar(sonuc.list);
+      return true;
     }
 
     async function yapAylikKapama(){
@@ -1267,11 +1258,34 @@ function App(){
       var dakika=simdi.getMinutes();
       var ayinSonGunu=new Date(simdi.getFullYear(),simdi.getMonth()+1,0).getDate();
 
-      // Haftalık: Cumartesi (6) saat 16:00+
-      if(gun===6&&saat>=16){
-        yapHaftalikKapama();
-      } else {
-        kapamaTetiklendi.current.haftalik=false;
+      // HAFTALIK — geriye dönük tamamlama (son 8 hafta):
+      // Bir hafta, kendi Cumartesi 16:00'ı geçtiyse kapatılabilir. Uygulama o
+      // an açık olmasa bile sonraki açılışta eksik haftalar sırayla kapatılır.
+      // kapamaTetiklendi.haftalik burada yalnızca eşzamanlılık kilididir;
+      // hafta bazlı tekrar koruması localStorage + sunucu kapamaKey kontrolüdür.
+      if(!kapamaTetiklendi.current.haftalik){
+        kapamaTetiklendi.current.haftalik=true;
+        (async function(){
+          try{
+            for(var off=8;off>=0;off--){
+              var refGun=new Date(simdi.getFullYear(),simdi.getMonth(),simdi.getDate()-off*7);
+              var g=refGun.getDay();
+              var bas=new Date(refGun);
+              bas.setDate(refGun.getDate()+(g===0?-6:1-g)); // o haftanın pazartesisi
+              bas.setHours(0,0,0,0);
+              var bit=new Date(bas);
+              bit.setDate(bas.getDate()+6);
+              bit.setHours(23,59,59,999);
+              var kapanabilir=new Date(bas);
+              kapanabilir.setDate(bas.getDate()+5); // o haftanın cumartesisi
+              kapanabilir.setHours(16,0,0,0);
+              if(simdi<kapanabilir) continue; // haftanın kapama saati henüz gelmedi
+              var hKey="H"+bas.getFullYear()+"-W"+getISOWeek(bas);
+              await yapHaftalikKapama(bas,bit,hKey);
+            }
+          }catch(e){}
+          kapamaTetiklendi.current.haftalik=false;
+        })();
       }
 
       // Aylık: Yeni aya geçildiğinde (1. gün 00:00 UTC+3) önceki ayı kapat
