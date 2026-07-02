@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 
 const DAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const DAYS_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -22,8 +22,9 @@ function computeStreak(history) {
   return { streak, week };
 }
 
-export default function WeeklyPlan({ programs, schedule, onSetSchedule, history, onStart }) {
-  const [sel, setSel] = useState(todayIdx());
+// Seçili gün (sel) üst bileşen tarafından tutulur: alttaki program listesi de
+// aynı seçime göre filtrelenir.
+export default function WeeklyPlan({ programs, schedule, onSetSchedule, history, onStart, sel, onSel }) {
   const ti = todayIdx();
   const sch = schedule || {};
   const { streak, week } = useMemo(() => computeStreak(history), [history]);
@@ -46,7 +47,7 @@ export default function WeeklyPlan({ programs, schedule, onSetSchedule, history,
           const isToday = i === ti;
           const isSel = i === sel;
           return (
-            <button key={i} onClick={() => setSel(i)}
+            <button key={i} onClick={() => onSel(i)}
               style={{
                 flex: 1, padding: "8px 0", borderRadius: 10, fontSize: 12, fontWeight: 700,
                 background: isSel ? "var(--accent)" : "var(--card2)",

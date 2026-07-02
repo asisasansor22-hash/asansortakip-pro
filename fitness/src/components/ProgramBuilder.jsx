@@ -4,6 +4,8 @@ import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 
 const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+const todayIdx = () => (new Date().getDay() + 6) % 7; // Pzt=0
 
 export default function ProgramBuilder({
   programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onStart,
@@ -11,7 +13,13 @@ export default function ProgramBuilder({
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(null);
   const [dayPickerId, setDayPickerId] = useState(null);
+  const [selDay, setSelDay] = useState(todayIdx()); // Haftalık Plan'da seçili gün
+  const [showAll, setShowAll] = useState(false);    // gün filtresini kapat, tümünü listele
   const sch = schedule || {};
+
+  // Seçili günün programı — varsa (ve 'tümü' kapalıysa) liste sadece onu gösterir
+  const selProg = programs.find((p) => p.id === sch[selDay]);
+  const visible = (!showAll && selProg) ? [selProg] : programs;
 
   function create() {
     const n = newName.trim();
@@ -33,7 +41,7 @@ export default function ProgramBuilder({
     <div>
       <h2>Programlarım</h2>
       <p style={{ color: "var(--muted)", marginTop: -4 }}>
-        Kendi programını oluştur. <b style={{ color: "var(--accent)" }}>Aktif</b> programa, hareket detayından "Programıma Ekle" ile hareket eklenir.
+        Kendi programını oluştur; hareketleri Bölgeler'den "Programıma Ekle" ile seç. Üstte gün seçince o günün programı listelenir.
       </p>
 
       <div className="row" style={{ marginBottom: 16 }}>
@@ -44,14 +52,27 @@ export default function ProgramBuilder({
 
       {programs.length > 0 && (
         <WeeklyPlan programs={programs} schedule={schedule} history={history}
-          onSetSchedule={onSetSchedule} onStart={onStart} />
+          onSetSchedule={onSetSchedule} onStart={onStart} sel={selDay} onSel={(d) => { setSelDay(d); setShowAll(false); }} />
       )}
 
       {programs.length === 0 && (
         <div className="empty">Henüz programın yok.<br />Yukarıdan bir program oluştur, sonra bölgelerden hareket ekle. 💪</div>
       )}
 
-      {programs.map((p) => {
+      {programs.length > 0 && (
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", margin: "0 2px 10px" }}>
+          <span style={{ color: "var(--muted)", fontSize: 13 }}>
+            {(!showAll && selProg) ? "📅 " + DAY_FULL[selDay] + " programı" : "Tüm programlar (" + programs.length + ")"}
+          </span>
+          {selProg && (
+            <button className="icon-btn" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => setShowAll((v) => !v)}>
+              {showAll ? "Sadece " + DAY_LETTERS[selDay] : "Tümünü göster (" + programs.length + ")"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {visible.map((p) => {
         const open = p.id === openId;
         return (
           <div key={p.id} className="card" style={{ marginBottom: 12 }}>
