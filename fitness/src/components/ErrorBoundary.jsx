@@ -4,10 +4,10 @@ import React from "react";
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, msg: "" };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error) {
+    return { hasError: true, msg: (error && (error.message || String(error))) || "" };
   }
   componentDidCatch(error, info) {
     // İleride uzak loglama eklenebilir
@@ -22,6 +22,11 @@ export default class ErrorBoundary extends React.Component {
           <p style={{ color: "var(--muted)", maxWidth: 320 }}>
             Beklenmedik bir hata oluştu. Sayfayı yenilemek genelde çözer.
           </p>
+          {this.state.msg && (
+            <p style={{ color: "var(--muted)", fontSize: 11, maxWidth: 320, wordBreak: "break-word", opacity: 0.7 }}>
+              Teknik detay: {this.state.msg}
+            </p>
+          )}
           <button className="btn-primary" style={{ maxWidth: 280 }} onClick={() => window.location.reload()}>
             Yenile
           </button>

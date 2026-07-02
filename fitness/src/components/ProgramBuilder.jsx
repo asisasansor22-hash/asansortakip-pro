@@ -9,7 +9,7 @@ export default function ProgramBuilder({
   programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
-  const [openId, setOpenId] = useState(activeId);
+  const [openId, setOpenId] = useState(null);
   const [dayPickerId, setDayPickerId] = useState(null);
   const sch = schedule || {};
 
