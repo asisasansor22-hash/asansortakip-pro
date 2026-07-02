@@ -194,6 +194,24 @@ export default function App() {
     });
   }
 
+  // Bir hareketteki tüm zamanların en iyi tahmini 1RM'i (rekor tespiti için)
+  function bestE1RM(exId) {
+    let best = 0;
+    for (const s of history) {
+      for (const st of (s.sets || [])) {
+        if (st.exId !== exId) continue;
+        const w = Number(st.weight);
+        const m = String(st.reps || "").match(/\d+/);
+        const r = m ? parseInt(m[0], 10) : 0;
+        if (w > 0 && r > 0) {
+          const e = Math.round(w * (1 + r / 30));
+          if (e > best) best = e;
+        }
+      }
+    }
+    return best;
+  }
+
   // Bir hareket için en son girilen kilo/tekrar
   function lastLog(exId) {
     for (const s of history) {
@@ -369,7 +387,7 @@ export default function App() {
     <div className="app">
       {splash && <Splash hiding={splashHide} />}
       {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
-      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} onFinish={saveWorkout} lastLog={lastLog} />}
+      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} onFinish={saveWorkout} lastLog={lastLog} bestE1RM={bestE1RM} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>
         <button className="btn-ghost" onClick={() => setTab("profile")} style={{ padding: avatar ? 4 : undefined }}>

@@ -1,8 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getExercise } from "../data/exercises";
+import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
 
 const REST_SEC = 60;
+
+// Bölgeye göre dinamik ısınma önerileri (antrenman öncesi ~5 dk)
+const WARMUPS = {
+  genel: ["60 sn hafif tempo: yerinde yürüyüş / jumping jack"],
+  gogus: ["10 kol çevirme (öne + arkaya)", "10 hafif şınav (gerekirse diz üstü)"],
+  sirt: ["10 omuz sıkıştırma (kürekleri geri-aşağı çek)", "10 kol çevirme"],
+  omuz: ["15 kol çevirme (küçük daireden büyüğe)", "10 duvar kaydırma (wall slide)"],
+  kol: ["10 boş elle curl + 10 triceps uzatma (hafif)"],
+  bacak: ["15 vücut ağırlığı squat", "10 hamle (her bacak)", "10 bacak sallama (öne-yana)"],
+  karin: ["10 cat-camel (kedi-deve)", "20 sn plank"],
+  kardiyo: ["3-5 dk düşük tempolu yürüyüş / hafif jog"],
+};
+
+// Bölgeye göre antrenman sonrası soğuma / esneme önerileri
+const COOLDOWNS = {
+  gogus: "Kapı boşluğunda göğüs esnetme — 30 sn",
+  sirt: "Çocuk pozu (child's pose) — 30 sn",
+  omuz: "Kolu çapraz alıp omuz esnetme — her kol 20 sn",
+  kol: "Bilek ve ön kol esnetme — 20 sn",
+  bacak: "Quad + hamstring + baldır esnetme — her biri 30 sn",
+  karin: "Kobra esnetmesi — 30 sn",
+  kardiyo: "3-5 dk yavaş yürüyüşle nabzı düşür",
+};
 
 function parseSets(s) {
   const m = /^(\d+)\s*[xX]\s*(.+)$/.exec(s || "");
@@ -35,18 +59,26 @@ function overloadSuggestion(prev, metaReps) {
   return { weight: w, reps: String(r + 1) };
 }
 
-// Antrenman modu: hareket hareket çalış, kilo/tekrar gir, setleri işaretle, dinlen.
-export default function WorkoutMode({ program, onExit, onFinish, lastLog }) {
+// Antrenman modu: ısınma → hareket hareket çalış → özet/soğuma/paylaş.
+export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1RM }) {
   const exIds = program.exercises.filter((id) => getExercise(id));
   const [i, setI] = useState(0);
   const [setNo, setSetNo] = useState(1);
   const [resting, setResting] = useState(false);
   const [rest, setRest] = useState(0);
   const [done, setDone] = useState(false);
+  const [warmup, setWarmup] = useState(true);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
+  const [prFlash, setPrFlash] = useState(null); // yeni rekor bildirimi
+  const [shared, setShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const timer = useRef(null);
   const log = useRef([]); // {exId, weight, reps}
+  const sessionPRs = useRef({}); // exId -> {name, w, r, e1rm}
+
+  // Programın çalıştırdığı bölgeler (ısınma/soğuma önerileri için)
+  const regions = [...new Set(exIds.map((id) => getExercise(id).region))];
 
   const ex = exIds.length ? getExercise(exIds[i]) : null;
   const meta = ex ? parseSets(ex.sets) : { sets: 1, reps: "-" };
@@ -104,17 +136,115 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog }) {
   }
   function completeSet() {
     log.current.push({ exId: ex.id, weight: weight ? Number(weight) : null, reps: reps || meta.reps });
+    // Rekor kontrolü: bu set tüm zamanların en iyi 1RM'ini geçiyor mu?
+    const w = Number(weight);
+    const r = firstInt(reps);
+    const e = est1RM(w, r);
+    if (e && bestE1RM) {
+      const oldBest = bestE1RM(ex.id) || 0;
+      const sessBest = (sessionPRs.current[ex.id] && sessionPRs.current[ex.id].e1rm) || 0;
+      if (e > oldBest && e > sessBest && oldBest > 0) {
+        sessionPRs.current[ex.id] = { name: ex.name, w, r, e1rm: e };
+        setPrFlash(ex.name + " — " + w + " kg × " + r);
+        try { if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 160]); } catch (err) {}
+        setTimeout(() => setPrFlash(null), 3200);
+      }
+    }
     if (setNo < meta.sets) { setSetNo(setNo + 1); startRest(); }
     else nextExercise();
   }
 
-  if (done) {
+  // Antrenman özeti (özet ekranı + paylaşım metni)
+  function summary() {
+    let vol = 0;
+    log.current.forEach((s) => {
+      const w = Number(s.weight) || 0;
+      const r = firstInt(s.reps) || 0;
+      vol += w * r;
+    });
+    return { sets: log.current.length, vol: Math.round(vol), prs: Object.values(sessionPRs.current) };
+  }
+
+  async function shareToFeed() {
+    const s = summary();
+    let text = "🏋️ " + program.name + " tamamlandı!\n" + exIds.length + " hareket · " + s.sets + " set";
+    if (s.vol > 0) text += " · " + s.vol + " kg toplam hacim";
+    s.prs.forEach((p) => { text += "\n🏆 Yeni rekor: " + p.name + " " + p.w + " kg × " + p.r; });
+    let avatar = null;
+    try { avatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
+    setSharing(true);
+    const r = await feedPost({ text, media: null, avatar });
+    setSharing(false);
+    if (r.success) setShared(true);
+  }
+
+  // --- Isınma ekranı (antrenman öncesi ~5 dk) ---
+  if (warmup) {
+    const items = [...WARMUPS.genel, ...regions.flatMap((rg) => WARMUPS[rg] || [])];
     return (
-      <div className="workout" style={{ justifyContent: "center", textAlign: "center", gap: 14 }}>
-        <div style={{ fontSize: 56 }}>🎉</div>
-        <h2>Antrenman tamamlandı!</h2>
-        <p style={{ color: "var(--muted)" }}>{exIds.length} hareket · {log.current.length} set bitti. Helal olsun! 💪</p>
-        <button className="btn-primary" style={{ maxWidth: 320 }} onClick={onExit}>Bitir</button>
+      <div className="workout" style={{ justifyContent: "center", gap: 14 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 48 }}>🔥</div>
+          <h2>Isınma (~5 dk)</h2>
+          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 2 }}>
+            Isınma performansı artırır, sakatlık riskini azaltır.
+          </p>
+        </div>
+        <div className="card" style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
+          <ul className="tips">
+            {items.map((t, k) => <li key={k}>• {t}</li>)}
+          </ul>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420, width: "100%", margin: "0 auto" }}>
+          <button className="btn-primary" onClick={() => setWarmup(false)}>✓ Isınma bitti, başla</button>
+          <button className="btn-ghost" style={{ padding: 12 }} onClick={() => setWarmup(false)}>Isınmayı atla →</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (done) {
+    const s = summary();
+    const stretches = regions.map((rg) => COOLDOWNS[rg]).filter(Boolean);
+    return (
+      <div className="workout" style={{ justifyContent: "center", gap: 12, overflowY: "auto" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 52 }}>🎉</div>
+          <h2>Antrenman tamamlandı!</h2>
+          <p style={{ color: "var(--muted)", marginTop: 2 }}>
+            {exIds.length} hareket · {s.sets} set{s.vol > 0 ? " · " + s.vol + " kg toplam hacim" : ""}. Helal olsun! 💪
+          </p>
+        </div>
+
+        {s.prs.length > 0 && (
+          <div className="card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", borderColor: "#fbbf24" }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>🏆 Yeni rekorlar</div>
+            {s.prs.map((p) => (
+              <div key={p.name} style={{ fontSize: 14, padding: "2px 0" }}>
+                {p.name}: <b>{p.w} kg × {p.r}</b> <span style={{ color: "var(--muted)", fontSize: 12 }}>(~{p.e1rm} kg 1RM)</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {stretches.length > 0 && (
+          <div className="card" style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>🧘 Soğuma & Esneme</div>
+            <ul className="tips">
+              {stretches.map((t, k) => <li key={k}>• {t}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420, width: "100%", margin: "0 auto" }}>
+          {log.current.length > 0 && (
+            <button className="btn-primary" disabled={sharing || shared} onClick={shareToFeed}
+              style={shared ? { background: "var(--card2)", color: "var(--ok)" } : undefined}>
+              {shared ? "✓ Akış'ta paylaşıldı" : (sharing ? "Paylaşılıyor…" : "💬 Akış'ta Paylaş")}
+            </button>
+          )}
+          <button className={log.current.length > 0 ? "btn-ghost" : "btn-primary"} style={{ padding: 12 }} onClick={onExit}>Bitir</button>
+        </div>
       </div>
     );
   }
@@ -131,6 +261,17 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog }) {
 
       {program.note && (
         <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", margin: "8px 12px 0" }}>ℹ️ {program.note}</p>
+      )}
+
+      {prFlash && (
+        <div style={{
+          position: "fixed", top: "calc(16px + env(safe-area-inset-top))", left: "50%", transform: "translateX(-50%)",
+          background: "#fbbf24", color: "#451a03", padding: "10px 18px", borderRadius: 12,
+          fontWeight: 800, fontSize: 13, zIndex: 80, maxWidth: "90%", textAlign: "center",
+          boxShadow: "0 6px 24px rgba(0,0,0,.4)",
+        }}>
+          🏆 YENİ REKOR! {prFlash}
+        </div>
       )}
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
