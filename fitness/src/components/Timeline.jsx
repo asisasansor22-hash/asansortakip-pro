@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { feedList, feedPost, feedDelete, feedSharePublic, publicAvatarsGet, currentUid, isAdmin, auth } from "../firebase";
+import { feedList, feedPost, feedDelete, feedSharePublic, publicAvatarsGet, feedLikesGet, feedLikeToggle, feedCommentsGet, feedCommentAdd, feedCommentDelete, currentUid, isAdmin, auth } from "../firebase";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -70,6 +70,11 @@ export default function Timeline() {
   const [shareMsg, setShareMsg] = useState("");
   const [mention, setMention] = useState(null); // {start, query}
   const [avatars, setAvatars] = useState({}); // uid -> dataURL (herkese açık güncel)
+  const [likes, setLikes] = useState({}); // postId -> {uid: true}
+  const [comments, setComments] = useState({}); // postId -> {commentId: {...}}
+  const [openComments, setOpenComments] = useState(null); // yorumları açık gönderi id
+  const [commentText, setCommentText] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
   const closedAt = useRef(0);
   const taRef = useRef(null);
 
@@ -126,9 +131,53 @@ export default function Timeline() {
   useEffect(() => { load(); }, []);
   useEffect(() => {
     let alive = true;
-    (async () => { const a = await publicAvatarsGet(); if (alive) setAvatars(a || {}); })();
+    (async () => {
+      const [a, l, c] = await Promise.all([publicAvatarsGet(), feedLikesGet(), feedCommentsGet()]);
+      if (!alive) return;
+      setAvatars(a || {});
+      setLikes(l || {});
+      setComments(c || {});
+    })();
     return () => { alive = false; };
   }, []);
+
+  function toggleLike(post) {
+    const liked = !!(likes[post.id] && likes[post.id][me]);
+    // İyimser güncelle, hata olursa geri al
+    setLikes((prev) => {
+      const p = { ...(prev[post.id] || {}) };
+      if (liked) delete p[me]; else p[me] = true;
+      return { ...prev, [post.id]: p };
+    });
+    feedLikeToggle(post.id, !liked).then((r) => {
+      if (!r.success) setLikes((prev) => {
+        const p = { ...(prev[post.id] || {}) };
+        if (liked) p[me] = true; else delete p[me];
+        return { ...prev, [post.id]: p };
+      });
+    });
+  }
+
+  async function addComment(post) {
+    const t = commentText.trim();
+    if (!t) return;
+    setCommentBusy(true);
+    const r = await feedCommentAdd(post.id, t);
+    setCommentBusy(false);
+    if (r.success) {
+      setComments((prev) => ({ ...prev, [post.id]: { ...(prev[post.id] || {}), [r.comment.id]: r.comment } }));
+      setCommentText("");
+    } else setErr("Yorum gönderilemedi (" + r.error + "). Veritabanı kuralında feed_comments izni gerekiyor.");
+  }
+
+  async function removeComment(postId, cid) {
+    const r = await feedCommentDelete(postId, cid);
+    if (r.success) setComments((prev) => {
+      const p = { ...(prev[postId] || {}) };
+      delete p[cid];
+      return { ...prev, [postId]: p };
+    });
+  }
 
   async function onPhoto(e) {
     const f = e.target.files && e.target.files[0]; e.target.value = "";
@@ -272,6 +321,60 @@ export default function Timeline() {
               <video src={post.media.src} controls playsInline
                 style={{ width: "100%", borderRadius: 10, marginTop: 10, maxHeight: 420 }} />
             )}
+
+            {(() => {
+              const likeMap = likes[post.id] || {};
+              const likeCount = Object.keys(likeMap).length;
+              const iLiked = !!likeMap[me];
+              const comMap = comments[post.id] || {};
+              const comList = Object.keys(comMap).map((cid) => ({ id: cid, ...comMap[cid] })).sort((a, b) => (a.t || 0) - (b.t || 0));
+              const isOpen = openComments === post.id;
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div className="row" style={{ gap: 8 }}>
+                    <button className="icon-btn" onClick={() => toggleLike(post)}
+                      style={{ color: iLiked ? "var(--accent)" : "var(--muted)", fontWeight: 700 }}>
+                      💪 {likeCount > 0 ? likeCount : ""}
+                    </button>
+                    <button className="icon-btn" onClick={() => { setOpenComments(isOpen ? null : post.id); setCommentText(""); }}
+                      style={{ color: isOpen ? "var(--accent)" : "var(--muted)" }}>
+                      💬 {comList.length > 0 ? comList.length : "Yorum yap"}
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <div style={{ marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 8 }}>
+                      {comList.map((c) => (
+                        <div key={c.id} className="row" style={{ gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, color: "var(--accent)", flexShrink: 0 }}>
+                            {(avatars[c.uid] || c.avatar)
+                              ? <img src={avatars[c.uid] || c.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : nameOf(c.email).slice(0, 1).toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ fontWeight: 700, fontSize: 12 }}>{nameOf(c.email)}</span>
+                            <span style={{ color: "var(--muted)", fontSize: 10, marginLeft: 6 }}>{timeAgo(c.t)}</span>
+                            <div style={{ fontSize: 13, lineHeight: 1.4, wordBreak: "break-word" }}>{renderText(c.text)}</div>
+                          </div>
+                          {(c.uid === me || admin) && (
+                            <button className="icon-btn" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => removeComment(post.id, c.id)}>✕</button>
+                          )}
+                        </div>
+                      ))}
+                      <div className="row" style={{ gap: 6 }}>
+                        <input className="input" style={{ flex: 1, padding: 10, fontSize: 14 }} placeholder="Yorum yaz…"
+                          value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") addComment(post); }} />
+                        <button className="btn-primary" style={{ width: "auto", padding: "0 14px", height: 40 }}
+                          disabled={commentBusy || !commentText.trim()} onClick={() => addComment(post)}>
+                          {commentBusy ? "…" : "Gönder"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         ))
       )}
