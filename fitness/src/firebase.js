@@ -212,6 +212,76 @@ export async function feedDelete(id) {
   } catch (e) { return { success: false, error: e.message }; }
 }
 
+// --- Beğeni & Yorum ---
+// Beğeniler: /fitness/feed_likes/{postId}/{uid} = true (herkes okur, kendi beğenisini yazar)
+// Yorumlar:  /fitness/feed_comments/{postId}/{commentId} = {uid,email,t,text,avatar}
+export async function feedLikesGet() {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed_likes.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
+export async function feedLikeToggle(postId, like) {
+  try {
+    var user = auth.currentUser;
+    if (!user) return { success: false, error: "Oturum yok." };
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed_likes/" + postId + "/" + user.uid + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, like
+      ? { method: "PUT", headers: { "Content-Type": "application/json" }, body: "true" }
+      : { method: "DELETE" });
+    if (!res.ok) return { success: false, error: "LIKE " + res.status };
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+export async function feedCommentsGet() {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed_comments.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
+export async function feedCommentAdd(postId, text) {
+  try {
+    var user = auth.currentUser;
+    if (!user) return { success: false, error: "Oturum yok." };
+    var token = await getToken();
+    var id = "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var avatar = null;
+    try { avatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
+    var body = { uid: user.uid, email: user.email || "", t: Date.now(), text: String(text), avatar: avatar };
+    var url = FIREBASE_DB_URL + "/fitness/feed_comments/" + postId + "/" + id + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) return { success: false, error: "COM " + res.status };
+    return { success: true, comment: Object.assign({ id: id }, body) };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+export async function feedCommentDelete(postId, commentId) {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/feed_comments/" + postId + "/" + commentId + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, { method: "DELETE" });
+    if (!res.ok) return { success: false, error: "CDEL " + res.status };
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
 // Bir gönderiyi HERKESE AÇIK kopyala (/fitness/public_feed/{id}) — link ile
 // giriş yapmadan görüntülenebilir. Sadece gönderi sahibi/admin yazabilir.
 export async function feedSharePublic(post) {

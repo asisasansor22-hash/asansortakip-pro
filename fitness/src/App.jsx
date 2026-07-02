@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList, setPublicAvatar } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -270,11 +270,24 @@ export default function App() {
       if (!r.success || stopped) return;
       let seen = 0;
       try { seen = Number(localStorage.getItem(seenKey) || 0); } catch (e) {}
-      const n = r.posts.filter((p) => {
-        if (p.uid === user.uid || (p.t || 0) <= seen) return false;
-        const tags = (p.text || "").match(/@[a-zA-Z0-9_.çğıöşüÇĞİÖŞÜ]+/g) || [];
+      const mentionsMe = (text) => {
+        const tags = (text || "").match(/@[a-zA-Z0-9_.çğıöşüÇĞİÖŞÜ]+/g) || [];
         return tags.some((tag) => tag.slice(1).toLowerCase() === myName);
-      }).length;
+      };
+      // 1) Gönderilerde etiket
+      let n = r.posts.filter((p) => p.uid !== user.uid && (p.t || 0) > seen && mentionsMe(p.text)).length;
+      // 2) Yorumlar: benim gönderime yorum + yorumda etiket
+      const myPostIds = new Set(r.posts.filter((p) => p.uid === user.uid).map((p) => p.id));
+      const allComments = await feedCommentsGet();
+      if (stopped) return;
+      Object.keys(allComments || {}).forEach((postId) => {
+        const cs = allComments[postId] || {};
+        Object.keys(cs).forEach((cid) => {
+          const c = cs[cid] || {};
+          if (c.uid === user.uid || (c.t || 0) <= seen) return;
+          if (myPostIds.has(postId) || mentionsMe(c.text)) n++;
+        });
+      });
       setMentionCount(n);
     }
     scan();
