@@ -3,7 +3,7 @@ import ExerciseAnimation from "./ExerciseAnimation";
 import { topNote, getAlternatives } from "../data/exercises";
 import { getMuscles } from "../data/exerciseMuscles";
 
-export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise }) {
+export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise, isFavorite, onToggleFavorite }) {
   const top = topNote(ex.id);
   const alts = getAlternatives(ex.id);
   const muscles = getMuscles(ex.id);
@@ -14,7 +14,15 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
 
   return (
     <div>
-      <button className="btn-back" onClick={onBack}>← Geri</button>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <button className="btn-back" onClick={onBack}>← Geri</button>
+        {onToggleFavorite && (
+          <button className="icon-btn" onClick={() => onToggleFavorite(ex.id)}
+            style={{ color: isFavorite ? "#fbbf24" : "var(--muted)", fontSize: 13 }}>
+            {isFavorite ? "⭐ Favoride" : "☆ Favorilere ekle"}
+          </button>
+        )}
+      </div>
       <div className="detail-hero">
         <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={220} />
       </div>

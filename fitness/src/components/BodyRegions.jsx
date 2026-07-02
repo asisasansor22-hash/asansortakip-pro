@@ -27,7 +27,7 @@ function matchEquip(equip, f) {
   return true;
 }
 
-export default function BodyRegions({ onAddToProgram }) {
+export default function BodyRegions({ onAddToProgram, favorites = [], onToggleFavorite }) {
   const [region, setRegion] = useState(null);
   const [exercise, setExercise] = useState(null);
   const [search, setSearch] = useState("");
@@ -37,7 +37,8 @@ export default function BodyRegions({ onAddToProgram }) {
 
   if (exercise) {
     return <ExerciseDetail key={exercise.id} ex={exercise} onBack={() => setExercise(null)}
-      onAddToProgram={onAddToProgram} onOpenExercise={(ex) => setExercise(ex)} />;
+      onAddToProgram={onAddToProgram} onOpenExercise={(ex) => setExercise(ex)}
+      isFavorite={favorites.includes(exercise.id)} onToggleFavorite={onToggleFavorite} />;
   }
 
   if (region) {
@@ -82,6 +83,19 @@ export default function BodyRegions({ onAddToProgram }) {
           <button key={c.id} className={"chip" + (levelF === c.id ? " on" : "")} onClick={() => setLevelF(c.id)}>{c.label}</button>
         ))}
       </div>
+
+      {!filtering && favorites.length > 0 && (
+        <div style={{ marginBottom: 6 }}>
+          <div className="section-title" style={{ margin: "8px 4px" }}>⭐ Favorilerim</div>
+          <div className="grid">
+            {favorites.map((id) => {
+              const ex = EXERCISES.find((e) => e.id === id);
+              if (!ex) return null;
+              return <ExerciseCard key={id} ex={ex} onClick={() => setExercise(ex)} />;
+            })}
+          </div>
+        </div>
+      )}
 
       {filtering ? (
         <div>
