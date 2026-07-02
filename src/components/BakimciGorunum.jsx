@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { makbuzBakimYazdir } from '../utils/makbuz.js'
+import { makbuzBakimYazdir, makbuzWhatsAppGonder } from '../utils/makbuz.js'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
 
-function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi}){
+function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,buAyToplamAlinan,ilceler,today,fMonth,setFMonth,eName,sonOdemeler,setSonOdemeler,aktifBakimci,firmaAdi,onBakimBildirim}){
+  // Bakım tamamlandığında yöneticiye uygulama-içi bildirim gönder
+  function bildirBakim(elev,tutar){
+    if(typeof onBakimBildirim!=="function"||!elev) return;
+    onBakimBildirim({elevAd:elev.ad||"Asansör",ilce:elev.ilce||"",bakimciAd:aktifBakimci?aktifBakimci.ad:"",tutar:Number(tutar)||0});
+  }
   var _firmaAdi=firmaAdi||"Şirketimiz";
   const [subTab,setSubTab]=useState(0);
   const [bakimSubTab,setBakimSubTab]=useState(0); // 0=Bekleyen, 1=Tamamlanan
@@ -19,6 +24,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var eski=para(elev&&elev.bakiyeDevir);
     var aylik=para(elev&&elev.aylikUcret);
     return {
+      eskiDevirAnindaki:eski,
       eskiDevirOnce:eski,
       aylikBakimUcreti:aylik,
       guncelDevirOnce:eski+aylik,
@@ -113,9 +119,11 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
       var snap2=odemeSnapshot(elev,alinan);
       setMaints(p=>[...p,{id:Date.now(),asansorId:elev.id,tarih:today,yapildiSaat:simdi,tutar:elev.aylikUcret,...snap2,alinanTutar:alinan,kdv:elev.kdv,yapildi:true,odendi:alinan>=elev.aylikUcret,planlanmis:true,notlar:odemeForm.not||"",kl:{},tahsilatBakimciId:aktifBakimci?aktifBakimci.id:null,tahsilatBakimciAd:aktifBakimci?aktifBakimci.ad:""}]);
     }
+    bildirBakim(elev,alinan);
     if(alinan>0){
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-      setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-alinan,bakiyeDevirBase:para(e.bakiyeDevir)-alinan,yeniDevirManuel:null}):e;});});
+      // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
+      setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-alinan,yeniDevirManuel:null}):e;});});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -152,8 +160,10 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     var tarih=parts[0]||"";
     var saat=parts[1]||"";
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
-    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,bakiyeDevirBase:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+    // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
+    setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
     setMakbuzSonBakim({m:Object.assign({},odemeSorModal.m,snap,{alinanTutar:tutar,odendi:odendiTam,yapildi:true,yapildiSaat:yapildiSaat}),elev:odemeSorModal.elev,tutar:tutar});
+    bildirBakim(elev,tutar);
     setOdemeSorModal(null);
     setOdemeMiktar("");
   };
@@ -461,6 +471,10 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                 style:{padding:"14px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
               },"🖨️ Bakım Makbuzunu Yazdır")
               ,React.createElement('button',{
+                onClick:function(){makbuzWhatsAppGonder(makbuzSonBakim.m,makbuzSonBakim.elev,_firmaAdi);setMakbuzSonBakim(null);},
+                style:{padding:"14px",background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
+              },"📲 WhatsApp ile Gönder")
+              ,React.createElement('button',{
                 onClick:function(){setMakbuzSonBakim(null);},
                 style:{padding:"12px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
               },"Atla")
@@ -522,6 +536,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                           onClick:function(){
                             var o=odemeSorModal;
                             var snap=odemeSnapshot(o.elev,0);
+                            // Bakım yapıldı, ödeme yok: Eski Devir değişmez. Aylık ücret ay kapanışında eklenecek.
                             setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
