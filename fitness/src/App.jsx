@@ -125,8 +125,12 @@ export default function App() {
       if (Array.isArray(favs)) setFavorites(favs);
       if (sched && typeof sched === "object") setSchedule(normalizeSchedule(sched));
       if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); /* herkese açık kopyaya yedekle */ }
-      if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
-        setProgress({ weights: prog.weights || [], measures: prog.measures || [] });
+      if (prog && typeof prog === "object") {
+        setProgress({
+          weights: Array.isArray(prog.weights) ? prog.weights : [],
+          measures: Array.isArray(prog.measures) ? prog.measures : [],
+          goalKg: (typeof prog.goalKg === "number" && prog.goalKg > 0) ? prog.goalKg : null,
+        });
       }
       if (data && Array.isArray(data.list)) {
         setPrograms(data.list);
