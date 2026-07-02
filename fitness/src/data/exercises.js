@@ -393,7 +393,7 @@ export const ALTERNATIVES = {
   "wall-sit": ["squat", "leg-extension", "goblet-squat"],
   "nordic-curl": ["leg-curl", "romanian-deadlift", "glute-bridge"],
   "single-leg-glute-bridge": ["glute-bridge", "hip-thrust"],
-  "hollow-body-hold": ["plank", "leg-raise", "dead-bug"],
+  "hollow-body-hold": ["plank", "leg-raise", "Dead_Bug"],
   "l-sit": ["hanging-leg-raise", "hollow-body-hold", "v-up"],
   "v-up": ["crunch", "hollow-body-hold", "toe-touches"],
   "dragon-flag": ["hanging-leg-raise", "reverse-crunch", "l-sit"],

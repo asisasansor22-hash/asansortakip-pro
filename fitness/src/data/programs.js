@@ -28,7 +28,7 @@ export const READY_PROGRAMS = [
     days: [
       { name: "Push (İtiş)", note: "Göğüs/omuz/triceps. Bileşik 6-10, izolasyon 10-15 tekrar; 3-4 set.", exercises: ["bench-press", "incline-press", "shoulder-press", "lateral-raise", "triceps-pushdown", "triceps-dips"] },
       { name: "Pull (Çekiş)", note: "Sırt/arka omuz/biceps. Çekiş hacmi itişe denk olmalı.", exercises: ["deadlift", "barfiks", "barbell-row", "face-pull", "biceps-curl", "hammer-curl"] },
-      { name: "Legs (Bacak)", note: "Quad + arka zincir + baldır dengeli. Squat ve menteşe birlikte.", exercises: ["squat", "romanian-deadlift", "leg-press", "leg-curl", "calf-raise"] },
+      { name: "Legs (Bacak)", note: "Quad + arka zincir + baldır dengeli. Squat ve menteşe birlikte; asılı bacak kaldırma core için.", exercises: ["squat", "romanian-deadlift", "leg-press", "leg-curl", "calf-raise", "hanging-leg-raise"] },
     ],
   },
   {
@@ -40,16 +40,16 @@ export const READY_PROGRAMS = [
       { name: "Üst A", note: "Pres ağırlıklı. 3-4 set, 6-10 tekrar.", exercises: ["bench-press", "barbell-row", "shoulder-press", "lat-pulldown", "triceps-pushdown", "biceps-curl"] },
       { name: "Alt A", note: "Squat ağırlıklı. 3-4 set.", exercises: ["squat", "romanian-deadlift", "leg-press", "leg-curl", "calf-raise"] },
       { name: "Üst B", note: "Eğim/çekiş vurgusu; A'dan farklı açılar.", exercises: ["incline-press", "seated-row", "lateral-raise", "face-pull", "hammer-curl", "skull-crusher"] },
-      { name: "Alt B", note: "Menteşe/glute vurgusu.", exercises: ["deadlift", "hip-thrust", "bulgarian", "leg-extension", "seated-calf-raise"] },
+      { name: "Alt B", note: "Menteşe/glute vurgusu; plank ile core.", exercises: ["deadlift", "hip-thrust", "bulgarian", "leg-extension", "seated-calf-raise", "plank"] },
     ],
   },
   {
     id: "home-noequip", name: "Evde Ekipmansız",
     gender: "herkes", style: "ev", goalTag: "fitkal",
-    level: "Başlangıç-Orta", goal: "Form koruma & yağ yakımı", freq: "Haftada 4 gün",
+    level: "Başlangıç-Orta", goal: "Form koruma & yağ yakımı", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Tamamen vücut ağırlığıyla. Zorluğu tekrar artırarak veya daha zor varyasyona geçerek (aşamalı yüklenme) yükselt.",
     days: [
-      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Kolaysa decline/diamond varyasyona geç.", exercises: ["sinav", "pike-pushup", "triceps-dips", "decline-pushup", "plank"] },
+      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Kolaysa decline/diamond varyasyona geç. Superman, itme ağırlıklı günü sırt/arka zincirle dengeler.", exercises: ["sinav", "pike-pushup", "triceps-dips", "decline-pushup", "superman", "plank"] },
       { name: "Alt Vücut", note: "3-4 set. Kolaysa tek bacak (bulgarian/pistol) varyasyonuna geç.", exercises: ["squat", "lunge", "single-leg-glute-bridge", "wall-sit", "calf-raise"] },
       { name: "Kardiyo + Core", note: "Devre: 40 sn çalış / 20 sn dinlen x 3 tur.", exercises: ["jumping-jack", "high-knees", "burpee", "hollow-body-hold", "leg-raise"] },
     ],
@@ -57,7 +57,7 @@ export const READY_PROGRAMS = [
   {
     id: "fatloss", name: "Yağ Yakım & Kondisyon",
     gender: "herkes", style: "ev", goalTag: "yagver",
-    level: "Orta", goal: "Yağ yakımı (kas koruyarak)", freq: "Haftada 4-5 gün",
+    level: "Orta", goal: "Yağ yakımı (kas koruyarak)", freq: "Haftada 3-5 gün (günleri dönüşümlü tekrarla)",
     desc: "Yağ kaybını kalori açığı belirler; bu plan kuvvet + HIIT ile kası korurken kalori harcamayı artırır.",
     days: [
       { name: "HIIT 1", note: "30 sn maksimal / 30 sn yürü x 8-10 tur.", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees", "plank"] },
@@ -81,11 +81,11 @@ export const READY_PROGRAMS = [
   {
     id: "kadin-home", name: "Kadın · Evde Shape",
     gender: "kadin", style: "ev", goalTag: "yagver",
-    level: "Başlangıç", goal: "Sıkılaşma & yağ yakımı", freq: "Haftada 4 gün",
+    level: "Başlangıç", goal: "Sıkılaşma & yağ yakımı", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Ekipmansız, kalça-bacak-core odaklı. Yağ kaybı için beslenme açığıyla birlikte uygula.",
     days: [
       { name: "Alt Vücut", note: "3-4 set, başarısızlığa yakın.", exercises: ["glute-bridge", "squat", "lunge", "single-leg-glute-bridge", "calf-raise"] },
-      { name: "Core", note: "3 set; pozisyonları 30-40 sn tut.", exercises: ["plank", "side-plank", "hollow-body-hold", "v-up", "leg-raise"] },
+      { name: "Core & Sırt", note: "3 set; pozisyonları 30-40 sn tut. Superman bel ve duruş için.", exercises: ["plank", "side-plank", "hollow-body-hold", "v-up", "superman"] },
       { name: "Kardiyo", note: "Devre: 40 sn çalış / 20 sn dinlen x 3-4 tur.", exercises: ["jumping-jack", "high-knees", "jump-squat", "butt-kicks"] },
     ],
   },
@@ -116,7 +116,7 @@ export const READY_PROGRAMS = [
   {
     id: "erkek-home", name: "Erkek · Evde Kuvvet (Kalistenik)",
     gender: "erkek", style: "ev", goalTag: "kasyap",
-    level: "Başlangıç-Orta", goal: "Ekipmansız kuvvet", freq: "Haftada 4 gün",
+    level: "Başlangıç-Orta", goal: "Ekipmansız kuvvet", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Vücut ağırlığıyla kas yapımı: setleri başarısızlığa yakın bitir ve zamanla daha zor varyasyona geç.",
     days: [
       { name: "İtme", note: "3-4 set. Kolaylaşınca archer/decline'a geç.", exercises: ["sinav", "decline-pushup", "pike-pushup", "triceps-dips", "diamond-pushup"] },
@@ -127,7 +127,7 @@ export const READY_PROGRAMS = [
   {
     id: "erkek-fatloss", name: "Erkek · Yağ Yakım",
     gender: "erkek", style: "salon", goalTag: "yagver",
-    level: "Orta", goal: "Yağ yakımı & kas koruma", freq: "Haftada 4-5 gün",
+    level: "Orta", goal: "Yağ yakımı & kas koruma", freq: "Haftada 3-5 gün (günleri dönüşümlü tekrarla)",
     desc: "Ağır bileşikler kası korur, HIIT kalori açığını destekler. Yağ kaybının motoru beslenme açığıdır.",
     days: [
       { name: "Full A", note: "Ağır, 4-6 tekrar bileşikler.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "plank"] },
