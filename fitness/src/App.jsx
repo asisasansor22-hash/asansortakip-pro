@@ -84,6 +84,7 @@ export default function App() {
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
+  const [favorites, setFavorites] = useState([]); // favori hareket id'leri
   const scheduleWrite = useRef(Promise.resolve());
 
   // --- Açılış (splash) ekranı ---
@@ -100,7 +101,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]); }
     });
   }, []);
 
@@ -119,7 +120,9 @@ export default function App() {
       const prog = await dbGet("progress");
       const sched = await dbGet("schedule");
       const av = await dbGet("avatar");
+      const favs = await dbGet("favorites");
       if (cancelled) return;
+      if (Array.isArray(favs)) setFavorites(favs);
       if (sched && typeof sched === "object") setSchedule(normalizeSchedule(sched));
       if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); /* herkese açık kopyaya yedekle */ }
       if (prog && (Array.isArray(prog.weights) || Array.isArray(prog.measures))) {
@@ -167,6 +170,15 @@ export default function App() {
     lsSetAvatar(dataUrl || null);
     dbSet("avatar", dataUrl || "");
     setPublicAvatar(dataUrl || null); // herkese açık avatar düğümü
+  }
+
+  // Favori hareket ekle/çıkar
+  function toggleFavorite(exId) {
+    setFavorites((prev) => {
+      const next = prev.includes(exId) ? prev.filter((x) => x !== exId) : [...prev, exId];
+      dbSet("favorites", next);
+      return next;
+    });
   }
 
   // Haftalık plana program ata (day: 0=Pzt … 6=Paz)
@@ -367,7 +379,7 @@ export default function App() {
         </button>
       </div>
 
-      {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} />}
+      {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} favorites={favorites} onToggleFavorite={toggleFavorite} />}
       {tab === "ready" && <ReadyPrograms onCopy={copyReady} onCopyDay={copyReadyDay} profile={profile} />}
       {tab === "mine" && (
         <ProgramBuilder

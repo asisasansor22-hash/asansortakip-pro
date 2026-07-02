@@ -79,8 +79,19 @@ export default function NutritionDiary() {
   }
   function addManual() {
     if (!name.trim()) return;
-    addItem({ name: name.trim(), kcal: num(kcal), p: num(prot) });
+    const item = { name: name.trim(), kcal: num(kcal), p: num(prot) };
+    addItemWithRecent(item);
     setName(""); setKcal(""); setProt("");
+  }
+
+  // Manuel eklenen yiyeceği hem güne hem "son kullanılanlar"a yaz
+  function addItemWithRecent(item) {
+    const it = { id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: item.name, kcal: Math.round(item.kcal || 0), p: Math.round(item.p || 0) };
+    const nextDay = { items: [...day.items, it], water: day.water || 0 };
+    const days = { ...diary.days, [today]: nextDay };
+    const rec = [{ name: it.name, kcal: it.kcal, p: it.p },
+      ...(Array.isArray(diary.recent) ? diary.recent : []).filter((r) => r.name.toLowerCase() !== it.name.toLowerCase())].slice(0, 10);
+    persist({ ...diary, days, recent: rec });
   }
   function delItem(id) { setDay({ items: day.items.filter((x) => x.id !== id) }); }
   function water(d) { setDay({ water: Math.max(0, (day.water || 0) + d) }); }
@@ -153,6 +164,18 @@ export default function NutritionDiary() {
         <input className="input" type="number" inputMode="numeric" placeholder="prot" value={prot} onChange={(e) => setProt(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
         <button className="btn-primary" style={{ width: "auto", padding: "0 16px" }} onClick={addManual}>Ekle</button>
       </div>
+      {Array.isArray(diary.recent) && diary.recent.length > 0 && (
+        <>
+          <div style={{ color: "var(--muted)", fontSize: 11, margin: "0 4px 4px" }}>Son kullanılanlar</div>
+          <div className="chips" style={{ marginBottom: 8 }}>
+            {diary.recent.map((r) => (
+              <button key={r.name} className="chip on" onClick={() => addItemWithRecent(r)} title={r.kcal + " kcal · " + r.p + "g protein"}>
+                ↻ {r.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div className="chips" style={{ marginBottom: 14 }}>
         {QUICK.map((q) => (
           <button key={q.name} className="chip" onClick={() => addItem(q)} title={q.kcal + " kcal · " + q.p + "g protein"}>

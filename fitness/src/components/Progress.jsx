@@ -46,12 +46,13 @@ function weekStart(t) {
   return d.getTime() - day * DAY;
 }
 
-// --- mini SVG çizgi grafiği ---
-function LineChart({ data, unit = "", color = "var(--accent)" }) {
+// --- mini SVG çizgi grafiği (goal: kesikli hedef çizgisi) ---
+function LineChart({ data, unit = "", color = "var(--accent)", goal = null }) {
   if (!data || data.length === 0)
     return <div style={{ color: "var(--muted)", fontSize: 13, padding: "12px 0" }}>Henüz veri yok.</div>;
   const W = 320, H = 120, pad = 26;
   const vs = data.map((d) => d.v);
+  if (goal != null) vs.push(goal);
   let min = Math.min(...vs), max = Math.max(...vs);
   if (min === max) { min -= 1; max += 1; }
   const span = max - min;
@@ -68,6 +69,12 @@ function LineChart({ data, unit = "", color = "var(--accent)" }) {
       <line x1={pad} y1={H - pad} x2={W - pad} y2={H - pad} stroke="var(--line)" strokeWidth="1" />
       <text x="2" y={pad + 4} fill="var(--muted)" fontSize="9">{Math.round(max * 10) / 10}</text>
       <text x="2" y={H - pad + 4} fill="var(--muted)" fontSize="9">{Math.round(min * 10) / 10}</text>
+      {goal != null && (
+        <>
+          <line x1={pad} y1={Y(goal)} x2={W - pad} y2={Y(goal)} stroke="#fbbf24" strokeWidth="1.5" strokeDasharray="5 4" />
+          <text x={W - pad} y={Y(goal) - 4} fill="#fbbf24" fontSize="9" textAnchor="end">🎯 {goal}{unit}</text>
+        </>
+      )}
       {data.length > 1 && <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
       {data.map((d, i) => <circle key={i} cx={X(d.t)} cy={Y(d.v)} r={i === data.length - 1 ? 3.5 : 2.2} fill={color} />)}
       <text x={W - pad} y={Y(last.v) - 7} fill={color} fontSize="11" fontWeight="700" textAnchor="end">{last.v}{unit}</text>
@@ -115,6 +122,13 @@ export default function Progress({ data, history = [], onSave }) {
   // --- Kilo girişi ---
   const [kg, setKg] = useState("");
   const [kgDate, setKgDate] = useState(todayInput());
+  const goalKg = (typeof data.goalKg === "number" && data.goalKg > 0) ? data.goalKg : null;
+  const [goalInput, setGoalInput] = useState(goalKg != null ? String(goalKg) : "");
+  function saveGoalKg() {
+    const v = num(goalInput);
+    if (v == null || v <= 0) return;
+    onSave({ ...data, goalKg: v });
+  }
 
   function addWeight() {
     const v = num(kg);
@@ -263,20 +277,31 @@ export default function Progress({ data, history = [], onSave }) {
       {/* Kilo */}
       <div className="section-title">Kilo Takibi</div>
       {wStat && (
-        <div className="row" style={{ gap: 8, marginBottom: 10 }}>
+        <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
           <span className="pill" style={{ fontSize: 13 }}>Güncel: <b>{wStat.cur} kg</b></span>
           <span className="pill" style={{ fontSize: 13, color: wStat.diff < 0 ? "var(--ok)" : wStat.diff > 0 ? "#fca5a5" : "var(--muted)" }}>
             {wStat.diff > 0 ? "+" : ""}{wStat.diff} kg ({wStat.sinceTxt}’den beri)
           </span>
+          {goalKg != null && (
+            <span className="pill" style={{ fontSize: 13, color: "#fbbf24" }}>
+              🎯 Hedefe {Math.abs(Math.round((wStat.cur - goalKg) * 10) / 10)} kg
+            </span>
+          )}
         </div>
       )}
       <div className="card" style={{ marginBottom: 10 }}>
-        <LineChart data={weightPoints} unit=" kg" />
+        <LineChart data={weightPoints} unit=" kg" goal={goalKg} />
       </div>
       <div className="row" style={{ gap: 8, marginBottom: 6 }}>
         <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={kg} onChange={(e) => setKg(e.target.value)} style={{ flex: 1 }} />
         <input className="input" type="date" value={kgDate} onChange={(e) => setKgDate(e.target.value)} style={{ flex: 1 }} />
         <button className="btn-primary" style={{ width: "auto", padding: "0 18px" }} onClick={addWeight}>Ekle</button>
+      </div>
+      <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+        <input className="input" type="number" inputMode="decimal" placeholder="🎯 Hedef kilo (kg)" value={goalInput}
+          onChange={(e) => setGoalInput(e.target.value)} style={{ flex: 1 }} />
+        <button className="icon-btn" style={{ padding: "0 14px" }} onClick={saveGoalKg}>Kaydet</button>
+        {goalKg != null && <button className="icon-btn danger" style={{ padding: "0 12px" }} onClick={() => { onSave({ ...data, goalKg: null }); setGoalInput(""); }}>✕</button>}
       </div>
       {weights.length > 0 && (
         <div style={{ marginBottom: 6 }}>
