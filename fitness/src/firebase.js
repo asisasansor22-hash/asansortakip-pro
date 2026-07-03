@@ -374,6 +374,12 @@ export async function dbGetR(key, tries) {
 }
 
 export async function dbSet(key, value) {
+  await dbSetR(key, value);
+}
+
+// Sonuç dönen yazma: true = buluta yazıldı, false = başarısız (eşitleme
+// bekleyen olarak işaretlenmeli).
+export async function dbSetR(key, value) {
   try {
     var token = await getToken();
     var url = FIREBASE_DB_URL + (await userPath(key));
@@ -383,6 +389,7 @@ export async function dbSet(key, value) {
     // keepalive: uygulama kapanırken bekleyen kayıt isteği iptal olmasın
     // (tarayıcı sınırı ~64KB; büyük gövdelerde kullanma yoksa istek reddedilir)
     if (body.length < 60000) opts.keepalive = true;
-    await fetch(url, opts);
-  } catch (e) {}
+    var res = await fetch(url, opts);
+    return !!res.ok;
+  } catch (e) { return false; }
 }
