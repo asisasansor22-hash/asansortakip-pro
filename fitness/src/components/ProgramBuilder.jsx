@@ -8,7 +8,7 @@ const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cuma
 const todayIdx = () => (new Date().getDay() + 6) % 7; // Pzt=0
 
 export default function ProgramBuilder({
-  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onStart,
+  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(null);
@@ -125,13 +125,21 @@ export default function ProgramBuilder({
                   const ex = getExercise(exId);
                   if (!ex) return null;
                   return (
-                    <div key={i} className="prog-ex-row">
+                    <div key={exId + "-" + i} className="prog-ex-row">
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                        <button className="icon-btn" disabled={i === 0}
+                          style={{ padding: "2px 8px", fontSize: 13, opacity: i === 0 ? 0.3 : 1 }}
+                          onClick={() => onMoveExercise(p.id, i, -1)}>▲</button>
+                        <button className="icon-btn" disabled={i === p.exercises.length - 1}
+                          style={{ padding: "2px 8px", fontSize: 13, opacity: i === p.exercises.length - 1 ? 0.3 : 1 }}
+                          onClick={() => onMoveExercise(p.id, i, 1)}>▼</button>
+                      </div>
                       <div className="figbox" style={{ width: 56, height: 56, padding: 0 }}>
                         <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={52} still />
                       </div>
                       <div className="grow">
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{ex.name}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{ex.sets}</div>
+                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{i + 1}. sıra · {ex.sets}</div>
                       </div>
                       <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)}>×</button>
                     </div>

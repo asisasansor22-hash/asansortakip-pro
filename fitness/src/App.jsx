@@ -342,6 +342,18 @@ export default function App() {
     ));
   }
 
+  // Programdaki hareketi bir üste/alta taşı (dir: -1 | +1)
+  function moveExercise(programId, index, dir) {
+    setPrograms((prev) => prev.map((p) => {
+      if (p.id !== programId) return p;
+      const j = index + dir;
+      if (j < 0 || j >= p.exercises.length) return p;
+      const ex = [...p.exercises];
+      const t = ex[index]; ex[index] = ex[j]; ex[j] = t;
+      return { ...p, exercises: ex };
+    }));
+  }
+
   // Hareket eklerken hangi programa ekleneceğini sor. Program yoksa uyar.
   function addToProgram(ex) {
     if (programs.length === 0) {
@@ -439,6 +451,7 @@ export default function App() {
           onCreate={createProgram}
           onDelete={deleteProgram}
           onRemoveExercise={removeExercise}
+          onMoveExercise={moveExercise}
           onStart={(p) => setWorkout(p)}
         />
       )}
