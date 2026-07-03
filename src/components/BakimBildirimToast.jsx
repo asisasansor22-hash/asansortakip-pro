@@ -37,7 +37,7 @@ function ToastItem({ bildirim, onDismiss }) {
     React.createElement('div', { style: { fontSize: 12, color: '#9fb3c8', marginTop: 2 } },
       (bildirim.bakimciAd ? bildirim.bakimciAd : 'Bakımcı') +
       (bildirim.ilce ? ' · ' + bildirim.ilce : '') +
-      (tutar > 0 ? ' · ' + tutar.toLocaleString('tr-TR') + ' ₺' : '')
+      (tutar > 0 ? ' · ' + tutar.toLocaleString('tr-TR') + ' ₺' : ' · ödeme alınmadı')
     )
   )
 }

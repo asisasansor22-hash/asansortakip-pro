@@ -538,6 +538,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                             var snap=odemeSnapshot(o.elev,0);
                             // Bakım yapıldı, ödeme yok: Eski Devir değişmez. Aylık ücret ay kapanışında eklenecek.
                             setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
+                            bildirBakim(o.elev,0);
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
