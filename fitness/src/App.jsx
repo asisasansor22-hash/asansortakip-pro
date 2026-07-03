@@ -61,6 +61,22 @@ async function hardReload() {
   window.location.reload();
 }
 
+// Programlar + plan cihazda da yedeklenir: bulut okunamazsa boş ekran yerine
+// son bilinen hal gösterilir (kaydetme yine kilitli kalır — üzerine yazma yok).
+function lsGetPack() {
+  try { const d = localStorage.getItem("fitbe_programs"); return d ? JSON.parse(d) : null; } catch (e) { return null; }
+}
+function lsSetPack(p) {
+  try { localStorage.setItem("fitbe_programs", JSON.stringify(p)); } catch (e) {}
+}
+// Firebase boş dizileri sakladığı için exercises alanını normalize et
+function normalizeList(list) {
+  return (list || []).filter(Boolean).map((p) => ({
+    ...p,
+    exercises: Array.isArray(p.exercises) ? p.exercises : (p.exercises ? Object.values(p.exercises) : []),
+  }));
+}
+
 function lsGetAvatar() {
   try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
 }
@@ -88,6 +104,7 @@ export default function App() {
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [loadFailed, setLoadFailed] = useState(false); // programlar buluttan okunamadı — kaydetme kilitli
+  const [retrying, setRetrying] = useState(false);
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
   const scheduleWrite = useRef(Promise.resolve());
 
@@ -117,6 +134,13 @@ export default function App() {
       // Cihazdaki profili anında uygula (Firebase beklemeden)
       const localProf = lsGetProfile();
       if (localProf && !cancelled) setProfile(localProf);
+      // Cihazdaki program yedeğini hemen göster (bulut gelince üzerine yazılır)
+      const pack = lsGetPack();
+      if (pack && Array.isArray(pack.list) && !cancelled) {
+        setPrograms(normalizeList(pack.list));
+        setActiveId(pack.activeId || null);
+        if (pack.schedule) setSchedule(normalizeSchedule(pack.schedule));
+      }
 
       // Programlar KRİTİK: okuma başarısız olursa (ağ/token sorunu) kaydetme
       // kilitlenir; yoksa boş liste buluttaki dolu listenin üzerine yazılıp
@@ -140,14 +164,12 @@ export default function App() {
         });
       }
       const data = rData.data;
-      if (data && Array.isArray(data.list)) {
-        // Firebase boş dizileri saklamaz: exercises eksik gelebilir → normalize et
-        const list = data.list.filter(Boolean).map((p) => ({
-          ...p,
-          exercises: Array.isArray(p.exercises) ? p.exercises : (p.exercises ? Object.values(p.exercises) : []),
-        }));
+      if (rData.ok && data && Array.isArray(data.list)) {
+        const list = normalizeList(data.list);
         setPrograms(list);
         setActiveId(data.activeId || (list[0] && list[0].id) || null);
+      } else if (rData.ok && !data) {
+        // Bulutta gerçekten veri yok (boş düğüm) — cihaz yedeği varsa koru
       }
       if (prof && prof.gender) { setProfile(prof); lsSetProfile(prof); }
       else if (localProf) { dbSet("profile", localProf); } // buluta da yedekle
@@ -246,11 +268,48 @@ export default function App() {
     return null;
   }
 
+  // Bulut okuması başarısızsa sayfayı yenilemeden tekrar dene (yumuşak retry)
+  async function retryLoad() {
+    if (retrying) return;
+    setRetrying(true);
+    const r = await dbGetR("programs", 2);
+    const sched = await dbGet("schedule");
+    setRetrying(false);
+    if (!r.ok) return;
+    const data = r.data;
+    if (data && Array.isArray(data.list)) {
+      const list = normalizeList(data.list);
+      setPrograms(list);
+      setActiveId(data.activeId || (list[0] && list[0].id) || null);
+    }
+    if (sched && typeof sched === "object") setSchedule(normalizeSchedule(sched));
+    loaded.current = true;
+    setLoadFailed(false);
+    flash("Bağlantı kuruldu, verilerin yüklendi ✓");
+  }
+
+  // Yükleme başarısızken: 7 sn'de bir ve uygulama öne gelince otomatik dene
+  useEffect(() => {
+    if (!loadFailed) return;
+    const iv = setInterval(retryLoad, 7000);
+    const onVis = () => { if (document.visibilityState === "visible") retryLoad(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadFailed]);
+
   // --- Değişiklikte Firebase'e kaydet ---
   useEffect(() => {
     if (!user || !loaded.current) return;
     dbSet("programs", { list: programs, activeId });
   }, [programs, activeId, user]);
+
+  // Buluta yazılan hali cihazda da yedekle (açılışta anında göstermek +
+  // bulut okunamadığında boş ekran yerine son bilinen hali sunmak için)
+  useEffect(() => {
+    if (!user || !loaded.current) return;
+    lsSetPack({ list: programs, activeId, schedule });
+  }, [programs, activeId, schedule, user]);
 
   // --- Otomatik güncelleme: yeni sürüm yayınlandıysa algıla, bildir, yenile ---
   useEffect(() => {
@@ -458,11 +517,17 @@ export default function App() {
 
       {loadFailed && (
         <div className="card" style={{ borderColor: "var(--danger)", marginBottom: 12, padding: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Verilerin buluttan yüklenemedi</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Bulut bağlantısı kurulamadı</div>
           <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 8px" }}>
-            Programların kaybolmasın diye kaydetme geçici olarak kapatıldı. Bağlantını kontrol edip yenile.
+            Son kayıtlı programların gösteriliyor; kaybolmasınlar diye kaydetme geçici kapalı.
+            Bağlantı gelince otomatik düzelir.
           </p>
-          <button className="btn-primary" style={{ padding: 10 }} onClick={hardReload}>🔄 Yeniden Dene</button>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn-primary" style={{ padding: 10, flex: 1 }} disabled={retrying} onClick={retryLoad}>
+              {retrying ? "Deneniyor…" : "🔄 Şimdi Dene"}
+            </button>
+            <button className="btn-ghost" style={{ padding: 10 }} onClick={hardReload}>Tam Yenile</button>
+          </div>
         </div>
       )}
 
