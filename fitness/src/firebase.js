@@ -345,18 +345,32 @@ async function userPath(key) {
 }
 
 export async function dbGet(key) {
-  try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + (await userPath(key));
-    if (token) url += "?auth=" + token;
-    var controller = new AbortController();
-    var timer = setTimeout(function () { controller.abort(); }, 8000);
-    var res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    var data = await res.json();
-    return (data !== null && data !== undefined) ? data : null;
-  } catch (e) { return null; }
+  var r = await dbGetR(key, 1);
+  return r.data;
+}
+
+// Sonuç durumlu GET: {ok, data}. ok=false = ağ/izin hatası — "veri yok" ile
+// KARIŞTIRILMAMALI (boş düğüm ok:true + data:null döner). Kritik veriler
+// (programlar) ok=false iken asla üzerine yazılmamalı, yoksa veri kaybolur.
+export async function dbGetR(key, tries) {
+  var n = tries || 3;
+  for (var a = 0; a < n; a++) {
+    try {
+      var token = await getToken();
+      var url = FIREBASE_DB_URL + (await userPath(key));
+      if (token) url += "?auth=" + token;
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, 10000);
+      var res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        var data = await res.json();
+        return { ok: true, data: (data === undefined ? null : data) };
+      }
+    } catch (e) {}
+    if (a < n - 1) await new Promise(function (r) { setTimeout(r, 700 * (a + 1)); });
+  }
+  return { ok: false, data: null };
 }
 
 export async function dbSet(key, value) {
@@ -364,10 +378,11 @@ export async function dbSet(key, value) {
     var token = await getToken();
     var url = FIREBASE_DB_URL + (await userPath(key));
     if (token) url += "?auth=" + token;
-    await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
+    var body = JSON.stringify(value);
+    var opts = { method: "PUT", headers: { "Content-Type": "application/json" }, body: body };
+    // keepalive: uygulama kapanırken bekleyen kayıt isteği iptal olmasın
+    // (tarayıcı sınırı ~64KB; büyük gövdelerde kullanma yoksa istek reddedilir)
+    if (body.length < 60000) opts.keepalive = true;
+    await fetch(url, opts);
   } catch (e) {}
 }

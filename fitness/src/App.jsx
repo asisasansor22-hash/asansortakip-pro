@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -87,6 +87,7 @@ export default function App() {
   const [mentionCount, setMentionCount] = useState(0);
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
+  const [loadFailed, setLoadFailed] = useState(false); // programlar buluttan okunamadı — kaydetme kilitli
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
   const scheduleWrite = useRef(Promise.resolve());
 
@@ -117,7 +118,10 @@ export default function App() {
       const localProf = lsGetProfile();
       if (localProf && !cancelled) setProfile(localProf);
 
-      const data = await dbGet("programs");
+      // Programlar KRİTİK: okuma başarısız olursa (ağ/token sorunu) kaydetme
+      // kilitlenir; yoksa boş liste buluttaki dolu listenin üzerine yazılıp
+      // "programlarım silindi"ye yol açar.
+      const rData = await dbGetR("programs");
       const prof = await dbGet("profile");
       const hist = await dbGet("workouts");
       const prog = await dbGet("progress");
@@ -135,15 +139,27 @@ export default function App() {
           goalKg: (typeof prog.goalKg === "number" && prog.goalKg > 0) ? prog.goalKg : null,
         });
       }
+      const data = rData.data;
       if (data && Array.isArray(data.list)) {
-        setPrograms(data.list);
-        setActiveId(data.activeId || (data.list[0] && data.list[0].id) || null);
+        // Firebase boş dizileri saklamaz: exercises eksik gelebilir → normalize et
+        const list = data.list.filter(Boolean).map((p) => ({
+          ...p,
+          exercises: Array.isArray(p.exercises) ? p.exercises : (p.exercises ? Object.values(p.exercises) : []),
+        }));
+        setPrograms(list);
+        setActiveId(data.activeId || (list[0] && list[0].id) || null);
       }
       if (prof && prof.gender) { setProfile(prof); lsSetProfile(prof); }
       else if (localProf) { dbSet("profile", localProf); } // buluta da yedekle
       if (Array.isArray(hist)) setHistory(hist);
       setProfileLoaded(true);
-      loaded.current = true;
+      if (rData.ok) {
+        loaded.current = true;
+        setLoadFailed(false);
+      } else {
+        // Kaydetme kilitli kalır (loaded=false) — kullanıcıya banner göster
+        setLoadFailed(true);
+      }
       // Kullanıcı kimliğini (e-posta) kaydet — admin paneli için. Şifre ASLA saklanmaz.
       dbSet("info", { email: user.email || "", lastSeen: Date.now() });
     })();
@@ -439,6 +455,16 @@ export default function App() {
             : "👤"}
         </button>
       </div>
+
+      {loadFailed && (
+        <div className="card" style={{ borderColor: "var(--danger)", marginBottom: 12, padding: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Verilerin buluttan yüklenemedi</div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 8px" }}>
+            Programların kaybolmasın diye kaydetme geçici olarak kapatıldı. Bağlantını kontrol edip yenile.
+          </p>
+          <button className="btn-primary" style={{ padding: 10 }} onClick={hardReload}>🔄 Yeniden Dene</button>
+        </div>
+      )}
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} favorites={favorites} onToggleFavorite={toggleFavorite} />}
       {tab === "ready" && <ReadyPrograms onCopy={copyReady} onCopyDay={copyReadyDay} profile={profile} />}
