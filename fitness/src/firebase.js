@@ -384,12 +384,16 @@ export async function dbSetR(key, value) {
     var token = await getToken();
     var url = FIREBASE_DB_URL + (await userPath(key));
     if (token) url += "?auth=" + token;
-    var body = JSON.stringify(value);
-    var opts = { method: "PUT", headers: { "Content-Type": "application/json" }, body: body };
-    // keepalive: uygulama kapanırken bekleyen kayıt isteği iptal olmasın
-    // (tarayıcı sınırı ~64KB; büyük gövdelerde kullanma yoksa istek reddedilir)
-    if (body.length < 60000) opts.keepalive = true;
-    var res = await fetch(url, opts);
+    // NOT: keepalive KULLANMA — PUT + JSON, CORS ön-kontrolü (preflight)
+    // gerektirir ve tarayıcılar keepalive'lı preflight isteklerini reddeder;
+    // internet varken bile tüm yazmalar başarısız görünür. Çıkışta yarım
+    // kalan yazma riskini yerel-öncelikli sistem (dirty + sonraki açılışta
+    // eşitleme) zaten karşılıyor.
+    var res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value)
+    });
     return !!res.ok;
   } catch (e) { return false; }
 }
