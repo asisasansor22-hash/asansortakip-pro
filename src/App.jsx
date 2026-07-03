@@ -275,6 +275,27 @@ function buildGoogleMapsChunks(elevs,origin){
   }
   return chunks;
 }
+/* Yandex Maps rota linki: rtext=nokta~nokta~nokta & rtt=auto (araç).
+   Telefonda Yandex Maps/Navigasyon uygulamasını açar, yoksa web'de gösterir. */
+function buildYandexMapsUrl(targets,origin){
+  if(!targets||targets.length===0) return "";
+  var pts=[];
+  if(origin) pts.push(origin);
+  pts=pts.concat(targets);
+  return "https://yandex.com.tr/harita/?mode=routes&rtt=auto&rtext="+pts.map(function(a){return encodeURIComponent(a);}).join("~");
+}
+function buildYandexMapsChunks(elevs,origin){
+  if(!elevs||elevs.length===0) return [];
+  var chunks=[]; var startIndex=0; var currentOrigin=origin||"";
+  while(startIndex<elevs.length){
+    var chunkElevs=elevs.slice(startIndex,startIndex+GOOGLE_MAPS_MAX_STOPS_PER_LINK);
+    var targets=chunkElevs.map(function(e){return routeMapTarget(e);});
+    chunks.push({url:buildYandexMapsUrl(targets,currentOrigin),start:startIndex+1,end:startIndex+chunkElevs.length});
+    currentOrigin=targets[targets.length-1];
+    startIndex+=chunkElevs.length;
+  }
+  return chunks;
+}
 function deg2rad(v){ return v*(Math.PI/180); }
 function haversineKm(a,b){
   if(!a||!b) return Infinity;
@@ -1917,6 +1938,8 @@ function App(){
   // Google Maps Directions API formatı: origin + waypoints + destination
   const mapsUrls=buildGoogleMapsChunks(rotaElevs,rotaStartStr);
   const mapsUrl=mapsUrls[0]?mapsUrls[0].url:"";
+  const yandexUrls=buildYandexMapsChunks(rotaElevs,rotaStartStr);
+  const yandexUrl=yandexUrls[0]?yandexUrls[0].url:"";
   // Bakımcı için: atanmış ama henüz tamamlanmamış asansörler
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){
     if(!m.planlanmis||m.yapildi) return false;
@@ -2906,10 +2929,30 @@ function App(){
             })
           ),
 
+          /* Yandex Maps / Navigasyon — 2. seçenek */
+          !rotaHesaplaniyor&&React.createElement('a',{href:yandexUrl,target:"_blank",rel:"noreferrer",
+              style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px 0",
+                background:"linear-gradient(135deg,#FFCC00,#f5b700)",borderRadius:12,color:"#1a1a1a",
+                textDecoration:"none",fontWeight:800,fontSize:14,letterSpacing:"0.3px",boxShadow:"0 4px 14px #FFCC0033"}
+            }, yandexUrls.length>1?"🧭 1. Parçayı Yandex'te Başlat":"🧭 Yandex'te Rotayı Başlat"),
+
+          !rotaHesaplaniyor&&yandexUrls.length>1&&React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}},
+            yandexUrls.slice(1).map(function(m,idx){
+              return React.createElement('a',{key:idx,href:m.url,target:"_blank",rel:"noreferrer",
+                style:{display:"flex",alignItems:"center",justifyContent:"center",padding:"10px 8px",borderRadius:9,background:"#3a3010",border:"1px solid #FFCC0055",color:"#fde68a",textDecoration:"none",fontWeight:800,fontSize:12}
+              },(idx+2)+". Parça ("+m.start+"-"+m.end+")");
+            })
+          ),
+
           React.createElement('button',{
-            onClick:function(){var text=mapsUrls.length>1?mapsUrls.map(function(m,i){return (i+1)+". Parça ("+m.start+"-"+m.end+"): "+m.url;}).join("\n"):mapsUrl;_optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(text),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]);},
+            onClick:function(){
+              var gLines=mapsUrls.length>1?mapsUrls.map(function(m,i){return (i+1)+". Parça ("+m.start+"-"+m.end+"): "+m.url;}).join("\n"):mapsUrl;
+              var yLines=yandexUrls.length>1?yandexUrls.map(function(m,i){return (i+1)+". Parça ("+m.start+"-"+m.end+"): "+m.url;}).join("\n"):yandexUrl;
+              var text="Google Maps:\n"+gLines+"\n\nYandex:\n"+yLines;
+              _optionalChain([navigator,'access',_12=>_12.clipboard,'optionalAccess',_13=>_13.writeText,'call',_14=>_14(text),'access',_15=>_15.then,'call',_16=>_16(()=>alert("Kopyalandı!")),'access',_17=>_17.catch,'call',_18=>_18(()=>{})]);
+            },
             style:{padding:"10px 0",background:"#1a1f2e",border:"1px solid #2a3050",borderRadius:10,color:"#94a3b8",fontWeight:600,fontSize:12,cursor:"pointer"}
-          },"📋 Rota Linkini Kopyala")
+          },"📋 Rota Linklerini Kopyala (Google + Yandex)")
         )
       : React.createElement('div',{style:{textAlign:"center",padding:"30px 20px",background:"#161b2e",borderRadius:12,border:"1px solid #2a3050"}},
           React.createElement('div',{style:{fontSize:36,marginBottom:8}},"🗺️"),
