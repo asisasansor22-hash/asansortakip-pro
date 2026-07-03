@@ -2719,7 +2719,7 @@ function App(){
       React.createElement('div',{style:{fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:6}},"⚡ Hızlı Bölge Seçimi"),
       React.createElement('div',{style:{display:"flex",flexWrap:"wrap",gap:5}},
         React.createElement('button',{
-          onClick:()=>{setRotaIlce("Tümü");setRotaSec([]);},
+          onClick:()=>{setRotaIlce("Tümü");},
           style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:rotaIlce==="Tümü"?"#1e3a5f":"#1a1f2e",color:rotaIlce==="Tümü"?"#3b82f6":"#64748b",border:"1px solid "+(rotaIlce==="Tümü"?"#3b82f6":"#2a3050"),cursor:"pointer",fontWeight:700}
         },"Tüm İlçeler"),
         Object.entries(elevByIlce).map(function([ilce,es]){
@@ -2727,11 +2727,14 @@ function App(){
           var secili=rotaIlce===ilce;
           // Bakımcı modunda ilçedeki bekleyen sayısını göster
           var bekleyen=bekleyenRotaIds.filter(function(id){return es.some(function(e){return e.id===id;});}).length;
+          // İlçeler arası seçim korunur — bu ilçeden seçili sayısı
+          var secIlcede=rotaSec.filter(function(id){return es.some(function(e){return e.id===id;});}).length;
           return React.createElement('button',{key:ilce,
-            onClick:()=>{setRotaIlce(ilce);setRotaSec([]);},
+            onClick:()=>{setRotaIlce(ilce);},
             style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:secili?c+"33":"#1a1f2e",color:secili?c:"#94a3b8",border:"1px solid "+(secili?c+"66":"#2a3050"),cursor:"pointer",fontWeight:700,display:"flex",alignItems:"center",gap:4}
           },
             ilce+" ("+es.length+")",
+            secIlcede>0&&React.createElement('span',{style:{background:"#10b981",color:"#000",borderRadius:10,padding:"0px 5px",fontSize:9,fontWeight:800}},"✓"+secIlcede),
             bekleyen>0&&React.createElement('span',{style:{background:"#10b98133",color:"#10b981",borderRadius:10,padding:"0px 5px",fontSize:9,fontWeight:800}},bekleyen+" ⏳")
           );
         })
@@ -2746,7 +2749,7 @@ function App(){
           React.createElement('span',{style:{color:"#3b82f6"}},rotaSec.length," seçili")
         ),
         React.createElement('div',{style:{display:"flex",gap:6}},
-          React.createElement('button',{onClick:()=>setRotaSec(rotaPool.map(e=>e.id)),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"#1e3a5f",color:"#3b82f6",border:"none",cursor:"pointer",fontWeight:700}},"Tümünü Seç"),
+          React.createElement('button',{onClick:()=>setRotaSec(function(prev){var yeni=prev.slice();rotaPool.forEach(function(e){if(yeni.indexOf(e.id)<0)yeni.push(e.id);});return yeni;}),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"#1e3a5f",color:"#3b82f6",border:"none",cursor:"pointer",fontWeight:700}},"Tümünü Seç"),
           React.createElement('button',{onClick:()=>setRotaSec([]),style:{fontSize:10,padding:"4px 10px",borderRadius:6,background:"#2a3050",color:"#64748b",border:"none",cursor:"pointer",fontWeight:700}},"Temizle")
         )
       ),
