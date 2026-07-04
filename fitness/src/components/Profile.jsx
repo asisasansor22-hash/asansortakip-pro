@@ -169,6 +169,10 @@ export default function Profile({ profile, email, onSave, history = [], avatar, 
       <button className="btn-ghost" style={{ width: "100%", marginTop: 10, padding: 14 }} onClick={firebaseLogout}>
         Çıkış Yap
       </button>
+
+      <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 11, marginTop: 14, opacity: 0.7 }}>
+        Sürüm {(typeof __BUILD_ID__ !== "undefined") ? String(__BUILD_ID__).slice(-6) : "?"}
+      </div>
     </div>
   );
 }

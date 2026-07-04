@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, dbSetR, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, dbSetR, feedList, feedCommentsGet, setPublicAvatar, getLastNetError } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -587,6 +587,15 @@ export default function App() {
             </button>
             <button className="btn-ghost" style={{ padding: 10 }} onClick={hardReload}>Tam Yenile</button>
           </div>
+          {(() => {
+            const e = getLastNetError();
+            const bid = (typeof __BUILD_ID__ !== "undefined") ? String(__BUILD_ID__).slice(-6) : "?";
+            return (
+              <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 8, opacity: 0.7, wordBreak: "break-all" }}>
+                Teşhis · sürüm {bid}{e ? " · " + e.op + " " + e.key + " → " + e.code : " · hata kaydı yok"}
+              </div>
+            );
+          })()}
         </div>
       )}
 

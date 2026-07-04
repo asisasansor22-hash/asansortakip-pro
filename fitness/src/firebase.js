@@ -349,6 +349,11 @@ export async function dbGet(key) {
   return r.data;
 }
 
+// Son ağ hatası (teşhis için: çevrimdışı bandında gösterilir)
+var lastNetError = null;
+export function getLastNetError() { return lastNetError; }
+function noteNetError(op, key, code) { lastNetError = { op: op, key: key, code: String(code || "ağ/istisna"), t: Date.now() }; }
+
 // Sonuç durumlu GET: {ok, data}. ok=false = ağ/izin hatası — "veri yok" ile
 // KARIŞTIRILMAMALI (boş düğüm ok:true + data:null döner). Kritik veriler
 // (programlar) ok=false iken asla üzerine yazılmamalı, yoksa veri kaybolur.
@@ -367,7 +372,8 @@ export async function dbGetR(key, tries) {
         var data = await res.json();
         return { ok: true, data: (data === undefined ? null : data) };
       }
-    } catch (e) {}
+      noteNetError("oku", key, "HTTP " + res.status);
+    } catch (e) { noteNetError("oku", key, (e && e.name === "AbortError") ? "zaman aşımı" : (e && e.message) || "istisna"); }
     if (a < n - 1) await new Promise(function (r) { setTimeout(r, 700 * (a + 1)); });
   }
   return { ok: false, data: null };
@@ -394,6 +400,7 @@ export async function dbSetR(key, value) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value)
     });
+    if (!res.ok) noteNetError("yaz", key, "HTTP " + res.status);
     return !!res.ok;
-  } catch (e) { return false; }
+  } catch (e) { noteNetError("yaz", key, (e && e.message) || "istisna"); return false; }
 }
