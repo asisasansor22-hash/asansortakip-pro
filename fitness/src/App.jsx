@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, dbSetR, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbSet, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -103,12 +103,6 @@ export default function App() {
   const [mentionCount, setMentionCount] = useState(0);
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
-  // Yerel-öncelikli eşitleme: her değişiklik ÖNCE cihaza yazılır (dirty),
-  // sonra buluta yüklenir; başarısızsa "offline" moduna geçilir ve bağlantı
-  // gelince bekleyenler otomatik yüklenir. Düzenleme hiçbir zaman kilitlenmez.
-  const [sync, setSync] = useState("ok"); // "ok" | "offline"
-  const [reconnecting, setReconnecting] = useState(false);
-  const cloudKnown = useRef(false); // bu oturumda bulut en az bir kez okundu mu / cihaz yedeği var mıydı
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
 
   // --- Açılış (splash) ekranı ---
@@ -125,7 +119,7 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; cloudKnown.current = false; setSync("ok"); setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]); }
+      if (!u) { loaded.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]); }
     });
   }, []);
 
@@ -137,16 +131,15 @@ export default function App() {
       // Cihazdaki profili anında uygula (Firebase beklemeden)
       const localProf = lsGetProfile();
       if (localProf && !cancelled) setProfile(localProf);
-      // Cihazdaki program yedeğini hemen göster (bulut gelince karşılaştırılır)
+      // Cihazdaki program yedeğini hemen göster (bulut gelince güncellenir)
       const pack = lsGetPack();
       if (pack && Array.isArray(pack.list) && !cancelled) {
         setPrograms(normalizeList(pack.list));
         setActiveId(pack.activeId || null);
         if (pack.schedule) setSchedule(normalizeSchedule(pack.schedule));
-        cloudKnown.current = true; // cihaz son bilinen durumu taşıyor
       }
 
-      const rData = await dbGetR("programs");
+      const data = await dbGet("programs");
       const prof = await dbGet("profile");
       const hist = await dbGet("workouts");
       const prog = await dbGet("progress");
@@ -164,28 +157,13 @@ export default function App() {
           goalKg: (typeof prog.goalKg === "number" && prog.goalKg > 0) ? prog.goalKg : null,
         });
       }
-      const data = rData.data;
-      if (rData.ok) {
-        cloudKnown.current = true;
-        const cloudAt = (data && data.updatedAt) || 0;
-        if (pack && pack.dirty && (pack.updatedAt || 0) > cloudAt) {
-          // Cihazda buluta yüklenememiş daha yeni değişiklik var → buluta gönder
-          dbSetR("programs", { list: pack.list || [], activeId: pack.activeId || null, updatedAt: pack.updatedAt })
-            .then((ok) => { if (ok) lsSetPack({ ...pack, dirty: false }); });
-          if (pack.schedule) dbSet("schedule", pack.schedule);
-        } else if (data && Array.isArray(data.list)) {
-          const list = normalizeList(data.list);
-          setPrograms(list);
-          setActiveId(data.activeId || (list[0] && list[0].id) || null);
-          lsSetPack({ list, activeId: data.activeId || null, schedule: sched || (pack && pack.schedule) || {}, updatedAt: cloudAt || Date.now(), dirty: false });
-        } else if (!data && pack && (pack.list || []).length) {
-          // Bulut boş ama cihazda yedek var → yedekten kurtar
-          dbSetR("programs", { list: pack.list, activeId: pack.activeId || null, updatedAt: Date.now() });
-          if (pack.schedule) dbSet("schedule", pack.schedule);
-        }
-        setSync("ok");
-      } else {
-        setSync("offline"); // düzenleme serbest; bekleyenler bağlanınca yüklenir
+      // Bulutta programlar varsa uygula ve cihaza yedekle. Yoksa cihaz yedeği
+      // (varsa) ekranda kalır — sessiz, kilit yok.
+      if (data && Array.isArray(data.list)) {
+        const list = normalizeList(data.list);
+        setPrograms(list);
+        setActiveId(data.activeId || (list[0] && list[0].id) || null);
+        lsSetPack({ list, activeId: data.activeId || null, schedule: sched || (pack && pack.schedule) || {} });
       }
       if (prof && prof.gender) { setProfile(prof); lsSetProfile(prof); }
       else if (localProf) { dbSet("profile", localProf); } // buluta da yedekle
@@ -275,96 +253,14 @@ export default function App() {
     return null;
   }
 
-  // --- Kaydetme: ÖNCE cihaza (dirty), sonra buluta. Bulut başarısızsa
-  // offline moduna geçilir; bekleyen değişiklik bağlanınca yüklenir. ---
+  // --- Değişiklikte kaydet: hem cihaza (localStorage) hem buluta (sessiz,
+  // kilit/banner yok — eskiden çalışan basit davranış). ---
   useEffect(() => {
     if (!user || !loaded.current) return;
-    const at = Date.now();
-    lsSetPack({ list: programs, activeId, schedule, updatedAt: at, dirty: true });
-    let alive = true;
-    (async () => {
-      if (!cloudKnown.current) {
-        // Bulut bu oturumda hiç görülmedi ve cihazda yedek yoktu: körlemesine
-        // ezmemek için önce oku; buluttaki farklı programları BİRLEŞTİR.
-        const r = await dbGetR("programs", 1);
-        if (!alive) return;
-        if (!r.ok) { setSync("offline"); return; } // dirty kaldı — sonra eşitlenir
-        cloudKnown.current = true;
-        const cloud = r.data;
-        if (cloud && Array.isArray(cloud.list)) {
-          const ids = new Set(programs.map((p) => p.id));
-          const extra = normalizeList(cloud.list).filter((p) => !ids.has(p.id));
-          if (extra.length) { setPrograms((prev) => [...prev, ...extra]); return; } // effect yeniden çalışır ve yükler
-        }
-      }
-      const ok1 = await dbSetR("programs", { list: programs, activeId, updatedAt: at });
-      const ok2 = await dbSetR("schedule", schedule);
-      if (!alive) return;
-      if (ok1 && ok2) {
-        lsSetPack({ list: programs, activeId, schedule, updatedAt: at, dirty: false });
-        setSync("ok");
-      } else {
-        setSync("offline");
-      }
-    })();
-    return () => { alive = false; };
+    lsSetPack({ list: programs, activeId, schedule });
+    dbSet("programs", { list: programs, activeId });
+    dbSet("schedule", schedule);
   }, [programs, activeId, schedule, user]);
-
-  // Offline'dayken: 8 sn'de bir ve uygulama öne gelince yeniden bağlanmayı dene
-  async function tryReconnect() {
-    if (reconnecting) return;
-    setReconnecting(true);
-    try {
-      const pk = lsGetPack();
-      if (pk && pk.dirty) {
-        // Bekleyen değişiklik var → buluta yükle (gerekirse önce birleştir)
-        if (!cloudKnown.current) {
-          const r = await dbGetR("programs", 1);
-          if (!r.ok) return;
-          cloudKnown.current = true;
-          const cloud = r.data;
-          if (cloud && Array.isArray(cloud.list)) {
-            const ids = new Set((pk.list || []).map((p) => p.id));
-            const extra = normalizeList(cloud.list).filter((p) => !ids.has(p.id));
-            if (extra.length) { setPrograms((prev) => [...prev, ...extra]); return; }
-          }
-        }
-        const ok1 = await dbSetR("programs", { list: pk.list || [], activeId: pk.activeId || null, updatedAt: pk.updatedAt || Date.now() });
-        const ok2 = await dbSetR("schedule", pk.schedule || {});
-        if (ok1 && ok2) {
-          lsSetPack({ ...pk, dirty: false });
-          setSync("ok");
-          flash("Bağlantı kuruldu — değişikliklerin buluta yüklendi ✓");
-        }
-      } else {
-        // Bekleyen yok → buluttan oku
-        const r = await dbGetR("programs", 1);
-        if (!r.ok) return;
-        cloudKnown.current = true;
-        const data = r.data;
-        if (data && Array.isArray(data.list)) {
-          const list = normalizeList(data.list);
-          setPrograms(list);
-          setActiveId(data.activeId || (list[0] && list[0].id) || null);
-        }
-        const sc = await dbGet("schedule");
-        if (sc && typeof sc === "object") setSchedule(normalizeSchedule(sc));
-        setSync("ok");
-        flash("Bağlantı kuruldu, verilerin yüklendi ✓");
-      }
-    } finally {
-      setReconnecting(false);
-    }
-  }
-
-  useEffect(() => {
-    if (sync !== "offline") return;
-    const iv = setInterval(tryReconnect, 8000);
-    const onVis = () => { if (document.visibilityState === "visible") tryReconnect(); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sync]);
 
   // --- Otomatik güncelleme: yeni sürüm yayınlandıysa algıla, bildir, yenile ---
   useEffect(() => {
@@ -567,28 +463,6 @@ export default function App() {
             : "👤"}
         </button>
       </div>
-
-      {sync === "offline" && (
-        <div className="card" style={{ borderColor: "#f59e0b", marginBottom: 12, padding: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>📴 Çevrimdışı mod</div>
-          <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 4px" }}>
-            Buluta şu an ulaşılamıyor ama her şeyi kullanmaya devam edebilirsin — değişikliklerin
-            cihazına kaydediliyor ve bağlantı gelince otomatik buluta yüklenecek.
-          </p>
-          {(() => { const pk = lsGetPack(); return (!pk || !(pk.list || []).length) ? (
-            <p style={{ color: "#fbbf24", fontSize: 12, margin: "0 0 8px" }}>
-              ⚠️ Cihazda program yedeği yok — buluttaki programların bağlantı gelince görünecek;
-              şimdi eklediklerin onlarla birleştirilecek (üzerine yazılmaz).
-            </p>
-          ) : null; })()}
-          <div className="row" style={{ gap: 8, marginTop: 6 }}>
-            <button className="btn-primary" style={{ padding: 10, flex: 1 }} disabled={reconnecting} onClick={tryReconnect}>
-              {reconnecting ? "Deneniyor…" : "🔄 Şimdi Dene"}
-            </button>
-            <button className="btn-ghost" style={{ padding: 10 }} onClick={hardReload}>Tam Yenile</button>
-          </div>
-        </div>
-      )}
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} favorites={favorites} onToggleFavorite={toggleFavorite} />}
       {tab === "ready" && <ReadyPrograms onCopy={copyReady} onCopyDay={copyReadyDay} profile={profile} />}
