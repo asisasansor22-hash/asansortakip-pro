@@ -404,3 +404,96 @@ export function getAlternatives(id) {
   const ids = ALTERNATIVES[id] || [];
   return ids.map(getExercise).filter(Boolean);
 }
+
+// ---- Bölge içi kas alt-grupları (anatomik hedefe göre) ----
+// Her bölgenin alt-grup gösterim sırası. Kardiyo gruplanmaz (düz liste).
+export const SUBGROUPS = {
+  gogus: ["Üst göğüs", "Orta göğüs", "Alt göğüs", "İç / İzolasyon"],
+  sirt: ["Genişlik (Lat)", "Kalınlık (Orta sırt)", "Bel (Alt sırt)"],
+  omuz: ["Ön omuz", "Yan omuz", "Arka omuz", "Trapez"],
+  kol: ["Biceps", "Triceps", "Ön kol"],
+  bacak: ["Ön bacak (Quadriceps)", "Arka bacak (Hamstring)", "Kalça (Glute)", "Baldır", "İç bacak"],
+  karin: ["Üst karın", "Alt karın", "Yan karın (Oblik)", "Core / İzometrik"],
+  kardiyo: [],
+};
+
+// El ile hazırlanan hareketlerin alt-grup ataması (id → alt-grup).
+const SUB_BY_ID = {
+  // göğüs
+  "bench-press": "Orta göğüs", "incline-press": "Üst göğüs", "decline-press": "Alt göğüs",
+  "dumbbell-press": "Orta göğüs", "dumbbell-fly": "İç / İzolasyon", "sinav": "Orta göğüs",
+  "diamond-pushup": "İç / İzolasyon", "incline-pushup": "Alt göğüs", "cable-crossover": "İç / İzolasyon",
+  "chest-dips": "Alt göğüs", "incline-dumbbell-press": "Üst göğüs", "machine-chest-press": "Orta göğüs",
+  "pec-deck": "İç / İzolasyon", "wide-pushup": "Orta göğüs", "decline-pushup": "Üst göğüs",
+  "archer-pushup": "Orta göğüs", "pseudo-planche-pushup": "Üst göğüs",
+  // sırt
+  "barfiks": "Genişlik (Lat)", "chin-up": "Genişlik (Lat)", "lat-pulldown": "Genişlik (Lat)",
+  "barbell-row": "Kalınlık (Orta sırt)", "dumbbell-row": "Kalınlık (Orta sırt)", "t-bar-row": "Kalınlık (Orta sırt)",
+  "seated-row": "Kalınlık (Orta sırt)", "deadlift": "Bel (Alt sırt)", "romanian-deadlift": "Bel (Alt sırt)",
+  "hyperextension": "Bel (Alt sırt)", "good-morning": "Bel (Alt sırt)", "rack-pull": "Kalınlık (Orta sırt)",
+  "v-bar-pulldown": "Genişlik (Lat)", "inverted-row": "Kalınlık (Orta sırt)", "scapular-pull": "Genişlik (Lat)",
+  "negative-pullup": "Genişlik (Lat)", "muscle-up": "Genişlik (Lat)", "superman": "Bel (Alt sırt)",
+  // omuz
+  "shoulder-press": "Ön omuz", "military-press": "Ön omuz", "arnold-press": "Ön omuz",
+  "lateral-raise": "Yan omuz", "front-raise": "Ön omuz", "rear-delt-fly": "Arka omuz",
+  "upright-row": "Yan omuz", "shrug": "Trapez", "face-pull": "Arka omuz", "cable-lateral": "Yan omuz",
+  "pike-pushup": "Ön omuz", "handstand-pushup": "Ön omuz",
+  // kol
+  "biceps-curl": "Biceps", "barbell-curl": "Biceps", "hammer-curl": "Biceps",
+  "concentration-curl": "Biceps", "preacher-curl": "Biceps", "cable-hammer-curl": "Biceps",
+  "spider-curl": "Biceps", "zottman-curl": "Biceps",
+  "triceps-pushdown": "Triceps", "overhead-extension": "Triceps", "skull-crusher": "Triceps",
+  "triceps-dips": "Triceps", "close-grip-bench": "Triceps", "triceps-kickback": "Triceps",
+  // bacak
+  "squat": "Ön bacak (Quadriceps)", "front-squat": "Ön bacak (Quadriceps)", "goblet-squat": "Ön bacak (Quadriceps)",
+  "leg-press": "Ön bacak (Quadriceps)", "leg-extension": "Ön bacak (Quadriceps)", "lunge": "Ön bacak (Quadriceps)",
+  "bulgarian": "Ön bacak (Quadriceps)", "step-up": "Ön bacak (Quadriceps)", "hack-squat": "Ön bacak (Quadriceps)",
+  "pistol-squat": "Ön bacak (Quadriceps)", "wall-sit": "Ön bacak (Quadriceps)",
+  "leg-curl": "Arka bacak (Hamstring)", "nordic-curl": "Arka bacak (Hamstring)",
+  "hip-thrust": "Kalça (Glute)", "sumo-deadlift": "Kalça (Glute)", "glute-kickback": "Kalça (Glute)",
+  "glute-bridge": "Kalça (Glute)", "single-leg-glute-bridge": "Kalça (Glute)",
+  "calf-raise": "Baldır", "seated-calf-raise": "Baldır",
+  // karın
+  "crunch": "Üst karın", "situp": "Üst karın", "cable-crunch": "Üst karın", "toe-touches": "Üst karın", "v-up": "Üst karın",
+  "leg-raise": "Alt karın", "flutter-kicks": "Alt karın", "hanging-leg-raise": "Alt karın", "reverse-crunch": "Alt karın",
+  "bicycle-crunch": "Yan karın (Oblik)", "russian-twist": "Yan karın (Oblik)", "side-plank": "Yan karın (Oblik)",
+  "plank": "Core / İzometrik", "mountain-climber-ab": "Core / İzometrik", "ab-roller": "Core / İzometrik",
+  "hollow-body-hold": "Core / İzometrik", "l-sit": "Core / İzometrik", "dragon-flag": "Core / İzometrik",
+};
+
+// Otomatik (free-exercise-db) hareketlerin desc'inden alt-grup çıkar. Sıra
+// önemli: özel ifadeler (Üst/Alt Göğüs, Orta Sırt) genel olandan (Göğüs, Sırt)
+// önce eşleşmeli.
+const GEN_SUB = [
+  ["Üst Göğüs", "Üst göğüs"], ["Alt Göğüs", "Alt göğüs"], ["Göğüs", "Orta göğüs"],
+  ["Sırt (Lat)", "Genişlik (Lat)"], ["Orta Sırt", "Kalınlık (Orta sırt)"], ["Bel", "Bel (Alt sırt)"],
+  ["Ön Bacak", "Ön bacak (Quadriceps)"], ["Arka Bacak", "Arka bacak (Hamstring)"],
+  ["Kalça", "Kalça (Glute)"], ["Baldır", "Baldır"], ["İç Bacak", "İç bacak"],
+  ["Biceps", "Biceps"], ["Triceps", "Triceps"], ["Ön Kol", "Ön kol"],
+];
+
+// Bir hareketin bölge-içi alt-grubu. Önce el ile atama, sonra desc'ten türetme,
+// yoksa "Genel" (bölge sonunda gösterilir).
+export function subOf(ex) {
+  if (!ex) return "Diğer";
+  if (SUB_BY_ID[ex.id]) return SUB_BY_ID[ex.id];
+  const d = ex.desc || "";
+  for (let i = 0; i < GEN_SUB.length; i++) {
+    if (d.indexOf(GEN_SUB[i][0]) !== -1) return GEN_SUB[i][1];
+  }
+  return "Diğer";
+}
+
+// Bir bölgenin hareketlerini alt-gruplara ayır. Dönüş: [{ name, items }] sıralı.
+export function groupedByRegion(regionId) {
+  const list = exercisesByRegion(regionId);
+  const order = SUBGROUPS[regionId] || [];
+  const map = {};
+  list.forEach((ex) => {
+    const s = subOf(ex);
+    (map[s] = map[s] || []).push(ex);
+  });
+  const names = order.filter((n) => map[n])
+    .concat(Object.keys(map).filter((n) => order.indexOf(n) === -1)); // tanımsızlar + "Genel" sona
+  return names.map((name) => ({ name, items: map[name] }));
+}

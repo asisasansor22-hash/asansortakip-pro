@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { REGIONS, EXERCISES, exercisesByRegion, topNote } from "../data/exercises";
+import { REGIONS, EXERCISES, exercisesByRegion, groupedByRegion, topNote } from "../data/exercises";
 import { regionImage } from "../data/exerciseImages";
 import ExerciseCard from "./ExerciseCard";
 import ExerciseDetail from "./ExerciseDetail";
@@ -42,16 +42,33 @@ export default function BodyRegions({ onAddToProgram, favorites = [], onToggleFa
   }
 
   if (region) {
-    const list = exercisesByRegion(region.id);
+    const groups = groupedByRegion(region.id);
+    // Tek grup varsa (ör. Kardiyo) başlık gösterme — düz liste
+    const flat = groups.length <= 1;
     return (
       <div>
         <button className="btn-back" onClick={() => setRegion(null)}>← Bölgeler</button>
         <h2>{region.emoji} {region.name}</h2>
-        <div className="grid">
-          {list.map((ex) => (
-            <ExerciseCard key={ex.id} ex={ex} onClick={() => setExercise(ex)} />
-          ))}
-        </div>
+        {flat ? (
+          <div className="grid">
+            {(groups[0] ? groups[0].items : []).map((ex) => (
+              <ExerciseCard key={ex.id} ex={ex} onClick={() => setExercise(ex)} />
+            ))}
+          </div>
+        ) : (
+          groups.map((g) => (
+            <div key={g.name} style={{ marginBottom: 6 }}>
+              <div className="section-title" style={{ margin: "12px 4px 6px" }}>
+                {g.name} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12 }}>({g.items.length})</span>
+              </div>
+              <div className="grid">
+                {g.items.map((ex) => (
+                  <ExerciseCard key={ex.id} ex={ex} onClick={() => setExercise(ex)} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     );
   }
