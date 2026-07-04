@@ -147,6 +147,9 @@ export default function Progress({ data, history = [], onSave }) {
   const [mVals, setMVals] = useState({});
   const [mSel, setMSel] = useState("waist");
 
+  // --- Hareket takibi (seçili hareketin kg × tekrar geçmişi) ---
+  const [selEx, setSelEx] = useState(null);
+
   // --- Gelişim fotoğrafları (ayrı saklanır: /fitness/users/{uid}/photos) ---
   const [photos, setPhotos] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -268,6 +271,47 @@ export default function Progress({ data, history = [], onSave }) {
     });
     return Object.values(best).sort((a, b) => b.e1rm - a.e1rm).slice(0, 10);
   }, [history]);
+
+  // --- Hareket bazında geçmiş: exId -> günlere göre setler ---
+  const exHistory = useMemo(() => {
+    const map = {};
+    (history || []).forEach((s) => {
+      (s.sets || []).forEach((st) => {
+        if (!st.exId) return;
+        const w = Number(st.weight) || 0;
+        const r = firstInt(st.reps) || 0;
+        const rec = map[st.exId] || (map[st.exId] = { exId: st.exId, sessions: {}, count: 0, lastDate: 0 });
+        (rec.sessions[s.date] = rec.sessions[s.date] || []).push({ w, r, reps: st.reps, e1rm: (w && r) ? Math.round(w * (1 + r / 30)) : null });
+        rec.count += 1;
+        if (s.date > rec.lastDate) rec.lastDate = s.date;
+      });
+    });
+    return map;
+  }, [history]);
+
+  // Geçmişi olan hareketler (en son çalışılan üstte)
+  const exList = useMemo(() =>
+    Object.values(exHistory)
+      .map((r) => ({ exId: r.exId, name: (getExercise(r.exId) || {}).name || r.exId, count: r.count, lastDate: r.lastDate }))
+      .sort((a, b) => b.lastDate - a.lastDate),
+    [exHistory]);
+
+  const selExId = selEx || (exList[0] && exList[0].exId) || null;
+
+  // Seçili hareketin verisi: günlere göre setler (yeni→eski) + 1RM trendi + en iyi set
+  const selData = useMemo(() => {
+    const rec = exHistory[selExId];
+    if (!rec) return null;
+    const days = Object.keys(rec.sessions).map(Number).sort((a, b) => b - a);
+    const sessions = days.map((d) => ({ date: d, sets: rec.sessions[d] }));
+    const pts = days.slice().sort((a, b) => a - b).map((d) => {
+      const best = Math.max(0, ...rec.sessions[d].map((s) => s.e1rm || 0));
+      return best > 0 ? { t: d, v: best } : null;
+    }).filter(Boolean);
+    let bestSet = null;
+    days.forEach((d) => rec.sessions[d].forEach((s) => { if (s.e1rm && (!bestSet || s.e1rm > bestSet.e1rm)) bestSet = { ...s, date: d }; }));
+    return { sessions, pts, bestSet };
+  }, [exHistory, selExId]);
 
   return (
     <div>
@@ -402,6 +446,53 @@ export default function Progress({ data, history = [], onSave }) {
       <p style={{ color: "var(--muted)", fontSize: 11, margin: "4px 4px 0" }}>
         Hacim = kaldırılan toplam tonaj (kilo × tekrar). Vücut ağırlığı hareketleri tonaja girmez ama set sayısına sayılır.
       </p>
+
+      {/* Hareket takibi — hangi hareket, kaç kg × kaç tekrar */}
+      <div className="section-title">Hareket Takibi</div>
+      {exList.length === 0 ? (
+        <p style={{ color: "var(--muted)", fontSize: 13 }}>
+          Antrenman modunda hareketleri kaydettikçe her hareketin kg × tekrar geçmişi burada birikir.
+        </p>
+      ) : (
+        <>
+          <select className="input" style={{ width: "100%", marginBottom: 10 }}
+            value={selExId || ""} onChange={(e) => setSelEx(e.target.value)}>
+            {exList.map((e) => (
+              <option key={e.exId} value={e.exId}>{e.name} · {e.count} set</option>
+            ))}
+          </select>
+
+          {selData && (
+            <>
+              {selData.bestSet && (
+                <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                  <span className="pill" style={{ fontSize: 13, color: "#fbbf24" }}>
+                    🏆 En iyi: <b>{selData.bestSet.w ? selData.bestSet.w + " kg × " : ""}{selData.bestSet.reps}</b> (~{selData.bestSet.e1rm} kg 1RM)
+                  </span>
+                </div>
+              )}
+              {selData.pts.length > 1 && (
+                <div className="card" style={{ marginBottom: 10 }}>
+                  <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 4 }}>Tahmini 1RM gelişimi</div>
+                  <LineChart data={selData.pts} unit=" kg" />
+                </div>
+              )}
+              {selData.sessions.map((s) => (
+                <div key={s.date} className="card" style={{ marginBottom: 8, padding: 12 }}>
+                  <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 6 }}>{fmtDay(s.date)}</div>
+                  <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {s.sets.map((st, k) => (
+                      <span key={k} className="pill" style={{ fontSize: 13 }}>
+                        {st.w ? st.w + " kg × " : ""}{st.reps}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </>
+      )}
 
       {/* Rekorlar */}
       <div className="section-title">Kişisel Rekorlar</div>
