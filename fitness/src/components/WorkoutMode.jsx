@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { getExercise } from "../data/exercises";
 import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
+import SpotifyBar from "./SpotifyBar";
 
 const REST_SEC = 60;
 
@@ -76,6 +77,15 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1
   const timer = useRef(null);
   const log = useRef([]); // {exId, weight, reps}
   const sessionPRs = useRef({}); // exId -> {name, w, r, e1rm}
+  const stepsRef = useRef(null); // üstteki sıradaki-hareketler şeridi
+
+  // Aktif hareket değişince şeridi ortala (isimler üst üste binmesin, kayar)
+  useEffect(() => {
+    const c = stepsRef.current;
+    if (!c || !c.children[i]) return;
+    const el = c.children[i];
+    c.scrollTo({ left: el.offsetLeft - c.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+  }, [i]);
 
   // Programın çalıştırdığı bölgeler (ısınma/soğuma önerileri için)
   const regions = [...new Set(exIds.map((id) => getExercise(id).region))];
@@ -195,6 +205,7 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1
             {items.map((t, k) => <li key={k}>• {t}</li>)}
           </ul>
         </div>
+        <div style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}><SpotifyBar /></div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420, width: "100%", margin: "0 auto" }}>
           <button className="btn-primary" onClick={() => setWarmup(false)}>✓ Isınma bitti, başla</button>
           <button className="btn-ghost" style={{ padding: 12 }} onClick={() => setWarmup(false)}>Isınmayı atla →</button>
@@ -258,6 +269,29 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1
         <div className="workout-prog"><div className="workout-prog-bar" style={{ width: pct + "%" }} /></div>
         <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 48, textAlign: "right" }}>{i + 1}/{exIds.length}</span>
       </div>
+
+      {/* Sıradaki hareketler — isimleriyle, yatay kayan şerit (üst üste binmez) */}
+      <div ref={stepsRef} style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px 2px", WebkitOverflowScrolling: "touch" }}>
+        {exIds.map((id, k) => {
+          const e = getExercise(id);
+          const state = k < i ? "done" : (k === i ? "cur" : "next");
+          return (
+            <div key={id + "-" + k} onClick={() => { if (k > i) { skipRest(); setI(k); setSetNo(1); } }}
+              style={{
+                flexShrink: 0, maxWidth: 150, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700,
+                background: state === "cur" ? "var(--accent)" : "var(--card2)",
+                color: state === "cur" ? "#04321f" : (state === "done" ? "var(--muted)" : "var(--text)"),
+                opacity: state === "done" ? 0.6 : 1,
+                cursor: k > i ? "pointer" : "default",
+              }}>
+              {state === "done" ? "✓ " : (k + 1) + ". "}{e.name}
+            </div>
+          );
+        })}
+      </div>
+
+      <SpotifyBar />
 
       {program.note && (
         <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", margin: "8px 12px 0" }}>ℹ️ {program.note}</p>

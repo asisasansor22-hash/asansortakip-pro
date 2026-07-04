@@ -13,6 +13,7 @@ import Timeline from "./components/Timeline";
 import PublicPost from "./components/PublicPost";
 import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
+import { spotifyHandleRedirect } from "./spotify";
 
 const TABS = [
   { id: "regions", ic: "🗺️", label: "Bölgeler" },
@@ -117,6 +118,9 @@ export default function App() {
     const t2 = setTimeout(() => setSplash(false), 1750);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
+  // Spotify OAuth dönüşü: açılışta ?code=... varsa token'a çevirip URL'i temizle
+  useEffect(() => { spotifyHandleRedirect(); }, []);
 
   // --- Auth ---
   useEffect(() => {
