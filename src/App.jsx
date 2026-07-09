@@ -24,6 +24,7 @@ import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
 import TeklifYonetimi from './components/TeklifYonetimi.jsx'
 import CariEkstre from './components/CariEkstre.jsx'
+import BinaPublicView from './components/BinaPublicView.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
@@ -1980,6 +1981,17 @@ function App(){
     if(idx===12 && !limits.sozlesme) return {ozellik:"Sözleşmeler", gerekenPlan:"Profesyonel"};
     return null;
   }
+
+  /* Public bina yöneticisi sayfası — girişsiz, tokenlı link (?f=..&bina=..) */
+  var _binaPub=(function(){
+    try{
+      var q=new URLSearchParams(window.location.search);
+      var t=q.get("bina"); var f=q.get("f")||"asis";
+      if(t&&/^[A-Za-z0-9_-]{12,64}$/.test(t)) return {token:t,firmaKodu:f};
+    }catch(e){}
+    return null;
+  })();
+  if(_binaPub) return React.createElement(BinaPublicView, { firmaKodu:_binaPub.firmaKodu, token:_binaPub.token });
 
   if(!tenantId) return React.createElement(FirmaKoduGate, { onReady: handleFirmaKodu });
 

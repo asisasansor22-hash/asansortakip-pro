@@ -1,5 +1,42 @@
 import React, { useState, useMemo } from 'react'
 import { MONTHS } from '../utils/constants.js'
+import { dbGet, dbSet, getTenantId } from '../firebase.js'
+
+/* Bina self-servis linki: token üret / mevcut olanı bul, URL'yi kopyala */
+function binaTokenUret() {
+  var arr = new Uint8Array(18)
+  ;(window.crypto || {}).getRandomValues ? window.crypto.getRandomValues(arr) : arr.forEach(function (_, i) { arr[i] = Math.floor(Math.random() * 256) })
+  var s = ''
+  for (var i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function binaLinkiKopyala(elev) {
+  try {
+    var mevcut = (await dbGet('at_bina_links')) || {}
+    if (Array.isArray(mevcut)) mevcut = {}
+    var token = null
+    for (var k in mevcut) {
+      if (mevcut[k] && Number(mevcut[k].elevId) === Number(elev.id) && mevcut[k].aktif !== false) { token = k; break }
+    }
+    if (!token) {
+      token = binaTokenUret()
+      mevcut[token] = { elevId: elev.id, ad: elev.ad || '', olusturma: new Date().toISOString() }
+      var ok = await dbSet('at_bina_links', mevcut)
+      if (ok === false) { alert('Link kaydedilemedi (bağlantı/izin). Tekrar deneyin.'); return }
+    }
+    var url = window.location.origin + '/?f=' + encodeURIComponent(getTenantId() || 'asis') + '&bina=' + token
+    var kopyalandi = false
+    try { await navigator.clipboard.writeText(url); kopyalandi = true } catch (e) {}
+    if (kopyalandi) {
+      alert('🔗 Bina yöneticisi linki kopyalandı!\n\nBu linki bina yöneticisine WhatsApp ile gönderebilirsiniz. Link ile sadece bu binanın bakım geçmişi, ödemeleri ve bakiyesi görünür — giriş gerektirmez.\n\n' + url)
+    } else {
+      window.prompt('Linki kopyalayın:', url)
+    }
+  } catch (e) {
+    alert('Link oluşturulamadı: ' + (e && e.message))
+  }
+}
 
 function ekstraSiraKey(k){
   return String(k.tarih||"") + " " + String(k.saat||"");
@@ -46,10 +83,16 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
   if(secili){
     return (
       <div>
-        <button onClick={()=>setSeciliId(null)}
-          style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"8px 14px",color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:13,marginBottom:14}}>
-          ← Geri
-        </button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <button onClick={()=>setSeciliId(null)}
+            style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"8px 14px",color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:13}}>
+            ← Geri
+          </button>
+          <button onClick={()=>binaLinkiKopyala(secili)}
+            style={{display:"flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#2563eb,#1d4ed8)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:12}}>
+            🔗 Bina Yöneticisi Linki
+          </button>
+        </div>
 
         {/* Asansör Başlığı */}
         <div style={{background:"var(--bg-panel)",borderRadius:16,padding:"16px",marginBottom:12,borderLeft:"4px solid var(--accent)"}}>
