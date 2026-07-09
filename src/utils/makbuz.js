@@ -153,72 +153,87 @@ export function makbuzEkstraYazdir(kayit, elev) {
   var adres = elev ? ((elev.semt ? elev.semt + " Mah., " : "") + (elev.adres || "")) : "";
   var ilce = elev ? (elev.ilce || "") : (kayit.ilce || "");
   var tutar = (kayit.tutar || 0).toLocaleString("tr-TR");
+  /* A4 sayfaya ortalanm\u0131\u015f, tam geni\u015flik kullanan makbuz d\u00fczeni.
+     (Eski 58mm termal format A4/PDF \u00e7\u0131kt\u0131s\u0131nda k\u00f6\u015fede minicik kal\u0131yordu.) */
   var html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
     '<title>Ekstra Is Makbuzu</title><style>' +
     '* { margin:0; padding:0; box-sizing:border-box; }' +
-    'body { font-family:Arial,sans-serif; color:#000; background:#fff; width:58mm; padding:2mm; font-size:8px; }' +
-    '.header { text-align:center; border-bottom:1.5px solid #000; padding-bottom:5px; margin-bottom:5px; }' +
-    '.logo { height:22px; object-fit:contain; margin-bottom:2px; }' +
-    '.firma-adi { font-size:11px; font-weight:900; letter-spacing:0.5px; }' +
-    '.firma-alt { font-size:6px; font-weight:700; text-transform:uppercase; color:#333; }' +
-    '.firma-bilgi { font-size:7px; line-height:1.7; margin-top:2px; }' +
-    '.servis { font-size:6.5px; font-weight:900; text-transform:uppercase; margin-top:4px; border-top:0.5px solid #000; border-bottom:0.5px solid #000; padding:2px 0; }' +
-    '.mkb { display:flex; justify-content:space-between; align-items:center; margin-top:3px; }' +
-    '.mkb-label { font-size:6px; font-weight:700; text-transform:uppercase; }' +
-    '.mkb-val { font-size:9px; font-weight:900; }' +
-    '.baslik { font-size:10px; font-weight:900; text-align:center; letter-spacing:0.5px; margin:4px 0 2px; text-decoration:underline; }' +
-    '.tarih { display:flex; justify-content:space-between; font-size:7px; font-weight:700; margin-bottom:3px; }' +
-    '.ayrac { border-top:0.5px dashed #000; margin:3px 0; }' +
-    '.bolum { font-size:6.5px; font-weight:900; text-transform:uppercase; background:#000; color:#fff; padding:2px 2mm; margin:2px -2mm; }' +
-    '.bilgi { display:flex; justify-content:space-between; font-size:7.5px; padding:1.5px 0; border-bottom:0.5px dotted #ccc; gap:4px; }' +
-    '.et { color:#444; font-size:6.5px; white-space:nowrap; }' +
-    '.dg { font-weight:700; text-align:right; }' +
-    '.is-kutu { border:1px solid #ccc; border-radius:2px; padding:5px; margin:4px 0; }' +
-    '.is-adi { font-size:10px; font-weight:900; margin-bottom:3px; }' +
-    '.is-not { font-size:7.5px; color:#444; }' +
-    '.kutu { border:1.5px solid #000; padding:3px; margin:4px 0 3px; }' +
-    '.kutu-l { font-size:6.5px; font-weight:900; text-transform:uppercase; text-align:center; border-bottom:0.5px solid #000; padding-bottom:2px; margin-bottom:2px; }' +
-    '.kutu-t { font-size:18px; font-weight:900; text-align:center; }' +
-    '.imza-row { display:flex; gap:3px; margin:3px 0 2px; }' +
-    '.imza { border:0.5px solid #000; height:28px; flex:1; padding:2px 3px; }' +
-    '.imza-l { font-size:6px; font-weight:900; text-transform:uppercase; }' +
-    '@media print { body { padding:1mm; } @page { margin:0; size:58mm auto; } }' +
+    '@page { size:A4; margin:14mm; }' +
+    'body { font-family:Arial,sans-serif; color:#111; background:#fff; }' +
+    '.sayfa { max-width:170mm; margin:0 auto; border:2px solid #111; padding:0; }' +
+    '.header { display:flex; align-items:center; gap:16px; padding:16px 20px; border-bottom:2px solid #111; }' +
+    '.logo { height:52px; object-fit:contain; }' +
+    '.h-orta { flex:1; }' +
+    '.firma-adi { font-size:22px; font-weight:900; letter-spacing:0.5px; }' +
+    '.firma-alt { font-size:10px; font-weight:700; text-transform:uppercase; color:#444; letter-spacing:1px; }' +
+    '.firma-bilgi { font-size:10.5px; line-height:1.6; margin-top:5px; color:#333; }' +
+    '.h-sag { text-align:right; }' +
+    '.mkb-label { font-size:9px; font-weight:700; text-transform:uppercase; color:#555; }' +
+    '.mkb-val { font-size:14px; font-weight:900; }' +
+    '.servis { font-size:10px; font-weight:900; text-transform:uppercase; text-align:center; padding:6px 0; border-bottom:2px solid #111; letter-spacing:1px; background:#f3f4f6; }' +
+    '.baslik-row { display:flex; justify-content:space-between; align-items:center; padding:14px 20px 10px; }' +
+    '.baslik { font-size:20px; font-weight:900; letter-spacing:1px; text-decoration:underline; }' +
+    '.tarih { text-align:right; font-size:12px; font-weight:700; line-height:1.5; }' +
+    '.bolum { font-size:11px; font-weight:900; text-transform:uppercase; background:#111; color:#fff; padding:6px 20px; letter-spacing:1px; }' +
+    '.tablo { padding:8px 20px 12px; }' +
+    '.bilgi { display:flex; justify-content:space-between; font-size:13px; padding:7px 0; border-bottom:1px dotted #bbb; gap:16px; }' +
+    '.bilgi:last-child { border-bottom:none; }' +
+    '.et { color:#555; font-size:11px; text-transform:uppercase; font-weight:700; white-space:nowrap; padding-top:1px; }' +
+    '.dg { font-weight:800; text-align:right; }' +
+    '.is-kutu { border:1.5px solid #999; border-radius:6px; padding:14px 16px; margin:10px 20px 14px; }' +
+    '.is-adi { font-size:17px; font-weight:900; margin-bottom:6px; }' +
+    '.is-not { font-size:12px; color:#444; margin-bottom:4px; }' +
+    '.is-tarih { font-size:11px; color:#777; }' +
+    '.kutu { border:2.5px solid #111; margin:0 20px 16px; }' +
+    '.kutu-l { font-size:11px; font-weight:900; text-transform:uppercase; text-align:center; border-bottom:1.5px solid #111; padding:6px 0; letter-spacing:2px; background:#f3f4f6; }' +
+    '.kutu-t { font-size:34px; font-weight:900; text-align:center; padding:12px 0; }' +
+    '.imza-row { display:flex; gap:14px; margin:0 20px 20px; }' +
+    '.imza { border:1.5px solid #111; height:80px; flex:1; padding:8px 10px; }' +
+    '.imza-l { font-size:10px; font-weight:900; text-transform:uppercase; color:#333; }' +
+    '.dip { text-align:center; font-size:10px; color:#888; padding:0 20px 14px; }' +
+    '@media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }' +
     '</style></head><body>' +
+    '<div class="sayfa">' +
     '<div class="header">' +
-    '<img class="logo" src="' + ASIS_LOGO_B64 + '" alt="Asis"><br>' +
+    '<img class="logo" src="' + ASIS_LOGO_B64 + '" alt="Asis">' +
+    '<div class="h-orta">' +
     '<div class="firma-adi">AS\u0130S ASANS\u00d6R</div>' +
     '<div class="firma-alt">Asans\u00f6r Sistemleri</div>' +
     '<div class="firma-bilgi">' +
     'Zafer Mah. Y\u00fcksel Sk. No:23, 34194 Bah\u00e7elievler/\u0130stanbul<br>' +
-    'Tel: 0212 703 20 52<br>' +
-    'berat@asisasansor.com 0543 507 07 94<br>' +
-    'tolga@asisasansor.com 0536 565 92 23</div>' +
-    '<div class="servis">TAAHHUT MOTOR BOB\u0130NAJ - TAM\u0130R VE BAKIM</div>' +
-    '<div class="mkb"><span class="mkb-label">No:</span><span class="mkb-val">' + makbuzNo + '</span></div>' +
+    'Tel: 0212 703 20 52 \u00b7 berat@asisasansor.com 0543 507 07 94 \u00b7 tolga@asisasansor.com 0536 565 92 23</div>' +
     '</div>' +
+    '<div class="h-sag"><div class="mkb-label">Makbuz No</div><div class="mkb-val">' + makbuzNo + '</div></div>' +
+    '</div>' +
+    '<div class="servis">TAAHHUT MOTOR BOB\u0130NAJ - TAM\u0130R VE BAKIM</div>' +
+    '<div class="baslik-row">' +
     '<div class="baslik">EKSTRA \u0130\u015e MAKBUZU</div>' +
-    '<div class="tarih"><span>' + tarihStr + '</span><span>' + saat + '</span></div>' +
-    '<div class="ayrac"></div>' +
+    '<div class="tarih">' + tarihStr + '<br>' + saat + '</div>' +
+    '</div>' +
     '<div class="bolum">Bina Bilgileri</div>' +
+    '<div class="tablo">' +
     '<div class="bilgi"><span class="et">Bina</span><span class="dg">' + (kayit.binaAd||"") + '</span></div>' +
     '<div class="bilgi"><span class="et">Y\u00f6netici</span><span class="dg">' + (elev ? (elev.yonetici||"") : "") + '</span></div>' +
     '<div class="bilgi"><span class="et">Adres</span><span class="dg">' + adres + '</span></div>' +
     '<div class="bilgi"><span class="et">\u0130l\u00e7e</span><span class="dg">' + ilce + '</span></div>' +
+    '</div>' +
     '<div class="bolum">Yap\u0131lan \u0130\u015f</div>' +
     '<div class="is-kutu">' +
     '<div class="is-adi">' + (kayit.isAdi||"") + '</div>' +
     (kayit.not ? '<div class="is-not">Not: ' + kayit.not + '</div>' : '') +
-    '<div style="font-size:7px;color:#666;margin-top:3px">Tarih: ' + (kayit.tarih||"") + '</div>' +
+    '<div class="is-tarih">Tarih: ' + (kayit.tarih||"") + '</div>' +
     '</div>' +
     '<div class="kutu"><div class="kutu-l">Tutar</div><div class="kutu-t">' + tutar + ' \u20ba</div></div>' +
     '<div class="imza-row">' +
-    '<div class="imza"><div class="imza-l">Bak\u0131m Firmas\u0131 Yetkilisi</div></div>' +
-    '<div class="imza"><div class="imza-l">M\u00fc\u015fteri Yetkilisi</div></div>' +
+    '<div class="imza"><div class="imza-l">Bak\u0131m Firmas\u0131 Yetkilisi<br>Ad Soyad / \u0130mza</div></div>' +
+    '<div class="imza"><div class="imza-l">M\u00fc\u015fteri Yetkilisi<br>Ad Soyad / \u0130mza</div></div>' +
+    '</div>' +
+    '<div class="dip">Bu makbuz ' + tarihStr + ' ' + saat + ' tarihinde d\u00fczenlenmi\u015ftir. \u00b7 https://asisasansor.xyz</div>' +
     '</div>' +
     '<script>window.onload=function(){window.print();}<\/script>' +
     '</body></html>';
-  var w = window.open("", "_blank", "width=280,height=700");
+  var w = window.open("", "_blank", "width=650,height=800");
   w.document.write(html);
   w.document.close();
 }
