@@ -460,6 +460,38 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                 onClick:function(){makbuzBakimYazdir(makbuzSonBakim.m,makbuzSonBakim.elev);setMakbuzSonBakim(null);},
                 style:{padding:"14px",background:"linear-gradient(135deg,#1e3a5f,#1d4ed8)",border:"none",borderRadius:14,color:"#fff",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
               },"🖨️ Bakım Makbuzunu Yazdır")
+              /* WhatsApp Bildir — ödeme alınsın ya da alınmasın, bakım tamamlandı bildirimi gitsin.
+                 Tutar > 0 → ödeme alındı varyantı, tutar 0 → toplam borç bildirimi. */
+              ,makbuzSonBakim.elev&&makbuzSonBakim.elev.tel&&React.createElement('button',{
+                onClick:function(){
+                  var m=makbuzSonBakim.m;
+                  var elev=makbuzSonBakim.elev;
+                  var tutar=Number(makbuzSonBakim.tutar)||0;
+                  var tel=(elev.tel||"").replace(/[\s\-\(\)]/g,"");
+                  if(tel.startsWith("0")) tel="90"+tel.slice(1);
+                  else if(!tel.startsWith("90")&&!tel.startsWith("+90")) tel="90"+tel;
+                  tel=tel.replace(/^\+/,"");
+                  var tarihStr=m&&m.yapildiSaat?m.yapildiSaat.split(" ")[0]:"";
+                  var eskiDevir=Number(elev.bakiyeDevir)||0;
+                  var aylik=Number(elev.aylikUcret)||0;
+                  var toplamBorc=eskiDevir+aylik-tutar;
+                  var mesaj=
+                    "Sayın "+elev.ad+" Yönetimi,\n\n"+
+                    _firmaAdi+" olarak duyduğunuz güven için teşekkür ederiz.\n\n"+
+                    "Binanızda bulunan asansörünüzün aylık periyodik bakımı"+(tarihStr?" "+tarihStr+" tarihinde":"")+
+                    " teknik ekibimiz tarafından eksiksiz olarak gerçekleştirilmiştir."+
+                    (tutar>0
+                      ?" Bakım bedeli olarak "+tutar.toLocaleString("tr-TR")+" ₺ tarafınızdan alınmıştır."+
+                        (toplamBorc>0?" Kalan bakiyeniz *"+toplamBorc.toLocaleString("tr-TR")+" ₺* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz.":"")
+                      :" Toplam bakım borcunuz *"+toplamBorc.toLocaleString("tr-TR")+" ₺* olup, ödemenizin en kısa sürede tarafımıza iletilmesini saygılarımızla arz ederiz."
+                    )+"\n\n"+
+                    "Asansörünüz bakımlı ve güvenli şekilde kullanıma hazırdır.\n\n"+
+                    "Herhangi bir sorunuz veya talebiniz olması halinde bizimle iletişime geçmekten lütfen çekinmeyiniz.\n\n"+
+                    "Saygılarımızla,\n"+_firmaAdi;
+                  window.open("https://wa.me/"+tel+"?text="+encodeURIComponent(mesaj),"_blank");
+                },
+                style:{padding:"14px",background:"#0d2518",border:"1px solid #25d36644",borderRadius:14,color:"#25d366",cursor:"pointer",fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",gap:8}
+              },"💬 WhatsApp Bildir")
               ,React.createElement('button',{
                 onClick:function(){setMakbuzSonBakim(null);},
                 style:{padding:"12px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:14}
@@ -522,7 +554,10 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
                           onClick:function(){
                             var o=odemeSorModal;
                             var snap=odemeSnapshot(o.elev,0);
-                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?Object.assign({},x,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0}):x;});});
+                            var yeniMaint=Object.assign({},o.m,snap,{yapildi:true,yapildiSaat:o.yapildiSaat,odendi:false,alinanTutar:0});
+                            setMaints(function(p){return p.map(function(x){return x.id===o.m.id?yeniMaint:x;});});
+                            // Ödeme alınmasa da makbuz + WhatsApp bildirim seçenekleri çıksın
+                            setMakbuzSonBakim({m:yeniMaint,elev:o.elev,tutar:0});
                             setOdemeSorModal(null);setOdemeMiktar("");
                           },
                           style:{flex:1,padding:"13px",background:"var(--bg-elevated)",border:"none",borderRadius:14,color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:15,minHeight:50}
