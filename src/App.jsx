@@ -23,6 +23,7 @@ import SozlesmeYonetimi from './components/SozlesmeYonetimi.jsx'
 import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
 import TeklifYonetimi from './components/TeklifYonetimi.jsx'
+import CariEkstre from './components/CariEkstre.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
@@ -3047,7 +3048,8 @@ function App(){
           {i:1,l:"📅 Bu Hafta",c:"#3b82f6"},
           {i:2,l:"📆 Bu Ay",c:"#10b981"},
           {i:3,l:"🗄️ Kapamalar",c:"#8b5cf6"},
-          {i:4,l:"📦 Arşiv",c:"#64748b"}
+          {i:4,l:"📦 Arşiv",c:"#64748b"},
+          {i:5,l:"📑 Ekstre",c:"#06b6d4"}
         ].map(function(t){
           return React.createElement('button', {key:t.i,onClick:function(){setFinansTab(t.i);},
             style:{flex:1,padding:"9px 6px",borderRadius:9,background:finansTab===t.i?t.c+"22":"transparent",
@@ -3537,6 +3539,15 @@ function App(){
               })
           )
     )
+
+    /* ── TAB 5: CARİ EKSTRE ── */
+    , finansTab===5&&React.createElement(CariEkstre, {
+        elevs: elevs,
+        maints: maints,
+        sonOdemeler: sonOdemeler,
+        ekstraIsler: ekstraIsler,
+        firma: isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT):(tenantConfig||{ad:firmaAdi})
+      })
   )
 )
 /* GİDERLER */
