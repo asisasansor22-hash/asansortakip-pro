@@ -26,7 +26,7 @@ export const READY_PROGRAMS = [
     level: "Orta-İleri", goal: "Kas kütlesi (hipertrofi)", freq: "Haftada 6 gün (PPL x2) veya 3 gün",
     desc: "Haftada 2 tur yapıldığında her kas 2x çalışır — hipertrofi için ideal sıklık ve hacim. 3 gün de uygulanabilir.",
     days: [
-      { name: "Push (İtiş)", note: "Göğüs/omuz/triceps. Bileşik 6-10, izolasyon 10-15 tekrar; 3-4 set.", exercises: ["bench-press", "incline-press", "shoulder-press", "lateral-raise", "triceps-pushdown", "triceps-dips"] },
+      { name: "Push (İtiş)", note: "Göğüs/omuz/triceps. Bileşik 6-10, izolasyon 10-15 tekrar; 3-4 set.", exercises: ["bench-press", "incline-press", "shoulder-press", "lateral-raise", "triceps-dips", "triceps-pushdown"] },
       { name: "Pull (Çekiş)", note: "Sırt/arka omuz/biceps. Çekiş hacmi itişe denk olmalı.", exercises: ["deadlift", "barfiks", "barbell-row", "face-pull", "biceps-curl", "hammer-curl"] },
       { name: "Legs (Bacak)", note: "Quad + arka zincir + baldır dengeli. Squat ve menteşe birlikte; asılı bacak kaldırma core için.", exercises: ["squat", "romanian-deadlift", "leg-press", "leg-curl", "calf-raise", "hanging-leg-raise"] },
     ],
@@ -49,7 +49,7 @@ export const READY_PROGRAMS = [
     level: "Başlangıç-Orta", goal: "Form koruma & yağ yakımı", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Tamamen vücut ağırlığıyla. Zorluğu tekrar artırarak veya daha zor varyasyona geçerek (aşamalı yüklenme) yükselt.",
     days: [
-      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Kolaysa decline/diamond varyasyona geç. Superman, itme ağırlıklı günü sırt/arka zincirle dengeler.", exercises: ["sinav", "pike-pushup", "triceps-dips", "decline-pushup", "superman", "plank"] },
+      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Kolaysa decline/diamond varyasyona geç. Superman, itme ağırlıklı günü sırt/arka zincirle dengeler.", exercises: ["sinav", "decline-pushup", "pike-pushup", "triceps-dips", "superman", "plank"] },
       { name: "Alt Vücut", note: "3-4 set. Kolaysa tek bacak (bulgarian/pistol) varyasyonuna geç.", exercises: ["squat", "lunge", "single-leg-glute-bridge", "wall-sit", "calf-raise"] },
       { name: "Kardiyo + Core", note: "Devre: 40 sn çalış / 20 sn dinlen x 3 tur.", exercises: ["jumping-jack", "high-knees", "burpee", "hollow-body-hold", "leg-raise"] },
     ],
@@ -84,7 +84,7 @@ export const READY_PROGRAMS = [
     level: "Başlangıç", goal: "Sıkılaşma & yağ yakımı", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Ekipmansız, kalça-bacak-core odaklı. Yağ kaybı için beslenme açığıyla birlikte uygula.",
     days: [
-      { name: "Alt Vücut", note: "3-4 set, başarısızlığa yakın.", exercises: ["glute-bridge", "squat", "lunge", "single-leg-glute-bridge", "calf-raise"] },
+      { name: "Alt Vücut", note: "3-4 set, başarısızlığa yakın. Squat en ağır bileşik olduğu için başta.", exercises: ["squat", "lunge", "glute-bridge", "single-leg-glute-bridge", "calf-raise"] },
       { name: "Core & Sırt", note: "3 set; pozisyonları 30-40 sn tut. Superman bel ve duruş için.", exercises: ["plank", "side-plank", "hollow-body-hold", "v-up", "superman"] },
       { name: "Kardiyo", note: "Devre: 40 sn çalış / 20 sn dinlen x 3-4 tur.", exercises: ["jumping-jack", "high-knees", "jump-squat", "butt-kicks"] },
     ],
@@ -96,7 +96,7 @@ export const READY_PROGRAMS = [
     desc: "Dengeli tüm vücut; her büyük kası haftada en az 1-2x çalışır. Tonus için orta tekrar (10-15).",
     days: [
       { name: "Alt Vücut", exercises: ["squat", "hip-thrust", "lunge", "leg-curl", "calf-raise"] },
-      { name: "Üst Vücut", exercises: ["lat-pulldown", "shoulder-press", "seated-row", "biceps-curl", "triceps-pushdown"] },
+      { name: "Üst Vücut", exercises: ["lat-pulldown", "seated-row", "shoulder-press", "biceps-curl", "triceps-pushdown"] },
       { name: "Core", exercises: ["plank", "crunch", "russian-twist", "side-plank"] },
     ],
   },

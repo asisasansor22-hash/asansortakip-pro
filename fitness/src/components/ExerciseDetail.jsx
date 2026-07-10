@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import ExerciseAnimation from "./ExerciseAnimation";
-import { topNote, getAlternatives } from "../data/exercises";
+import { topNote, getAlternatives, focusOf } from "../data/exercises";
 import { getMuscles } from "../data/exerciseMuscles";
 
 export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise, isFavorite, onToggleFavorite }) {
   const top = topNote(ex.id);
   const alts = getAlternatives(ex.id);
   const muscles = getMuscles(ex.id);
+  const focus = focusOf(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
@@ -33,6 +34,13 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
         <span className="pill">{ex.sets}</span>
       </div>
       <p style={{ color: "var(--text)", lineHeight: 1.5 }}>{ex.desc}</p>
+
+      {focus && (
+        <div className="card" style={{ marginTop: 12, padding: "10px 12px", borderColor: "var(--accent2)", background: "var(--card2)" }}>
+          <div style={{ color: "var(--muted)", fontSize: 11, marginBottom: 2 }}>🎯 Birincil vurgu (en çok yüklenen kas)</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{focus}</div>
+        </div>
+      )}
 
       {muscles && (muscles.p.length > 0 || muscles.s.length > 0) && (
         <div style={{ marginTop: 12 }}>

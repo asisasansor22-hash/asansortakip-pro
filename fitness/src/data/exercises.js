@@ -484,7 +484,128 @@ export function subOf(ex) {
   return "Diğer";
 }
 
-// Bir bölgenin hareketlerini alt-gruplara ayır. Dönüş: [{ name, items }] sıralı.
+// ---- Spesifik kas-başı vurgusu (Latince) + bölge-içi anatomik sıralama ----
+// Her el-yapımı hareketin EN ÇOK yüklendiği kas/kas-başı. EMG çalışmaları ve
+// anatomik kaldıraç ilkelerine göre; bölge içinde bu sıraya göre dizilir.
+export const FOCUS = {
+  // GÖĞÜS — Pectoralis major (clavicular=üst, sternocostal=orta, abdominal=alt)
+  "incline-press": "Üst göğüs · Pectoralis major (pars clavicularis)",
+  "incline-dumbbell-press": "Üst göğüs · Pectoralis major (pars clavicularis)",
+  "decline-pushup": "Üst göğüs · Pectoralis major (clavicularis) + ön deltoid",
+  "pseudo-planche-pushup": "Üst-iç göğüs · Pectoralis major + Deltoideus anterior",
+  "bench-press": "Orta göğüs · Pectoralis major (pars sternocostalis)",
+  "dumbbell-press": "Orta göğüs · Pectoralis major (sternocostalis, geniş açı)",
+  "machine-chest-press": "Orta göğüs · Pectoralis major (sternocostalis)",
+  "sinav": "Orta göğüs · Pectoralis major (sternocostalis)",
+  "wide-pushup": "Dış-orta göğüs · Pectoralis major (sternocostalis)",
+  "archer-pushup": "Orta göğüs · Pectoralis major (tek taraflı)",
+  "decline-press": "Alt göğüs · Pectoralis major (pars abdominalis)",
+  "chest-dips": "Alt göğüs · Pectoralis major (abdominalis) + Triceps",
+  "incline-pushup": "Alt göğüs · Pectoralis major (pars abdominalis)",
+  "cable-crossover": "İç göğüs · Pectoralis major (sternal lifler, adduksiyon)",
+  "pec-deck": "İç göğüs · Pectoralis major (adduksiyon izolasyon)",
+  "dumbbell-fly": "İç-dış göğüs · Pectoralis major (germe + adduksiyon)",
+  "diamond-pushup": "İç göğüs + Triceps brachii (caput mediale)",
+  // SIRT — Latissimus / Trapezius+Rhomboidei / Erector spinae
+  "barfiks": "Latissimus dorsi (dikey çekiş, genişlik)",
+  "chin-up": "Latissimus dorsi + Biceps brachii (supinasyon)",
+  "lat-pulldown": "Latissimus dorsi (dikey çekiş)",
+  "v-bar-pulldown": "Latissimus dorsi (dar tutuş, alt lifler)",
+  "negative-pullup": "Latissimus dorsi (eksantrik)",
+  "scapular-pull": "Latissimus + Trapezius (alt) — skapula depresyonu",
+  "muscle-up": "Latissimus + Pectoralis + Triceps (bileşik)",
+  "barbell-row": "Orta sırt · Trapezius (orta) + Rhomboidei + Latissimus",
+  "t-bar-row": "Orta sırt · Rhomboidei + Latissimus",
+  "seated-row": "Orta sırt · Trapezius (orta) + Rhomboidei",
+  "dumbbell-row": "Orta sırt · Latissimus + Rhomboidei (tek kol)",
+  "inverted-row": "Orta sırt · Rhomboidei + Trapezius (yatay çekiş)",
+  "rack-pull": "Üst sırt/trapez · Trapezius + Erector spinae",
+  "deadlift": "Arka zincir · Erector spinae + Gluteus + Hamstrings",
+  "romanian-deadlift": "Hamstrings + Gluteus maximus + Erector spinae",
+  "good-morning": "Erector spinae + Hamstrings (kalça menteşesi)",
+  "hyperextension": "Erector spinae (izolasyon)",
+  "superman": "Erector spinae + Gluteus maximus",
+  // OMUZ — Deltoideus (anterior/lateral/posterior) + Trapezius
+  "shoulder-press": "Ön omuz · Deltoideus (pars clavicularis) + Triceps",
+  "military-press": "Ön omuz · Deltoideus anterior (ayakta, bileşik)",
+  "arnold-press": "Ön→yan omuz · Deltoideus (anterior + lateral)",
+  "front-raise": "Ön omuz · Deltoideus anterior (izolasyon)",
+  "pike-pushup": "Ön omuz · Deltoideus anterior (vücut ağırlığı)",
+  "handstand-pushup": "Ön omuz · Deltoideus anterior + Triceps",
+  "lateral-raise": "Yan omuz · Deltoideus (pars acromialis / lateral)",
+  "cable-lateral": "Yan omuz · Deltoideus lateral (sabit gerilim)",
+  "upright-row": "Yan omuz + Trapezius · Deltoideus lateral",
+  "rear-delt-fly": "Arka omuz · Deltoideus (pars spinalis / posterior)",
+  "face-pull": "Arka omuz · Deltoideus posterior + Trapezius (orta)",
+  "shrug": "Trapezius (üst lifler) — skapula elevasyonu",
+  // KOL — Biceps brachii / Brachialis / Brachioradialis · Triceps başları
+  "barbell-curl": "Biceps brachii (uzun + kısa baş, kütle)",
+  "biceps-curl": "Biceps brachii (uzun + kısa baş)",
+  "preacher-curl": "Biceps brachii (kısa baş / caput breve)",
+  "concentration-curl": "Biceps brachii (kısa baş — tepe/peak)",
+  "spider-curl": "Biceps brachii (kısa baş, tam kasılma)",
+  "hammer-curl": "Brachialis + Brachioradialis (nötr tutuş)",
+  "cable-hammer-curl": "Brachialis + Brachioradialis",
+  "zottman-curl": "Brachioradialis + Biceps (pronasyonlu dönüş)",
+  "close-grip-bench": "Triceps brachii (bileşik, tüm başlar)",
+  "triceps-dips": "Triceps brachii (bileşik, vücut ağırlığı)",
+  "skull-crusher": "Triceps brachii (uzun baş / caput longum)",
+  "overhead-extension": "Triceps brachii (uzun baş — germede)",
+  "triceps-pushdown": "Triceps brachii (dış baş / caput laterale)",
+  "triceps-kickback": "Triceps brachii (dış+arka, tam kasılma)",
+  // BACAK — Quadriceps / Hamstrings / Gluteus / Gastrocnemius-Soleus
+  "squat": "Quadriceps femoris + Gluteus maximus (bileşik)",
+  "front-squat": "Quadriceps femoris (vastuslar, dik gövde)",
+  "hack-squat": "Quadriceps femoris (vastus lateralis/medialis)",
+  "leg-press": "Quadriceps femoris (yüksek yük)",
+  "goblet-squat": "Quadriceps femoris (başlangıç dostu)",
+  "bulgarian": "Quadriceps + Gluteus maximus (tek bacak)",
+  "lunge": "Quadriceps + Gluteus maximus",
+  "step-up": "Quadriceps + Gluteus maximus",
+  "pistol-squat": "Quadriceps femoris (tek bacak, denge)",
+  "wall-sit": "Quadriceps femoris (izometrik)",
+  "leg-extension": "Quadriceps femoris (rectus femoris / vastus medialis) — izolasyon",
+  "leg-curl": "Hamstrings · Biceps femoris (diz fleksiyonu)",
+  "nordic-curl": "Hamstrings (eksantrik, güçlü)",
+  "hip-thrust": "Gluteus maximus (kalça ekstansiyonu)",
+  "glute-bridge": "Gluteus maximus",
+  "sumo-deadlift": "Gluteus + Adductores + Hamstrings",
+  "glute-kickback": "Gluteus maximus (izolasyon)",
+  "single-leg-glute-bridge": "Gluteus maximus (tek bacak)",
+  "calf-raise": "Gastrocnemius (ayakta — diz düz)",
+  "seated-calf-raise": "Soleus (oturarak — diz bükük)",
+  // KARIN — Rectus abdominis (üst/alt) · Obliqui · Transversus
+  "crunch": "Rectus abdominis (üst lifler)",
+  "cable-crunch": "Rectus abdominis (üst, yüklü)",
+  "situp": "Rectus abdominis (üst→tüm) + kalça fleksörleri",
+  "v-up": "Rectus abdominis (üst + alt beraber)",
+  "toe-touches": "Rectus abdominis (üst lifler)",
+  "hanging-leg-raise": "Rectus abdominis (alt lifler) + iliopsoas",
+  "leg-raise": "Rectus abdominis (alt lifler)",
+  "reverse-crunch": "Rectus abdominis (alt lifler)",
+  "flutter-kicks": "Rectus abdominis (alt) + iliopsoas",
+  "bicycle-crunch": "Obliquus externus/internus (rotasyon)",
+  "russian-twist": "Obliquus externus/internus (rotasyon)",
+  "side-plank": "Obliquus + Quadratus lumborum (yan stabilizasyon)",
+  "plank": "Transversus abdominis + Rectus (izometrik)",
+  "hollow-body-hold": "Rectus abdominis + Transversus (jimnastik core)",
+  "l-sit": "Rectus abdominis + iliopsoas (izometrik)",
+  "ab-roller": "Rectus abdominis + Transversus (anti-ekstansiyon)",
+  "dragon-flag": "Rectus abdominis (tüm) — güçlü eksantrik/izometrik",
+  "mountain-climber-ab": "Rectus abdominis + core (dinamik)",
+};
+
+// Bölge-içi gösterim sırası: her alt-grup içinde bileşik→izolasyon ve kas-başı
+// mantığına göre. (FOCUS ile aynı sıra.)
+const FOCUS_ORDER = Object.keys(FOCUS);
+const ORDER_INDEX = {};
+FOCUS_ORDER.forEach((id, i) => { ORDER_INDEX[id] = i; });
+
+// Bir hareketin spesifik kas vurgusu etiketi (yoksa null)
+export function focusOf(id) { return FOCUS[id] || null; }
+
+// Bir bölgenin hareketlerini alt-gruplara ayır; her grup içinde anatomik
+// vurgu sırasına göre dizilir (el-yapımı önce, otomatikler sonra). [{name,items}]
 export function groupedByRegion(regionId) {
   const list = exercisesByRegion(regionId);
   const order = SUBGROUPS[regionId] || [];
@@ -493,7 +614,10 @@ export function groupedByRegion(regionId) {
     const s = subOf(ex);
     (map[s] = map[s] || []).push(ex);
   });
+  Object.keys(map).forEach((name) => {
+    map[name].sort((a, b) => (ORDER_INDEX[a.id] != null ? ORDER_INDEX[a.id] : 9999) - (ORDER_INDEX[b.id] != null ? ORDER_INDEX[b.id] : 9999));
+  });
   const names = order.filter((n) => map[n])
-    .concat(Object.keys(map).filter((n) => order.indexOf(n) === -1)); // tanımsızlar + "Genel" sona
+    .concat(Object.keys(map).filter((n) => order.indexOf(n) === -1)); // tanımsızlar + "Diğer" sona
   return names.map((name) => ({ name, items: map[name] }));
 }
