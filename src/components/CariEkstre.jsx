@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { ASIS_LOGO_B64 } from '../utils/makbuz.js'
 
 /* ─────────────────────────────────────────────────────────────
    CARİ HESAP EKSTRESİ (Finans → Ekstre alt sekmesi)
@@ -29,6 +30,21 @@ function dosyaAdiTemiz(s) {
   return String(s || 'Bina').replace(/[şŞ]/g, 's').replace(/[çÇ]/g, 'c').replace(/[ğĞ]/g, 'g')
     .replace(/[ıİ]/g, 'i').replace(/[öÖ]/g, 'o').replace(/[üÜ]/g, 'u').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 }
+/* Firma logosu: tenant config'teki logoUrl, yoksa Asis için gömülü logo */
+function firmaLogoSrc(firma) {
+  if (firma && firma.logoUrl && String(firma.logoUrl).trim()) return String(firma.logoUrl).trim()
+  if (firma && firma._isAsis) return ASIS_LOGO_B64
+  return ''
+}
+function dataUrlBytes(dataUrl) {
+  try {
+    var b64 = String(dataUrl).split(',')[1] || ''
+    var bin = atob(b64)
+    var arr = new Uint8Array(bin.length)
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+    return arr
+  } catch (e) { return null }
+}
 
 /* Bina + dönem için işlem satırları */
 function ekstreSatirlari(elev, maints, sonOdemeler, ekstraIsler, bas, bit) {
@@ -49,7 +65,10 @@ function ekstreSatirlari(elev, maints, sonOdemeler, ekstraIsler, bas, bit) {
     var d = pTarih(k.tarih)
     if (!d || d < bas || d > bit) return
     var tutar = Number(k.tutar) || 0
-    rows.push({ d: d, tip: 'Ekstra İş', aciklama: (k.isAdi || 'Ekstra iş') + (k.odendi ? ' (peşin tahsil)' : ''), borc: tutar, alacak: k.odendi ? tutar : 0 })
+    var ekstraAciklama = (k.isAdi || 'Ekstra iş')
+      + (k.not ? ' — ' + k.not : '')
+      + (k.odendi ? ' (peşin tahsil)' : '')
+    rows.push({ d: d, tip: 'Ekstra İş', aciklama: ekstraAciklama, borc: tutar, alacak: k.odendi ? tutar : 0 })
   })
 
   ;(sonOdemeler || []).forEach(function (o) {
@@ -95,6 +114,7 @@ function ekstreHtml(firma, elev, rows, bas, bit, guncelDevir) {
       (ilk
         ? '<div class="hdr">' +
           '<div class="hdr-sol">' +
+          (firmaLogoSrc(firma) ? '<img class="logo" src="' + firmaLogoSrc(firma) + '" alt="logo">' : '') +
           '<div class="firma">' + (firma.ad || 'Bakım Firması') + '</div>' +
           (firma.adres ? '<div class="fbilgi">' + firma.adres + '</div>' : '') +
           '<div class="fbilgi">' + [firma.tel, firma.tel2, firma.tel3].filter(Boolean).join(' · ') + '</div>' +
@@ -130,6 +150,7 @@ function ekstreHtml(firma, elev, rows, bas, bit, guncelDevir) {
     '.page{width:210mm;min-height:297mm;padding:14mm 14mm 12mm;margin:0 auto;background:#fff;page-break-after:always;display:flex;flex-direction:column}' +
     '.page:last-child{page-break-after:auto}' +
     '.hdr{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #111;padding-bottom:10px;margin-bottom:10px}' +
+    '.logo{height:46px;object-fit:contain;display:block;margin-bottom:6px}' +
     '.firma{font-size:19px;font-weight:900}' +
     '.fbilgi{font-size:10px;color:#444;margin-top:2px;line-height:1.5}' +
     '.hdr-sag{text-align:right}' +
@@ -168,6 +189,10 @@ async function ekstrePdfBlob(firma, elev, rows, bas, bit, guncelDevir) {
     var idoc = iframe.contentDocument
     if (!idoc) throw new Error('PDF hazırlanamadı')
     if (idoc.fonts && idoc.fonts.ready) { try { await idoc.fonts.ready } catch (_) {} }
+    // Logo/görsellerin yüklenmesini bekle
+    await Promise.all(Array.prototype.map.call(idoc.images || [], function (img) {
+      return img.complete ? Promise.resolve() : new Promise(function (r) { img.onload = img.onerror = r })
+    }))
     var html2canvasMod = await import('html2canvas')
     var html2canvas = html2canvasMod.default || html2canvasMod
     var jspdfMod = await import('jspdf')
@@ -249,10 +274,23 @@ async function ekstreWordIndir(firma, elev, rows, bas, bit, guncelDevir) {
     ]
   })
 
+  // Logo (data URL ise Word'e gömülür; Asis logosu 400x111 oranında)
+  var logoParagraflar = []
+  var logoSrc = firmaLogoSrc(firma)
+  if (logoSrc && logoSrc.indexOf('data:image/') === 0) {
+    var logoBytes = dataUrlBytes(logoSrc)
+    if (logoBytes) {
+      logoParagraflar.push(new docx.Paragraph({
+        spacing: { after: 60 },
+        children: [new docx.ImageRun({ type: 'png', data: logoBytes, transformation: { width: 150, height: 42 } })]
+      }))
+    }
+  }
+
   var doc = new docx.Document({
     sections: [{
       properties: { page: { margin: { top: 720, bottom: 720, left: 850, right: 850 } } },
-      children: [
+      children: logoParagraflar.concat([
         P(firma.ad || 'Bakım Firması', { bold: true, size: 32, after: 40 }),
         P([firma.adres, [firma.tel, firma.tel2, firma.tel3].filter(Boolean).join(' · ')].filter(Boolean).join('  |  '), { size: 16, color: '444444', after: 160 }),
         P('CARİ HESAP EKSTRESİ', { bold: true, size: 26, align: docx.AlignmentType.CENTER, after: 60 }),
@@ -267,7 +305,7 @@ async function ekstreWordIndir(firma, elev, rows, bas, bit, guncelDevir) {
         P('', { after: 120 }),
         P('GÜNCEL DEVİR BAKİYESİ: ' + tl(guncelDevir) + ' ₺', { bold: true, size: 26, color: guncelDevir > 0 ? 'B91C1C' : '047857' }),
         P(guncelDevir > 0 ? 'Bakiye borcunuzu ifade eder.' : guncelDevir < 0 ? 'Bakiye lehinize alacak ifade eder.' : 'Hesabınız güncel olarak kapanmıştır.', { size: 16, color: '888888' })
-      ]
+      ])
     }]
   })
   var blob = await docx.Packer.toBlob(doc)

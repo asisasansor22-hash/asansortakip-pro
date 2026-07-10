@@ -3558,7 +3558,7 @@ function App(){
         maints: maints,
         sonOdemeler: sonOdemeler,
         ekstraIsler: ekstraIsler,
-        firma: isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT):(tenantConfig||{ad:firmaAdi})
+        firma: isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT,{_isAsis:true}):(tenantConfig||{ad:firmaAdi})
       })
   )
 )
