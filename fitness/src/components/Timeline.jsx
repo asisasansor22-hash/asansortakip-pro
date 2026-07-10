@@ -236,7 +236,10 @@ export default function Timeline() {
 
   return (
     <div>
-      <h2>Akış</h2>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <h2>Akış</h2>
+        <button className="icon-btn" onClick={load} title="Akışı yenile">🔄 Yenile</button>
+      </div>
       <p style={{ color: "var(--muted)", marginTop: -4 }}>Antrenmanını, ilerlemeni paylaş. Herkes görür. 💬</p>
 
       {/* Gönderi oluştur */}
@@ -277,7 +280,12 @@ export default function Timeline() {
         </div>
       </div>
 
-      {err && <div className="err" style={{ marginBottom: 12 }}>{err}</div>}
+      {err && (
+        <div className="err" style={{ marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+          <span style={{ flex: 1 }}>{err}</span>
+          <button className="icon-btn" style={{ flexShrink: 0 }} onClick={load}>Tekrar dene</button>
+        </div>
+      )}
       {shareMsg && <div style={{ color: "var(--ok)", fontSize: 12, marginBottom: 12, wordBreak: "break-all" }}>{shareMsg}</div>}
 
       {posts === null ? (

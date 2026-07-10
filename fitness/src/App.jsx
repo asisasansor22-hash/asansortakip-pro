@@ -580,7 +580,7 @@ export default function App() {
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Timeline />}
-      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} history={history} avatar={avatar} onSaveAvatar={saveAvatar} />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar} />}
 
       {addPick && (
         <div onClick={() => setAddPick(null)} style={{
