@@ -2455,8 +2455,11 @@ function App(){
             if(pw===null) return;
             if(pw!=="199494"){alert("Hatalı şifre! İşlem iptal edildi.");return;}
             if(!window.confirm("Tüm bakım, arıza ve görev verileri silinecek. Asansör listesi korunur. Emin misiniz?")){return;}
-            setMaints([]);setFaults([]);setTasks([]);setElevs(EXCEL_ELEVS);
-            dbSet("at_maints",[]);dbSet("at_faults",[]);dbSet("at_tasks",[]);dbSet("at_elevs",EXCEL_ELEVS);
+            /* Asansör listesi tenant'a göre: Asis Excel listesine, diğer firmalar
+               MEVCUT listelerine döner (eskiden her firma Asis listesine dönüyordu). */
+            var resetElevs=tenantId==="asis"?EXCEL_ELEVS:elevs;
+            setMaints([]);setFaults([]);setTasks([]);setElevs(resetElevs);
+            dbSet("at_maints",[]);dbSet("at_faults",[]);dbSet("at_tasks",[]);dbSet("at_elevs",resetElevs);
             alert("Veriler sıfırlandı.");
           },
           style:{fontSize:13,padding:"10px 22px",borderRadius:14,background:"rgba(255,59,48,0.12)",border:"none",color:"var(--ios-red)",cursor:"pointer",fontWeight:700,minHeight:44}

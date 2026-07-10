@@ -160,6 +160,31 @@ exports.gunlukYedek = onSchedule(
         .filter((f) => new Date(f.metadata.timeCreated).getTime() < sinir)
         .map((f) => f.delete().catch(() => {}))
     );
+
+    // Bildirim olayları temizliği: at_bakim_bildirimleri sınırsız büyüyordu ve
+    // yönetici cihazları listeyi her 25 sn'de indiriyor. Yedek alındıktan SONRA
+    // 7 günden eski olaylar silinir (asis flat + tüm tenantlar).
+    const bildirimSinir = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    async function bildirimTemizle(path, obj) {
+      if (!obj || typeof obj !== "object") return;
+      const silinecekler = {};
+      Object.keys(obj).forEach((k) => {
+        const ts = obj[k] && obj[k].ts;
+        if (!ts || String(ts) < bildirimSinir) silinecekler[k] = null;
+      });
+      if (Object.keys(silinecekler).length > 0) {
+        await admin.database().ref(path).update(silinecekler);
+      }
+    }
+    await bildirimTemizle("/asansor/at_bakim_bildirimleri", data.at_bakim_bildirimleri);
+    const tenantlar = data.tenants || {};
+    for (const tid of Object.keys(tenantlar)) {
+      await bildirimTemizle(
+        "/asansor/tenants/" + tid + "/at_bakim_bildirimleri",
+        (tenantlar[tid] || {}).at_bakim_bildirimleri
+      );
+    }
+
     console.log("Yedek alındı: asansor-" + tarih + ".json (" + JSON.stringify(data).length + " bayt)");
   }
 );
