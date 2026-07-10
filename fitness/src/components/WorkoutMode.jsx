@@ -61,21 +61,22 @@ function overloadSuggestion(prev, metaReps) {
 }
 
 // Antrenman modu: ısınma → hareket hareket çalış → özet/soğuma/paylaş.
-export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1RM }) {
+export default function WorkoutMode({ program, onExit, onFinish, onPersist, resume, lastLog, bestE1RM }) {
   const exIds = (program.exercises || []).filter((id) => getExercise(id));
-  const [i, setI] = useState(0);
-  const [setNo, setSetNo] = useState(1);
+  const maxIdx = Math.max(0, exIds.length - 1);
+  const [i, setI] = useState(resume && resume.i != null ? Math.min(resume.i, maxIdx) : 0);
+  const [setNo, setSetNo] = useState(resume && resume.setNo ? resume.setNo : 1);
   const [resting, setResting] = useState(false);
   const [rest, setRest] = useState(0);
   const [done, setDone] = useState(false);
-  const [warmup, setWarmup] = useState(true);
+  const [warmup, setWarmup] = useState(resume ? !!resume.warmup : true);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [prFlash, setPrFlash] = useState(null); // yeni rekor bildirimi
   const [shared, setShared] = useState(false);
   const [sharing, setSharing] = useState(false);
   const timer = useRef(null);
-  const log = useRef([]); // {exId, weight, reps}
+  const log = useRef(resume && Array.isArray(resume.log) ? resume.log.slice() : []); // {exId, weight, reps}
   const sessionPRs = useRef({}); // exId -> {name, w, r, e1rm}
   const stepsRef = useRef(null); // üstteki sıradaki-hareketler şeridi
 
@@ -105,6 +106,14 @@ export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1
   }, [i]);
 
   useEffect(() => () => clearInterval(timer.current), []);
+
+  // Aktif antrenman ilerlemesini cihaza yaz — uygulama kapanırsa yeniden
+  // açılışta "kaldığın yerden devam et?" için. Bitince (done) yazılmaz.
+  useEffect(() => {
+    if (done) return;
+    if (onPersist) onPersist({ i, setNo, warmup, log: log.current.slice() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, setNo, warmup, done]);
 
   if (exIds.length === 0) {
     return (

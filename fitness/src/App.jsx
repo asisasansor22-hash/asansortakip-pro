@@ -78,6 +78,17 @@ function lsGetHist() {
 function lsSetHist(a) {
   try { localStorage.setItem("fitbe_workouts", JSON.stringify(Array.isArray(a) ? a : [])); } catch (e) {}
 }
+// Yarım kalan (aktif) antrenman: uygulama kapanınca kaybolmasın, yeniden
+// açılışta "devam edilsin mi?" diye sorulsun. { program, i, setNo, warmup, log, savedAt }
+function lsGetActiveWorkout() {
+  try { return JSON.parse(localStorage.getItem("fitbe_active_workout") || "null"); } catch (e) { return null; }
+}
+function lsSetActiveWorkout(o) {
+  try { localStorage.setItem("fitbe_active_workout", JSON.stringify(o)); } catch (e) {}
+}
+function lsClearActiveWorkout() {
+  try { localStorage.removeItem("fitbe_active_workout"); } catch (e) {}
+}
 // Firebase boş dizileri sakladığı için exercises alanını normalize et
 function normalizeList(list) {
   return (list || []).filter(Boolean).map((p) => ({
@@ -109,6 +120,8 @@ export default function App() {
   const [profile, setProfile] = useState(lsGetProfile);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [workout, setWorkout] = useState(null);
+  const [resumeState, setResumeState] = useState(null); // WorkoutMode'a verilen kaldığı-yer bilgisi
+  const [resumeAsk, setResumeAsk] = useState(null);      // "devam edilsin mi?" penceresi (snapshot)
   const [history, setHistory] = useState([]);
   const [progress, setProgress] = useState({ weights: [], measures: [] });
   const [schedule, setSchedule] = useState({});
@@ -138,9 +151,10 @@ export default function App() {
       if (!u) {
         loaded.current = false; cloudReady.current = false; edited.current = false;
         setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
+        setWorkout(null); setResumeState(null); setResumeAsk(null);
         // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
         // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
-        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
       }
     });
   }, []);
@@ -226,6 +240,17 @@ export default function App() {
       setProfileLoaded(true);
       loaded.current = true;
       if (cloudReady.current) dbSet("info", { email: user.email || "", lastSeen: Date.now() });
+
+      // Yarım kalan antrenman var mı? (ısınma geçilmiş ya da en az 1 set yapılmış,
+      // ve 18 saatten yeni ise) → "devam edilsin mi?" penceresini hazırla.
+      const aw = lsGetActiveWorkout();
+      if (!cancelled && aw && aw.program && Array.isArray(aw.program.exercises) && aw.program.exercises.length &&
+          (Date.now() - (aw.savedAt || 0) < 18 * 3600 * 1000) &&
+          ((aw.log && aw.log.length) || aw.warmup === false)) {
+        setResumeAsk(aw);
+      } else if (aw) {
+        lsClearActiveWorkout(); // eski/boş kayıt → temizle
+      }
 
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
       if (!pr.ok) {
@@ -552,7 +577,11 @@ export default function App() {
     <div className="app">
       {splash && <Splash hiding={splashHide} />}
       {profileLoaded && !profile && <Onboarding onSave={saveProfile} />}
-      {workout && <WorkoutMode program={workout} onExit={() => setWorkout(null)} onFinish={saveWorkout} lastLog={lastLog} bestE1RM={bestE1RM} />}
+      {workout && <WorkoutMode program={workout} resume={resumeState}
+        onExit={() => { setWorkout(null); setResumeState(null); lsClearActiveWorkout(); }}
+        onFinish={(s) => { saveWorkout(s); setResumeState(null); lsClearActiveWorkout(); }}
+        onPersist={(snap) => lsSetActiveWorkout({ program: workout, ...snap, savedAt: Date.now() })}
+        lastLog={lastLog} bestE1RM={bestE1RM} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>
         <button className="btn-ghost" onClick={() => setTab("profile")} style={{ padding: avatar ? 4 : undefined }}>
@@ -574,13 +603,46 @@ export default function App() {
           onDelete={deleteProgram}
           onRemoveExercise={removeExercise}
           onMoveExercise={moveExercise}
-          onStart={(p) => setWorkout(p)}
+          onStart={(p) => { setResumeState(null); lsClearActiveWorkout(); setWorkout(p); }}
         />
       )}
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Timeline />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar} />}
+
+      {resumeAsk && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", zIndex: 70,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+        }}>
+          <div className="card" style={{ width: "100%", maxWidth: 420 }}>
+            <div style={{ fontSize: 40, textAlign: "center" }}>⏸️</div>
+            <div style={{ fontWeight: 800, fontSize: 18, textAlign: "center", marginTop: 4 }}>Yarım kalan antrenman</div>
+            <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", marginTop: 6 }}>
+              <b style={{ color: "var(--text)" }}>{resumeAsk.program.name}</b><br />
+              {((resumeAsk.i || 0) + 1)}. hareket
+              {(resumeAsk.log && resumeAsk.log.length) ? " · " + resumeAsk.log.length + " set yapıldı" : ""}.
+              Kaldığın yerden devam edilsin mi?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
+              <button className="btn-primary" onClick={() => {
+                setResumeState({ i: resumeAsk.i || 0, setNo: resumeAsk.setNo || 1, warmup: !!resumeAsk.warmup, log: resumeAsk.log || [] });
+                setWorkout(resumeAsk.program);
+                setResumeAsk(null);
+              }}>▶ Devam et</button>
+              <button className="btn-ghost" style={{ padding: 12 }} onClick={() => {
+                setResumeState(null); lsClearActiveWorkout();
+                setWorkout(resumeAsk.program);
+                setResumeAsk(null);
+              }}>🔄 Baştan başlat</button>
+              <button className="btn-ghost" style={{ padding: 12, color: "var(--danger)" }} onClick={() => {
+                lsClearActiveWorkout(); setResumeAsk(null);
+              }}>Vazgeç</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {addPick && (
         <div onClick={() => setAddPick(null)} style={{
