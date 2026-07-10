@@ -70,6 +70,14 @@ function lsGetPack() {
 function lsSetPack(p) {
   try { localStorage.setItem("fitbe_programs", JSON.stringify(p)); } catch (e) {}
 }
+// Antrenman geçmişi de cihazda yedeklenir: bulut okunamadığında yeni antrenman
+// kaybolmasın (programlarla aynı güvenlik modeli).
+function lsGetHist() {
+  try { const a = JSON.parse(localStorage.getItem("fitbe_workouts") || "null"); return Array.isArray(a) ? a : null; } catch (e) { return null; }
+}
+function lsSetHist(a) {
+  try { localStorage.setItem("fitbe_workouts", JSON.stringify(Array.isArray(a) ? a : [])); } catch (e) {}
+}
 // Firebase boş dizileri sakladığı için exercises alanını normalize et
 function normalizeList(list) {
   return (list || []).filter(Boolean).map((p) => ({
@@ -127,7 +135,13 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
-      if (!u) { loaded.current = false; cloudReady.current = false; edited.current = false; setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]); }
+      if (!u) {
+        loaded.current = false; cloudReady.current = false; edited.current = false;
+        setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
+        // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
+        // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
+        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+      }
     });
   }, []);
 
@@ -165,6 +179,8 @@ export default function App() {
         setActiveId(pack.activeId || null);
         if (pack.schedule) setSchedule(normalizeSchedule(pack.schedule));
       }
+      const localHist = lsGetHist();
+      if (localHist && !cancelled) setHistory(localHist);
 
       // 2) Buluttan oku — kritik anahtarlar SONUÇ DURUMLU (ok/veri ayrımı).
       const pr = await dbGetR("programs");
@@ -189,7 +205,10 @@ export default function App() {
           goalKg: (typeof prog.data.goalKg === "number" && prog.data.goalKg > 0) ? prog.data.goalKg : null,
         });
       }
-      if (hist.ok && Array.isArray(hist.data)) setHistory(hist.data);
+      if (hist.ok) {
+        if (Array.isArray(hist.data) && hist.data.length) { setHistory(hist.data); lsSetHist(hist.data); }
+        else if (localHist && localHist.length) { dbSet("workouts", localHist); } // bulut boş ama cihazda var → geri yükle
+      }
 
       if (pr.ok) {
         if (pr.data && Array.isArray(pr.data.list)) {
@@ -239,7 +258,7 @@ export default function App() {
             if (sc2.ok && sc2.data) setSchedule(normalizeSchedule(sc2.data));
             applyCloudPrograms(r.data, sc2.ok ? sc2.data : null);
             const h2 = await dbGetR("workouts", 1);
-            if (!cancelled && h2.ok && Array.isArray(h2.data)) setHistory(h2.data);
+            if (!cancelled && h2.ok && Array.isArray(h2.data) && h2.data.length) { setHistory(h2.data); lsSetHist(h2.data); }
           }
         };
         retryTimer = setTimeout(retry, 1500);
@@ -261,6 +280,7 @@ export default function App() {
   function saveWorkout(session) {
     setHistory((prev) => {
       const next = [session, ...prev].slice(0, 50);
+      lsSetHist(next); // cihaza her zaman (güvenli)
       if (cloudReady.current) dbSet("workouts", next);
       return next;
     });

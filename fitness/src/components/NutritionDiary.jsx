@@ -53,7 +53,30 @@ export default function NutritionDiary() {
     return () => { alive = false; };
   }, []);
 
-  function persist(next) { setDiary(next); dbSet("diary", next); }
+  // Fonksiyonel kalıcılık: en güncel state üzerinden hesapla (hızlı ardışık
+  // eklemelerde bayat-closure yüzünden veri kaybı olmasın).
+  function persistFn(updater) {
+    setDiary((prev) => { const next = updater(prev); dbSet("diary", next); return next; });
+  }
+  const mkItem = (item) => ({
+    id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    name: item.name, kcal: Math.round(item.kcal || 0), p: Math.round(item.p || 0),
+  });
+  // Bir state'ten bugünkü günü normalize ederek çıkar
+  function dayOf(state) {
+    const raw = (state.days && state.days[today]) || {};
+    const items = Array.isArray(raw.items) ? raw.items : (raw.items ? Object.values(raw.items) : []);
+    return { items, water: raw.water || 0 };
+  }
+  // Bugünkü günü fn ile güncelle + 31 günden eskisini buda
+  function withDay(prev, fn) {
+    const cur = dayOf(prev);
+    const nextDay = { ...cur, ...fn(cur) };
+    const days = { ...prev.days, [today]: nextDay };
+    const keys = Object.keys(days).sort();
+    while (keys.length > 31) delete days[keys.shift()];
+    return { ...prev, days };
+  }
 
   // Firebase boş dizileri kaydetmez; okurken items/water eksik gelebilir → normalize et
   const rawDay = diary.days[today] || {};
@@ -63,19 +86,10 @@ export default function NutritionDiary() {
   const totProt = day.items.reduce((s, x) => s + ((x && x.p) || 0), 0);
   const goal = diary.goal || { kcal: 0, protein: 0 };
 
-  function setDay(patch) {
-    const nextDay = { items: day.items, water: day.water || 0, ...patch };
-    // 30 günden eskileri buda
-    const days = { ...diary.days, [today]: nextDay };
-    const keys = Object.keys(days).sort();
-    while (keys.length > 31) delete days[keys.shift()];
-    persist({ ...diary, days });
-  }
-
   function addItem(item) {
     if (!item.name) return;
-    const it = { id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: item.name, kcal: Math.round(item.kcal || 0), p: Math.round(item.p || 0) };
-    setDay({ items: [...day.items, it] });
+    const it = mkItem(item);
+    persistFn((prev) => withDay(prev, (d) => ({ items: [...d.items, it] })));
   }
   function addManual() {
     if (!name.trim()) return;
@@ -86,18 +100,19 @@ export default function NutritionDiary() {
 
   // Manuel eklenen yiyeceği hem güne hem "son kullanılanlar"a yaz
   function addItemWithRecent(item) {
-    const it = { id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: item.name, kcal: Math.round(item.kcal || 0), p: Math.round(item.p || 0) };
-    const nextDay = { items: [...day.items, it], water: day.water || 0 };
-    const days = { ...diary.days, [today]: nextDay };
-    const rec = [{ name: it.name, kcal: it.kcal, p: it.p },
-      ...(Array.isArray(diary.recent) ? diary.recent : []).filter((r) => r.name.toLowerCase() !== it.name.toLowerCase())].slice(0, 10);
-    persist({ ...diary, days, recent: rec });
+    const it = mkItem(item);
+    persistFn((prev) => {
+      const base = withDay(prev, (d) => ({ items: [...d.items, it] }));
+      const rec = [{ name: it.name, kcal: it.kcal, p: it.p },
+        ...(Array.isArray(prev.recent) ? prev.recent : []).filter((r) => r.name.toLowerCase() !== it.name.toLowerCase())].slice(0, 10);
+      return { ...base, recent: rec };
+    });
   }
-  function delItem(id) { setDay({ items: day.items.filter((x) => x.id !== id) }); }
-  function water(d) { setDay({ water: Math.max(0, (day.water || 0) + d) }); }
+  function delItem(id) { persistFn((prev) => withDay(prev, (d) => ({ items: d.items.filter((x) => x.id !== id) }))); }
+  function water(delta) { persistFn((prev) => withDay(prev, (d) => ({ water: Math.max(0, (d.water || 0) + delta) }))); }
 
   function saveGoal() {
-    persist({ ...diary, goal: { kcal: Math.round(num(gKcal)), protein: Math.round(num(gProt)) } });
+    persistFn((prev) => ({ ...prev, goal: { kcal: Math.round(num(gKcal)), protein: Math.round(num(gProt)) } }));
     setEditGoal(false);
   }
 

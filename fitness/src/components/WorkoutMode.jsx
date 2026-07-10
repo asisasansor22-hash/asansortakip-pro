@@ -62,7 +62,7 @@ function overloadSuggestion(prev, metaReps) {
 
 // Antrenman modu: ısınma → hareket hareket çalış → özet/soğuma/paylaş.
 export default function WorkoutMode({ program, onExit, onFinish, lastLog, bestE1RM }) {
-  const exIds = program.exercises.filter((id) => getExercise(id));
+  const exIds = (program.exercises || []).filter((id) => getExercise(id));
   const [i, setI] = useState(0);
   const [setNo, setSetNo] = useState(1);
   const [resting, setResting] = useState(false);
