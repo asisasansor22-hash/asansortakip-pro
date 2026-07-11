@@ -76,6 +76,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const [shared, setShared] = useState(false);
   const [sharing, setSharing] = useState(false);
   const timer = useRef(null);
+  const prTimer = useRef(null); // rekor bildirimi zamanlayıcısı (unmount'ta temizlenir)
   const log = useRef(resume && Array.isArray(resume.log) ? resume.log.slice() : []); // {exId, weight, reps}
   const sessionPRs = useRef({}); // exId -> {name, w, r, e1rm}
   const stepsRef = useRef(null); // üstteki sıradaki-hareketler şeridi
@@ -105,7 +106,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
-  useEffect(() => () => clearInterval(timer.current), []);
+  useEffect(() => () => { clearInterval(timer.current); clearTimeout(prTimer.current); }, []);
 
   // Aktif antrenman ilerlemesini cihaza yaz — uygulama kapanırsa yeniden
   // açılışta "kaldığın yerden devam et?" için. Bitince (done) yazılmaz.
@@ -166,7 +167,8 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         sessionPRs.current[ex.id] = { name: ex.name, w, r, e1rm: e };
         setPrFlash(ex.name + " — " + w + " kg × " + r);
         try { if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 160]); } catch (err) {}
-        setTimeout(() => setPrFlash(null), 3200);
+        clearTimeout(prTimer.current);
+        prTimer.current = setTimeout(() => setPrFlash(null), 3200);
       }
     }
     if (setNo < meta.sets) { setSetNo(setNo + 1); startRest(); }
@@ -285,14 +287,14 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           const e = getExercise(id);
           const state = k < i ? "done" : (k === i ? "cur" : "next");
           return (
-            <div key={id + "-" + k} onClick={() => { if (k > i) { skipRest(); setI(k); setSetNo(1); } }}
+            <div key={id + "-" + k} onClick={() => { if (k !== i) { skipRest(); setI(k); setSetNo(1); } }}
               style={{
                 flexShrink: 0, maxWidth: 150, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700,
                 background: state === "cur" ? "var(--accent)" : "var(--card2)",
                 color: state === "cur" ? "#04321f" : (state === "done" ? "var(--muted)" : "var(--text)"),
                 opacity: state === "done" ? 0.6 : 1,
-                cursor: k > i ? "pointer" : "default",
+                cursor: k !== i ? "pointer" : "default",
               }}>
               {state === "done" ? "✓ " : (k + 1) + ". "}{e.name}
             </div>
