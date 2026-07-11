@@ -90,8 +90,55 @@ function Avatar({ avatar, email, onSaveAvatar }) {
   );
 }
 
+// Apple Sağlık (iPhone Kısayolu) ile antrenman içe aktarma bölümü
+function AppleHealth({ importUrl, onImportApple }) {
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!importUrl) return null;
+  async function copy() {
+    try { await navigator.clipboard.writeText(importUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) {}
+  }
+  async function imp() { setBusy(true); try { await onImportApple(); } catch (e) {} setBusy(false); }
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontWeight: 800, fontSize: 15 }}>🍎 Apple Sağlık'tan Aktar</div>
+        <button className="icon-btn" onClick={() => setOpen((v) => !v)}>{open ? "Gizle" : "Kurulum"}</button>
+      </div>
+      <p style={{ color: "var(--muted)", fontSize: 12, margin: "6px 0 10px" }}>
+        iPhone'daki antrenmanlarını bir kez kuracağın Apple Kısayolu ile buraya gönder.
+      </p>
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn-primary" style={{ flex: 1 }} disabled={busy} onClick={imp}>
+          {busy ? "Aktarılıyor…" : "⤵️ Şimdi içe aktar"}
+        </button>
+        <button className="icon-btn" onClick={copy}>{copied ? "Kopyalandı ✓" : "🔗 URL kopyala"}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Kısayol kurulumu (tek seferlik)</div>
+          <ol style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6, paddingLeft: 18, margin: 0 }}>
+            <li>iPhone'da <b>Kısayollar</b> uygulaması → <b>+</b> ile yeni kısayol.</li>
+            <li><b>“Sağlık Örnekleri Bul”</b> ekle → tür <b>Antrenman</b>, tarih aralığı <b>bugün/son 7 gün</b>.</li>
+            <li>Her antrenman için (Repeat/Yinele) şu alanları içeren bir <b>Sözlük</b> oluştur: <code>type</code> (Antrenman Türü), <code>start</code> (Başlangıç · Unix zamanı), <code>durationMin</code> (Süre · dk), <code>kcal</code> (Aktif Enerji).</li>
+            <li><b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>, Gövde <b>JSON</b> = Sözlük; URL olarak aşağıdaki bağlantı.</li>
+            <li>Kaydet. Uygulamayı her açtığında veri otomatik çekilir (ya da “Şimdi içe aktar”).</li>
+          </ol>
+          <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, marginTop: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
+            {importUrl}
+          </div>
+          <p style={{ color: "#fbbf24", fontSize: 11, marginTop: 8 }}>
+            ⚠️ Bunun çalışması için Firebase kurallarına <code>/fitness/imports</code> düğümü eklenmeli (yazma açık). Kural metnini geliştiriciden iste.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, onImportApple }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
@@ -105,6 +152,8 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar }
           <Admin />
         </div>
       )}
+
+      {importUrl && <AppleHealth importUrl={importUrl} onImportApple={onImportApple} />}
 
       <div className="section-title">Tercihleri güncelle</div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 12 }}>

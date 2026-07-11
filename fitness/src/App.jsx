@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, importInboxRead, importInboxClear, importInboxUrl } from "./firebase";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -27,6 +27,11 @@ const TABS = [
 
 function uid() {
   return "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+// Tahmin edilemez içe-aktarma anahtarı (Apple Sağlık kutusu için)
+function randHex(n) {
+  try { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a).map((b) => ("0" + b.toString(16)).slice(-2)).join(""); }
+  catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 }
 
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -130,6 +135,7 @@ export default function App() {
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
+  const [importKey, setImportKey] = useState(null); // Apple Sağlık içe-aktarma anahtarı
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -151,7 +157,7 @@ export default function App() {
       if (!u) {
         loaded.current = false; cloudReady.current = false; edited.current = false;
         setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
-        setWorkout(null); setResumeState(null); setResumeAsk(null);
+        setWorkout(null); setResumeState(null); setResumeAsk(null); setImportKey(null);
         // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
         // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
         try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
@@ -252,6 +258,14 @@ export default function App() {
         lsClearActiveWorkout(); // eski/boş kayıt → temizle
       }
 
+      // Apple Sağlık içe-aktarma anahtarı: yoksa üret; sonra gelen kutusunu içe aktar
+      if (!cancelled && cloudReady.current) {
+        const kr = await dbGetR("importkey");
+        let key = (kr.ok && typeof kr.data === "string" && kr.data) ? kr.data : null;
+        if (!key && kr.ok) { key = "k_" + randHex(18); dbSet("importkey", key); }
+        if (key && !cancelled) { setImportKey(key); importApple(key, true); }
+      }
+
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
       if (!pr.ok) {
         let attempt = 0;
@@ -309,6 +323,42 @@ export default function App() {
       if (cloudReady.current) dbSet("workouts", next);
       return next;
     });
+  }
+
+  // Apple Sağlık gelen kutusunu oku → antrenman geçmişine ekle → kutuyu temizle.
+  // Kısayolun gönderdiği her kayıt: { type, start(ms|s), durationMin, kcal }.
+  async function importApple(key, silent) {
+    if (!key) return 0;
+    const inbox = await importInboxRead(key);
+    const entries = inbox ? Object.values(inbox).filter((x) => x && (x.start || x.date)) : [];
+    if (!entries.length) { if (!silent) flash("Yeni Apple verisi yok"); return 0; }
+    let added = 0;
+    setHistory((prev) => {
+      const seen = new Set(prev.map((s) => s.id).filter(Boolean));
+      const news = [];
+      entries.forEach((e) => {
+        let start = Number(e.start || e.date) || 0;
+        if (start > 0 && start < 1e12) start *= 1000; // saniye → ms
+        if (!start) return;
+        const id = "apple_" + start;
+        if (seen.has(id)) return;
+        seen.add(id);
+        news.push({
+          id, date: start, program: String(e.type || "Apple Antrenman"), sets: [], source: "apple",
+          kcal: Math.round(Number(e.kcal) || 0),
+          durationMin: Math.round(Number(e.durationMin || e.duration) || 0),
+        });
+      });
+      if (!news.length) return prev;
+      added = news.length;
+      const next = [...news, ...prev].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, 60);
+      lsSetHist(next);
+      if (cloudReady.current) dbSet("workouts", next);
+      return next;
+    });
+    await importInboxClear(key);
+    if (!silent) flash(added ? added + " Apple antrenmanı aktarıldı ✓" : "Yeni Apple verisi yok");
+    return added;
   }
 
   // İlerleme verisini kaydet (kilo + ölçüler)
@@ -620,7 +670,8 @@ export default function App() {
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Timeline />}
-      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar} />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
+        importUrl={importKey ? importInboxUrl(importKey) : null} onImportApple={() => importApple(importKey)} />}
 
       {resumeAsk && (
         <div style={{

@@ -447,6 +447,26 @@ export default function Progress({ data, history = [], onSave }) {
         Hacim = kaldırılan toplam tonaj (kilo × tekrar). Vücut ağırlığı hareketleri tonaja girmez ama set sayısına sayılır.
       </p>
 
+      {/* Son antrenmanlar (manuel + Apple Sağlık) */}
+      {history.length > 0 && (
+        <>
+          <div className="section-title">Son Antrenmanlar</div>
+          {history.slice(0, 8).map((s, k) => (
+            <div key={s.id || k} className="card" style={{ marginBottom: 8, padding: 12 }}>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{s.source === "apple" ? "🍎 " : ""}{s.program || "Antrenman"}</div>
+                <span className="pill" style={{ fontSize: 12 }}>
+                  {s.source === "apple"
+                    ? ([s.durationMin ? s.durationMin + " dk" : null, s.kcal ? s.kcal + " kcal" : null].filter(Boolean).join(" · ") || "Apple")
+                    : (((s.sets && s.sets.length) || 0) + " set")}
+                </span>
+              </div>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{fmtDay(s.date)}</div>
+            </div>
+          ))}
+        </>
+      )}
+
       {/* Hareket takibi — hangi hareket, kaç kg × kaç tekrar */}
       <div className="section-title">Hareket Takibi</div>
       {exList.length === 0 ? (
