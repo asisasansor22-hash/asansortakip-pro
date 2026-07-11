@@ -7,8 +7,15 @@ const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
 const todayIdx = () => (new Date().getDay() + 6) % 7; // Pzt=0
 
+// "4 x 8-10" -> { n: 4, reps: "8-10" }. Sayı x tekrar biçimi değilse (ör.
+// "10-20 dk" kardiyo) null döner → set sayısı ayarlanamaz, ham metin gösterilir.
+function parseSetCount(s) {
+  const m = /^(\d+)\s*[xX]\s*(.+)$/.exec(s || "");
+  return m ? { n: parseInt(m[1], 10), reps: m[2].trim() } : null;
+}
+
 export default function ProgramBuilder({
-  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onStart,
+  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onSetCount, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(null);
@@ -124,6 +131,8 @@ export default function ProgramBuilder({
                 {p.exercises.map((exId, i) => {
                   const ex = getExercise(exId);
                   if (!ex) return null;
+                  const parsed = parseSetCount(ex.sets);
+                  const cur = (p.sets && p.sets[exId] != null) ? p.sets[exId] : (parsed ? parsed.n : null);
                   return (
                     <div key={exId + "-" + i} className="prog-ex-row">
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
@@ -137,11 +146,24 @@ export default function ProgramBuilder({
                       <div className="figbox" style={{ width: 56, height: 56, padding: 0 }}>
                         <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={52} still />
                       </div>
-                      <div className="grow">
+                      <div className="grow" style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>{ex.name}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{i + 1}. sıra · {ex.sets}</div>
+                        {cur != null ? (
+                          <div className="row" style={{ gap: 6, alignItems: "center", marginTop: 4 }}>
+                            <button className="icon-btn" disabled={cur <= 1}
+                              style={{ padding: "2px 9px", fontSize: 15, opacity: cur <= 1 ? 0.3 : 1 }}
+                              onClick={() => onSetCount && onSetCount(p.id, exId, cur - 1)}>−</button>
+                            <span style={{ fontWeight: 700, fontSize: 13, minWidth: 42, textAlign: "center" }}>{cur} set</span>
+                            <button className="icon-btn" disabled={cur >= 12}
+                              style={{ padding: "2px 9px", fontSize: 15, opacity: cur >= 12 ? 0.3 : 1 }}
+                              onClick={() => onSetCount && onSetCount(p.id, exId, cur + 1)}>＋</button>
+                            {parsed && <span style={{ color: "var(--muted)", fontSize: 12 }}>× {parsed.reps}</span>}
+                          </div>
+                        ) : (
+                          <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>{i + 1}. sıra · {ex.sets}</div>
+                        )}
                       </div>
-                      <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)}>×</button>
+                      <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)} style={{ alignSelf: "flex-start" }}>×</button>
                     </div>
                   );
                 })}

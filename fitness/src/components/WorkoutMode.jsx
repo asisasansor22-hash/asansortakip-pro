@@ -94,6 +94,8 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
 
   const ex = exIds.length ? getExercise(exIds[i]) : null;
   const meta = ex ? parseSets(ex.sets) : { sets: 1, reps: "-" };
+  // Programda bu hareket için özel set sayısı ayarlandıysa onu kullan
+  const targetSets = (ex && program.sets && program.sets[ex.id] != null) ? program.sets[ex.id] : meta.sets;
   const prev = ex && lastLog ? lastLog(ex.id) : null;
   const suggestion = overloadSuggestion(prev, meta.reps);
   const curE1RM = est1RM(Number(weight), firstInt(reps));
@@ -171,7 +173,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         prTimer.current = setTimeout(() => setPrFlash(null), 3200);
       }
     }
-    if (setNo < meta.sets) { setSetNo(setNo + 1); startRest(); }
+    if (setNo < targetSets) { setSetNo(setNo + 1); startRest(); }
     else nextExercise();
   }
 
@@ -338,7 +340,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         ) : (
           <>
             <div className="row" style={{ justifyContent: "center", gap: 10, marginTop: 2 }}>
-              <span className="pill" style={{ fontSize: 14 }}>Set {setNo} / {meta.sets}</span>
+              <span className="pill" style={{ fontSize: 14 }}>Set {setNo} / {targetSets}</span>
               <span className="pill lvl" style={{ fontSize: 14 }}>Hedef: {meta.reps}</span>
             </div>
             {prev && (prev.weight || prev.reps) && (
@@ -368,7 +370,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
       {!resting && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button className="btn-primary" onClick={completeSet}>
-            {setNo < meta.sets ? "✓ Set tamamlandı" : "✓ Hareketi bitir"}
+            {setNo < targetSets ? "✓ Set tamamlandı" : "✓ Hareketi bitir"}
           </button>
           <button className="btn-ghost" style={{ padding: 12 }} onClick={nextExercise}>Sonraki hareket →</button>
         </div>

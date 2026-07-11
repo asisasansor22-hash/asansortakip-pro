@@ -490,6 +490,16 @@ export default function App() {
     ));
   }
 
+  // Bir programdaki hareketin set sayısını değiştir (varsayılanı ezen override;
+  // hareket id'sine göre saklanır, 1-12 arası). Antrenman bunu kullanır.
+  function setExerciseSets(programId, exId, count) {
+    const n = Math.max(1, Math.min(12, count | 0));
+    setPrograms((prev) => prev.map((p) => {
+      if (p.id !== programId) return p;
+      return { ...p, sets: { ...(p.sets || {}), [exId]: n } };
+    }));
+  }
+
   // Programdaki hareketi bir üste/alta taşı (dir: -1 | +1)
   function moveExercise(programId, index, dir) {
     setPrograms((prev) => prev.map((p) => {
@@ -603,6 +613,7 @@ export default function App() {
           onDelete={deleteProgram}
           onRemoveExercise={removeExercise}
           onMoveExercise={moveExercise}
+          onSetCount={setExerciseSets}
           onStart={(p) => { setResumeState(null); lsClearActiveWorkout(); setWorkout(p); }}
         />
       )}
