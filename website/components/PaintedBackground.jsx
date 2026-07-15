@@ -86,37 +86,37 @@ const mains = {
     void main() {
       vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
       vec2 uv = vUv * aspect;
-      float t = uTime * 0.12;
+      float t = uTime * 0.085;
 
       // Organik hareket için domain-warp akış alanı.
-      vec2 p = vUv * aspect * 1.5;
+      vec2 p = vUv * aspect * 1.4;
       vec2 q = vec2(fbm(p + vec2(0.0, t)), fbm(p + vec2(5.2, -t)));
-      float flow = fbm(p + 2.0 * q + t * 0.5);
-      float flow2 = fbm(p * 1.6 + 2.4 * q - t * 0.4);
+      float flow = fbm(p + 1.8 * q + t * 0.5);
+      float flow2 = fbm(p * 1.6 + 2.2 * q - t * 0.4);
 
-      // İkinci ton — accent'ten türetilmiş teal/camgöbeği (aurora çeşitliliği).
-      vec3 accent2 = vec3(uAccent.r * 0.35, uAccent.g * 0.95 + 0.05, uAccent.b);
+      // Kurumsal ton için accent'e çok yakın, hafif serin bir ikinci mavi.
+      vec3 accent2 = mix(uAccent, vec3(uAccent.r * 0.6, uAccent.g, uAccent.b), 0.6);
 
-      // Taban degrade (biraz daha derin).
-      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, vUv.y * 0.55 + flow * 0.45));
+      // Taban degrade — sakin, havadar.
+      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, vUv.y * 0.6 + flow * 0.4));
 
-      // Hareketli renk havuzları — daha belirgin ağırlıklar.
-      vec2 c1 = vec2(0.26 + 0.18 * sin(t * 0.8), 0.32 + 0.14 * cos(t * 0.7)) * aspect;
-      vec2 c2 = vec2(0.76 + 0.16 * sin(t * 0.6 + 2.0), 0.30 + 0.16 * cos(t * 0.9 + 1.0)) * aspect;
-      vec2 c3 = vec2(0.55 + 0.20 * sin(t * 0.5 + 4.0), 0.78 + 0.14 * cos(t * 0.6 + 3.0)) * aspect;
-      float w1 = exp(-2.0 * dot(uv - c1, uv - c1));
-      float w2 = exp(-2.3 * dot(uv - c2, uv - c2));
-      float w3 = exp(-2.1 * dot(uv - c3, uv - c3));
+      // Yavaşça dolaşan renk havuzları — ölçülü ağırlıklar.
+      vec2 c1 = vec2(0.28 + 0.15 * sin(t * 0.7), 0.34 + 0.12 * cos(t * 0.6)) * aspect;
+      vec2 c2 = vec2(0.74 + 0.14 * sin(t * 0.5 + 2.0), 0.32 + 0.14 * cos(t * 0.8 + 1.0)) * aspect;
+      vec2 c3 = vec2(0.55 + 0.17 * sin(t * 0.45 + 4.0), 0.76 + 0.12 * cos(t * 0.55 + 3.0)) * aspect;
+      float w1 = exp(-2.3 * dot(uv - c1, uv - c1));
+      float w2 = exp(-2.6 * dot(uv - c2, uv - c2));
+      float w3 = exp(-2.4 * dot(uv - c3, uv - c3));
 
-      // Akışla bükülen aurora kurdeleleri — daha güçlü.
-      float ribbon = smoothstep(0.30, 0.80, flow);
-      float ribbon2 = smoothstep(0.35, 0.85, flow2);
-      col = mix(col, uColorB, clamp(w1 * 0.9 + ribbon2 * 0.35, 0.0, 1.0));
-      col = mix(col, uAccent, clamp(w2 * 0.60 + ribbon * 0.32, 0.0, 0.7));
-      col = mix(col, accent2, clamp(w3 * 0.50 + ribbon2 * 0.25, 0.0, 0.55));
+      // Akışla bükülen yumuşak kurdeleler — profesyonel, abartısız.
+      float ribbon = smoothstep(0.34, 0.82, flow);
+      float ribbon2 = smoothstep(0.40, 0.86, flow2);
+      col = mix(col, uColorB, clamp(w1 * 0.75 + ribbon2 * 0.22, 0.0, 1.0));
+      col = mix(col, uAccent, clamp(w2 * 0.40 + ribbon * 0.20, 0.0, 0.5));
+      col = mix(col, accent2, clamp(w3 * 0.26 + ribbon2 * 0.10, 0.0, 0.34));
 
       // Akışın tepe noktalarında yumuşak beyaz parlama → havadar kalır.
-      col = mix(col, vec3(1.0), smoothstep(0.78, 1.0, flow) * 0.12);
+      col = mix(col, vec3(1.0), smoothstep(0.76, 1.0, flow) * 0.10);
 
       // Sol/metin bölgesini bir tık aydınlat (başlık okunurluğu).
       col = mix(col, mix(col, vec3(1.0), 0.18), smoothstep(0.5, 0.0, vUv.x));
