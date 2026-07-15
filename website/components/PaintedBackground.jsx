@@ -80,46 +80,53 @@ const mains = {
       gl_FragColor = vec4(col, 1.0);
     }
   `,
-  // Aurora — akışkan ışık kurdeleleri + yumuşak renk havuzları.
-  // Hafif/aydınlık ve kurumsal kalır ama mermerden daha zengin ve derindir.
+  // Aurora — belirgin, akışkan ışık kurdeleleri + iki tonlu renk havuzları.
+  // Hafif/kurumsal kalır ama mermerden çok daha zengin ve gözle görülür.
   aurora: /* glsl */ `
     void main() {
       vec2 aspect = vec2(uRes.x / uRes.y, 1.0);
       vec2 uv = vUv * aspect;
-      float t = uTime * 0.11;
+      float t = uTime * 0.12;
 
       // Organik hareket için domain-warp akış alanı.
-      vec2 p = vUv * aspect * 1.4;
+      vec2 p = vUv * aspect * 1.5;
       vec2 q = vec2(fbm(p + vec2(0.0, t)), fbm(p + vec2(5.2, -t)));
-      float flow = fbm(p + 1.8 * q + t * 0.5);
-      float flow2 = fbm(p * 1.7 + 2.2 * q - t * 0.35);
+      float flow = fbm(p + 2.0 * q + t * 0.5);
+      float flow2 = fbm(p * 1.6 + 2.4 * q - t * 0.4);
 
-      // Taban: yukarıdan aşağıya havadar açık degrade (akışla hafif kırılır).
-      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, vUv.y * 0.65 + flow * 0.35));
+      // İkinci ton — accent'ten türetilmiş teal/camgöbeği (aurora çeşitliliği).
+      vec3 accent2 = vec3(uAccent.r * 0.35, uAccent.g * 0.95 + 0.05, uAccent.b);
 
-      // Yavaşça dolaşan aurora ışık havuzları.
-      vec2 c1 = vec2(0.28 + 0.16 * sin(t * 0.8), 0.34 + 0.12 * cos(t * 0.7)) * aspect;
-      vec2 c2 = vec2(0.74 + 0.14 * sin(t * 0.6 + 2.0), 0.30 + 0.16 * cos(t * 0.9 + 1.0)) * aspect;
-      vec2 c3 = vec2(0.55 + 0.18 * sin(t * 0.5 + 4.0), 0.74 + 0.12 * cos(t * 0.6 + 3.0)) * aspect;
-      float w1 = exp(-2.4 * dot(uv - c1, uv - c1));
-      float w2 = exp(-2.9 * dot(uv - c2, uv - c2));
-      float w3 = exp(-2.6 * dot(uv - c3, uv - c3));
+      // Taban degrade (biraz daha derin).
+      vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 1.0, vUv.y * 0.55 + flow * 0.45));
 
-      // Akışla bükülen aurora kurdeleleri.
-      float ribbon = smoothstep(0.34, 0.78, flow);
-      float ribbon2 = smoothstep(0.40, 0.85, flow2);
-      col = mix(col, uColorB, clamp(w1 * 0.7 + w3 * 0.4 + ribbon2 * 0.18, 0.0, 1.0));
-      col = mix(col, uAccent, clamp(w2 * 0.42 + ribbon * 0.20, 0.0, 0.55));
+      // Hareketli renk havuzları — daha belirgin ağırlıklar.
+      vec2 c1 = vec2(0.26 + 0.18 * sin(t * 0.8), 0.32 + 0.14 * cos(t * 0.7)) * aspect;
+      vec2 c2 = vec2(0.76 + 0.16 * sin(t * 0.6 + 2.0), 0.30 + 0.16 * cos(t * 0.9 + 1.0)) * aspect;
+      vec2 c3 = vec2(0.55 + 0.20 * sin(t * 0.5 + 4.0), 0.78 + 0.14 * cos(t * 0.6 + 3.0)) * aspect;
+      float w1 = exp(-2.0 * dot(uv - c1, uv - c1));
+      float w2 = exp(-2.3 * dot(uv - c2, uv - c2));
+      float w3 = exp(-2.1 * dot(uv - c3, uv - c3));
+
+      // Akışla bükülen aurora kurdeleleri — daha güçlü.
+      float ribbon = smoothstep(0.30, 0.80, flow);
+      float ribbon2 = smoothstep(0.35, 0.85, flow2);
+      col = mix(col, uColorB, clamp(w1 * 0.9 + ribbon2 * 0.35, 0.0, 1.0));
+      col = mix(col, uAccent, clamp(w2 * 0.60 + ribbon * 0.32, 0.0, 0.7));
+      col = mix(col, accent2, clamp(w3 * 0.50 + ribbon2 * 0.25, 0.0, 0.55));
 
       // Akışın tepe noktalarında yumuşak beyaz parlama → havadar kalır.
-      col = mix(col, vec3(1.0), smoothstep(0.72, 1.0, flow) * 0.10);
+      col = mix(col, vec3(1.0), smoothstep(0.78, 1.0, flow) * 0.12);
+
+      // Sol/metin bölgesini bir tık aydınlat (başlık okunurluğu).
+      col = mix(col, mix(col, vec3(1.0), 0.18), smoothstep(0.5, 0.0, vUv.x));
 
       // İmleç ışıltısı.
       vec2 m = uMouse * aspect;
-      col = mix(col, uAccent, exp(-3.2 * dot(uv - m, uv - m)) * 0.16);
+      col = mix(col, uAccent, exp(-3.0 * dot(uv - m, uv - m)) * 0.18);
 
       // Çok yumuşak derinlik vignette'i.
-      float vig = 1.0 - 0.055 * dot(vUv - 0.5, vUv - 0.5) * 4.0;
+      float vig = 1.0 - 0.06 * dot(vUv - 0.5, vUv - 0.5) * 4.0;
       col *= clamp(vig, 0.0, 1.0);
 
       col = dither(col, vUv);
