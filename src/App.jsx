@@ -700,6 +700,7 @@ function App(){
   const [bakimBildirimleri,setBakimBildirimleri]=useState([]); // yönetici için uygulama-içi toast'lar
   const bakimBildirimSeenRef=useRef(null); // oturum başı baz alınan son ts
   const [pushDurum,setPushDurum]=useState(function(){return pushBildirimDurumu();}); // FCM izin durumu
+  const [takipGun,setTakipGun]=useState(0); // Bakımcı Takip: seçili gün (0=bugün, geriye offset)
   const [tumBildirimler,setTumBildirimler]=useState([]); // bildirim paneli: tüm geçmiş
   const [bildirimPanelAcik,setBildirimPanelAcik]=useState(false);
   const [bildirimPanelSeen,setBildirimPanelSeen]=useState(""); // panel için son okunan ts
@@ -3850,12 +3851,31 @@ function App(){
     if(/^\d{1,2}:\d{2}/.test(t)) return t.substring(0,5);
     return "--:--";
   }
-  var bugunYapilan=maints.filter(function(m){
-    return m.yapildi && parseTakipTarih(m.yapildiSaat)===bugunStr;
+  // Son 14 gün: gün seçici çipleri (Bugün / Dün / gün adı + tarih) + gün başına sayı
+  var GUN_ADLARI=["Paz","Pzt","Sal","Çar","Per","Cum","Cmt"];
+  var gunler=[];
+  for(var gOff=0;gOff<14;gOff++){
+    var gd=new Date(bugun.getFullYear(),bugun.getMonth(),bugun.getDate()-gOff);
+    var gStr=gd.getFullYear()+"-"+String(gd.getMonth()+1).padStart(2,"0")+"-"+String(gd.getDate()).padStart(2,"0");
+    gunler.push({
+      offset:gOff,
+      tarihStr:gStr,
+      label:gOff===0?"Bugün":gOff===1?"Dün":GUN_ADLARI[gd.getDay()]+" "+String(gd.getDate()).padStart(2,"0")+"."+String(gd.getMonth()+1).padStart(2,"0"),
+      etiket:String(gd.getDate()).padStart(2,"0")+"."+String(gd.getMonth()+1).padStart(2,"0")+"."+gd.getFullYear()
+    });
+  }
+  var seciliGunObj=gunler[takipGun]||gunler[0];
+  var gunSayilari={};
+  maints.forEach(function(m){
+    if(!m.yapildi) return;
+    var t=parseTakipTarih(m.yapildiSaat);
+    if(t) gunSayilari[t]=(gunSayilari[t]||0)+1;
   });
-  // Bakımcıya atanmamış ama bugün yapılanları da göster
+  var seciliYapilan=maints.filter(function(m){
+    return m.yapildi && parseTakipTarih(m.yapildiSaat)===seciliGunObj.tarihStr;
+  });
   var gruplar={};
-  bugunYapilan.forEach(function(m){
+  seciliYapilan.forEach(function(m){
     var kid=m.bakimciId||"__yonetici__";
     var kad=m.bakimciAd||(m.bakimciId?"Bakımcı "+m.bakimciId:"Yönetici");
     var krenk=m.bakimciRenk||"#64748b";
@@ -3863,14 +3883,13 @@ function App(){
     gruplar[kid].bakimlar.push(m);
   });
   var grupList=Object.values(gruplar).sort(function(a,b){return a.ad.localeCompare(b.ad,"tr");});
-  var toplamBakim=bugunYapilan.length;
-  var toplamTahsilat=bugunYapilan.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
-  var tarihLabel=dd+"."+mm+"."+yyyy;
+  var toplamBakim=seciliYapilan.length;
+  var toplamTahsilat=seciliYapilan.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
   return React.createElement('div',{className:"ios-animate",style:{padding:"0 0 40px"}},
-    React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}},
+    React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}},
       React.createElement('div',null,
         React.createElement('div',{style:{fontSize:18,fontWeight:800,color:"#e0e6f0"}},"👷 Bakımcı Takip"),
-        React.createElement('div',{style:{fontSize:12,color:"#64748b",marginTop:2}},tarihLabel+" · Bugün tamamlanan bakımlar")
+        React.createElement('div',{style:{fontSize:12,color:"#64748b",marginTop:2}},seciliGunObj.etiket+" · "+(takipGun===0?"Bugün":seciliGunObj.label)+" tamamlanan bakımlar")
       ),
       React.createElement('div',{style:{display:"flex",gap:12}},
         React.createElement('div',{style:{textAlign:"center",background:"#1a2236",borderRadius:12,padding:"8px 16px"}},
@@ -3883,11 +3902,29 @@ function App(){
         )
       )
     ),
+    /* Son 14 gün seçici — yatay kaydırılabilir çipler */
+    React.createElement('div',{style:{display:"flex",gap:6,overflowX:"auto",paddingBottom:6,marginBottom:12,WebkitOverflowScrolling:"touch"}},
+      gunler.map(function(g){
+        var aktif=takipGun===g.offset;
+        var sayi=gunSayilari[g.tarihStr]||0;
+        return React.createElement('button',{
+          key:g.offset,
+          onClick:function(){setTakipGun(g.offset);},
+          style:{flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"6px 11px",borderRadius:20,
+            background:aktif?"#3b82f622":"#141824",
+            border:"2px solid "+(aktif?"#3b82f688":"#2a3050"),
+            color:aktif?"#93c5fd":"#94a3b8",fontWeight:aktif?800:600,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}
+        },
+          g.label,
+          sayi>0&&React.createElement('span',{style:{background:aktif?"#3b82f6":"#2a3050",color:aktif?"#fff":"#94a3b8",borderRadius:20,fontSize:9,padding:"1px 6px",fontWeight:900}},sayi)
+        );
+      })
+    ),
     grupList.length===0
       ? React.createElement('div',{style:{textAlign:"center",padding:"60px 20px",color:"#64748b"}},
           React.createElement('div',{style:{fontSize:36,marginBottom:12}},"📭"),
-          React.createElement('div',{style:{fontWeight:700,fontSize:15}},"Bugün henüz bakım tamamlanmamış"),
-          React.createElement('div',{style:{fontSize:12,marginTop:6}},"Bakımcılar bakım kaydettikçe burada görünecek")
+          React.createElement('div',{style:{fontWeight:700,fontSize:15}},takipGun===0?"Bugün henüz bakım tamamlanmamış":"Bu günde tamamlanan bakım yok"),
+          React.createElement('div',{style:{fontSize:12,marginTop:6}},takipGun===0?"Bakımcılar bakım kaydettikçe burada görünecek":"Başka bir gün seçmeyi deneyin")
         )
       : grupList.map(function(g){
           var gToplam=g.bakimlar.reduce(function(s,m){return s+finansMaintAlinan(m);},0);
