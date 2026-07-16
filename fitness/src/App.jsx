@@ -35,6 +35,7 @@ function randHex(n) {
 }
 
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+const MAX_HISTORY = 60; // saklanan antrenman geçmişi (manuel + Apple) üst sınırı
 
 // Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
 function lsGetProfile() {
@@ -318,7 +319,7 @@ export default function App() {
   // buluttaki tüm geçmişi ezer. Bağlantı gelince geçmiş yeniden okunur.
   function saveWorkout(session) {
     setHistory((prev) => {
-      const next = [session, ...prev].slice(0, 50);
+      const next = [session, ...prev].slice(0, MAX_HISTORY);
       lsSetHist(next); // cihaza her zaman (güvenli)
       if (cloudReady.current) dbSet("workouts", next);
       return next;
@@ -351,7 +352,7 @@ export default function App() {
       });
       if (!news.length) return prev;
       added = news.length;
-      const next = [...news, ...prev].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, 60);
+      const next = [...news, ...prev].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, MAX_HISTORY);
       lsSetHist(next);
       if (cloudReady.current) dbSet("workouts", next);
       return next;
@@ -640,7 +641,7 @@ export default function App() {
       {workout && <WorkoutMode program={workout} resume={resumeState}
         onExit={() => { setWorkout(null); setResumeState(null); lsClearActiveWorkout(); }}
         onFinish={(s) => { saveWorkout(s); setResumeState(null); lsClearActiveWorkout(); }}
-        onPersist={(snap) => lsSetActiveWorkout({ program: workout, ...snap, savedAt: Date.now() })}
+        onPersist={(snap) => { if (snap === null) lsClearActiveWorkout(); else lsSetActiveWorkout({ program: workout, ...snap, savedAt: Date.now() }); }}
         lastLog={lastLog} bestE1RM={bestE1RM} />}
       <div className="topbar">
         <div className="brand">Fit<span>+be</span></div>

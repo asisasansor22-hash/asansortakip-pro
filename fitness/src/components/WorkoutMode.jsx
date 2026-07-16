@@ -111,10 +111,12 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   useEffect(() => () => { clearInterval(timer.current); clearTimeout(prTimer.current); }, []);
 
   // Aktif antrenman ilerlemesini cihaza yaz — uygulama kapanırsa yeniden
-  // açılışta "kaldığın yerden devam et?" için. Bitince (done) yazılmaz.
+  // açılışta "kaldığın yerden devam et?" için. Bitince (done) snapshot temizlenir
+  // (boş log ile bitirilse bile), onPersist(null) ile.
   useEffect(() => {
-    if (done) return;
-    if (onPersist) onPersist({ i, setNo, warmup, log: log.current.slice() });
+    if (!onPersist) return;
+    if (done) { onPersist(null); return; }
+    onPersist({ i, setNo, warmup, log: log.current.slice() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i, setNo, warmup, done]);
 
