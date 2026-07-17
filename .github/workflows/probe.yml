@@ -2,6 +2,9 @@ name: Canli Uc Nokta Testi
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/probe.yml"
 
 jobs:
   probe:
