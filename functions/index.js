@@ -314,7 +314,23 @@ exports.binaOzet = onRequest(
         .filter((m) => m && Number(m.asansorId) === elevId)
         .sort((a, b) => String(b.tarih || "").localeCompare(String(a.tarih || "")))[0] || null;
 
+      // Firma iletişim bilgisi: müşteri sayfasındaki "Ara / Arıza Bildir" butonları için
+      let firmaBilgi = { ad: "", tel: "", wa: "" };
+      if (f === "asis") {
+        firmaBilgi = { ad: "Asis Asansör", tel: "02127032052", wa: "905435070794" };
+      } else {
+        const cfgSnap = await admin.database().ref(base + "/config").get();
+        const cfg = cfgSnap.val() || {};
+        const telRaw = String(cfg.tel2 || cfg.tel || "").replace(/\D/g, "");
+        let wa = "";
+        if (telRaw.length === 10 && telRaw[0] === "5") wa = "90" + telRaw;
+        else if (telRaw.length === 11 && telRaw[0] === "0" && telRaw[1] === "5") wa = "9" + telRaw;
+        else if (telRaw.length === 12 && telRaw.indexOf("90") === 0) wa = telRaw;
+        firmaBilgi = { ad: cfg.ad || "", tel: telRaw, wa: wa };
+      }
+
       res.status(200).json({
+        firma: firmaBilgi,
         binaAd: elev.ad || "",
         ilce: elev.ilce || "",
         semt: elev.semt || "",

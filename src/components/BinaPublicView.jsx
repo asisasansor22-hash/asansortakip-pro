@@ -111,9 +111,27 @@ export default function BinaPublicView({ firmaKodu, token }) {
                   })}
             </div>
 
+            {/* Firma iletişim: müşteri buradan arayabilir / arıza bildirebilir */}
+            {veri.firma && (veri.firma.tel || veri.firma.wa) && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                {veri.firma.tel && (
+                  <a href={'tel:' + veri.firma.tel}
+                    style={{ flex: 1, textAlign: 'center', padding: '13px 8px', borderRadius: 12, background: '#1a2236', border: '1px solid #3b82f655', color: '#93c5fd', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
+                    📞 Firmayı Ara
+                  </a>
+                )}
+                {veri.firma.wa && (
+                  <a href={'https://wa.me/' + veri.firma.wa + '?text=' + encodeURIComponent('Merhaba, ' + (veri.binaAd || 'binamız') + ' için arıza bildirmek istiyorum.')}
+                    target="_blank" rel="noreferrer"
+                    style={{ flex: 1, textAlign: 'center', padding: '13px 8px', borderRadius: 12, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
+                    💬 Arıza Bildir
+                  </a>
+                )}
+              </div>
+            )}
+
             <div style={{ textAlign: 'center', fontSize: 10, color: '#475569', marginTop: 16 }}>
-              Bu sayfa bilgi amaçlıdır ve bakım firmanız tarafından sizinle paylaşılmıştır.<br />
-              Sorularınız için lütfen bakım firmanızı arayınız.
+              Bu sayfa bilgi amaçlıdır ve {veri.firma && veri.firma.ad ? veri.firma.ad : 'bakım firmanız'} tarafından sizinle paylaşılmıştır.
             </div>
           </div>
         )}
