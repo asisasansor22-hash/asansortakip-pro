@@ -1,0 +1,21 @@
+name: Canli Uc Nokta Testi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: binaOzet gecersiz token testi
+        run: |
+          echo "== binaOzet (gecersiz token, JSON hata bekleniyor) =="
+          curl -sS -w "\nHTTP_CODE:%{http_code}\n" --max-time 30 \
+            "https://europe-west1-asansortakipv3.cloudfunctions.net/binaOzet?f=asis&t=xxxxxxxxxxxx" || true
+          echo "== binaOzet run.app uzerinden =="
+          curl -sS -w "\nHTTP_CODE:%{http_code}\n" --max-time 30 \
+            "https://binaozet-cvwmtl3ujq-ew.a.run.app/?f=asis&t=xxxxxxxxxxxx" || true
+      - name: Site erisim testi
+        run: |
+          echo "== asisasansor.xyz =="
+          curl -sS -o /dev/null -w "HTTP_CODE:%{http_code}\n" --max-time 30 "https://asisasansor.xyz/" || true
