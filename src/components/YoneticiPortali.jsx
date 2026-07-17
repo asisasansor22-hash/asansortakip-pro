@@ -11,7 +11,7 @@ function binaTokenUret() {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function binaLinkiKopyala(elev) {
+async function binaLinkiPaylas(elev) {
   try {
     var mevcut = (await dbGet('at_bina_links')) || {}
     if (Array.isArray(mevcut)) mevcut = {}
@@ -26,13 +26,22 @@ async function binaLinkiKopyala(elev) {
       if (ok === false) { alert('Link kaydedilemedi (bağlantı/izin). Tekrar deneyin.'); return }
     }
     var url = window.location.origin + '/?f=' + encodeURIComponent(getTenantId() || 'asis') + '&bina=' + token
-    var kopyalandi = false
-    try { await navigator.clipboard.writeText(url); kopyalandi = true } catch (e) {}
-    if (kopyalandi) {
-      alert('🔗 Bina yöneticisi linki kopyalandı!\n\nBu linki bina yöneticisine WhatsApp ile gönderebilirsiniz. Link ile sadece bu binanın bakım geçmişi, ödemeleri ve bakiyesi görünür — giriş gerektirmez.\n\n' + url)
-    } else {
-      window.prompt('Linki kopyalayın:', url)
-    }
+    try { navigator.clipboard.writeText(url) } catch (e) {}
+
+    // Hazır mesaj: binanın kayıtlı yöneticisine doğrudan WhatsApp sohbeti aç
+    var mesaj =
+      'Sayın ' + (elev.yonetici || (elev.ad || '') + ' Yönetimi') + ',\n\n' +
+      (elev.ad || 'Binanız') + ' asansörü için özel bilgi sayfanız hazır:\n\n' + url + '\n\n' +
+      'Bu sayfadan bakım geçmişinizi, ödemelerinizi ve güncel bakiyenizi dilediğiniz an görüntüleyebilir, ' +
+      'tek dokunuşla bize ulaşabilir veya arıza bildirebilirsiniz. Giriş ya da uygulama gerektirmez.\n\n' +
+      'Sağlıklı günler dileriz.'
+    var tel = String(elev.tel || '').replace(/\D/g, '')
+    if (tel.length === 10 && tel[0] === '5') tel = '90' + tel
+    else if (tel.length === 11 && tel[0] === '0' && tel[1] === '5') tel = '9' + tel
+    else if (!(tel.length === 12 && tel.indexOf('90') === 0)) tel = ''
+
+    // Kayıtlı cep varsa sohbet doğrudan açılır; yoksa WhatsApp kişi seçtirir
+    window.open('https://wa.me/' + (tel ? tel : '') + '?text=' + encodeURIComponent(mesaj), '_blank')
   } catch (e) {
     alert('Link oluşturulamadı: ' + (e && e.message))
   }
@@ -88,9 +97,9 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
             style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"8px 14px",color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:13}}>
             ← Geri
           </button>
-          <button onClick={()=>binaLinkiKopyala(secili)}
-            style={{display:"flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#2563eb,#1d4ed8)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:12}}>
-            🔗 Bina Yöneticisi Linki
+          <button onClick={()=>binaLinkiPaylas(secili)}
+            style={{display:"flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:12}}>
+            📲 Yöneticiye Gönder
           </button>
         </div>
 
