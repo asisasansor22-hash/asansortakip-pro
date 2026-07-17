@@ -314,20 +314,34 @@ exports.binaOzet = onRequest(
         .filter((m) => m && Number(m.asansorId) === elevId)
         .sort((a, b) => String(b.tarih || "").localeCompare(String(a.tarih || "")))[0] || null;
 
-      // Firma iletişim bilgisi: müşteri sayfasındaki "Ara / Arıza Bildir" butonları için
-      let firmaBilgi = { ad: "", tel: "", wa: "" };
+      // Firma iletişim bilgisi: müşteri sayfasındaki "Ara / Arıza Bildir" butonları
+      // için firmanın TÜM telefonları (tel, tel2, tel3) döner; cep olanlar
+      // WhatsApp numarası da taşır.
+      function telefonKaydi(raw) {
+        let d = String(raw || "").replace(/\D/g, "");
+        if (!d) return null;
+        if (d.length === 12 && d.indexOf("90") === 0) d = "0" + d.slice(2);
+        if (d.length === 10) d = "0" + d;
+        if (d.length !== 11 || d[0] !== "0") return null;
+        const wa = d[1] === "5" ? "9" + d : "";
+        return { tel: d, wa };
+      }
+      let firmaAd = "";
+      let telefonKaynak = [];
       if (f === "asis") {
-        firmaBilgi = { ad: "Asis Asansör", tel: "02127032052", wa: "905435070794" };
+        firmaAd = "Asis Asansör";
+        telefonKaynak = ["0212 703 20 52", "0543 507 07 94", "0536 565 92 23"];
       } else {
         const cfgSnap = await admin.database().ref(base + "/config").get();
         const cfg = cfgSnap.val() || {};
-        const telRaw = String(cfg.tel2 || cfg.tel || "").replace(/\D/g, "");
-        let wa = "";
-        if (telRaw.length === 10 && telRaw[0] === "5") wa = "90" + telRaw;
-        else if (telRaw.length === 11 && telRaw[0] === "0" && telRaw[1] === "5") wa = "9" + telRaw;
-        else if (telRaw.length === 12 && telRaw.indexOf("90") === 0) wa = telRaw;
-        firmaBilgi = { ad: cfg.ad || "", tel: telRaw, wa: wa };
+        firmaAd = cfg.ad || "";
+        telefonKaynak = [cfg.tel, cfg.tel2, cfg.tel3];
       }
+      const gorulen = {};
+      const telefonlar = telefonKaynak
+        .map(telefonKaydi)
+        .filter((t) => t && !gorulen[t.tel] && (gorulen[t.tel] = true));
+      const firmaBilgi = { ad: firmaAd, telefonlar };
 
       res.status(200).json({
         firma: firmaBilgi,

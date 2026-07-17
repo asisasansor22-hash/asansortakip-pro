@@ -111,22 +111,30 @@ export default function BinaPublicView({ firmaKodu, token }) {
                   })}
             </div>
 
-            {/* Firma iletişim: müşteri buradan arayabilir / arıza bildirebilir */}
-            {veri.firma && (veri.firma.tel || veri.firma.wa) && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-                {veri.firma.tel && (
-                  <a href={'tel:' + veri.firma.tel}
-                    style={{ flex: 1, textAlign: 'center', padding: '13px 8px', borderRadius: 12, background: '#1a2236', border: '1px solid #3b82f655', color: '#93c5fd', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
-                    📞 Firmayı Ara
-                  </a>
-                )}
-                {veri.firma.wa && (
-                  <a href={'https://wa.me/' + veri.firma.wa + '?text=' + encodeURIComponent('Merhaba, ' + (veri.binaAd || 'binamız') + ' için arıza bildirmek istiyorum.')}
-                    target="_blank" rel="noreferrer"
-                    style={{ flex: 1, textAlign: 'center', padding: '13px 8px', borderRadius: 12, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 800, fontSize: 13, textDecoration: 'none' }}>
-                    💬 Arıza Bildir
-                  </a>
-                )}
+            {/* Firma iletişim: tüm numaralar — her biri aranabilir, cep olanlar WhatsApp'lanabilir */}
+            {veri.firma && veri.firma.telefonlar && veri.firma.telefonlar.length > 0 && (
+              <div style={kart}>
+                <div style={kartBaslik}>📞 Bize Ulaşın{veri.firma.ad ? ' — ' + veri.firma.ad : ''}</div>
+                {veri.firma.telefonlar.map(function (t, i) {
+                  var g = String(t.tel || '')
+                  var guzel = g.length === 11 ? g.slice(0, 4) + ' ' + g.slice(4, 7) + ' ' + g.slice(7, 9) + ' ' + g.slice(9, 11) : g
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid #1e2d40', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 120, fontWeight: 800, fontSize: 14, letterSpacing: 0.5 }}>{guzel}</div>
+                      <a href={'tel:' + t.tel}
+                        style={{ padding: '9px 14px', borderRadius: 10, background: '#1a2236', border: '1px solid #3b82f655', color: '#93c5fd', fontWeight: 800, fontSize: 12, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                        📞 Ara
+                      </a>
+                      {t.wa && (
+                        <a href={'https://wa.me/' + t.wa + '?text=' + encodeURIComponent('Merhaba, ' + (veri.binaAd || 'binamız') + ' için arıza bildirmek istiyorum.')}
+                          target="_blank" rel="noreferrer"
+                          style={{ padding: '9px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 800, fontSize: 12, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                          💬 Arıza Bildir
+                        </a>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
