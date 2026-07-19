@@ -120,4 +120,29 @@ export async function spotifyNowPlaying() {
 
 export async function spotifyNext() { await player("/next", "POST"); }
 export async function spotifyPrev() { await player("/previous", "POST"); }
-export async function spotifyToggle(isPlaying) { await player(isPlaying ? "/pause" : "/play", "PUT"); }
+
+// Kullanıcının Spotify cihazları (telefon, bilgisayar, hoparlör…)
+export async function spotifyDevices() {
+  const res = await player("/devices");
+  if (!res || !res.ok) return [];
+  try { const d = await res.json(); return (d && d.devices) || []; } catch (e) { return []; }
+}
+
+// Oynat/duraklat. Aktif cihaz yoksa (404) cihaz listesinden birini seçip
+// çalmayı ORADAN başlatmayı dener; hiç cihaz yoksa {ok:false, reason:"no_device"}.
+// (Web sayfası kapalı bir Spotify uygulamasını uyandıramaz — platform kısıtı.)
+export async function spotifyToggle(isPlaying) {
+  if (isPlaying) { await player("/pause", "PUT"); return { ok: true }; }
+  let res = await player("/play", "PUT");
+  if (res && res.ok) return { ok: true };
+  if (res && (res.status === 404 || res.status === 403)) {
+    const devs = await spotifyDevices();
+    const d = devs.find((x) => x.is_active) || devs.find((x) => x.type === "Smartphone") || devs[0];
+    if (d && d.id) {
+      res = await player("/play?device_id=" + encodeURIComponent(d.id), "PUT");
+      if (res && res.ok) return { ok: true };
+    }
+    return { ok: false, reason: "no_device" };
+  }
+  return { ok: !!(res && res.ok) };
+}
