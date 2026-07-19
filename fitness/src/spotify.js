@@ -7,7 +7,7 @@
 //   2) Redirect URI olarak uygulamanın kök adresini ekle:
 //        https://fitbe.pages.dev/     (ve istersen http://localhost:5173/ )
 //   3) "Web API" seç, kaydet. Client ID'yi kopyalayıp aşağıya yapıştır.
-export const SPOTIFY_CLIENT_ID = "1100b5a79a4e4250a84ea0c12b97ea2e";
+export const SPOTIFY_CLIENT_ID = "540c64b82f95439ea2cd3ff583a83263";
 
 const SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing";
 const AUTH_URL = "https://accounts.spotify.com/authorize";
