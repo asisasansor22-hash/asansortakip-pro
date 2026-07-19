@@ -336,6 +336,112 @@ export async function publicPostGet(id) {
   } catch (e) { return null; }
 }
 
+// --- Sosyal: kullanıcı rehberi (arama), liderlik (Fit Ligi), DM ---
+// Rehber: /fitness/directory/{uid} = {name, t} — herkes okur, kendi kaydını yazar.
+export async function dirPublish() {
+  try {
+    var user = auth.currentUser; if (!user) return;
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/directory/" + user.uid + ".json";
+    if (token) url += "?auth=" + token;
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: (user.email || "").split("@")[0], t: Date.now() }) });
+  } catch (e) {}
+}
+export async function dirGet() {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/directory.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
+// Fit Ligi: /fitness/leaderboard/{uid} = {name, streak, week, total, vol, t}
+export async function lbPublish(stats) {
+  try {
+    var user = auth.currentUser; if (!user) return;
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/leaderboard/" + user.uid + ".json";
+    if (token) url += "?auth=" + token;
+    var body = Object.assign({ name: (user.email || "").split("@")[0], t: Date.now() }, stats || {});
+    await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch (e) {}
+}
+export async function lbGet() {
+  try {
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/leaderboard.json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
+// DM: /fitness/dm/{uidA_uidB}/{msgId} = {uid, t, text}. Sohbet kimliği iki
+// uid'nin alfabetik birleşimi — kural yalnız o iki kullanıcıya izin verir.
+export function dmConvId(a, b) { return a < b ? a + "_" + b : b + "_" + a; }
+
+export async function dmList(otherUid) {
+  try {
+    var user = auth.currentUser; if (!user) return [];
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/dm/" + dmConvId(user.uid, otherUid) + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return [];
+    var d = await res.json();
+    if (!d) return [];
+    var list = Object.keys(d).map(function (id) {
+      var m = d[id] || {};
+      return { id: id, uid: m.uid || "", t: m.t || 0, text: m.text || "" };
+    });
+    list.sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+    return list;
+  } catch (e) { return []; }
+}
+
+export async function dmSend(otherUid, text) {
+  try {
+    var user = auth.currentUser; if (!user) return { success: false, error: "Oturum yok." };
+    var token = await getToken();
+    var conv = dmConvId(user.uid, otherUid);
+    var id = "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var body = { uid: user.uid, t: Date.now(), text: String(text) };
+    var url = FIREBASE_DB_URL + "/fitness/dm/" + conv + "/" + id + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) return { success: false, error: "DM " + res.status };
+    // Sohbet listeleri için her iki tarafın meta kaydını güncelle
+    var meta = JSON.stringify({ t: body.t, last: String(text).slice(0, 60), from: user.uid });
+    var q = token ? "?auth=" + token : "";
+    fetch(FIREBASE_DB_URL + "/fitness/dm_meta/" + otherUid + "/" + user.uid + ".json" + q,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: meta });
+    fetch(FIREBASE_DB_URL + "/fitness/dm_meta/" + user.uid + "/" + otherUid + ".json" + q,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: meta });
+    return { success: true, msg: Object.assign({ id: id }, body) };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+// Kendi sohbet listem: /fitness/dm_meta/{uid} = { otherUid: {t, last, from} }
+export async function dmMetaGet() {
+  try {
+    var user = auth.currentUser; if (!user) return {};
+    var token = await getToken();
+    var url = FIREBASE_DB_URL + "/fitness/dm_meta/" + user.uid + ".json";
+    if (token) url += "?auth=" + token;
+    var res = await fetch(url);
+    if (!res.ok) return {};
+    var d = await res.json();
+    return (d && typeof d === "object") ? d : {};
+  } catch (e) { return {}; }
+}
+
 // --- Realtime Database (REST, auth token ile) ---
 // Her kullanıcının verisi /fitness/users/{uid}/{key} altında saklanır.
 async function userPath(key) {

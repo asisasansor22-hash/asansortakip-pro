@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, importInboxRead, importInboxClear, importInboxUrl } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, importInboxRead, importInboxClear, importInboxUrl, lbPublish, dirPublish, dmMetaGet } from "./firebase";
+import { dmSeenGet } from "./components/Messages";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -9,7 +10,7 @@ import Splash from "./components/Splash";
 import Onboarding from "./components/Onboarding";
 import Profile from "./components/Profile";
 import Progress from "./components/Progress";
-import Timeline from "./components/Timeline";
+import Social from "./components/Social";
 import PublicPost from "./components/PublicPost";
 import WorkoutMode from "./components/WorkoutMode";
 import { getExercise } from "./data/exercises";
@@ -36,6 +37,28 @@ function randHex(n) {
 
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MAX_HISTORY = 60; // saklanan antrenman geçmişi (manuel + Apple) üst sınırı
+
+// Fit Ligi (liderlik) istatistikleri: geçmişten seri/hafta/toplam/tonaj hesapla
+const DAY_MS = 86400000;
+const dayKey0 = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+function computeLbStats(hist) {
+  const list = Array.isArray(hist) ? hist : [];
+  const days = new Set(list.map((s) => dayKey0(s.date)));
+  const t0 = dayKey0(Date.now());
+  let streak = 0;
+  let cur = days.has(t0) ? t0 : (days.has(t0 - DAY_MS) ? t0 - DAY_MS : null);
+  while (cur != null && days.has(cur)) { streak++; cur -= DAY_MS; }
+  const weekStart = t0 - ((new Date().getDay() + 6) % 7) * DAY_MS;
+  let week = 0;
+  list.forEach((s) => { if (dayKey0(s.date) >= weekStart) week++; });
+  let vol = 0;
+  list.forEach((s) => (s.sets || []).forEach((st) => {
+    const w = Number(st.weight) || 0;
+    const m = String(st.reps || "").match(/\d+/);
+    vol += w * (m ? parseInt(m[0], 10) : 0);
+  }));
+  return { streak, week, total: list.length, vol: Math.round(vol) };
+}
 
 // Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
 function lsGetProfile() {
@@ -133,6 +156,8 @@ export default function App() {
   const [schedule, setSchedule] = useState({});
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
+  const [dmCount, setDmCount] = useState(0);   // okunmamış DM sohbet sayısı
+  const [dmBump, setDmBump] = useState(0);     // sohbet okununca rozeti tazele
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
@@ -246,7 +271,13 @@ export default function App() {
 
       setProfileLoaded(true);
       loaded.current = true;
-      if (cloudReady.current) dbSet("info", { email: user.email || "", lastSeen: Date.now() });
+      if (cloudReady.current) {
+        dbSet("info", { email: user.email || "", lastSeen: Date.now() });
+        // Kullanıcı aramada görünsün + Fit Ligi istatistiklerini yayınla
+        dirPublish();
+        const lbHist = (hist.ok && Array.isArray(hist.data) && hist.data.length) ? hist.data : (localHist || []);
+        lbPublish(computeLbStats(lbHist));
+      }
 
       // Yarım kalan antrenman var mı? (ısınma geçilmiş ya da en az 1 set yapılmış,
       // ve 18 saatten yeni ise) → "devam edilsin mi?" penceresini hazırla.
@@ -321,7 +352,7 @@ export default function App() {
     setHistory((prev) => {
       const next = [session, ...prev].slice(0, MAX_HISTORY);
       lsSetHist(next); // cihaza her zaman (güvenli)
-      if (cloudReady.current) dbSet("workouts", next);
+      if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
       return next;
     });
   }
@@ -354,7 +385,7 @@ export default function App() {
       added = news.length;
       const next = [...news, ...prev].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, MAX_HISTORY);
       lsSetHist(next);
-      if (cloudReady.current) dbSet("workouts", next);
+      if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
       return next;
     });
     await importInboxClear(key);
@@ -503,6 +534,26 @@ export default function App() {
     document.addEventListener("visibilitychange", onVis);
     return () => { stopped = true; clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
   }, [user]);
+
+  // --- Okunmamış DM rozeti: sohbet metalarını tara (60 sn'de bir) ---
+  useEffect(() => {
+    if (!user) { setDmCount(0); return; }
+    let stopped = false;
+    async function scanDm() {
+      const m = await dmMetaGet();
+      if (stopped) return;
+      const seen = dmSeenGet(user.uid);
+      let n = 0;
+      Object.keys(m || {}).forEach((other) => {
+        const e = m[other] || {};
+        if (e.from && e.from !== user.uid && (e.t || 0) > (seen[other] || 0)) n++;
+      });
+      setDmCount(n);
+    }
+    scanDm();
+    const iv = setInterval(scanDm, 60000);
+    return () => { stopped = true; clearInterval(iv); };
+  }, [user, dmBump]);
 
   // Akış sekmesi açılınca etiketleri "görüldü" işaretle
   useEffect(() => {
@@ -670,7 +721,7 @@ export default function App() {
       )}
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
-      {tab === "feed" && <Timeline />}
+      {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
         importUrl={importKey ? importInboxUrl(importKey) : null} onImportApple={() => importApple(importKey)} />}
 
@@ -821,13 +872,13 @@ export default function App() {
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? "active" : ""} onClick={() => setTab(t.id)} style={{ position: "relative" }}>
             <span className="ic">{t.ic}</span>
-            {t.id === "feed" && mentionCount > 0 && (
+            {t.id === "feed" && (mentionCount + dmCount) > 0 && (
               <span style={{
                 position: "absolute", top: 0, right: "50%", marginRight: -22,
                 background: "var(--danger)", color: "#fff", fontSize: 9, fontWeight: 800,
                 minWidth: 15, height: 15, borderRadius: 999, padding: "0 4px",
                 display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1,
-              }}>{mentionCount > 9 ? "9+" : mentionCount}</span>
+              }}>{(mentionCount + dmCount) > 9 ? "9+" : mentionCount + dmCount}</span>
             )}
             {t.label}
           </button>
