@@ -52,6 +52,11 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
             <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🔁 Frekans</b> — Her kası haftada <b>en az 2 kez</b> çalış (hacmi güne yay).</p>
             <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🔢 Tekrar aralığı</b> — Ağır bileşik 5–8, hipertrofi 8–15, izolasyon 15–30. Her set'i yetmezliğe <b>1–3 tekrar</b> kala bitir.</p>
             <p style={{ margin: "0 0 8px" }}><b style={{ color: "var(--accent)" }}>🧘 Form &gt; ağırlık</b> — Doğru form + tam hareket açıklığı, ego liftten önce gelir. Dinlenme: güç 2–3 dk, hipertrofi 1–2 dk.</p>
+            <div style={{ margin: "0 0 8px", padding: 10, background: "var(--card2)", borderRadius: 8 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>📖 Kısaltmalar</div>
+              <p style={{ margin: "0 0 4px" }}><b>1RM</b> (1 Rep Max) = <b>bir kez</b> kaldırabileceğin en ağır kilo. Uygulama, girdiğin kilo × tekrardan bunu <b>tahmin eder</b> (Epley formülü) — gücünü takip etmenin en iyi ölçüsü. %70-85'iyle çalışmak hipertrofi için idealdir.</p>
+              <p style={{ margin: 0 }}><b>RIR</b> (Reps In Reserve) = seti bitirdiğinde <b>yedekte kalan tekrar</b> sayısı. "RIR 2" = daha 2 tekrar yapabilecekken durdun demek. Çoğu set için <b>RIR 1-3</b> (yetmezliğe 1-3 kala) hem etkili hem güvenlidir.</p>
+            </div>
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
               ⚧ Egzersizler kadın ve erkekte <b>aynı</b> çalışır (2025 meta-analizi: kadınlar aynı oranda kas yapar). Cinsiyet seçimi yalnızca program <b>vurgusunu</b> belirler, zorunluluk değildir.
             </p>

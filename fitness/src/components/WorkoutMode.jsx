@@ -94,17 +94,18 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
 
   const ex = exIds.length ? getExercise(exIds[i]) : null;
   const meta = ex ? parseSets(ex.sets) : { sets: 1, reps: "-" };
-  // Programda bu hareket için özel set sayısı ayarlandıysa onu kullan
+  // Programda bu hareket için özel set/tekrar ayarlandıysa (ör. 3×5, 5×5) onu kullan
   const targetSets = (ex && program.sets && program.sets[ex.id] != null) ? program.sets[ex.id] : meta.sets;
+  const targetReps = (ex && program.reps && program.reps[ex.id] != null) ? String(program.reps[ex.id]) : meta.reps;
   const prev = ex && lastLog ? lastLog(ex.id) : null;
-  const suggestion = overloadSuggestion(prev, meta.reps);
+  const suggestion = overloadSuggestion(prev, targetReps);
   const curE1RM = est1RM(Number(weight), firstInt(reps));
 
   // Hareket değişince kilo/tekrar alanlarını son kayıttan / hedeften doldur
   useEffect(() => {
     if (!ex) return;
     setWeight(prev && prev.weight ? String(prev.weight) : "");
-    setReps(prev && prev.reps ? String(prev.reps) : meta.reps);
+    setReps(prev && prev.reps ? String(prev.reps) : targetReps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
@@ -159,7 +160,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     else finishWorkout();
   }
   function completeSet() {
-    log.current.push({ exId: ex.id, weight: weight ? Number(weight) : null, reps: reps || meta.reps });
+    log.current.push({ exId: ex.id, weight: weight ? Number(weight) : null, reps: reps || targetReps });
     // Rekor kontrolü: bu set tüm zamanların en iyi 1RM'ini geçiyor mu?
     const w = Number(weight);
     const r = firstInt(reps);
@@ -343,7 +344,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           <>
             <div className="row" style={{ justifyContent: "center", gap: 10, marginTop: 2 }}>
               <span className="pill" style={{ fontSize: 14 }}>Set {setNo} / {targetSets}</span>
-              <span className="pill lvl" style={{ fontSize: 14 }}>Hedef: {meta.reps}</span>
+              <span className="pill lvl" style={{ fontSize: 14 }}>Hedef: {targetReps}</span>
             </div>
             {prev && (prev.weight || prev.reps) && (
               <div style={{ color: "var(--muted)", fontSize: 12 }}>
@@ -361,8 +362,9 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
               <input className="input" type="text" placeholder="Tekrar" value={reps} onChange={(e) => setReps(e.target.value)} />
             </div>
             {curE1RM && (
-              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2, textAlign: "center" }}>
                 Tahmini 1RM: <b style={{ color: "var(--accent)" }}>~{curE1RM} kg</b>
+                <div style={{ fontSize: 10, opacity: 0.75 }}>1 tekrar maksimum — bir kez kaldırabileceğin ağırlık tahmini</div>
               </div>
             )}
           </>

@@ -133,6 +133,7 @@ export default function ProgramBuilder({
                   if (!ex) return null;
                   const parsed = parseSetCount(ex.sets);
                   const cur = (p.sets && p.sets[exId] != null) ? p.sets[exId] : (parsed ? parsed.n : null);
+                  const repsShown = (p.reps && p.reps[exId] != null) ? String(p.reps[exId]) : (parsed ? parsed.reps : null);
                   return (
                     <div key={exId + "-" + i} className="prog-ex-row">
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
@@ -157,7 +158,7 @@ export default function ProgramBuilder({
                             <button className="icon-btn" disabled={cur >= 12}
                               style={{ padding: "2px 9px", fontSize: 15, opacity: cur >= 12 ? 0.3 : 1 }}
                               onClick={() => onSetCount && onSetCount(p.id, exId, cur + 1)}>＋</button>
-                            {parsed && <span style={{ color: "var(--muted)", fontSize: 12 }}>× {parsed.reps}</span>}
+                            {repsShown && <span style={{ color: "var(--muted)", fontSize: 12 }}>× {repsShown}</span>}
                           </div>
                         ) : (
                           <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>{i + 1}. sıra · {ex.sets}</div>

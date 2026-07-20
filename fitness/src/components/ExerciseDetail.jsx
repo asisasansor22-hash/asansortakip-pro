@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ExerciseAnimation from "./ExerciseAnimation";
-import { topNote, getAlternatives, focusOf } from "../data/exercises";
+import { topNote, getAlternatives, focusOf, formOf } from "../data/exercises";
 import { getMuscles } from "../data/exerciseMuscles";
 
 export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExercise, isFavorite, onToggleFavorite }) {
@@ -8,6 +8,7 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
   const alts = getAlternatives(ex.id);
   const muscles = getMuscles(ex.id);
   const focus = focusOf(ex.id);
+  const form = formOf(ex.id);
 
   function add() {
     if (onAddToProgram) onAddToProgram(ex);
@@ -50,6 +51,13 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
             {muscles.s.map((m) => <span key={m} className="pill musc-s">{m}</span>)}
           </div>
           <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 6 }}>● Birincil &nbsp; ○ İkincil</div>
+        </div>
+      )}
+
+      {form && (
+        <div style={{ marginTop: 14, padding: "10px 12px", borderRadius: 10, background: "var(--card2)", borderLeft: "3px solid var(--accent)" }}>
+          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 4 }}>🧍 Doğru form & açılar</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{form}</div>
         </div>
       )}
 

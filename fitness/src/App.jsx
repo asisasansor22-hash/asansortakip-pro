@@ -657,10 +657,18 @@ export default function App() {
     const { rp, days, sel } = copyPick;
     const created = days.map((di) => {
       const d = rp.days[di];
-      return {
-        weekday: (sel[di] != null) ? sel[di] : null,
-        p: { id: uid(), name: rp.name + " — " + d.name, note: d.note || null, exercises: (d.exercises || []).filter((x) => getExercise(x)) },
+      const exs = (d.exercises || []).filter((x) => getExercise(x));
+      // Programın kendi set/tekrar reçetesi varsa (ör. 3×5, 5×5) programa taşı
+      const pick = (src) => {
+        if (!src) return undefined;
+        const out = {}; let any = false;
+        exs.forEach((id) => { if (src[id] != null) { out[id] = src[id]; any = true; } });
+        return any ? out : undefined;
       };
+      const p = { id: uid(), name: rp.name + " — " + d.name, note: d.note || null, exercises: exs };
+      const s = pick(d.sets); if (s) p.sets = s;
+      const r = pick(d.reps); if (r) p.reps = r;
+      return { weekday: (sel[di] != null) ? sel[di] : null, p };
     });
     setPrograms((prev) => [...prev, ...created.map((c) => c.p)]);
     setSchedule((prev) => {
