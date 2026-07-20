@@ -25,6 +25,7 @@ import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
 import TeklifYonetimi from './components/TeklifYonetimi.jsx'
 import CariEkstre from './components/CariEkstre.jsx'
 import DefterKontrol from './components/DefterKontrol.jsx'
+import AylikRapor from './components/AylikRapor.jsx'
 import BinaPublicView from './components/BinaPublicView.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
@@ -1735,6 +1736,54 @@ function App(){
   function tarihKey(d){
     return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   }
+  /* Aylık özet raporu verisi (PDF/Word için). Tahsilat çift sayım korumalı
+     tahsilatBetween ile hesaplanır; bakım/bakımcı/ilçe dağılımı maintFiiliTarih
+     ile o aya düşen tamamlanmış bakımlardan çıkar. */
+  function ayRaporuHesapla(yil,ay){
+    var ayBas=new Date(yil,ay,1);ayBas.setHours(0,0,0,0);
+    var aySon=new Date(yil,ay+1,0);aySon.setHours(23,59,59,999);
+    var ayMaints=maints.filter(function(m){
+      if(!m.yapildi) return false;
+      var d=maintFiiliTarih(m);
+      return d&&d>=ayBas&&d<=aySon;
+    });
+    var tahsilat=tahsilatBetween(ayBas,aySon);
+    var hedef=elevs.reduce(function(s,e){return s+finansTutar(e.aylikUcret);},0);
+    var ilceMap={},bakimciMap={};
+    var odeyen=0,odemeyen=0;
+    ayMaints.forEach(function(m){
+      var elev=elevs.find(function(e){return Number(e.id)===Number(m.asansorId);})||{};
+      var ilce=elev.ilce||"Diğer";
+      var alinan=finansMaintAlinan(m);
+      if(!ilceMap[ilce]) ilceMap[ilce]={ilce:ilce,bakim:0,tahsilat:0};
+      ilceMap[ilce].bakim++; ilceMap[ilce].tahsilat+=alinan;
+      var bad=m.tahsilatBakimciAd||m.bakimciAd||"Atanmamış";
+      if(!bakimciMap[bad]) bakimciMap[bad]={ad:bad,bakim:0,tahsilat:0};
+      bakimciMap[bad].bakim++; bakimciMap[bad].tahsilat+=alinan;
+      if(m.odendi||alinan>0) odeyen++; else odemeyen++;
+    });
+    var giderToplam=(giderler||[]).filter(function(g){
+      var d=parseFinansDate(g.tarih);
+      return d&&d>=ayBas&&d<=aySon;
+    }).reduce(function(s,g){return s+finansTutar(g.tutar);},0);
+    var enBorclu=elevs.map(function(e){return {ad:e.ad,ilce:e.ilce,bakiye:finansTutar(e.bakiyeDevir)};})
+      .filter(function(x){return x.bakiye>0;})
+      .sort(function(a,b){return b.bakiye-a.bakiye;}).slice(0,15);
+    return {
+      yil:yil, ay:ay, ayAd:MONTHS[ay],
+      donem:ayBas.toLocaleDateString("tr-TR")+" — "+aySon.toLocaleDateString("tr-TR"),
+      tahsilat:tahsilat, hedef:hedef,
+      oran:hedef>0?Math.round(tahsilat/hedef*100):0,
+      bakimSayisi:ayMaints.length,
+      binaSayisi:elevs.length,
+      odeyen:odeyen, odemeyen:odemeyen,
+      giderToplam:giderToplam, netKazanc:tahsilat-giderToplam,
+      ilceler:Object.values(ilceMap).sort(function(a,b){return b.tahsilat-a.tahsilat;}),
+      bakimcilar:Object.values(bakimciMap).sort(function(a,b){return b.tahsilat-a.tahsilat;}),
+      enBorclu:enBorclu,
+      toplamAlacak:elevs.reduce(function(s,e){var b=finansTutar(e.bakiyeDevir);return s+(b>0?b:0);},0)
+    };
+  }
   function tahsilatGunSerisi(bas,son){
     var seri=[];
     var cur=new Date(bas);
@@ -3111,7 +3160,8 @@ function App(){
           {i:3,l:"🗄️ Kapamalar",c:"#8b5cf6"},
           {i:4,l:"📦 Arşiv",c:"#64748b"},
           {i:5,l:"📑 Ekstre",c:"#06b6d4"},
-          {i:6,l:"📒 Defter",c:"#f472b6"}
+          {i:6,l:"📒 Defter",c:"#f472b6"},
+          {i:7,l:"📊 Rapor",c:"#22c55e"}
         ].map(function(t){
           return React.createElement('button', {key:t.i,onClick:function(){setFinansTab(t.i);},
             style:{flex:1,padding:"9px 6px",borderRadius:9,background:finansTab===t.i?t.c+"22":"transparent",
@@ -3613,6 +3663,12 @@ function App(){
 
     /* ── TAB 6: DEFTER KONTROLÜ ── */
     , finansTab===6&&React.createElement(DefterKontrol, { elevs: elevs })
+
+    /* ── TAB 7: AYLIK RAPOR ── */
+    , finansTab===7&&React.createElement(AylikRapor, {
+        firma: isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT,{_isAsis:true}):(tenantConfig||{ad:firmaAdi}),
+        hesapla: ayRaporuHesapla
+      })
   )
 )
 /* GİDERLER */
