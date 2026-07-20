@@ -44,12 +44,24 @@ export const READY_PROGRAMS = [
     ],
   },
   {
+    id: "ust-vucut-odak", name: "Üst Vücut Odak (Salon)",
+    gender: "herkes", style: "salon", goalTag: "kasyap",
+    level: "Orta", goal: "Üst vücut kütle & şekil",
+    freq: "Haftada 4 gün (Üst A-B ×2) veya 3 gün",
+    desc: "Üst vücut kasları haftada 2× çalışır — kanıt: eşit hacimde 2× sıklık, 1×'e göre en az o kadar etkili. Yatay/dikey itiş-çekiş eşleşmesi omuz sağlığını korur; bacak tek günle korunur.",
+    days: [
+      { name: "Üst A (Yatay)", note: "Bench + row eşleşmesi. Bileşik 6-10, izolasyon 10-15 tekrar; 3-4 set; bileşikte 1.5-3 dk dinlen. Setleri başarısızlığa 1-3 tekrar kala bitir.", exercises: ["bench-press", "barbell-row", "incline-dumbbell-press", "seated-row", "lateral-raise", "triceps-pushdown"] },
+      { name: "Üst B (Dikey)", note: "Baş üstü pres + dikey çekiş. Face pull arka omuz/postür için ihmal edilmez.", exercises: ["military-press", "lat-pulldown", "chest-dips", "face-pull", "barbell-curl", "skull-crusher"] },
+      { name: "Bacak (Koruma)", note: "Haftada 1 bacak günü kütleyi korur; kalori harcaması en yüksek gün. 3-4 set.", exercises: ["squat", "romanian-deadlift", "leg-press", "calf-raise", "plank"] },
+    ],
+  },
+  {
     id: "home-noequip", name: "Evde Ekipmansız",
     gender: "herkes", style: "ev", goalTag: "fitkal",
     level: "Başlangıç-Orta", goal: "Form koruma & yağ yakımı", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Tamamen vücut ağırlığıyla. Zorluğu tekrar artırarak veya daha zor varyasyona geçerek (aşamalı yüklenme) yükselt.",
     days: [
-      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Kolaysa decline/diamond varyasyona geç. Superman, itme ağırlıklı günü sırt/arka zincirle dengeler.", exercises: ["sinav", "decline-pushup", "pike-pushup", "triceps-dips", "superman", "plank"] },
+      { name: "Üst Vücut", note: "Her hareket 3-4 set, başarısızlığa yakın. Inverted row'u sağlam bir masanın kenarından yap (itiş-çekiş dengesi omuz sağlığı için şart). Kolaysa decline/diamond varyasyona geç.", exercises: ["sinav", "decline-pushup", "pike-pushup", "inverted-row", "triceps-dips", "superman"] },
       { name: "Alt Vücut", note: "3-4 set. Kolaysa tek bacak (bulgarian/pistol) varyasyonuna geç.", exercises: ["squat", "lunge", "single-leg-glute-bridge", "wall-sit", "calf-raise"] },
       { name: "Kardiyo + Core", note: "Devre: 40 sn çalış / 20 sn dinlen x 3 tur.", exercises: ["jumping-jack", "high-knees", "burpee", "hollow-body-hold", "leg-raise"] },
     ],
@@ -95,9 +107,9 @@ export const READY_PROGRAMS = [
     level: "Başlangıç-Orta", goal: "Genel form & tonus", freq: "Haftada 3 gün",
     desc: "Dengeli tüm vücut; her büyük kası haftada en az 1-2x çalışır. Tonus için orta tekrar (10-15).",
     days: [
-      { name: "Alt Vücut", exercises: ["squat", "hip-thrust", "lunge", "leg-curl", "calf-raise"] },
-      { name: "Üst Vücut", exercises: ["lat-pulldown", "seated-row", "shoulder-press", "biceps-curl", "triceps-pushdown"] },
-      { name: "Core", exercises: ["plank", "crunch", "russian-twist", "side-plank"] },
+      { name: "Alt Vücut", note: "3 set, 10-15 tekrar; setler arası 60-90 sn. Squat ve hip thrust'ta form öncelik.", exercises: ["squat", "hip-thrust", "lunge", "leg-curl", "calf-raise"] },
+      { name: "Üst Vücut", note: "3 set, 10-15 tekrar; çekiş (row/pulldown) ve itiş hacmi dengeli — duruş için önemli.", exercises: ["lat-pulldown", "seated-row", "shoulder-press", "biceps-curl", "triceps-pushdown"] },
+      { name: "Core", note: "3 set; plank/yan plank 30-40 sn tutuş, mekik 15-20 tekrar. Nefesi tutma.", exercises: ["plank", "crunch", "russian-twist", "side-plank"] },
     ],
   },
 
@@ -156,7 +168,19 @@ export const READY_PROGRAMS = [
     days: [
       { name: "İtme (Push)", note: "3-4 set. Göğüs + omuz + triceps.", exercises: ["sinav", "decline-pushup", "pike-pushup", "archer-pushup", "triceps-dips"] },
       { name: "Çekme (Pull)", note: "İtişe denk hacim. Bar yoksa inverted row.", exercises: ["barfiks", "chin-up", "inverted-row", "scapular-pull", "hanging-leg-raise"] },
-      { name: "Bacak & Core", note: "Tek bacak gücüne ilerle.", exercises: ["squat", "bulgarian", "single-leg-glute-bridge", "wall-sit", "hollow-body-hold"] },
+      { name: "Bacak & Core", note: "Tek bacak gücüne ilerle. Nordic çok zorsa elle destekli yavaş negatifle başla (hamstring için en kanıtlı vücut ağırlığı hareketi).", exercises: ["squat", "bulgarian", "nordic-curl", "single-leg-glute-bridge", "wall-sit", "hollow-body-hold"] },
+    ],
+  },
+  {
+    id: "kalistenik-yagyakim", name: "Kalistenik · Yağ Yakım",
+    gender: "herkes", style: "kalistenik", goalTag: "yagver",
+    level: "Orta", goal: "Yağ yakımı (kas koruyarak, ekipmansız)",
+    freq: "Haftada 4-5 gün (A / HIIT / B dönüşümlü)",
+    desc: "Yağ kaybını kalori açığı belirler; bu plan vücut ağırlığı kuvvet devreleriyle kası korur, HIIT ile harcamayı artırır. Günde 8-10 bin adım eklemek sonucu belirgin hızlandırır.",
+    days: [
+      { name: "Kuvvet Devresi A", note: "Devre: her hareket 40 sn çalış / 20 sn geçiş, 3-4 tur; turlar arası 90 sn dinlen. Formu bozan tempodan kaçın.", exercises: ["sinav", "inverted-row", "squat", "pike-pushup", "hollow-body-hold"] },
+      { name: "HIIT", note: "30 sn maksimal / 30 sn yürüyüş × 8-10 tur; 5 dk ısınma + 5 dk soğuma. Haftada en fazla 2-3 HIIT (toparlanma).", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees"] },
+      { name: "Kuvvet Devresi B", note: "3-4 set, başarısızlığa 1-2 tekrar kala; bileşikler önce, izolasyon/core sonda.", exercises: ["decline-pushup", "negative-pullup", "lunge", "single-leg-glute-bridge", "v-up"] },
     ],
   },
   {
