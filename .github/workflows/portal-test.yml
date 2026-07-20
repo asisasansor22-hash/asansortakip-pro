@@ -2,6 +2,11 @@ name: Musteri Portali Canli Testi
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/fix-data-loss-v6deploy
+    paths:
+      - ".github/workflows/portal-test.yml"
 
 jobs:
   test:
