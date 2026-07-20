@@ -590,6 +590,86 @@ export async function listBakimBildirimleri() {
   return out;
 }
 
+// ------- ÖDEME DEFTERİ (append-only hareket kaydı) --------------------------
+// Amaç: bakiyeyi değiştiren HER işlemin silinemez bir kaydını tutmak.
+// Aşama 1 (çift kayıt): bakiyeDevir aynen çalışır; defter paralel yazılır.
+// Bakiye formülü: at_defter_meta.bakiyeler[aid] (açılış) + sum(at_defter delta).
+// Tutarlılık kuralı: açılış fotoğrafı (meta) oluşmadan olay YAZILMAZ — flag
+// kapalıyken yapılan işlemler zaten açılış bakiyesinin içinde yer alır.
+var _defterHazir = false;
+
+/** Sunucudaki defter meta durumunu okur; olay yazımını etkinleştirir. */
+export async function defterDurumTazele() {
+  try {
+    var meta = await dbGet("at_defter_meta");
+    _defterHazir = !!(meta && meta.acilisTs);
+  } catch (e) { _defterHazir = false; }
+  return _defterHazir;
+}
+
+/** Açılış fotoğrafı: tüm binaların o anki bakiyesi tek yazımda kaydedilir.
+ *  ETag ile koşullu — yarışan ikinci cihaz 412 alır, çift açılış olmaz.
+ *  Yalnızca yönetici çağırmalı (elevs'in sunucudan doğrulanmış olması şart). */
+export async function defterBootstrap(elevs, yazan) {
+  if (_defterHazir) return true;
+  if (!Array.isArray(elevs) || elevs.length === 0) return false;
+  var srv = await dbGetWithETag("at_defter_meta");
+  if (!srv) return false;
+  if (srv.data && srv.data.acilisTs) { _defterHazir = true; return true; }
+  var bakiyeler = {};
+  elevs.forEach(function (e) {
+    if (e && e.id != null) bakiyeler[String(e.id)] = Number(e.bakiyeDevir) || 0;
+  });
+  var meta = { acilisTs: new Date().toISOString(), yazan: yazan || "", binaSayisi: elevs.length, bakiyeler: bakiyeler };
+  var ok = await dbSetIfMatch("at_defter_meta", meta, srv.etag);
+  if (ok) { _defterHazir = true; return true; }
+  // Yarışı kaybettik — diğer cihaz yazdı; durumu tazele
+  return defterDurumTazele();
+}
+
+/** Defter olayı ekler. delta: bakiyeye işaret ETKİSİ (ödeme -, tahakkuk +).
+ *  tip: odeme | tahakkuk | ekstra | manuel | iptal | ekstra_pesin
+ *  Açılış yoksa sessizce atlanır (tutarlılık kuralı). Başarısız yazım bakiyeyi
+ *  ETKİLEMEZ (çift kayıt aşaması) — Defter Kontrolü ekranında fark görünür. */
+export function defterKaydet(evt) {
+  if (!_defterHazir) return;
+  try {
+    var e = evt || {};
+    var kayit = {
+      aid: Number(e.aid),
+      tip: String(e.tip || "diger"),
+      delta: Number(e.delta) || 0,
+      tutar: Math.abs(Number(e.delta) || 0),
+      aciklama: String(e.aciklama || ""),
+      kaynak: e.kaynak != null ? String(e.kaynak) : "",
+      yazan: String(e.yazan || ""),
+      ts: new Date().toISOString(),
+      tarih: (function () { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()
+    };
+    dbPush("at_defter", kayit).then(function (key) {
+      if (!key) console.warn("Defter kaydı yazılamadı:", kayit.tip, kayit.aid);
+    });
+  } catch (err) { try { console.warn("Defter kaydı hatası:", err); } catch (e2) {} }
+}
+
+/** Defter meta + tüm olayları okur (Defter Kontrolü ekranı için). */
+export async function defterOku() {
+  var meta = await dbGet("at_defter_meta");
+  var raw = await dbGet("at_defter");
+  var olaylar = [];
+  if (raw && typeof raw === "object") {
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (v && typeof v === "object") { v.id = k; olaylar.push(v); }
+    }
+  } else if (Array.isArray(raw)) {
+    olaylar = raw.filter(Boolean);
+  }
+  olaylar.sort(function (a, b) { return String(a.ts || "").localeCompare(String(b.ts || "")); });
+  return { meta: meta || null, olaylar: olaylar };
+}
+
 // ------- FCM web push (uygulama kapalıyken bildirim) ------------------------
 // Firebase Console → Proje Ayarları → Cloud Messaging → Web Push certificates
 // bölümünden "Key pair" değerini buraya yapıştırın.

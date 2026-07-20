@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { makbuzEkstraYazdir } from '../utils/makbuz.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, AdresFF, FS, Modal, MONTHS, getIlceRenk } from '../utils/constants.js'
+import { defterKaydet } from '../firebase.js'
 
 function ekstraTutar(v){ var n=Number(v); return isNaN(n)?0:n; }
 function devirEkle(e,tutar){
@@ -51,10 +52,13 @@ function EkstraIsEkrani(props) {
     var bina=elevs.find(function(e){return e.id===binaId;});
     var yeniKayit={id:Date.now(),binaId:binaId,binaAd:bina?bina.ad:"?",ilce:bina?bina.ilce:"",isAdi:form.isAdi.trim(),tutar:tutar,tarih:form.tarih||today,saat:saat,not:form.not||"",rol:rol,odendi:!!form.odendi,bakimciId:aktifBakimci?aktifBakimci.id:null};
     setEkstraIsler(function(p){return p.concat([yeniKayit]);});
+    var defterYazan=aktifBakimci?aktifBakimci.ad:(rol||"yonetici");
     if(!form.odendi){
       setElevs(function(p){return p.map(function(e){if(Number(e.id)===Number(binaId)){return devirEkle(e,tutar);}return e;});});
+      defterKaydet({aid:binaId,delta:tutar,tip:"ekstra",aciklama:"Ekstra iş: "+yeniKayit.isAdi,kaynak:yeniKayit.id,yazan:defterYazan});
       alert("Ekstra iş kaydedildi ve Eski Devir üzerine eklendi.");
     } else {
+      defterKaydet({aid:binaId,delta:0,tip:"ekstra_pesin",aciklama:"Ekstra iş (peşin tahsil): "+yeniKayit.isAdi+" — "+tutar.toLocaleString("tr-TR")+"₺",kaynak:yeniKayit.id,yazan:defterYazan});
       alert("Ekstra iş kaydedildi. (Ödendi — Eski Devir net değişmedi.)");
     }
     setForm(function(p){return Object.assign({},p,{isAdi:"",tutar:"",not:"",odendi:false});});
@@ -65,6 +69,7 @@ function EkstraIsEkrani(props) {
     if(!kayit.odendi){
       var silTutar=ekstraTutar(kayit.tutar);
       setElevs(function(p){return p.map(function(e){if(Number(e.id)===Number(kayit.binaId)){return devirEkle(e,-silTutar);}return e;});});
+      defterKaydet({aid:kayit.binaId,delta:-silTutar,tip:"iptal",aciklama:"Ekstra iş silindi: "+(kayit.isAdi||""),kaynak:kayit.id,yazan:rol||"yonetici"});
     }
     setEkstraIsler(function(p){return p.filter(function(k){return k.id!==id;});});
     setSilOnay(null);

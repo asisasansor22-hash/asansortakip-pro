@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu, defterDurumTazele, defterBootstrap, defterKaydet } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -24,6 +24,7 @@ import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
 import TeklifYonetimi from './components/TeklifYonetimi.jsx'
 import CariEkstre from './components/CariEkstre.jsx'
+import DefterKontrol from './components/DefterKontrol.jsx'
 import BinaPublicView from './components/BinaPublicView.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
@@ -811,6 +812,26 @@ function App(){
     });
   }, [rol, tenantId]);
 
+  /* ÖDEME DEFTERİ başlatma (çift kayıt aşaması).
+     - Her rol: sunucudaki defter durumunu okur → olay yazımı etkinleşir.
+     - Yönetici + veriler sunucudan DOĞRULANMIŞSA ve açılış henüz yoksa:
+       tüm binaların o anki bakiyesi tek seferlik açılış fotoğrafı olarak
+       yazılır (ETag koşullu — iki cihaz yarışsa bile tek açılış oluşur).
+     Açılış oluşmadan olaylar yazılmaz; o işlemler açılış bakiyesinin
+     içinde kaldığından defter her koşulda tutarlı başlar. */
+  useEffect(function(){
+    if (ilkYukleme.current) return;
+    if (!tenantId || !rol) return;
+    (async function(){
+      var hazir = await defterDurumTazele();
+      if (hazir) return;
+      if (rol !== "yonetici") return;
+      if (!yuklendi.current.elevs || !Array.isArray(elevs) || elevs.length === 0) return;
+      var ok = await defterBootstrap(elevs, isSuper ? "superadmin" : "yonetici");
+      if (ok) console.log("Ödeme defteri açılışı yapıldı (" + elevs.length + " bina).");
+    })();
+  }, [rol, tenantId, elevs.length]);
+
   async function pushBildirimAc(){
     var r = await enablePushBildirim();
     setPushDurum(pushBildirimDurumu());
@@ -1264,6 +1285,16 @@ function App(){
           var yeniEski=finansTutar(ev.bakiyeDevir)+finansTutar(ev.aylikUcret);
           return Object.assign({},ev,{bakiyeDevir:yeniEski,yeniDevirManuel:null});
         });
+      });
+      // Defter: her bina için aylık ücret tahakkuku (yalnız kilidi kazanan cihaz)
+      elevs.forEach(function(ev){
+        var bakimYapildi=maints.find(function(m){
+          if(Number(m.asansorId)!==Number(ev.id)||!m.yapildi) return false;
+          var d=maintFiiliTarih(m);
+          return d&&d>=ayBaslangic&&d<=aySon;
+        });
+        if(!bakimYapildi) return;
+        defterKaydet({aid:ev.id,delta:finansTutar(ev.aylikUcret),tip:"tahakkuk",aciklama:MONTHS[ay]+" "+yil+" aylık bakım ücreti",kaynak:kapamaKey,yazan:"kapama"});
       });
     }
 
@@ -1890,7 +1921,21 @@ function App(){
     }
     delete d._devirKilidAcik;
     delete d._mapsInput;
-    edit?setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e)):setElevs(p=>[...p,{...d,id:Date.now()}]);
+    if(edit){
+      // Defter: Eski Devir elle değiştiyse farkı 'manuel' olay olarak kaydet
+      var oncekiDevir=finansTutar(edit.bakiyeDevir);
+      if(formEskiDevir!==oncekiDevir){
+        defterKaydet({aid:edit.id,delta:formEskiDevir-oncekiDevir,tip:"manuel",aciklama:"Eski Devir elle güncellendi ("+oncekiDevir.toLocaleString("tr-TR")+" → "+formEskiDevir.toLocaleString("tr-TR")+")",kaynak:"duzenle",yazan:isSuper?"superadmin":"yonetici"});
+      }
+      setElevs(p=>p.map(e=>e.id===edit.id?{...e,...d}:e));
+    } else {
+      var yeniBinaId=Date.now();
+      setElevs(p=>[...p,{...d,id:yeniBinaId}]);
+      // Defter: yeni bina açılış bakiyesi (açılış fotoğrafında yer almadığı için)
+      if(formEskiDevir!==0){
+        defterKaydet({aid:yeniBinaId,delta:formEskiDevir,tip:"manuel",aciklama:"Yeni bina açılış devri",kaynak:"yeni-bina",yazan:isSuper?"superadmin":"yonetici"});
+      }
+    }
     close();
   };
   const saveM=()=>{const d={...form,asansorId:+form.asansorId,tutar:+form.tutar||0,yapildi:form.yapildi===true||form.yapildi==="true",odendi:form.odendi===true||form.odendi==="true",kl:form.kl||{}};edit?setMaints(p=>p.map(m=>m.id===edit.id?{...m,...d}:m)):setMaints(p=>[...p,{...d,id:Date.now()}]);close();};
@@ -3065,7 +3110,8 @@ function App(){
           {i:2,l:"📆 Bu Ay",c:"#10b981"},
           {i:3,l:"🗄️ Kapamalar",c:"#8b5cf6"},
           {i:4,l:"📦 Arşiv",c:"#64748b"},
-          {i:5,l:"📑 Ekstre",c:"#06b6d4"}
+          {i:5,l:"📑 Ekstre",c:"#06b6d4"},
+          {i:6,l:"📒 Defter",c:"#f472b6"}
         ].map(function(t){
           return React.createElement('button', {key:t.i,onClick:function(){setFinansTab(t.i);},
             style:{flex:1,padding:"9px 6px",borderRadius:9,background:finansTab===t.i?t.c+"22":"transparent",
@@ -3131,11 +3177,11 @@ function App(){
                                 if(o._fromMaint){
                                   if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                   setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
-                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                 } else {
                                   if(!window.confirm("Bu ödeme geri alınsın mı?\n"+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺")) return;
                                   setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                  setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                   setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                 }
                               },
@@ -3223,11 +3269,11 @@ function App(){
                                         if(o._fromMaint){
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
-                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                         } else {
                                           if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                           setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                          setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                           setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                         }
                                       },
@@ -3337,11 +3383,11 @@ function App(){
                                       if(o._fromMaint){
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setMaints(function(p){return p.map(function(m){return String("maint_"+m.id)===String(o.id)?Object.assign({},m,{odendi:false,alinanTutar:0}):m;});});
-                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                       } else {
                                         if(!window.confirm("Geri al: "+o.binaAd+" · "+(o.alinanTutar||0).toLocaleString("tr-TR")+" ₺?")) return;
                                         setSonOdemeler(function(p){return p.map(function(x){return x.id===o.id?Object.assign({},x,{iptal:true,iptalZamani:new Date().toLocaleString("tr-TR")}):x;});});
-                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});
+                                        setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(o.aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)+finansTutar(o.alinanTutar),yeniDevirManuel:null}):e;});});defterKaydet({aid:o.aid,delta:finansTutar(o.alinanTutar),tip:"iptal",aciklama:"Ödeme geri alındı",kaynak:o.id,yazan:"yonetici"});
                                         setMaints(function(p){return p.map(function(m){if(m.asansorId===o.aid&&m.odendi&&finansMaintAlinan(m)===finansTutar(o.alinanTutar)){return Object.assign({},m,{odendi:false,alinanTutar:0});}return m;});});
                                       }
                                     },
@@ -3564,6 +3610,9 @@ function App(){
         ekstraIsler: ekstraIsler,
         firma: isSuper?Object.assign({},tenantConfig||{},ASIS_FIRMA_DEFAULT,{_isAsis:true}):(tenantConfig||{ad:firmaAdi})
       })
+
+    /* ── TAB 6: DEFTER KONTROLÜ ── */
+    , finansTab===6&&React.createElement(DefterKontrol, { elevs: elevs })
   )
 )
 /* GİDERLER */
@@ -4354,8 +4403,10 @@ function App(){
                       /* Bakımcıya atanmamış veya zaten tamamlanmış → bakım durumunu DEĞİŞTİRME, sadece ödeme kaydı al */
                     }
                     /* Ödeme her zaman eski devirden düşer; güncel devir eski devir + aylık bakım olarak hesaplanır. */
-                    setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
+                    var manuelOdemeId=Date.now();
+                    setSonOdemeler(function(p){return p.concat([{id:manuelOdemeId,aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
                     setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(aid)?Object.assign({},e,{bakiyeDevir:finansTutar(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+                    defterKaydet({aid:aid,delta:-tutar,tip:"odeme",aciklama:"Manuel ödeme"+(form.odNot?" — "+form.odNot:""),kaynak:manuelOdemeId,yazan:"yonetici"});
                     setManuelOdemeAcik(false);
                     setForm(function(p){return Object.assign({},p,{odIlce:"",odBinaId:"",odTutar:"",odNot:""});});
                   },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { makbuzBakimYazdir, makbuzWhatsAppGonder } from '../utils/makbuz.js'
+import { defterKaydet } from '../firebase.js'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from '../utils/excel.js'
 import { S, Badge, IlceBadge, Stat, Card, Empty, IBtn, Tog, FF, FS, Modal, MONTHS, getIlceRenk, ILCE_RENK, KONTROL } from '../utils/constants.js'
 
@@ -124,6 +125,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
       setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:alinan,not:odemeForm.not||"",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
       // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
       setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-alinan,yeniDevirManuel:null}):e;});});
+      defterKaydet({aid:elev.id,delta:-alinan,tip:"odeme",aciklama:"Bakım tahsilatı"+(odemeForm.not?" — "+odemeForm.not:""),kaynak:maint?maint.id:"",yazan:aktifBakimci?aktifBakimci.ad:"bakimci"});
     }
     setOdemeModal(null);setOdemeForm({alinan:"",not:""});
   };
@@ -162,6 +164,7 @@ function BakimciGorunum({elevs,setElevs,maints,setMaints,faults,setFaults,bal,bu
     setSonOdemeler(function(p){return p.concat([{id:Date.now(),aid:elev.id,tarih:tarih,saat:saat,alinanTutar:tutar,not:"Bakım sonrası tahsilat",binaAd:elev.ad||"?",ilce:elev.ilce||"",yonetici:elev.yonetici||"",tahsilatYapan:aktifBakimci?aktifBakimci.ad:""}]);});
     // Ödeme doğrudan Eski Devir'den düşer. Aylık ücret eski devire ay kapanışında eklenir.
     setElevs(function(p){return p.map(function(e){return Number(e.id)===Number(elev.id)?Object.assign({},e,{bakiyeDevir:para(e.bakiyeDevir)-tutar,yeniDevirManuel:null}):e;});});
+    defterKaydet({aid:elev.id,delta:-tutar,tip:"odeme",aciklama:"Bakım sonrası tahsilat",kaynak:m.id,yazan:aktifBakimci?aktifBakimci.ad:"bakimci"});
     setMakbuzSonBakim({m:Object.assign({},odemeSorModal.m,snap,{alinanTutar:tutar,odendi:odendiTam,yapildi:true,yapildiSaat:yapildiSaat}),elev:odemeSorModal.elev,tutar:tutar});
     bildirBakim(elev,tutar);
     setOdemeSorModal(null);
