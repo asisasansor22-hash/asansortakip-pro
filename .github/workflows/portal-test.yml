@@ -1,0 +1,61 @@
+name: Musteri Portali Canli Testi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Functions bağımlılıkları (admin SDK için)
+        run: npm ci
+        working-directory: functions
+
+      - name: Service account anahtarını yaz
+        run: |
+          cat > "$RUNNER_TEMP/sa.json" <<'SAEOF'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SAEOF
+
+      - name: Gerçek bina token'ı ile uçtan uca test
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          node - <<'EOF'
+          const admin = require("./functions/node_modules/firebase-admin");
+          admin.initializeApp({ databaseURL: "https://asansortakipv3-default-rtdb.europe-west1.firebasedatabase.app" });
+          (async () => {
+            // 1) Yönetici uygulamasının ürettiği GERÇEK bir bina token'ını al
+            const snap = await admin.database().ref("/asansor/at_bina_links").get();
+            const links = snap.val() || {};
+            const tokens = Object.keys(links);
+            if (tokens.length === 0) { console.log("SONUC=TOKEN_YOK"); process.exit(1); }
+            const token = tokens[0];
+            const kayit = links[token];
+            console.log("Test binası:", kayit && kayit.ad, "| token: " + token.slice(0, 4) + "****");
+
+            // 2) Müşterinin yaptığı isteği birebir yap: binaOzet endpoint'i
+            const r = await fetch("https://binaozet-cvwmtl3ujq-ew.a.run.app/?f=asis&t=" + encodeURIComponent(token));
+            const body = await r.json().catch(() => null);
+            console.log("binaOzet HTTP:", r.status);
+            if (r.status !== 200 || !body || !body.binaAd) { console.log("SONUC=ENDPOINT_HATA", JSON.stringify(body)); process.exit(1); }
+            console.log("Dönen bina:", body.binaAd, "| bakiye:", body.bakiye, "| bakım kaydı:", (body.bakimlar||[]).length, "| ödeme kaydı:", (body.odemeler||[]).length, "| telefon:", (body.firma&&body.firma.telefonlar||[]).length);
+
+            // 3) Müşterinin açtığı sayfa: site linki
+            const s = await fetch("https://asisasansor.xyz/?f=asis&bina=" + encodeURIComponent(token));
+            const html = await s.text();
+            console.log("site HTTP:", s.status, "| html uzunluk:", html.length);
+            if (s.status !== 200) { console.log("SONUC=SITE_HATA"); process.exit(1); }
+
+            console.log("SONUC=BASARILI — müşteri linki uçtan uca çalışıyor");
+            process.exit(0);
+          })().catch((e) => { console.log("SONUC=ISTISNA", e.message); process.exit(1); });
+          EOF
