@@ -2879,8 +2879,10 @@ h3 {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(circle at 78% 12%, rgba(127, 167, 202, 0.28), transparent 45%),
-    linear-gradient(160deg, #ffffff 0%, #eef4fa 55%, #ffffff 100%);
+    radial-gradient(38% 44% at 26% 22%, rgba(120, 174, 224, 0.30), transparent 62%),
+    radial-gradient(40% 46% at 78% 30%, rgba(94, 196, 210, 0.24), transparent 64%),
+    radial-gradient(46% 50% at 58% 82%, rgba(140, 168, 220, 0.22), transparent 66%),
+    linear-gradient(160deg, #ffffff 0%, #eef4fa 52%, #f5f9fd 100%);
 }
 
 .story {
