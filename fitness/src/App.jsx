@@ -152,6 +152,7 @@ export default function App() {
   const [workout, setWorkout] = useState(null);
   const [resumeState, setResumeState] = useState(null); // WorkoutMode'a verilen kaldığı-yer bilgisi
   const [resumeAsk, setResumeAsk] = useState(null);      // "devam edilsin mi?" penceresi (snapshot)
+  const workoutBusyRef = useRef(false);                  // antrenman/devam penceresi açık mı
   const [history, setHistory] = useState([]);
   const [progress, setProgress] = useState({ weights: [], measures: [] });
   const [schedule, setSchedule] = useState({});
@@ -195,6 +196,8 @@ export default function App() {
   // Kurtarma (recovery) yazmaları için güncel değerleri ref'te tut
   useEffect(() => { scheduleRef.current = schedule; }, [schedule]);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  // Antrenman veya "devam et?" penceresi açıkken oto-güncelleme ERTELENİR
+  useEffect(() => { workoutBusyRef.current = !!(workout || resumeAsk); }, [workout, resumeAsk]);
 
   // --- Kullanıcı verisini yükle (programlar + profil) ---
   // Tasarım ilkesi: bulut OKUNAMAZSA (ağ/izin hatası) hiçbir kritik veri
@@ -213,6 +216,20 @@ export default function App() {
         setPrograms(list);
         setActiveId(data.activeId || (list[0] && list[0].id) || null);
         lsSetPack({ list, activeId: data.activeId || null, schedule: normalizeSchedule(sched || {}) });
+      }
+    }
+
+    // 0) Yarım kalan antrenman var mı? — SADECE cihaz kaydına bakar; bulut
+    // beklenmez, ağ yavaş/kesik olsa bile "devam et?" penceresi ANINDA çıkar.
+    // Koşul: gerçekten başlamış (ısınma geçilmiş ya da ≥1 set) + 18 saatten yeni.
+    {
+      const aw = lsGetActiveWorkout();
+      if (aw && aw.program && Array.isArray(aw.program.exercises) && aw.program.exercises.length &&
+          (Date.now() - (aw.savedAt || 0) < 18 * 3600 * 1000) &&
+          ((aw.log && aw.log.length) || aw.warmup === false)) {
+        setResumeAsk(aw);
+      } else if (aw) {
+        lsClearActiveWorkout(); // eski/boş kayıt → temizle
       }
     }
 
@@ -278,17 +295,6 @@ export default function App() {
         dirPublish();
         const lbHist = (hist.ok && Array.isArray(hist.data) && hist.data.length) ? hist.data : (localHist || []);
         lbPublish(computeLbStats(lbHist));
-      }
-
-      // Yarım kalan antrenman var mı? (ısınma geçilmiş ya da en az 1 set yapılmış,
-      // ve 18 saatten yeni ise) → "devam edilsin mi?" penceresini hazırla.
-      const aw = lsGetActiveWorkout();
-      if (!cancelled && aw && aw.program && Array.isArray(aw.program.exercises) && aw.program.exercises.length &&
-          (Date.now() - (aw.savedAt || 0) < 18 * 3600 * 1000) &&
-          ((aw.log && aw.log.length) || aw.warmup === false)) {
-        setResumeAsk(aw);
-      } else if (aw) {
-        lsClearActiveWorkout(); // eski/boş kayıt → temizle
       }
 
       // Apple Sağlık içe-aktarma anahtarı: yoksa üret; sonra gelen kutusunu içe aktar
@@ -473,11 +479,15 @@ export default function App() {
     let triggered = false;
     async function check() {
       if (triggered) return;
+      // Antrenman veya "devam et?" penceresi açıkken ASLA yenileme —
+      // güncelleme antrenman bitene kadar ertelenir (90 sn'de bir tekrar denenir).
+      if (workoutBusyRef.current) return;
       try {
         const r = await fetch("/version.json?ts=" + Date.now(), { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
         if (j && j.v && typeof __BUILD_ID__ !== "undefined" && j.v !== __BUILD_ID__) {
+          if (workoutBusyRef.current) return; // fetch sırasında antrenman başladıysa iptal
           triggered = true;
           setToast("Yeni sürüm yüklendi, güncelleniyor…");
           setTimeout(hardReload, 1500);
