@@ -19,9 +19,10 @@ export default function Leaderboard() {
       const week = Number(r.week) || 0;
       const total = Number(r.total) || 0;
       const vol = Number(r.vol) || 0;
+      const badges = Number(r.badges) || 0;
       return {
-        uid, name: r.name || "sporcu", streak, week, total, vol,
-        puan: streak * 15 + week * 25 + total * 3 + Math.round(vol / 1000),
+        uid, name: r.name || "sporcu", streak, week, total, vol, badges,
+        puan: streak * 15 + week * 25 + total * 3 + Math.round(vol / 1000) + badges * 10,
       };
     });
     list.sort((a, b) => b.puan - a.puan || b.streak - a.streak || b.week - a.week);
@@ -36,7 +37,7 @@ export default function Leaderboard() {
         <button className="icon-btn" onClick={load}>🔄</button>
       </div>
       <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>
-        Antrenman kaydettikçe yüksel! Puan = 🔥 seri ×15 + bu hafta ×25 + toplam ×3 + tonaj.
+        Antrenman kaydettikçe yüksel! Puan = 🔥 seri ×15 + bu hafta ×25 + toplam ×3 + tonaj + 🏅 rozet ×10.
       </p>
 
       {rows === null ? (
@@ -68,7 +69,7 @@ export default function Leaderboard() {
                     {r.name}{mine && <span style={{ color: "var(--accent)", fontSize: 11 }}> (sen)</span>}
                   </div>
                   <div style={{ color: "var(--muted)", fontSize: 11 }}>
-                    🔥 {r.streak} gün seri · bu hafta {r.week} · toplam {r.total}
+                    🔥 {r.streak} · bu hafta {r.week} · toplam {r.total}{r.badges > 0 ? " · 🏅 " + r.badges : ""}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { getExercise } from "../data/exercises";
+import { getExercise, REGIONS } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
 
 // Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
@@ -256,6 +256,23 @@ export default function Progress({ data, history = [], onSave }) {
     return { bars, thisWeek, totalSets, sessions: (history || []).length };
   }, [history]);
 
+  // --- Bu haftaki kas grubu hacmi (set/kas) — denge takibi ---
+  const muscleVol = useMemo(() => {
+    const now = weekStart(Date.now());
+    const counts = {};
+    (history || []).forEach((s) => {
+      if (weekStart(s.date) !== now) return;
+      (s.sets || []).forEach((st) => {
+        const ex = getExercise(st.exId);
+        if (!ex || ex.region === "kardiyo") return;
+        counts[ex.region] = (counts[ex.region] || 0) + 1;
+      });
+    });
+    const rows = REGIONS.filter((r) => r.id !== "kardiyo").map((r) => ({ id: r.id, name: r.name, emoji: r.emoji, sets: counts[r.id] || 0 }));
+    const max = Math.max(20, ...rows.map((r) => r.sets));
+    return { rows, max, any: rows.some((r) => r.sets > 0) };
+  }, [history]);
+
   // --- Kişisel rekorlar (geçmişten) ---
   const prs = useMemo(() => {
     const best = {};
@@ -446,6 +463,35 @@ export default function Progress({ data, history = [], onSave }) {
       <p style={{ color: "var(--muted)", fontSize: 11, margin: "4px 4px 0" }}>
         Hacim = kaldırılan toplam tonaj (kilo × tekrar). Vücut ağırlığı hareketleri tonaja girmez ama set sayısına sayılır.
       </p>
+
+      {/* Bu haftaki kas grubu hacmi (set/kas) */}
+      <div className="section-title">Bu Hafta Kas Grubu Hacmi</div>
+      <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
+        Hipertrofi için kas başına haftada <b>10-20 set</b> etkili aralık. Az olan bölgeleri dengele.
+      </p>
+      {!muscleVol.any ? (
+        <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 8 }}>Bu hafta henüz set yok — antrenman kaydedince kaslar dağılıma göre burada görünür.</p>
+      ) : (
+        <div className="card" style={{ marginBottom: 10 }}>
+          {muscleVol.rows.map((r) => {
+            const col = r.sets === 0 ? "var(--line)" : r.sets < 10 ? "#fbbf24" : r.sets <= 20 ? "var(--accent)" : "#fb923c";
+            return (
+              <div key={r.id} style={{ marginBottom: 8 }}>
+                <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                  <span>{r.emoji} {r.name}</span>
+                  <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", fontWeight: 700 }}>{r.sets} set</span>
+                </div>
+                <div style={{ height: 8, background: "var(--card2)", borderRadius: 999, overflow: "hidden" }}>
+                  <div style={{ width: Math.round((r.sets / muscleVol.max) * 100) + "%", height: "100%", background: col, borderRadius: 999 }} />
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
+            🟡 az (&lt;10) · 🟢 ideal (10-20) · 🟠 yüksek (&gt;20)
+          </div>
+        </div>
+      )}
 
       {/* Son antrenmanlar (manuel + Apple Sağlık) */}
       {history.length > 0 && (

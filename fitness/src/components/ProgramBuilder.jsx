@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
+import IntervalTimer from "./IntervalTimer";
 
 const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -22,6 +23,7 @@ export default function ProgramBuilder({
   const [dayPickerId, setDayPickerId] = useState(null);
   const [selDay, setSelDay] = useState(todayIdx()); // Haftalık Plan'da seçili gün
   const [showAll, setShowAll] = useState(false);    // gün filtresini kapat, tümünü listele
+  const [timerOpen, setTimerOpen] = useState(false);
   const sch = schedule || {};
 
   // Seçili günün programı — varsa (ve 'tümü' kapalıysa) liste sadece onu gösterir
@@ -51,11 +53,15 @@ export default function ProgramBuilder({
         Kendi programını oluştur; hareketleri Bölgeler'den "Programıma Ekle" ile seç. Üstte gün seçince o günün programı listelenir.
       </p>
 
-      <div className="row" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ marginBottom: 10 }}>
         <input className="input" style={{ flex: 1 }} placeholder="Yeni program adı (örn. Pazartesi - Göğüs)"
           value={newName} onChange={(e) => setNewName(e.target.value)} />
         <button className="icon-btn" onClick={create}>+ Oluştur</button>
       </div>
+      <button className="icon-btn" style={{ width: "100%", marginBottom: 16, padding: 10 }} onClick={() => setTimerOpen(true)}>
+        ⏱️ HIIT / Devre Sayacı
+      </button>
+      {timerOpen && <IntervalTimer onClose={() => setTimerOpen(false)} />}
 
       {programs.length > 0 && (
         <WeeklyPlan programs={programs} schedule={schedule} history={history}

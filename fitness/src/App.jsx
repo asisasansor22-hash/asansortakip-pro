@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, importInboxRead, importInboxClear, importInboxUrl, lbPublish, dirPublish, dmMetaGet } from "./firebase";
 import { dmSeenGet } from "./components/Messages";
+import { earnedCount } from "./data/achievements";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -57,7 +58,7 @@ function computeLbStats(hist) {
     const m = String(st.reps || "").match(/\d+/);
     vol += w * (m ? parseInt(m[0], 10) : 0);
   }));
-  return { streak, week, total: list.length, vol: Math.round(vol) };
+  return { streak, week, total: list.length, vol: Math.round(vol), badges: earnedCount(list) };
 }
 
 // Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
@@ -731,7 +732,7 @@ export default function App() {
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
-        importUrl={importKey ? importInboxUrl(importKey) : null} onImportApple={() => importApple(importKey)} />}
+        importUrl={importKey ? importInboxUrl(importKey) : null} onImportApple={() => importApple(importKey)} history={history} />}
 
       {resumeAsk && (
         <div style={{

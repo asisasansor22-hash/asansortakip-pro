@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { READY_PROGRAMS } from "../data/programs";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
+import ProgramWizard from "./ProgramWizard";
 
 export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [open, setOpen] = useState(null);
@@ -9,6 +10,7 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [copiedDay, setCopiedDay] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [princ, setPrinc] = useState(false);
+  const [wizard, setWizard] = useState(false);
 
   function copy(p) {
     if (onCopy) onCopy(p);
@@ -40,6 +42,11 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
       <p style={{ color: "var(--muted)", marginTop: -4 }}>
         {profile && !showAll ? "Profiline göre önerilen programlar." : "Tüm hazır programlar."} Kopyala, "Programım"da düzenle.
       </p>
+
+      <button className="btn-primary" style={{ width: "100%", marginBottom: 12, padding: 14 }} onClick={() => setWizard(true)}>
+        🪄 Program Sihirbazı — Bana Özel Program Üret
+      </button>
+      {wizard && <ProgramWizard onGenerate={onCopy} onClose={() => setWizard(false)} />}
 
       <div className="card" style={{ marginBottom: 14, borderColor: "var(--accent2)" }}>
         <button onClick={() => setPrinc((v) => !v)} style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left", fontWeight: 700, fontSize: 15 }}>

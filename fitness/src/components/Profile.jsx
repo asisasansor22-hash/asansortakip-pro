@@ -3,6 +3,7 @@ import ProfileForm from "./ProfileForm";
 import { firebaseLogout, changePassword, ADMIN_EMAIL } from "../firebase";
 import PasswordInput from "./PasswordInput";
 import Admin from "./Admin";
+import Achievements from "./Achievements";
 
 function ChangePassword() {
   const [cur, setCur] = useState("");
@@ -138,7 +139,7 @@ function AppleHealth({ importUrl, onImportApple }) {
 }
 
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, onImportApple }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, onImportApple, history = [] }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
@@ -152,6 +153,8 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
           <Admin />
         </div>
       )}
+
+      <div style={{ marginBottom: 16 }}><Achievements history={history} /></div>
 
       {importUrl && <AppleHealth importUrl={importUrl} onImportApple={onImportApple} />}
 
