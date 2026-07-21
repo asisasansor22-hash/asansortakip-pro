@@ -286,8 +286,9 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 48, textAlign: "right" }}>{i + 1}/{exIds.length}</span>
       </div>
 
-      {/* Sıradaki hareketler — isimleriyle, yatay kayan şerit (üst üste binmez) */}
-      <div ref={stepsRef} style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 12px 2px", WebkitOverflowScrolling: "touch" }}>
+      {/* Sıradaki hareketler — isimleriyle, yatay kayan şerit (üst üste binmez).
+          minWidth:0 + maxWidth:100% flexbox taşmasını önler (ekran zoomlanmaz). */}
+      <div ref={stepsRef} style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 2px 2px", width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", WebkitOverflowScrolling: "touch" }}>
         {exIds.map((id, k) => {
           const e = getExercise(id);
           const state = k < i ? "done" : (k === i ? "cur" : "next");

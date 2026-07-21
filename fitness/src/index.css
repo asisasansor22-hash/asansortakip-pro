@@ -127,7 +127,9 @@ h1, h2, h3 { margin: 0 0 8px; }
   display: flex; flex-direction: column; gap: 12px;
   padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
   max-width: 720px; margin: 0 auto;
+  overflow-x: hidden; /* hiçbir çocuk sayfayı yatay kaydırmasın (şerit kendi içinde kayar) */
 }
+.workout > * { min-width: 0; } /* flexbox taşmasını önle */
 .workout-top { display: flex; align-items: center; gap: 12px; }
 .workout-prog { flex: 1; height: 8px; background: var(--card2); border-radius: 999px; overflow: hidden; }
 .workout-prog-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s ease; }
