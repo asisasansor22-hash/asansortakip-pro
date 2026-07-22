@@ -72,6 +72,8 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const [warmup, setWarmup] = useState(resume ? !!resume.warmup : true);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
+  const [rir, setRir] = useState("");   // yedekte kalan tekrar (bu set)
+  const [note, setNote] = useState(""); // sete özel kısa not
   const [prFlash, setPrFlash] = useState(null); // yeni rekor bildirimi
   const [shared, setShared] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -97,6 +99,25 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   // Programda bu hareket için özel set/tekrar ayarlandıysa (ör. 3×5, 5×5) onu kullan
   const targetSets = (ex && program.sets && program.sets[ex.id] != null) ? program.sets[ex.id] : meta.sets;
   const targetReps = (ex && program.reps && program.reps[ex.id] != null) ? String(program.reps[ex.id]) : meta.reps;
+
+  // Süperset grupları: program.ssLinks'teki [a,b] çiftlerine göre ardışık bağlı
+  // hareketler bir grup. Grup dinlenmesiz turlar halinde yapılır.
+  const ssLinks = program.ssLinks || [];
+  const isLink = (k) => k >= 0 && k < exIds.length - 1 && ssLinks.some((l) => l[0] === exIds[k] && l[1] === exIds[k + 1]);
+  function groupBounds(idx) {
+    if (idx == null || idx < 0 || idx >= exIds.length) return null;
+    let s = idx, e = idx;
+    while (s > 0 && isLink(s - 1)) s--;
+    while (e < exIds.length - 1 && isLink(e)) e++;
+    return e > s ? { start: s, end: e } : null;
+  }
+  function setsForIdx(k) {
+    const e2 = getExercise(exIds[k]); if (!e2) return 1;
+    return (program.sets && program.sets[exIds[k]] != null) ? program.sets[exIds[k]] : parseSets(e2.sets).sets;
+  }
+  const grp = ex ? groupBounds(i) : null;
+  const groupSets = grp ? Math.max.apply(null, Array.from({ length: grp.end - grp.start + 1 }, (_, k) => setsForIdx(grp.start + k))) : targetSets;
+  const curTotalSets = grp ? groupSets : targetSets;
   const prev = ex && lastLog ? lastLog(ex.id) : null;
   const suggestion = overloadSuggestion(prev, targetReps);
   const curE1RM = est1RM(Number(weight), firstInt(reps));
@@ -106,6 +127,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     if (!ex) return;
     setWeight(prev && prev.weight ? String(prev.weight) : "");
     setReps(prev && prev.reps ? String(prev.reps) : targetReps);
+    setRir(""); setNote("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
@@ -160,7 +182,9 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     else finishWorkout();
   }
   function completeSet() {
-    log.current.push({ exId: ex.id, weight: weight ? Number(weight) : null, reps: reps || targetReps });
+    log.current.push({ exId: ex.id, weight: weight ? Number(weight) : null, reps: reps || targetReps,
+      rir: rir !== "" ? Number(rir) : null, note: note.trim() || null });
+    setNote(""); setRir("");
     // Rekor kontrolü: bu set tüm zamanların en iyi 1RM'ini geçiyor mu?
     const w = Number(weight);
     const r = firstInt(reps);
@@ -176,7 +200,14 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         prTimer.current = setTimeout(() => setPrFlash(null), 3200);
       }
     }
-    if (setNo < targetSets) { setSetNo(setNo + 1); startRest(); }
+    if (grp) {
+      // Süperset akışı: grup içindeyken dinlenmesiz sonraki harekete geç;
+      // grubun son hareketinden sonra dinlen ve başa dön (bir sonraki tur).
+      if (i < grp.end) { skipRest(); setI(i + 1); }                       // aynı tur, sonraki hareket, dinlenme yok
+      else if (setNo < groupSets) { setI(grp.start); setSetNo(setNo + 1); startRest(); } // tur bitti → dinlen, başa dön
+      else if (grp.end < exIds.length - 1) { skipRest(); setI(grp.end + 1); setSetNo(1); } // grup bitti → sonraki istasyon
+      else finishWorkout();
+    } else if (setNo < targetSets) { setSetNo(setNo + 1); startRest(); }
     else nextExercise();
   }
 
@@ -330,6 +361,11 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={190} />
         </div>
         <h2 style={{ margin: "6px 0 0", textAlign: "center" }}>{ex.name}</h2>
+        {grp && (
+          <div style={{ color: "var(--accent2)", fontSize: 12, fontWeight: 700 }}>
+            🔗 Süperset · {(i - grp.start + 1)}/{grp.end - grp.start + 1} hareket{i < grp.end ? " · sonra dinlenme YOK" : ""}
+          </div>
+        )}
 
         {resting ? (
           <>
@@ -344,7 +380,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         ) : (
           <>
             <div className="row" style={{ justifyContent: "center", gap: 10, marginTop: 2 }}>
-              <span className="pill" style={{ fontSize: 14 }}>Set {setNo} / {targetSets}</span>
+              <span className="pill" style={{ fontSize: 14 }}>{grp ? "Tur" : "Set"} {setNo} / {curTotalSets}</span>
               <span className="pill lvl" style={{ fontSize: 14 }}>Hedef: {targetReps}</span>
             </div>
             {prev && (prev.weight || prev.reps) && (
@@ -362,6 +398,18 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
               <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
               <input className="input" type="text" placeholder="Tekrar" value={reps} onChange={(e) => setReps(e.target.value)} />
             </div>
+            <div className="row" style={{ justifyContent: "center", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ color: "var(--muted)", fontSize: 12 }}>RIR</span>
+              {["0", "1", "2", "3", "4"].map((v) => (
+                <button key={v} onClick={() => setRir(rir === v ? "" : v)}
+                  style={{ padding: "4px 11px", borderRadius: 999, fontSize: 13, fontWeight: 700, border: "none",
+                    background: rir === v ? "var(--accent)" : "var(--card2)", color: rir === v ? "#04321f" : "var(--text)" }}>
+                  {v === "4" ? "4+" : v}
+                </button>
+              ))}
+            </div>
+            <input className="input" style={{ width: "100%", maxWidth: 320, marginTop: 6 }} placeholder="Not (isteğe bağlı)"
+              value={note} onChange={(e) => setNote(e.target.value)} />
             {curE1RM && (
               <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2, textAlign: "center" }}>
                 Tahmini 1RM: <b style={{ color: "var(--accent)" }}>~{curE1RM} kg</b>
@@ -375,7 +423,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
       {!resting && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button className="btn-primary" onClick={completeSet}>
-            {setNo < targetSets ? "✓ Set tamamlandı" : "✓ Hareketi bitir"}
+            {grp && i < grp.end ? "✓ Sıradaki (süperset) →" : (setNo < curTotalSets ? "✓ Set tamamlandı" : "✓ Hareketi bitir")}
           </button>
           <button className="btn-ghost" style={{ padding: 12 }} onClick={nextExercise}>Sonraki hareket →</button>
         </div>

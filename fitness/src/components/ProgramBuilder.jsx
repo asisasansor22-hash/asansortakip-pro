@@ -3,6 +3,7 @@ import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 import IntervalTimer from "./IntervalTimer";
+import OneRMTool from "./OneRMTool";
 
 const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -16,7 +17,7 @@ function parseSetCount(s) {
 }
 
 export default function ProgramBuilder({
-  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onSetCount, onStart,
+  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onSetCount, onToggleSuperset, onStart,
 }) {
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(null);
@@ -24,6 +25,7 @@ export default function ProgramBuilder({
   const [selDay, setSelDay] = useState(todayIdx()); // Haftalık Plan'da seçili gün
   const [showAll, setShowAll] = useState(false);    // gün filtresini kapat, tümünü listele
   const [timerOpen, setTimerOpen] = useState(false);
+  const [ormOpen, setOrmOpen] = useState(false);
   const sch = schedule || {};
 
   // Seçili günün programı — varsa (ve 'tümü' kapalıysa) liste sadece onu gösterir
@@ -58,10 +60,12 @@ export default function ProgramBuilder({
           value={newName} onChange={(e) => setNewName(e.target.value)} />
         <button className="icon-btn" onClick={create}>+ Oluştur</button>
       </div>
-      <button className="icon-btn" style={{ width: "100%", marginBottom: 16, padding: 10 }} onClick={() => setTimerOpen(true)}>
-        ⏱️ HIIT / Devre Sayacı
-      </button>
+      <div className="row" style={{ gap: 8, marginBottom: 16 }}>
+        <button className="icon-btn" style={{ flex: 1, padding: 10 }} onClick={() => setTimerOpen(true)}>⏱️ HIIT Sayacı</button>
+        <button className="icon-btn" style={{ flex: 1, padding: 10 }} onClick={() => setOrmOpen(true)}>🧮 1RM Tablosu</button>
+      </div>
       {timerOpen && <IntervalTimer onClose={() => setTimerOpen(false)} />}
+      {ormOpen && <OneRMTool onClose={() => setOrmOpen(false)} />}
 
       {programs.length > 0 && (
         <WeeklyPlan programs={programs} schedule={schedule} history={history}
@@ -140,8 +144,12 @@ export default function ProgramBuilder({
                   const parsed = parseSetCount(ex.sets);
                   const cur = (p.sets && p.sets[exId] != null) ? p.sets[exId] : (parsed ? parsed.n : null);
                   const repsShown = (p.reps && p.reps[exId] != null) ? String(p.reps[exId]) : (parsed ? parsed.reps : null);
+                  const ssl = p.ssLinks || [];
+                  const linkedNext = i < p.exercises.length - 1 && ssl.some((l) => l[0] === exId && l[1] === p.exercises[i + 1]);
+                  const linkedPrev = i > 0 && ssl.some((l) => l[0] === p.exercises[i - 1] && l[1] === exId);
                   return (
-                    <div key={exId + "-" + i} className="prog-ex-row">
+                    <div key={exId + "-" + i} className="prog-ex-row"
+                      style={linkedPrev ? { borderLeft: "3px solid var(--accent2)", paddingLeft: 6 } : undefined}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
                         <button className="icon-btn" disabled={i === 0}
                           style={{ padding: "2px 8px", fontSize: 13, opacity: i === 0 ? 0.3 : 1 }}
@@ -154,7 +162,9 @@ export default function ProgramBuilder({
                         <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={52} still />
                       </div>
                       <div className="grow" style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>{ex.name}</div>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          {(linkedPrev || linkedNext) && <span style={{ color: "var(--accent2)", fontSize: 11 }}>🔗 </span>}{ex.name}
+                        </div>
                         {cur != null ? (
                           <div className="row" style={{ gap: 6, alignItems: "center", marginTop: 4 }}>
                             <button className="icon-btn" disabled={cur <= 1}
@@ -170,10 +180,22 @@ export default function ProgramBuilder({
                           <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>{i + 1}. sıra · {ex.sets}</div>
                         )}
                       </div>
-                      <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)} style={{ alignSelf: "flex-start" }}>×</button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
+                        <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)}>×</button>
+                        {i < p.exercises.length - 1 && (
+                          <button className="icon-btn" title="Bir sonrakiyle süperset"
+                            style={{ padding: "2px 8px", fontSize: 12, color: linkedNext ? "#04321f" : "var(--accent2)", background: linkedNext ? "var(--accent2)" : "var(--card2)" }}
+                            onClick={() => onToggleSuperset && onToggleSuperset(p.id, i)}>🔗</button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
+                {(p.ssLinks || []).length > 0 && (
+                  <div style={{ color: "var(--muted)", fontSize: 11, margin: "2px 4px" }}>
+                    🔗 Süperset: bağlı hareketler antrenmanda dinlenmesiz arka arkaya yapılır.
+                  </div>
+                )}
               </div>
             )}
           </div>

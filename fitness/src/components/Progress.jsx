@@ -298,7 +298,7 @@ export default function Progress({ data, history = [], onSave }) {
         const w = Number(st.weight) || 0;
         const r = firstInt(st.reps) || 0;
         const rec = map[st.exId] || (map[st.exId] = { exId: st.exId, sessions: {}, count: 0, lastDate: 0 });
-        (rec.sessions[s.date] = rec.sessions[s.date] || []).push({ w, r, reps: st.reps, e1rm: (w && r) ? Math.round(w * (1 + r / 30)) : null });
+        (rec.sessions[s.date] = rec.sessions[s.date] || []).push({ w, r, reps: st.reps, rir: st.rir, note: st.note, e1rm: (w && r) ? Math.round(w * (1 + r / 30)) : null });
         rec.count += 1;
         if (s.date > rec.lastDate) rec.lastDate = s.date;
       });
@@ -549,10 +549,15 @@ export default function Progress({ data, history = [], onSave }) {
                   <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
                     {s.sets.map((st, k) => (
                       <span key={k} className="pill" style={{ fontSize: 13 }}>
-                        {st.w ? st.w + " kg × " : ""}{st.reps}
+                        {st.w ? st.w + " kg × " : ""}{st.reps}{(st.rir !== null && st.rir !== undefined) ? " · RIR" + st.rir : ""}
                       </span>
                     ))}
                   </div>
+                  {s.sets.some((st) => st.note) && (
+                    <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 6 }}>
+                      {s.sets.filter((st) => st.note).map((st, k) => <div key={k}>📝 {st.note}</div>)}
+                    </div>
+                  )}
                 </div>
               ))}
             </>

@@ -603,6 +603,20 @@ export default function App() {
     ));
   }
 
+  // Süperset: bir hareketi bir SONRAKİYLE bağla/çöz. ssLinks = [aId, bId] çiftleri.
+  // Antrenman modunda bağlı ardışık hareketler dinlenmesiz arka arkaya yapılır.
+  function toggleSuperset(programId, index) {
+    setPrograms((prev) => prev.map((p) => {
+      if (p.id !== programId) return p;
+      const a = p.exercises[index], b = p.exercises[index + 1];
+      if (!a || !b) return p;
+      const links = Array.isArray(p.ssLinks) ? p.ssLinks.slice() : [];
+      const at = links.findIndex((l) => l[0] === a && l[1] === b);
+      if (at >= 0) links.splice(at, 1); else links.push([a, b]);
+      return { ...p, ssLinks: links };
+    }));
+  }
+
   // Bir programdaki hareketin set sayısını değiştir (varsayılanı ezen override;
   // hareket id'sine göre saklanır, 1-12 arası). Antrenman bunu kullanır.
   function setExerciseSets(programId, exId, count) {
@@ -735,6 +749,7 @@ export default function App() {
           onRemoveExercise={removeExercise}
           onMoveExercise={moveExercise}
           onSetCount={setExerciseSets}
+          onToggleSuperset={toggleSuperset}
           onStart={(p) => { setResumeState(null); lsClearActiveWorkout(); setWorkout(p); }}
         />
       )}
