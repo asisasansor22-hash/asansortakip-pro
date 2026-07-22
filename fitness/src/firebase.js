@@ -19,11 +19,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const FIREBASE_DB_URL = firebaseConfig.databaseURL;
 
-async function getToken() {
+async function getToken(force) {
   var user = auth.currentUser;
   if (!user) return null;
   try {
-    return await user.getIdToken();
+    return await user.getIdToken(!!force); // force=true → token'ı zorla tazele
   } catch (e) { return null; }
 }
 
@@ -163,12 +163,16 @@ export function currentUid() {
 
 export async function feedList(limit) {
   try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + "/fitness/feed.json";
-    if (token) url += "?auth=" + token;
-    var res = await fetch(url);
-    if (!res.ok) return { success: false, error: "FEED " + res.status };
-    var data = await res.json();
+    var res, data;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      var token = await getToken(attempt === 1); // 2. denemede token'ı zorla tazele
+      var url = FIREBASE_DB_URL + "/fitness/feed.json";
+      if (token) url += "?auth=" + token;
+      res = await fetch(url);
+      if (res.ok) break;
+      if (res.status !== 401 || attempt === 1) return { success: false, error: "FEED " + res.status };
+    }
+    data = await res.json();
     if (!data) return { success: true, posts: [] };
     var posts = Object.keys(data).map(function (id) {
       var p = data[id] || {};
