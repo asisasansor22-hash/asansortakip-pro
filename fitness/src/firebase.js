@@ -52,6 +52,34 @@ export async function firebaseLogin(email, password) {
   }
 }
 
+// Yalnız giriş (hesap YOKSA oluşturmaz) — "Giriş Yap" sekmesi için
+export async function firebaseSignIn(email, password) {
+  try {
+    var result = await signInWithEmailAndPassword(auth, email, password);
+    return { success: true, user: result.user };
+  } catch (e) {
+    if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential" || e.code === "auth/wrong-password") {
+      return { success: false, error: "E-posta veya şifre hatalı. Hesabın yoksa 'Kayıt Ol'u kullan." };
+    }
+    if (e.code === "auth/invalid-email") return { success: false, error: "Geçersiz e-posta adresi." };
+    if (e.code === "auth/too-many-requests") return { success: false, error: "Çok fazla deneme. Biraz bekleyip tekrar dene." };
+    return { success: false, error: e.message };
+  }
+}
+
+// Yeni hesap oluştur — "Kayıt Ol" sekmesi için (başarılıysa otomatik giriş yapılır)
+export async function firebaseRegister(email, password) {
+  try {
+    var result = await createUserWithEmailAndPassword(auth, email, password);
+    return { success: true, user: result.user };
+  } catch (e) {
+    if (e.code === "auth/email-already-in-use") return { success: false, error: "Bu e-posta zaten kayıtlı. 'Giriş Yap'ı kullan." };
+    if (e.code === "auth/weak-password") return { success: false, error: "Şifre çok zayıf (en az 6 hane)." };
+    if (e.code === "auth/invalid-email") return { success: false, error: "Geçersiz e-posta adresi." };
+    return { success: false, error: e.message };
+  }
+}
+
 export async function firebaseLogout() {
   try { await signOut(auth); } catch (e) {}
 }
