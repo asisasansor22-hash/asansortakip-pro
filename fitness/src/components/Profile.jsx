@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import ProfileForm from "./ProfileForm";
-import { firebaseLogout, changePassword, ADMIN_EMAIL } from "../firebase";
+import { firebaseLogout, changePassword, ADMIN_EMAIL, getDisplayName, setMyName } from "../firebase";
 import PasswordInput from "./PasswordInput";
 import Admin from "./Admin";
 import Achievements from "./Achievements";
@@ -37,6 +37,36 @@ function ChangePassword() {
       {err && <div className="err">{err}</div>}
       {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
       <button className="btn-primary" disabled={busy}>{busy ? "Güncelleniyor..." : "Şifreyi Değiştir"}</button>
+    </form>
+  );
+}
+
+// Görünen ad — akış, lig, mesaj ve yorumlarda e-posta yerine bu ad görünür.
+function DisplayName() {
+  const [name, setName] = useState(() => getDisplayName());
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setMsg(""); setErr("");
+    const nm = name.trim();
+    if (!nm) { setErr("Bir ad gir."); return; }
+    setBusy(true);
+    const res = await setMyName(nm);
+    setBusy(false);
+    if (res.success) setMsg("Görünen adın güncellendi ✓");
+    else setErr(res.error || "Bir hata oluştu.");
+  }
+
+  return (
+    <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <input className="input" type="text" placeholder="Görünen ad (örn. Berat)" value={name}
+        onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={30} />
+      {err && <div className="err">{err}</div>}
+      {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
+      <button className="btn-primary" disabled={busy}>{busy ? "Kaydediliyor..." : "Adı Kaydet"}</button>
     </form>
   );
 }
@@ -147,6 +177,12 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
       {email && <p style={{ color: "var(--muted)", marginTop: -4, marginBottom: 12 }}>{email}</p>}
 
       {onSaveAvatar && <Avatar avatar={avatar} email={email} onSaveAvatar={onSaveAvatar} />}
+
+      <div className="section-title">Görünen ad</div>
+      <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
+        Akışta, Fit Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.
+      </p>
+      <DisplayName />
 
       {admin && (
         <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>

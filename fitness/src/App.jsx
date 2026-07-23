@@ -182,13 +182,22 @@ export default function App() {
     return onAuthChange((u) => {
       setUser(u);
       setAuthReady(true);
+      if (u) {
+        // Görünen adı cihaza eşitle: Firebase auth displayName kaynak alınır
+        // (başka cihazda kaydolmuş olabilir); yerel yoksa oradan doldurulur.
+        try {
+          const dn = (u.displayName || "").trim();
+          const cur = (localStorage.getItem("fitbe_name") || "").trim();
+          if (dn && dn !== cur) localStorage.setItem("fitbe_name", dn);
+        } catch (e) {}
+      }
       if (!u) {
         loaded.current = false; cloudReady.current = false; edited.current = false;
         setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
         setWorkout(null); setResumeState(null); setResumeAsk(null); setImportKey(null);
         // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
         // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
-        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout", "fitbe_name"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
       }
     });
   }, []);

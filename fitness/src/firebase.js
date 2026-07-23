@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Mevcut asansortakip projesiyle aynı Firebase projesi kullanılıyor.
@@ -68,9 +68,14 @@ export async function firebaseSignIn(email, password) {
 }
 
 // Yeni hesap oluştur — "Kayıt Ol" sekmesi için (başarılıysa otomatik giriş yapılır)
-export async function firebaseRegister(email, password) {
+export async function firebaseRegister(email, password, name) {
   try {
     var result = await createUserWithEmailAndPassword(auth, email, password);
+    var nm = (name || "").trim();
+    if (nm) {
+      try { await updateProfile(result.user, { displayName: nm }); } catch (e) {}
+      try { localStorage.setItem("fitbe_name", nm); } catch (e) {}
+    }
     return { success: true, user: result.user };
   } catch (e) {
     if (e.code === "auth/email-already-in-use") return { success: false, error: "Bu e-posta zaten kayıtlı. 'Giriş Yap'ı kullan." };
@@ -78,6 +83,33 @@ export async function firebaseRegister(email, password) {
     if (e.code === "auth/invalid-email") return { success: false, error: "Geçersiz e-posta adresi." };
     return { success: false, error: e.message };
   }
+}
+
+// Görünen ad: yerel > Firebase auth displayName > e-posta'nın @ öncesi.
+// Akış, lig, mesaj ve yorumlarda e-posta yerine bu ad gösterilir.
+export function getDisplayName() {
+  try {
+    var ls = localStorage.getItem("fitbe_name");
+    if (ls && ls.trim()) return ls.trim();
+  } catch (e) {}
+  var u = auth.currentUser;
+  if (u) {
+    if (u.displayName && u.displayName.trim()) return u.displayName.trim();
+    if (u.email) return u.email.split("@")[0];
+  }
+  return "";
+}
+
+// Görünen adı güncelle — hem Firebase auth displayName hem yerel kopya.
+export async function setMyName(name) {
+  var nm = (name || "").trim();
+  try {
+    var u = auth.currentUser;
+    if (!u) return { success: false, error: "Oturum yok." };
+    await updateProfile(u, { displayName: nm });
+    try { localStorage.setItem("fitbe_name", nm); } catch (e) {}
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 }
 
 export async function firebaseLogout() {
@@ -204,7 +236,7 @@ export async function feedList(limit) {
     if (!data) return { success: true, posts: [] };
     var posts = Object.keys(data).map(function (id) {
       var p = data[id] || {};
-      return { id: id, uid: p.uid || "", email: p.email || "", t: p.t || 0, text: p.text || "", media: p.media || null, avatar: p.avatar || null };
+      return { id: id, uid: p.uid || "", email: p.email || "", name: p.name || "", t: p.t || 0, text: p.text || "", media: p.media || null, avatar: p.avatar || null };
     });
     posts.sort(function (a, b) { return (b.t || 0) - (a.t || 0); });
     return { success: true, posts: posts.slice(0, limit || 80) };
@@ -220,6 +252,7 @@ export async function feedPost(post) {
     var body = {
       uid: user.uid,
       email: user.email || "",
+      name: getDisplayName(),
       t: Date.now(),
       text: post.text || "",
       media: post.media || null,
@@ -294,7 +327,7 @@ export async function feedCommentAdd(postId, text) {
     var id = "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     var avatar = null;
     try { avatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
-    var body = { uid: user.uid, email: user.email || "", t: Date.now(), text: String(text), avatar: avatar };
+    var body = { uid: user.uid, email: user.email || "", name: getDisplayName(), t: Date.now(), text: String(text), avatar: avatar };
     var url = FIREBASE_DB_URL + "/fitness/feed_comments/" + postId + "/" + id + ".json";
     if (token) url += "?auth=" + token;
     var res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -377,7 +410,7 @@ export async function dirPublish() {
     var url = FIREBASE_DB_URL + "/fitness/directory/" + user.uid + ".json";
     if (token) url += "?auth=" + token;
     await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: (user.email || "").split("@")[0], t: Date.now() }) });
+      body: JSON.stringify({ name: getDisplayName(), t: Date.now() }) });
   } catch (e) {}
 }
 export async function dirGet() {
@@ -399,7 +432,7 @@ export async function lbPublish(stats) {
     var token = await getToken();
     var url = FIREBASE_DB_URL + "/fitness/leaderboard/" + user.uid + ".json";
     if (token) url += "?auth=" + token;
-    var body = Object.assign({ name: (user.email || "").split("@")[0], t: Date.now() }, stats || {});
+    var body = Object.assign({ name: getDisplayName(), t: Date.now() }, stats || {});
     await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   } catch (e) {}
 }

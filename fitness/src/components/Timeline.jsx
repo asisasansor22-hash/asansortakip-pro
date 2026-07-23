@@ -47,6 +47,8 @@ function timeAgo(t) {
   catch (e) { return ""; }
 }
 const nameOf = (email) => (email || "").split("@")[0] || "kullanıcı";
+// Gönderi/yorum sahibinin görünen adı: kayıtlı ad varsa onu, yoksa e-posta öneki.
+const displayOf = (obj) => (obj && obj.name && obj.name.trim()) ? obj.name.trim() : nameOf(obj && obj.email);
 const MENTION_CHARS = "a-zA-Z0-9_.çğıöşüÇĞİÖŞÜ";
 
 // Gönderi metnindeki @etiketleri vurgula
@@ -86,9 +88,9 @@ export default function Timeline() {
   // @etiketleme önerileri: akışa katılmış (gönderi atmış) kullanıcı adları + kendi adın.
   const knownNames = useMemo(() => {
     const map = new Map();
-    const add = (email) => { const n = nameOf(email); if (n && n !== "kullanıcı") map.set(n.toLowerCase(), n); };
-    (posts || []).forEach((p) => add(p.email));
-    try { add(auth.currentUser && auth.currentUser.email); } catch (e) {}
+    const add = (n) => { if (n && n !== "kullanıcı") map.set(n.toLowerCase(), n); };
+    (posts || []).forEach((p) => add(displayOf(p)));
+    try { const u = auth.currentUser; if (u) add((u.displayName && u.displayName.trim()) || nameOf(u.email)); } catch (e) {}
     return [...map.values()];
   }, [posts]);
 
@@ -303,11 +305,11 @@ export default function Timeline() {
                     const av = avatars[post.uid] || (post.uid === me ? myAvatar : null) || post.avatar;
                     return av
                       ? <img src={av} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : nameOf(post.email).slice(0, 1).toUpperCase();
+                      : displayOf(post).slice(0, 1).toUpperCase();
                   })()}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{nameOf(post.email)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{displayOf(post)}</div>
                   <div style={{ color: "var(--muted)", fontSize: 11 }}>{timeAgo(post.t)}</div>
                 </div>
               </div>
@@ -357,10 +359,10 @@ export default function Timeline() {
                           <div style={{ width: 24, height: 24, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, color: "var(--accent)", flexShrink: 0 }}>
                             {(avatars[c.uid] || c.avatar)
                               ? <img src={avatars[c.uid] || c.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                              : nameOf(c.email).slice(0, 1).toUpperCase()}
+                              : displayOf(c).slice(0, 1).toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontWeight: 700, fontSize: 12 }}>{nameOf(c.email)}</span>
+                            <span style={{ fontWeight: 700, fontSize: 12 }}>{displayOf(c)}</span>
                             <span style={{ color: "var(--muted)", fontSize: 10, marginLeft: 6 }}>{timeAgo(c.t)}</span>
                             <div style={{ fontSize: 13, lineHeight: 1.4, wordBreak: "break-word" }}>{renderText(c.text)}</div>
                           </div>

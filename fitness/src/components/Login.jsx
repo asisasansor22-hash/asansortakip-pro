@@ -5,6 +5,7 @@ import PasswordInput from "./PasswordInput";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // "login" | "register"
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
@@ -19,12 +20,13 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault();
     setErr(""); setMsg("");
+    if (isReg && !name.trim()) { setErr("Görünen adını gir (akışta ve ligde bu görünecek)."); return; }
     if (!email.trim()) { setErr("E-posta gir."); return; }
     if (pass.length < 6) { setErr("Şifre en az 6 hane olmalı."); return; }
     if (isReg && pass !== pass2) { setErr("Şifreler eşleşmiyor."); return; }
     setBusy(true);
     const res = isReg
-      ? await firebaseRegister(email.trim(), pass)
+      ? await firebaseRegister(email.trim(), pass, name.trim())
       : await firebaseSignIn(email.trim(), pass);
     setBusy(false);
     if (!res.success) setErr(res.error || "Bir hata oluştu.");
@@ -58,6 +60,10 @@ export default function Login() {
       </div>
 
       <form onSubmit={submit} style={{ width: "100%", maxWidth: 360, display: "flex", flexDirection: "column", gap: 10 }}>
+        {isReg && (
+          <input className="input" type="text" placeholder="Görünen ad (örn. Berat)" value={name}
+            onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={30} />
+        )}
         <input className="input" type="email" placeholder="E-posta" value={email}
           onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
         <PasswordInput placeholder={isReg ? "Şifre (min. 6 hane)" : "Şifre"} value={pass}
