@@ -153,14 +153,14 @@ function AppleHealth({ importUrl, onImportApple }) {
             <li>iPhone'da <b>Kısayollar</b> uygulaması → <b>+</b> ile yeni kısayol.</li>
             <li><b>“Sağlık Örnekleri Bul”</b> ekle → tür <b>Antrenman</b>, tarih aralığı <b>bugün/son 7 gün</b>.</li>
             <li>Her antrenman için (Repeat/Yinele) şu alanları içeren bir <b>Sözlük</b> oluştur: <code>type</code> (Antrenman Türü), <code>start</code> (Başlangıç · Unix zamanı), <code>durationMin</code> (Süre · dk), <code>kcal</code> (Aktif Enerji).</li>
-            <li><b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>, Gövde <b>JSON</b> = Sözlük; URL olarak aşağıdaki bağlantı.</li>
+            <li><b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>, İstek Gövdesi <b>JSON</b> = Sözlük; URL olarak aşağıdaki <b>sana özel</b> bağlantı.</li>
             <li>Kaydet. Uygulamayı her açtığında veri otomatik çekilir (ya da “Şimdi içe aktar”).</li>
           </ol>
           <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, marginTop: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
             {importUrl}
           </div>
-          <p style={{ color: "#fbbf24", fontSize: 11, marginTop: 8 }}>
-            ⚠️ Bunun çalışması için Firebase kurallarına <code>/fitness/imports</code> düğümü eklenmeli (yazma açık). Kural metnini geliştiriciden iste.
+          <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8 }}>
+            🔒 Bu bağlantı <b>sana özeldir</b> (içindeki gizli token yalnız senin verini yazar). Kimseyle paylaşma. Veriler güvenli bir sunucu (Cloud Function) üzerinden doğrulanır; herkese açık yazma yoktur.
           </p>
         </div>
       )}

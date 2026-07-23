@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, importInboxRead, importInboxClear, importInboxUrl, lbPublish, dirPublish, dmMetaGet } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, appleImportUrl, lbPublish, dirPublish, dmMetaGet } from "./firebase";
 import { dmSeenGet } from "./components/Messages";
 import { earnedCount } from "./data/achievements";
 import Login from "./components/Login";
@@ -163,7 +163,7 @@ export default function App() {
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
-  const [importKey, setImportKey] = useState(null); // Apple Sağlık içe-aktarma anahtarı
+  const [importSecret, setImportSecret] = useState(null); // Apple Sağlık içe-aktarma gizli anahtarı (token'ın 2. parçası)
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -306,12 +306,13 @@ export default function App() {
         lbPublish(computeLbStats(lbHist));
       }
 
-      // Apple Sağlık içe-aktarma anahtarı: yoksa üret; sonra gelen kutusunu içe aktar
+      // Apple Sağlık içe-aktarma gizli anahtarı: yoksa üret (kullanıcının kendi
+      // authlı düğümüne). Token = uid + "." + gizli. Sonra gelen kutusunu içe aktar.
       if (!cancelled && cloudReady.current) {
-        const kr = await dbGetR("importkey");
-        let key = (kr.ok && typeof kr.data === "string" && kr.data) ? kr.data : null;
-        if (!key && kr.ok) { key = "k_" + randHex(18); dbSet("importkey", key); }
-        if (key && !cancelled) { setImportKey(key); importApple(key, true); }
+        const sr = await dbGetR("importsecret");
+        let secret = (sr.ok && typeof sr.data === "string" && sr.data) ? sr.data : null;
+        if (!secret && sr.ok) { secret = randHex(20); dbSet("importsecret", secret); }
+        if (secret && !cancelled) { setImportSecret(secret); importApple(true); }
       }
 
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
@@ -374,10 +375,13 @@ export default function App() {
   }
 
   // Apple Sağlık gelen kutusunu oku → antrenman geçmişine ekle → kutuyu temizle.
-  // Kısayolun gönderdiği her kayıt: { type, start(ms|s), durationMin, kcal }.
-  async function importApple(key, silent) {
-    if (!key) return 0;
-    const inbox = await importInboxRead(key);
+  // Cloud Function, doğruladığı kayıtları kullanıcının kendi authlı düğümüne
+  // (/fitness/users/{uid}/imports_inbox) yazar; burada onu okuyoruz.
+  // Her kayıt: { type, start(ms|s), durationMin, kcal }.
+  async function importApple(silent) {
+    const r = await dbGetR("imports_inbox");
+    if (!r.ok) { if (!silent) flash("Bağlantı yok, tekrar dene"); return 0; }
+    const inbox = r.data;
     const entries = inbox ? Object.values(inbox).filter((x) => x && (x.start || x.date)) : [];
     if (!entries.length) { if (!silent) flash("Yeni Apple verisi yok"); return 0; }
     let added = 0;
@@ -404,7 +408,7 @@ export default function App() {
       if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
       return next;
     });
-    await importInboxClear(key);
+    await dbSet("imports_inbox", null); // gelen kutusunu temizle
     if (!silent) flash(added ? added + " Apple antrenmanı aktarıldı ✓" : "Yeni Apple verisi yok");
     return added;
   }
@@ -766,7 +770,7 @@ export default function App() {
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
-        importUrl={importKey ? importInboxUrl(importKey) : null} onImportApple={() => importApple(importKey)} history={history} />}
+        importUrl={importSecret ? appleImportUrl(importSecret) : null} onImportApple={() => importApple(false)} history={history} />}
 
       {resumeAsk && (
         <div style={{
