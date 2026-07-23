@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { feedList, feedPost, feedDelete, feedSharePublic, publicAvatarsGet, feedLikesGet, feedLikeToggle, feedCommentsGet, feedCommentAdd, feedCommentDelete, currentUid, isAdmin, auth } from "../firebase";
+import { feedList, feedPost, feedDelete, feedSharePublic, publicAvatarsGet, feedLikesGet, feedLikeToggle, feedCommentsGet, feedCommentAdd, feedCommentDelete, currentUid, isAdmin, auth, dirGet } from "../firebase";
 
 const VIDEO_MAX = 8 * 1024 * 1024; // 8 MB (base64 olarak DB'de tutulur)
 
@@ -72,6 +72,7 @@ export default function Timeline() {
   const [shareMsg, setShareMsg] = useState("");
   const [mention, setMention] = useState(null); // {start, query}
   const [avatars, setAvatars] = useState({}); // uid -> dataURL (herkese açık güncel)
+  const [names, setNames] = useState({}); // uid -> güncel görünen ad (rehberden)
   const [likes, setLikes] = useState({}); // postId -> {uid: true}
   const [comments, setComments] = useState({}); // postId -> {commentId: {...}}
   const [openComments, setOpenComments] = useState(null); // yorumları açık gönderi id
@@ -85,14 +86,20 @@ export default function Timeline() {
   let myAvatar = null;
   try { myAvatar = localStorage.getItem("fitbe_avatar") || null; } catch (e) {}
 
+  // Bir gönderi/yorum sahibinin GÜNCEL görünen adı: önce rehberdeki canlı ad
+  // (kullanıcı adını sonradan değiştirmişse eski gönderiler de güncellenir),
+  // yoksa gönderiye kaydedilmiş ad, o da yoksa e-posta öneki.
+  const dispName = (obj) => (obj && names[obj.uid] && names[obj.uid].trim()) ? names[obj.uid].trim() : displayOf(obj);
+
   // @etiketleme önerileri: akışa katılmış (gönderi atmış) kullanıcı adları + kendi adın.
   const knownNames = useMemo(() => {
     const map = new Map();
     const add = (n) => { if (n && n !== "kullanıcı") map.set(n.toLowerCase(), n); };
-    (posts || []).forEach((p) => add(displayOf(p)));
+    (posts || []).forEach((p) => add(dispName(p)));
+    Object.keys(names || {}).forEach((uid) => add(names[uid]));
     try { const u = auth.currentUser; if (u) add((u.displayName && u.displayName.trim()) || nameOf(u.email)); } catch (e) {}
     return [...map.values()];
-  }, [posts]);
+  }, [posts, names]);
 
   // İmleç konumuna göre yazılmakta olan @etiketi yakala
   function onText(e) {
@@ -134,11 +141,14 @@ export default function Timeline() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const [a, l, c] = await Promise.all([publicAvatarsGet(), feedLikesGet(), feedCommentsGet()]);
+      const [a, l, c, dir] = await Promise.all([publicAvatarsGet(), feedLikesGet(), feedCommentsGet(), dirGet()]);
       if (!alive) return;
       setAvatars(a || {});
       setLikes(l || {});
       setComments(c || {});
+      const nm = {};
+      Object.keys(dir || {}).forEach((uid) => { const n = dir[uid] && dir[uid].name; if (n) nm[uid] = n; });
+      setNames(nm);
     })();
     return () => { alive = false; };
   }, []);
@@ -305,11 +315,11 @@ export default function Timeline() {
                     const av = avatars[post.uid] || (post.uid === me ? myAvatar : null) || post.avatar;
                     return av
                       ? <img src={av} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : displayOf(post).slice(0, 1).toUpperCase();
+                      : dispName(post).slice(0, 1).toUpperCase();
                   })()}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{displayOf(post)}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{dispName(post)}</div>
                   <div style={{ color: "var(--muted)", fontSize: 11 }}>{timeAgo(post.t)}</div>
                 </div>
               </div>
@@ -359,10 +369,10 @@ export default function Timeline() {
                           <div style={{ width: 24, height: 24, borderRadius: 999, overflow: "hidden", background: "var(--card2)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, color: "var(--accent)", flexShrink: 0 }}>
                             {(avatars[c.uid] || c.avatar)
                               ? <img src={avatars[c.uid] || c.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                              : displayOf(c).slice(0, 1).toUpperCase()}
+                              : dispName(c).slice(0, 1).toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontWeight: 700, fontSize: 12 }}>{displayOf(c)}</span>
+                            <span style={{ fontWeight: 700, fontSize: 12 }}>{dispName(c)}</span>
                             <span style={{ color: "var(--muted)", fontSize: 10, marginLeft: 6 }}>{timeAgo(c.t)}</span>
                             <div style={{ fontSize: 13, lineHeight: 1.4, wordBreak: "break-word" }}>{renderText(c.text)}</div>
                           </div>

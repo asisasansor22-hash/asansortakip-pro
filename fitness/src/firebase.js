@@ -101,6 +101,7 @@ export function getDisplayName() {
 }
 
 // Görünen adı güncelle — hem Firebase auth displayName hem yerel kopya.
+// Ardından rehberi ve lig kaydındaki adı da tazele ki akış/lig anında değişsin.
 export async function setMyName(name) {
   var nm = (name || "").trim();
   try {
@@ -108,8 +109,19 @@ export async function setMyName(name) {
     if (!u) return { success: false, error: "Oturum yok." };
     await updateProfile(u, { displayName: nm });
     try { localStorage.setItem("fitbe_name", nm); } catch (e) {}
+    try { await dirPublish(); } catch (e) {}
+    try { await lbSetName(nm); } catch (e) {}
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
+}
+
+// Lig kaydındaki yalnız "name" alanını güncelle (istatistikleri bozmadan).
+async function lbSetName(nm) {
+  var user = auth.currentUser; if (!user) return;
+  var token = await getToken();
+  var url = FIREBASE_DB_URL + "/fitness/leaderboard/" + user.uid + "/name.json";
+  if (token) url += "?auth=" + token;
+  await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(nm) });
 }
 
 export async function firebaseLogout() {
