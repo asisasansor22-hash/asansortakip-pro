@@ -190,7 +190,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
       , React.createElement('div', { style: {marginBottom:seciliIlce?0:0},}
         , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#94a3b8",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"},}
           , React.createElement('span', null, "İlçe Seçin" )
-          , seciliIlce&&React.createElement('button', { onClick: ()=>{setSeciliIlce(null);setSecili({});}, style: {background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:11,fontWeight:600},}, "✕ Kapat" )
+          , seciliIlce&&React.createElement('button', { onClick: ()=>{setSeciliIlce(null);}, style: {background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:11,fontWeight:600},}, "✕ Kapat" )
         )
         , React.createElement('div', { style: {display:"flex",flexWrap:"wrap",gap:6,marginBottom:14},}
           , ilceler.map(ilce=>{
@@ -202,7 +202,7 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
             if(aktifSayi===0) return null;
             const acik=seciliIlce===ilce;
             return(
-              React.createElement('button', { key: ilce, onClick: ()=>{setSeciliIlce(acik?null:ilce);setSecili({});},
+              React.createElement('button', { key: ilce, onClick: ()=>{setSeciliIlce(acik?null:ilce);},
                 style: {
                   display:"flex",alignItems:"center",gap:6,
                   padding:"7px 12px",borderRadius:20,
@@ -220,6 +220,15 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                   borderRadius:20,fontSize:10,
                   padding:"1px 7px",fontWeight:900
                 },}, aktifSayi)
+                /* Bu ilçeden seçili bina sayısı — ilçeler arası seçim korunur */
+                , (function(){
+                    var secSayi=(elevByIlce[ilce]||[]).filter(e=>secili[e.id]).length;
+                    return secSayi>0&&React.createElement('span',{style:{
+                      background:"#10b981",color:"#000",
+                      borderRadius:20,fontSize:10,
+                      padding:"1px 7px",fontWeight:900
+                    }},"✓"+secSayi);
+                  })()
               )
             );
           })
@@ -260,6 +269,11 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                 React.createElement('button', { onClick: ()=>{Object.keys(secili).filter(id=>secili[id]).forEach(id=>geriAl(parseInt(id)));setSecili({});},
                   style: {padding:"5px 14px",borderRadius:8,background:"#1a1f2e",border:"1px solid #ef444444",color:"#ef4444",fontWeight:700,fontSize:11,cursor:"pointer"},}, "↩ "
                    , seciliSayi, " Binayı Geri Al"
+                )
+              )
+              , seciliSayi>0&&(
+                React.createElement('button', { onClick: ()=>setSecili({}),
+                  style: {padding:"5px 12px",borderRadius:8,background:"transparent",border:"1px solid #2a3050",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"},}, "✕ Seçimi Temizle ("+seciliSayi+")"
                 )
               )
             )
@@ -354,10 +368,16 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                     , e.tel&&React.createElement('span', null, " · "  , React.createElement('a', { href: "tel:"+e.tel.replace(/\s/g,""), onClick: ev=>ev.stopPropagation(), style: {color:"#3b82f6",textDecoration:"none"},}, "📞 " , e.tel))
                                   )
                                 )
+                                , (function(){
+                                  var eskiDevir=bal?bal(e.id):(e.bakiyeDevir||0);
+                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,fontSize:10,fontWeight:800,color:eskiDevir>0?"#ef4444":eskiDevir<0?"#34d399":"#64748b",background:eskiDevir>0?"#3a1e1e":eskiDevir<0?"#0a2a1a":"#1e2640",borderRadius:6,padding:"2px 7px"}}
+                                    ,"📊 Eski Devir: "+(eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR")+" ₺"
+                                  );
+                                })()
                                 , gorunum==="atandi"&&(function(){
                                   var bk=mMonth.find(function(m){return m.asansorId===e.id&&m.planlanmis;});
                                   if(!bk||!bk.bakimciAd) return null;
-                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,fontSize:10,fontWeight:700,color:bk.bakimciRenk||"#8b5cf6",background:(bk.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 7px"}}
+                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,marginLeft:6,fontSize:10,fontWeight:700,color:bk.bakimciRenk||"#8b5cf6",background:(bk.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 7px"}}
                                     ,React.createElement('span',{style:{width:6,height:6,borderRadius:"50%",background:bk.bakimciRenk||"#8b5cf6",display:"inline-block",flexShrink:0}})
                                     ,"🔧 "+bk.bakimciAd
                                   );

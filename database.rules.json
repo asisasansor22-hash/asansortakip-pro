@@ -3,81 +3,162 @@
     "asansor": {
       ".read": false,
       ".write": false,
-
       "tenants": {
         ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
         ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
-
         "$tenantId": {
           ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app' || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId || (auth.token.email.beginsWith('bakimci_' + $tenantId + '_') && auth.token.email.endsWith('@asistakip.app')))",
           ".write": false,
-
           "public": {
             ".read": true,
             ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId && root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && root.child('asansor').child('users').child(auth.uid).child('active').val() === true && root.child('asansor').child('tenants').child($tenantId).child('subscription').child('status').val() === 'active'))",
             ".validate": "newData.hasChildren(['ad', 'adminEmail']) && (!newData.child('ad').exists() || newData.child('ad').isString()) && (!newData.child('adminEmail').exists() || newData.child('adminEmail').isString()) && !newData.child('adminUid').exists() && !newData.child('yoneticiSifre').exists() && !newData.child('sifre').exists()",
-            "ad": { ".validate": "newData.isString()" },
-            "adminEmail": { ".validate": "newData.isString()" },
-            "plan": { ".validate": "!newData.exists() || newData.isString()" },
+            "ad": {
+              ".validate": "newData.isString()"
+            },
+            "adminEmail": {
+              ".validate": "newData.isString()"
+            },
+            "plan": {
+              ".validate": "!newData.exists() || newData.isString()"
+            },
             "bakimcilar": {
               "$idx": {
                 ".validate": "newData.hasChildren(['id', 'ad']) && newData.child('id').isString() && newData.child('ad').isString() && (!newData.child('renk').exists() || newData.child('renk').isString()) && (!newData.child('hasSifre').exists() || newData.child('hasSifre').isBoolean()) && !newData.child('sifre').exists()",
-                "id": { ".validate": "newData.isString()" },
-                "ad": { ".validate": "newData.isString()" },
-                "renk": { ".validate": "newData.isString()" },
-                "hasSifre": { ".validate": "newData.isBoolean()" },
-                "$other": { ".validate": false }
+                "id": {
+                  ".validate": "newData.isString()"
+                },
+                "ad": {
+                  ".validate": "newData.isString()"
+                },
+                "renk": {
+                  ".validate": "newData.isString()"
+                },
+                "hasSifre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$other": {
+                  ".validate": false
+                }
               }
             },
-            "$other": { ".validate": false }
+            "$other": {
+              ".validate": false
+            }
           },
-
           "config": {
             ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId)",
             ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
           },
-
           "subscription": {
             ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId)",
             ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true"
           },
-
           "$dataKey": {
             ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app' || root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId || (auth.token.email.beginsWith('bakimci_' + $tenantId + '_') && auth.token.email.endsWith('@asistakip.app')))",
-            ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app' || (auth.token.email.beginsWith('bakimci_' + $tenantId + '_') && auth.token.email.endsWith('@asistakip.app') && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_payment_events')) || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId && root.child('asansor').child('users').child(auth.uid).child('active').val() === true && root.child('asansor').child('tenants').child($tenantId).child('subscription').child('status').val() === 'active' && ((root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_tasks' || $dataKey === 'at_sozlesme' || $dataKey === 'at_hesapkayit' || $dataKey === 'at_haftalik' || $dataKey === 'at_aylik' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_giderler' || $dataKey === 'at_giderhafta' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_teklifler' || $dataKey === 'at_muayeneler' || $dataKey === 'at_bakimcilar' || $dataKey === 'at_payment_events')) || (root.child('asansor').child('users').child(auth.uid).child('role').val() === 'bakimci' && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_payment_events')))))"
+            ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app' || (auth.token.email.beginsWith('bakimci_' + $tenantId + '_') && auth.token.email.endsWith('@asistakip.app') && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_payment_events' || $dataKey === 'at_bakim_bildirimleri' || $dataKey === 'at_defter')) || (root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === $tenantId && root.child('asansor').child('users').child(auth.uid).child('active').val() === true && root.child('asansor').child('tenants').child($tenantId).child('subscription').child('status').val() === 'active' && ((root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_tasks' || $dataKey === 'at_sozlesme' || $dataKey === 'at_hesapkayit' || $dataKey === 'at_haftalik' || $dataKey === 'at_aylik' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_giderler' || $dataKey === 'at_giderhafta' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_teklifler' || $dataKey === 'at_muayeneler' || $dataKey === 'at_bakimcilar' || $dataKey === 'at_payment_events' || $dataKey === 'at_bakim_bildirimleri' || $dataKey === 'at_push_tokens' || $dataKey === 'at_bina_links' || $dataKey === 'at_defter' || $dataKey === 'at_defter_meta')) || (root.child('asansor').child('users').child(auth.uid).child('role').val() === 'bakimci' && ($dataKey === 'at_elevs' || $dataKey === 'at_maints' || $dataKey === 'at_faults' || $dataKey === 'at_sonodemeler' || $dataKey === 'at_notlar' || $dataKey === 'at_ekstraisler' || $dataKey === 'at_payment_events' || $dataKey === 'at_bakim_bildirimleri' || $dataKey === 'at_defter')))))"
           }
         }
       },
-
       "users": {
         ".read": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
         ".write": false,
-
         "$uid": {
           ".read": "auth != null && (auth.uid === $uid || root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app')",
           ".write": "auth != null && (root.child('asansor').child('superadmins').child(auth.uid).val() === true || auth.token.email === 'yonetici@asistakip.app' || (root.child('asansor').child('users').child(auth.uid).child('role').val() === 'yonetici' && root.child('asansor').child('users').child(auth.uid).child('active').val() === true && root.child('asansor').child('users').child(auth.uid).child('tenantId').val() === newData.child('tenantId').val() && newData.child('role').val() === 'bakimci'))",
           ".validate": "newData.hasChildren(['tenantId', 'role', 'active']) && newData.child('tenantId').isString() && (newData.child('role').val() === 'yonetici' || newData.child('role').val() === 'bakimci') && newData.child('active').isBoolean() && (!newData.child('ad').exists() || newData.child('ad').isString())"
         }
       },
-
       "superadmins": {
         ".read": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
         ".write": "auth != null && root.child('asansor').child('superadmins').child(auth.uid).val() === true",
-
         "$uid": {
           ".read": "auth != null && (auth.uid === $uid || root.child('asansor').child('superadmins').child(auth.uid).val() === true)",
           ".validate": "newData.isBoolean()"
         }
       },
-
       "at_bakimcilar_pub": {
         ".read": true,
         ".write": "auth != null && (auth.token.email === 'yonetici@asistakip.app' || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
       },
-
       "$legacyKey": {
         ".read": "auth != null && auth.token.email.endsWith('@asistakip.app')",
-        ".write": "auth != null && (auth.token.email === 'yonetici@asistakip.app' || (auth.token.email.beginsWith('bakimci_') && auth.token.email.endsWith('@asistakip.app') && ($legacyKey === 'at_elevs' || $legacyKey === 'at_maints' || $legacyKey === 'at_faults' || $legacyKey === 'at_sonodemeler' || $legacyKey === 'at_notlar' || $legacyKey === 'at_ekstraisler' || $legacyKey === 'at_payment_events')) || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
+        ".write": "auth != null && (auth.token.email === 'yonetici@asistakip.app' || (auth.token.email.beginsWith('bakimci_') && auth.token.email.endsWith('@asistakip.app') && ($legacyKey === 'at_elevs' || $legacyKey === 'at_maints' || $legacyKey === 'at_faults' || $legacyKey === 'at_sonodemeler' || $legacyKey === 'at_notlar' || $legacyKey === 'at_ekstraisler' || $legacyKey === 'at_payment_events' || $legacyKey === 'at_bakim_bildirimleri' || $legacyKey === 'at_defter')) || root.child('asansor').child('superadmins').child(auth.uid).val() === true)"
+      }
+    },
+    "fitness": {
+      "users": {
+        ".read": "auth != null && auth.token.email === 'berat_1994ozt@hotmail.com'",
+        "$uid": {
+          ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'berat_1994ozt@hotmail.com')",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "feed": {
+        ".read": "auth != null",
+        "$postId": {
+          ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && (data.child('uid').val() === auth.uid || auth.token.email === 'berat_1994ozt@hotmail.com')))"
+        }
+      },
+      "feed_likes": {
+        ".read": "auth != null",
+        "$postId": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        }
+      },
+      "feed_comments": {
+        ".read": "auth != null",
+        "$postId": {
+          "$commentId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && (data.child('uid').val() === auth.uid || auth.token.email === 'berat_1994ozt@hotmail.com')))"
+          }
+        }
+      },
+      "public_feed": {
+        ".read": true,
+        "$postId": {
+          ".write": "auth != null && (newData.child('uid').val() === auth.uid || (data.exists() && data.child('uid').val() === auth.uid) || auth.token.email === 'berat_1994ozt@hotmail.com')"
+        }
+      },
+      "public_avatars": {
+        ".read": true,
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "directory": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "leaderboard": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      },
+      "dm": {
+        "$conv": {
+          ".read": "auth != null && $conv.contains(auth.uid)",
+          ".write": "auth != null && $conv.contains(auth.uid)"
+        }
+      },
+      "dm_meta": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          "$other": {
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === $other)"
+          }
+        }
+      },
+      "imports": {
+        "$key": {
+          ".read": "auth != null",
+          ".write": true
+        }
       }
     }
   }
