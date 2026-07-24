@@ -3982,20 +3982,25 @@ function App(){
     });
   }
   var seciliGunObj=gunler[takipGun]||gunler[0];
+  /* Sadece BİR BAKIMCININ yaptığı bakımlar: bakimciId (atanan) veya
+     tahsilatBakimciId (tahsilatı yapan) olan kayıtlar. Manuel/yönetici
+     girişleri (ikisi de yoksa) Takip'te gösterilmez. */
+  function bakimcininMi(m){ return !!(m.bakimciId||m.tahsilatBakimciId); }
   var gunSayilari={};
   maints.forEach(function(m){
-    if(!m.yapildi) return;
+    if(!m.yapildi||!bakimcininMi(m)) return;
     var t=parseTakipTarih(m.yapildiSaat);
     if(t) gunSayilari[t]=(gunSayilari[t]||0)+1;
   });
   var seciliYapilan=maints.filter(function(m){
-    return m.yapildi && parseTakipTarih(m.yapildiSaat)===seciliGunObj.tarihStr;
+    return m.yapildi && bakimcininMi(m) && parseTakipTarih(m.yapildiSaat)===seciliGunObj.tarihStr;
   });
   var gruplar={};
   seciliYapilan.forEach(function(m){
-    var kid=m.bakimciId||"__yonetici__";
-    var kad=m.bakimciAd||(m.bakimciId?"Bakımcı "+m.bakimciId:"Yönetici");
-    var krenk=m.bakimciRenk||"#64748b";
+    var kid=String(m.bakimciId||m.tahsilatBakimciId);
+    var bk=(bakimcilar||[]).find(function(b){return String(b.id)===kid;});
+    var kad=(bk&&bk.ad)||m.bakimciAd||m.tahsilatBakimciAd||("Bakımcı "+kid);
+    var krenk=(bk&&bk.renk)||m.bakimciRenk||"#8b5cf6";
     if(!gruplar[kid]) gruplar[kid]={id:kid,ad:kad,renk:krenk,bakimlar:[]};
     gruplar[kid].bakimlar.push(m);
   });
@@ -4458,18 +4463,11 @@ function App(){
                     var saat=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
                     var tarih=now.getFullYear()+"-"+(now.getMonth()+1).toString().padStart(2,"0")+"-"+now.getDate().toString().padStart(2,"0");
                     var yapildiSaat=tarih+" "+saat;
-                    var eskiOnce=el?finansTutar(el.bakiyeDevir):0;
-                    var aylikOnce=el?finansTutar(el.aylikUcret):0;
-                    var finansSnap={eskiDevirOnce:eskiOnce,aylikBakimUcreti:aylikOnce,guncelDevirOnce:eskiOnce+aylikOnce,kalanBakiye:eskiOnce+aylikOnce-tutar};
-
-                    /* Sadece bu ay bakımcıya atanmış VE henüz tamamlanmamış (planlanmis:true, yapildi:false) kayıt varsa tamamlandıya işaretle */
-                    var mevcut=mMonth.find(function(m){return m.asansorId===aid && m.planlanmis===true && !m.yapildi;});
-                    if(mevcut){
-                      /* Bakımcıya atanmış ve bekleyen bakım var → tamamlandı olarak güncelle */
-                      setMaints(function(p){return p.map(function(x){return x.id===mevcut.id?Object.assign({},x,finansSnap,{alinanTutar:tutar,odendi:tutar>=finansTutar(x.tutar||aylikOnce),yapildi:true,yapildiSaat:yapildiSaat,notlar:form.odNot||x.notlar||""}):x;});});
-                    } else {
-                      /* Bakımcıya atanmamış veya zaten tamamlanmış → bakım durumunu DEĞİŞTİRME, sadece ödeme kaydı al */
-                    }
+                    /* Manuel ödeme SADECE tahsilat kaydıdır — bakımı "yapıldı"
+                       İŞARETLEMEZ. (Önceden bu ay bekleyen bir bakım varsa onu
+                       yapıldıya çeviriyordu; bu yüzden bakımcı gitmediği halde
+                       bazı binalarda bakım yapılmış görünüyordu.) Bakımın
+                       tamamlandısı yalnızca bakımcı akışından işaretlenir. */
                     /* Ödeme her zaman eski devirden düşer; güncel devir eski devir + aylık bakım olarak hesaplanır. */
                     var manuelOdemeId=Date.now();
                     setSonOdemeler(function(p){return p.concat([{id:manuelOdemeId,aid:aid,tarih:tarih,saat:saat,alinanTutar:tutar,not:form.odNot||"",binaAd:el?el.ad:"?",ilce:el?el.ilce:"",yonetici:el?el.yonetici:""}]);});
