@@ -2608,19 +2608,13 @@ function App(){
                 , (e.marka||e.tip)&&React.createElement('div', {style:{fontSize:10,color:"#64748b",marginBottom:2}},
                     "🔩 "+(e.marka||"")+(e.model?" "+e.model:"")+(e.tip?" · "+e.tip:"")+(e.imalatYili?" · "+e.imalatYili:"")
                   )
-                /* BAKIM DURUMU: bu ay yapıldı mı, son bakım tarihi, bu yıl kaç bakım */
+                /* BAKIM GÜNÜ: her ayın kaçında bakım yapılıyor */
                 , (function(){
-                    var yapilanlar=maints.filter(function(m){return Number(m.asansorId)===Number(e.id)&&m.yapildi;});
-                    var buYil=new Date().getFullYear();
-                    var yilSayi=yapilanlar.filter(function(m){var d=maintFiiliTarih(m);return d&&d.getFullYear()===buYil;}).length;
-                    var tarihler=yapilanlar.map(function(m){return maintFiiliTarih(m);}).filter(Boolean).sort(function(a,b){return b-a;});
-                    var son=tarihler[0];
-                    var sonStr=son?String(son.getDate()).padStart(2,"0")+"."+String(son.getMonth()+1).padStart(2,"0")+"."+son.getFullYear():"—";
-                    return React.createElement('div',{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:6,marginBottom:2}},
-                      React.createElement('span',{style:{fontSize:10,fontWeight:800,padding:"2px 8px",borderRadius:6,background:eBakimYapildi?"#0d2f1d":"#3a2e12",color:eBakimYapildi?"#34d399":"#f59e0b"}},
-                        eBakimYapildi?"✅ Bu ay yapıldı":"⏳ Bu ay bekliyor"),
-                      React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#1a1f2e",color:"#94a3b8"}},"🔧 Son: "+sonStr),
-                      React.createElement('span',{style:{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:6,background:"#1e2a45",color:"#93c5fd"}},buYil+": "+yilSayi+" bakım")
+                    var gun=(e.bakimGunu!=null&&String(e.bakimGunu).trim()!==""&&String(e.bakimGunu)!=="0")?String(e.bakimGunu).trim():null;
+                    if(!gun) return null;
+                    return React.createElement('div',{style:{marginTop:6,marginBottom:2}},
+                      React.createElement('span',{style:{fontSize:11,fontWeight:800,padding:"3px 9px",borderRadius:6,background:"#1e2a45",color:"#93c5fd"}},
+                        "📅 Bakım Günü: Her ayın "+gun+"'i")
                     );
                   })()
                 , (function(){
