@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu, defterDurumTazele, defterBootstrap, defterKaydet } from './firebase.js'
+import { dbGet, dbSet, dbSetRaw, dbGetWithMeta, dbGetWithETag, dbSetIfMatch, setDbErrorHandler, firebaseLogout, firebaseLogin, auth, getTenantId, setTenantId, getTenantConfig, saveTenantConfig, getTenantSubscription, getTenantPublic, setTenantPublic, getUserProfile, isSuperAdmin, createBakimciUser, updateBakimciUser, pushBakimBildirim, listBakimBildirimleri, enablePushBildirim, pushBildirimDurumu, defterDurumTazele, defterBootstrap, defterKaydet, defterAcilisYenile } from './firebase.js'
 import { lsGet, lsSet } from './utils/storage.js'
 import { EXCEL_ELEVS } from './data/elevators.js'
 import {
@@ -3671,7 +3671,10 @@ function App(){
       })
 
     /* ── TAB 6: DEFTER KONTROLÜ ── */
-    , finansTab===6&&React.createElement(DefterKontrol, { elevs: elevs })
+    , finansTab===6&&React.createElement(DefterKontrol, {
+        elevs: elevs,
+        onAcilisYenile: function(){ return defterAcilisYenile(elevs, isSuper?"superadmin":"yonetici"); }
+      })
 
     /* ── TAB 7: AYLIK RAPOR ── */
     , finansTab===7&&React.createElement(AylikRapor, {

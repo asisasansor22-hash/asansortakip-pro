@@ -18,11 +18,12 @@ var TIP_ETIKET = {
   iptal: { l: 'İptal/Geri Alma', c: '#ef4444' }
 }
 
-export default function DefterKontrol({ elevs }) {
+export default function DefterKontrol({ elevs, onAcilisYenile }) {
   const [durum, setDurum] = useState('bos') // bos | yukleniyor | ok | hata
   const [veri, setVeri] = useState(null)    // {meta, olaylar}
   const [acikBina, setAcikBina] = useState(null)
   const [sadeceFarkli, setSadeceFarkli] = useState(true)
+  const [yenileniyor, setYenileniyor] = useState(false)
 
   async function yukle() {
     setDurum('yukleniyor')
@@ -33,11 +34,26 @@ export default function DefterKontrol({ elevs }) {
     } catch (e) { setDurum('hata') }
   }
 
+  async function acilisYenile() {
+    if (!onAcilisYenile) return
+    if (!window.confirm('Defter açılışı BUGÜNE sıfırlansın mı?\n\nTüm binaların şu anki bakiyesi yeni başlangıç noktası olur ve mevcut farklar temizlenir. Eski hareket kayıtları silinmez (arşivde kalır), sadece bu tarihten sonrası sayılmaya başlar.\n\nBu işlem, tüm cihazlar güncel sürümdeyken yapılmalıdır.')) return
+    setYenileniyor(true)
+    try {
+      var ok = await onAcilisYenile()
+      if (ok) { await yukle(); alert('✅ Defter açılışı yenilendi. Artık tüm binalar "Tam uyum" olmalı.') }
+      else alert('Açılış yenilenemedi (bağlantı/izin). Tekrar deneyin.')
+    } catch (e) { alert('Hata: ' + (e && e.message)) }
+    setYenileniyor(false)
+  }
+
   const satirlar = useMemo(function () {
     if (!veri || !veri.meta) return []
     var acilis = (veri.meta && veri.meta.bakiyeler) || {}
+    var acilisTs = String((veri.meta && veri.meta.acilisTs) || '')
     var toplamlar = {}
     ;(veri.olaylar || []).forEach(function (o) {
+      // Yalnızca açılış (kontrol noktası) SONRASI olaylar sayılır
+      if (String(o.ts || '') <= acilisTs) return
       var aid = String(o.aid)
       toplamlar[aid] = (toplamlar[aid] || 0) + (Number(o.delta) || 0)
     })
@@ -68,10 +84,18 @@ export default function DefterKontrol({ elevs }) {
             Bakiyeyi değiştiren her işlem silinemez deftere yazılır; burada sistem bakiyesiyle karşılaştırılır.
           </div>
         </div>
-        <button onClick={yukle} disabled={durum === 'yukleniyor'}
-          style={{ padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#f472b6,#db2777)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-          {durum === 'yukleniyor' ? '⏳ Yükleniyor...' : durum === 'ok' ? '🔄 Yenile' : '📥 Defteri Yükle'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {durum === 'ok' && veri && veri.meta && onAcilisYenile && (
+            <button onClick={acilisYenile} disabled={yenileniyor}
+              style={{ padding: '9px 14px', borderRadius: 10, background: '#2a1e40', border: '1px solid #8b5cf655', color: '#c4b5fd', fontWeight: 800, fontSize: 12, cursor: 'pointer', opacity: yenileniyor ? 0.6 : 1 }}>
+              {yenileniyor ? '⏳...' : '🔄 Açılışı Yenile'}
+            </button>
+          )}
+          <button onClick={yukle} disabled={durum === 'yukleniyor'}
+            style={{ padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#f472b6,#db2777)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+            {durum === 'yukleniyor' ? '⏳ Yükleniyor...' : durum === 'ok' ? '🔄 Yenile' : '📥 Defteri Yükle'}
+          </button>
+        </div>
       </div>
 
       {durum === 'bos' && (

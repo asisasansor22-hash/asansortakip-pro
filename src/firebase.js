@@ -627,6 +627,21 @@ export async function defterBootstrap(elevs, yazan) {
   return defterDurumTazele();
 }
 
+/** Açılışı yeniden başlat (re-baseline): kontrol noktasını (acilisTs) BUGÜNE
+ *  taşır ve açılış bakiyelerini o anki gerçek bakiyelerle günceller. Non-destructive:
+ *  eski olaylar SİLİNMEZ; Defter Kontrolü yalnızca acilisTs SONRASI olayları toplar.
+ *  Böylece geçiş dönemi farkları temizlenir ve defter temiz bir "Tam uyum" ile başlar.
+ *  Yalnızca yönetici, elevs sunucudan doğrulanmışken çağırmalı. */
+export async function defterAcilisYenile(elevs, yazan) {
+  if (!Array.isArray(elevs) || elevs.length === 0) return false;
+  var bakiyeler = {};
+  elevs.forEach(function (e) { if (e && e.id != null) bakiyeler[String(e.id)] = Number(e.bakiyeDevir) || 0; });
+  var meta = { acilisTs: new Date().toISOString(), yazan: yazan || "", binaSayisi: elevs.length, bakiyeler: bakiyeler, yenileme: true };
+  var ok = await dbSet("at_defter_meta", meta);
+  if (ok !== false) _defterHazir = true;
+  return ok !== false;
+}
+
 /** Defter olayı ekler. delta: bakiyeye işaret ETKİSİ (ödeme -, tahakkuk +).
  *  tip: odeme | tahakkuk | ekstra | manuel | iptal | ekstra_pesin
  *  Açılış yoksa sessizce atlanır (tutarlılık kuralı). Başarısız yazım bakiyeyi
