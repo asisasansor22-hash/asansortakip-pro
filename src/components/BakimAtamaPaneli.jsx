@@ -368,10 +368,16 @@ function BakimAtamaPaneli({elevs,maints,setMaints,faults,setFaults,fMonth,setFMo
                                     , e.tel&&React.createElement('span', null, " · "  , React.createElement('a', { href: "tel:"+e.tel.replace(/\s/g,""), onClick: ev=>ev.stopPropagation(), style: {color:"#3b82f6",textDecoration:"none"},}, "📞 " , e.tel))
                                   )
                                 )
+                                , (function(){
+                                  var eskiDevir=bal?bal(e.id):(e.bakiyeDevir||0);
+                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,fontSize:10,fontWeight:800,color:eskiDevir>0?"#ef4444":eskiDevir<0?"#34d399":"#64748b",background:eskiDevir>0?"#3a1e1e":eskiDevir<0?"#0a2a1a":"#1e2640",borderRadius:6,padding:"2px 7px"}}
+                                    ,"📊 Eski Devir: "+(eskiDevir>0?"+":"")+eskiDevir.toLocaleString("tr-TR")+" ₺"
+                                  );
+                                })()
                                 , gorunum==="atandi"&&(function(){
                                   var bk=mMonth.find(function(m){return m.asansorId===e.id&&m.planlanmis;});
                                   if(!bk||!bk.bakimciAd) return null;
-                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,fontSize:10,fontWeight:700,color:bk.bakimciRenk||"#8b5cf6",background:(bk.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 7px"}}
+                                  return React.createElement('div',{style:{display:"inline-flex",alignItems:"center",gap:4,marginTop:2,marginLeft:6,fontSize:10,fontWeight:700,color:bk.bakimciRenk||"#8b5cf6",background:(bk.bakimciRenk||"#8b5cf6")+"22",borderRadius:20,padding:"2px 7px"}}
                                     ,React.createElement('span',{style:{width:6,height:6,borderRadius:"50%",background:bk.bakimciRenk||"#8b5cf6",display:"inline-block",flexShrink:0}})
                                     ,"🔧 "+bk.bakimciAd
                                   );
