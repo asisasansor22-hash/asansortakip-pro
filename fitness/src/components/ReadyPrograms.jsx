@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { READY_PROGRAMS } from "../data/programs";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
-import ProgramWizard from "./ProgramWizard";
 import VolumeSummary from "./VolumeSummary";
 import AutoPlanner from "./AutoPlanner";
 
@@ -12,7 +11,6 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [copiedDay, setCopiedDay] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [princ, setPrinc] = useState(false);
-  const [wizard, setWizard] = useState(false);
   const [auto, setAuto] = useState(false);
 
   function copy(p) {
@@ -46,15 +44,10 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
         {profile && !showAll ? "Profiline göre önerilen programlar." : "Tüm hazır programlar."} Kopyala, "Programım"da düzenle.
       </p>
 
-      <button className="btn-primary" style={{ width: "100%", marginBottom: 8, padding: 14 }} onClick={() => setAuto(true)}>
-        🗓️ Haftada Kaç Gün? — Hacim Garantili Otomatik Program
+      <button className="btn-primary" style={{ width: "100%", marginBottom: 12, padding: 14 }} onClick={() => setAuto(true)}>
+        🪄 Bana Özel Program Üret — Haftada Kaç Gün?
       </button>
       {auto && <AutoPlanner onCopy={onCopy} onClose={() => setAuto(false)} />}
-
-      <button className="btn-ghost" style={{ width: "100%", marginBottom: 12, padding: 12 }} onClick={() => setWizard(true)}>
-        🪄 Program Sihirbazı — Bana Özel Program Üret
-      </button>
-      {wizard && <ProgramWizard onGenerate={onCopy} onClose={() => setWizard(false)} />}
 
       <div className="card" style={{ marginBottom: 14, borderColor: "var(--accent2)" }}>
         <button onClick={() => setPrinc((v) => !v)} style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left", fontWeight: 700, fontSize: 15 }}>
