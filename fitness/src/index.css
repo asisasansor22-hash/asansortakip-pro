@@ -152,7 +152,11 @@ h1, h2, h3 { margin: 0 0 8px; }
   padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
   max-width: 720px; margin: 0 auto;
   overflow-x: hidden; /* hiçbir çocuk sayfayı yatay kaydırmasın (şerit kendi içinde kayar) */
+  overflow-y: auto;   /* içerik ekranı aşarsa kaydırılabilsin — kırpılıp erişilemez kalmasın */
+  -webkit-overflow-scrolling: touch;
 }
+/* Üst şerit ve müzik çubuğu asla ezilmesin (flex-shrink varsayılanı 1'dir) */
+.workout-steps, .workout-top { flex-shrink: 0; }
 .workout > * { min-width: 0; } /* flexbox taşmasını önle */
 .workout-top { display: flex; align-items: center; gap: 12px; }
 .workout-prog { flex: 1; height: 8px; background: var(--card2); border-radius: 999px; overflow: hidden; }
