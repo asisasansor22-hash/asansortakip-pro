@@ -60,10 +60,10 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
           </div>
           <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999 }}>
             <div style={{ width: Math.min(100, (r.sets / max) * 100) + "%", height: "100%", background: COLOR[r.level], borderRadius: 999 }} />
-            {/* 10 set = etkili alt eşik */}
-            <div title="10 set — etkili alt eşik" style={{
+            {/* Bölgenin etkili alt eşiği (karın için 6, diğerleri 10) */}
+            <div title={r.min + " set — etkili alt eşik"} style={{
               position: "absolute", top: -2, bottom: -2,
-              left: (TARGET_MIN / max) * 100 + "%",
+              left: (r.min / max) * 100 + "%",
               width: 2, background: "var(--text)", opacity: 0.45, borderRadius: 2,
             }} />
           </div>
@@ -71,12 +71,13 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
       ))}
 
       <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
-        🟡 az (&lt;{TARGET_MIN}) · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek (&gt;{TARGET_MAX}) · dikey çizgi = {TARGET_MIN} set eşiği
+        🟡 az · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek (&gt;{TARGET_MAX}) · dikey çizgi = etkili alt eşik
+        <br />Karın eşiği 6'dır: bileşik hareketlerde gövde stabilizasyonundan yoğun izometrik yük alır.
       </div>
 
       {low.length > 0 && (
         <p style={{ color: "#fbbf24", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
-          ⚠️ {low.map((r) => r.name).join(", ")} için haftalık set {TARGET_MIN}'un altında.
+          ⚠️ {low.map((r) => `${r.name} (${r.sets}/${r.min})`).join(", ")} eşiğin altında.
           Hipertrofi hedefliyorsan bu bölgelere hareket/set ekle.
         </p>
       )}

@@ -10,6 +10,15 @@ import { getExercise, REGIONS } from "./exercises";
 export const TARGET_MIN = 10;
 export const TARGET_MAX = 20;
 
+// Bölgeye özel alt eşik. Karın istisnadır: squat, deadlift, baş üstü pres gibi
+// bileşiklerde gövde stabilizasyonu için yoğun izometrik yük alır, bu yüzden
+// DOĞRUDAN set ihtiyacı diğer bölgelerden düşüktür. Ayrıca 10-20 set aralığının
+// kanıtı ağırlıklı olarak uzuv/gövde kaslarından gelir; karın için veri incedir.
+const REGION_MIN = { karin: 6 };
+export function minFor(regionId) {
+  return REGION_MIN[regionId] != null ? REGION_MIN[regionId] : TARGET_MIN;
+}
+
 // "4 x 8-10" → 4 ; eşleşmezse null
 export function parseSetCount(s) {
   const m = /^(\d+)\s*[xX]\s*(.+)$/.exec(s || "");
@@ -103,9 +112,10 @@ export function volumeRows(days) {
   const vol = weeklyVolume(days);
   return REGIONS.filter((r) => r.id !== "kardiyo").map((r) => {
     const sets = vol[r.id] || 0;
+    const min = minFor(r.id);
     return {
-      id: r.id, name: r.name, emoji: r.emoji, sets,
-      level: sets === 0 ? "none" : sets < TARGET_MIN ? "low" : sets <= TARGET_MAX ? "ok" : "high",
+      id: r.id, name: r.name, emoji: r.emoji, sets, min,
+      level: sets === 0 ? "none" : sets < min ? "low" : sets <= TARGET_MAX ? "ok" : "high",
     };
   });
 }

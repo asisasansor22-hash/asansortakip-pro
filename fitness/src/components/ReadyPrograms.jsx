@@ -113,6 +113,11 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
                 {/* Programın tüm günleri 1 hafta boyunca yapılırsa oluşan hacim */}
                 <div className="card" style={{ background: "var(--card2)", marginBottom: 12 }}>
                   <VolumeSummary days={p.days} title="📊 Haftalık Hacim (set/kas)" />
+                  {p.volumeNote && (
+                    <p style={{ color: "var(--accent2)", fontSize: 11.5, marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
+                      ℹ️ {p.volumeNote}
+                    </p>
+                  )}
                 </div>
                 {p.days.length > 1 && (
                   <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 4px 10px" }}>
