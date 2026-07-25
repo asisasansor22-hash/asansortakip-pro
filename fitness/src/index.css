@@ -285,3 +285,21 @@ select.input { appearance: none; }
 @media (prefers-reduced-motion: reduce) {
   .exfig * { animation: none !important; }
 }
+
+/* İç kaydırmalı listeler (ör. hareket değiştirme paneli).
+   iOS'ta kaydırma çubuğu varsayılan olarak görünmez; liste kesik sanılıyordu.
+   Kalıcı ince bir çubuk + momentum kaydırma ile kaydırılabilirliği belli eder. */
+.scroll-list {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;                       /* Firefox */
+  scrollbar-color: var(--accent) transparent;
+  padding-right: 4px;
+}
+.scroll-list::-webkit-scrollbar { width: 6px; -webkit-appearance: none; }
+.scroll-list::-webkit-scrollbar-track { background: transparent; }
+.scroll-list::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 999px;
+  min-height: 28px;
+}

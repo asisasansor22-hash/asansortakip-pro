@@ -413,30 +413,41 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           </div>
         )}
 
+        {/* Alt sayfa olarak açılır: antrenman ekranı position:fixed ve dikey
+            kaydırması yok — panel içeride kalsaydı uzun listede kırpılırdı. */}
         {swapOpen && (
-          <div className="card" style={{ width: "100%", maxWidth: 340, padding: 10, marginTop: 4 }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>Yerine ne yapayım?</span>
-              <button className="icon-btn" style={{ padding: "2px 8px" }} onClick={() => setSwapOpen(false)}>✕</button>
-            </div>
-            <p style={{ color: "var(--muted)", fontSize: 11, margin: "0 0 8px" }}>
-              Aynı kası çalıştıran alternatifler. Yalnız bu antrenman için geçerli — programın değişmez.
-            </p>
-            <div style={{ maxHeight: 220, overflowY: "auto" }}>
-              {swapOptions.map((o) => (
-                <button key={o.id} onClick={() => swapTo(o.id)}
-                  style={{ display: "block", width: "100%", textAlign: "left", background: "var(--card2)",
-                    border: "none", borderRadius: 8, padding: "9px 10px", marginBottom: 6, color: "var(--text)" }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{o.name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11 }}>{o.equip || "serbest"} · {o.sets || ""}</div>
+          <div onClick={() => setSwapOpen(false)} style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 320,
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+          }}>
+            <div onClick={(e) => e.stopPropagation()} className="card" style={{
+              width: "100%", maxWidth: 560, borderRadius: "16px 16px 0 0",
+              maxHeight: "85vh", display: "flex", flexDirection: "column",
+              paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
+            }}>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>“{ex.name}” yerine:</span>
+                <button className="icon-btn" onClick={() => setSwapOpen(false)}>✕</button>
+              </div>
+              <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "0 0 8px" }}>
+                Aynı kası çalıştıran alternatifler. Yalnız bu antrenman için geçerli — kayıtlı programın değişmez.
+              </p>
+              <div className="scroll-list" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+                {swapOptions.map((o) => (
+                  <button key={o.id} onClick={() => swapTo(o.id)}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "var(--card2)",
+                      border: "none", borderRadius: 8, padding: "11px 12px", marginBottom: 6, color: "var(--text)" }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{o.name}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 11.5 }}>{o.equip || "serbest"} · {o.sets || ""}</div>
+                  </button>
+                ))}
+              </div>
+              {swaps[i] && (
+                <button className="btn-ghost" style={{ width: "100%", padding: 11, marginTop: 8, flexShrink: 0 }} onClick={undoSwap}>
+                  ↩︎ Asıl harekete dön
                 </button>
-              ))}
+              )}
             </div>
-            {swaps[i] && (
-              <button className="btn-ghost" style={{ width: "100%", padding: 9, marginTop: 2 }} onClick={undoSwap}>
-                ↩︎ Asıl harekete dön
-              </button>
-            )}
           </div>
         )}
         {grp && (

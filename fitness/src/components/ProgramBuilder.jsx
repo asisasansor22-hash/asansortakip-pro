@@ -286,7 +286,9 @@ export default function ProgramBuilder({
                               <p style={{ color: "var(--muted)", fontSize: 11, margin: "0 0 8px" }}>
                                 Aynı kası çalıştıran hareketler. Set/tekrar ayarın ve süperset bağın korunur.
                               </p>
-                              <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                              {/* İç kaydırma YOK: iOS'ta çubuk görünmediği için liste
+                                  kesik sanılıyordu. Tüm alternatifler listelenir, sayfa kayar. */}
+                              <div>
                                 {alts.map((o) => (
                                   <button key={o.id}
                                     onClick={() => { onSwapExercise(p.id, i, o.id); setSwapAt(null); }}
