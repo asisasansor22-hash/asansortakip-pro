@@ -180,7 +180,7 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       <div className="section-title">Görünen ad</div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
-        Akışta, Fit Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.
+        Akışta, GYMO Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.
       </p>
       <DisplayName />
 

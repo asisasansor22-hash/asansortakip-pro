@@ -25,7 +25,8 @@ export default function PublicPost({ id }) {
   return (
     <div className="app" style={{ paddingTop: "calc(20px + env(safe-area-inset-top))", maxWidth: 560 }}>
       <div className="row" style={{ justifyContent: "center", marginBottom: 16 }}>
-        <div className="brand" style={{ fontSize: 26 }}>Fit<span>+be</span></div>
+        <div className="brand" style={{ fontSize: 26 }}>GYM<span>O</span></div>
+        <div className="brand-tag">Gym Obsession</div>
       </div>
 
       {post === undefined && <p style={{ color: "var(--muted)", textAlign: "center" }}>Yükleniyor…</p>}
@@ -59,7 +60,7 @@ export default function PublicPost({ id }) {
       )}
 
       <a href={appUrl} className="btn-primary" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>
-        💪 Fit+be'ye Katıl
+        💪 GYMO'ya Katıl
       </a>
       <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", marginTop: 10 }}>
         Ücretsiz antrenman & beslenme uygulaması

@@ -231,7 +231,7 @@ export default function Timeline() {
     if (!r.success) { setErr("Paylaşılamadı (" + r.error + "). /fitness/public_feed kuralı eklenmiş olmalı."); return; }
     const url = window.location.origin + window.location.pathname + "#/p/" + post.id;
     try {
-      if (navigator.share) await navigator.share({ title: "Fit+be", text: "Fit+be'de bir gönderi:", url });
+      if (navigator.share) await navigator.share({ title: "GYMO", text: "GYMO'da bir gönderi:", url });
       else { await navigator.clipboard.writeText(url); setShareMsg("Bağlantı kopyalandı: " + url); setTimeout(() => setShareMsg(""), 4000); }
     } catch (e) { /* kullanıcı paylaşmayı iptal etti */ }
   }

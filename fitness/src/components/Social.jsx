@@ -5,11 +5,11 @@ import Messages from "./Messages";
 
 const SUBTABS = [
   { id: "feed", label: "💬 Akış" },
-  { id: "lb", label: "🏆 Fit Ligi" },
+  { id: "lb", label: "🏆 GYMO Ligi" },
   { id: "dm", label: "✉️ Mesajlar" },
 ];
 
-// Sosyal sekme: Akış + Fit Ligi (liderlik) + Mesajlar (DM & kullanıcı arama)
+// Sosyal sekme: Akış + GYMO Ligi (liderlik) + Mesajlar (DM & kullanıcı arama)
 export default function Social({ onDmSeen }) {
   const [sub, setSub] = useState("feed");
   return (

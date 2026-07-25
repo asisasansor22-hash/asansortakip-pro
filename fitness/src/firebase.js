@@ -413,7 +413,7 @@ export async function publicPostGet(id) {
   } catch (e) { return null; }
 }
 
-// --- Sosyal: kullanıcı rehberi (arama), liderlik (Fit Ligi), DM ---
+// --- Sosyal: kullanıcı rehberi (arama), liderlik (GYMO Ligi), DM ---
 // Rehber: /fitness/directory/{uid} = {name, t} — herkes okur, kendi kaydını yazar.
 export async function dirPublish() {
   try {
@@ -437,7 +437,7 @@ export async function dirGet() {
   } catch (e) { return {}; }
 }
 
-// Fit Ligi: /fitness/leaderboard/{uid} = {name, streak, week, total, vol, t}
+// GYMO Ligi: /fitness/leaderboard/{uid} = {name, streak, week, total, vol, t}
 export async function lbPublish(stats) {
   try {
     var user = auth.currentUser; if (!user) return;

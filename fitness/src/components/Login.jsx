@@ -48,7 +48,8 @@ export default function Login() {
       <div className="figbox" style={{ width: 160 }}>
         <ExerciseAnimation type="squat" exId="squat" size={130} />
       </div>
-      <h1 style={{ fontSize: 26 }}>Fit<span style={{ color: "var(--accent)" }}>+be</span></h1>
+      <h1 style={{ fontSize: 26, marginBottom: 2 }}>GYM<span style={{ color: "var(--accent)" }}>O</span></h1>
+      <div className="brand-tag">Gym Obsession</div>
       <p style={{ color: "var(--muted)", marginTop: -6, textAlign: "center" }}>
         Antrenman programını oluştur, beslenmeni planla.
       </p>

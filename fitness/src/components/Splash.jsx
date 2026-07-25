@@ -1,6 +1,6 @@
 import React from "react";
 
-// Uygulama açılış (splash) ekranı — Fitbe markası.
+// Uygulama açılış (splash) ekranı — GYMO markası.
 export default function Splash({ hiding }) {
   return (
     <div className={"splash" + (hiding ? " hide" : "")}>
@@ -11,7 +11,8 @@ export default function Splash({ hiding }) {
         <rect x="20" y="21" width="9" height="18" rx="3" />
         <rect x="71" y="21" width="9" height="18" rx="3" />
       </svg>
-      <div className="splash-word">Fit<span>+be</span></div>
+      <div className="splash-word">GYM<span>O</span></div>
+      <div className="brand-tag">Gym Obsession</div>
       <div className="splash-sub">Antrenman & Beslenme</div>
     </div>
   );

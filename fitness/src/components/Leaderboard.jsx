@@ -3,7 +3,7 @@ import { lbGet, publicAvatarsGet, currentUid } from "../firebase";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-// 🏆 Fit Ligi — herkese açık liderlik tablosu.
+// 🏆 GYMO Ligi — herkese açık liderlik tablosu.
 // Puan: 🔥 seri ×15 + bu haftaki antrenman ×25 + toplam antrenman ×3 + tonaj/1000.
 export default function Leaderboard() {
   const [rows, setRows] = useState(null);
@@ -33,7 +33,7 @@ export default function Leaderboard() {
   return (
     <div>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 Fit Ligi</h2>
+        <h2 style={{ margin: 0 }}>🏆 GYMO Ligi</h2>
         <button className="icon-btn" onClick={load}>🔄</button>
       </div>
       <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>

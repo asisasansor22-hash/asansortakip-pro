@@ -39,7 +39,7 @@ function randHex(n) {
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MAX_HISTORY = 60; // saklanan antrenman geçmişi (manuel + Apple) üst sınırı
 
-// Fit Ligi (liderlik) istatistikleri: geçmişten seri/hafta/toplam/tonaj hesapla
+// GYMO Ligi (liderlik) istatistikleri: geçmişten seri/hafta/toplam/tonaj hesapla
 const DAY_MS = 86400000;
 const dayKey0 = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 function computeLbStats(hist) {
@@ -300,7 +300,7 @@ export default function App() {
       loaded.current = true;
       if (cloudReady.current) {
         dbSet("info", { email: user.email || "", lastSeen: Date.now() });
-        // Kullanıcı aramada görünsün + Fit Ligi istatistiklerini yayınla
+        // Kullanıcı aramada görünsün + GYMO Ligi istatistiklerini yayınla
         dirPublish();
         const lbHist = (hist.ok && Array.isArray(hist.data) && hist.data.length) ? hist.data : (localHist || []);
         lbPublish(computeLbStats(lbHist));
@@ -784,7 +784,10 @@ export default function App() {
         onPersist={(snap) => { if (snap === null) lsClearActiveWorkout(); else lsSetActiveWorkout({ program: workout, ...snap, savedAt: Date.now() }); }}
         lastLog={lastLog} bestE1RM={bestE1RM} />}
       <div className="topbar">
-        <div className="brand">Fit<span>+be</span></div>
+        <div>
+          <div className="brand">GYM<span>O</span></div>
+          <div className="brand-tag">Gym Obsession</div>
+        </div>
         <button className="btn-ghost" onClick={() => setTab("profile")} style={{ padding: avatar ? 4 : undefined }}>
           {avatar
             ? <img src={avatar} alt="" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover", display: "block" }} />

@@ -33,12 +33,20 @@ h1, h2, h3 { margin: 0 0 8px; }
    "Programlarım") alt bar her zaman ekranın en altına oturur. */
 .app { max-width: 720px; margin: 0 auto; padding: 0 14px; min-height: 100dvh; display: flex; flex-direction: column; }
 .topbar {
-  display: flex; align-items: center; justify-content: space-between;
+  /* marka + alt yazı iki satır olduğu için üstten hizala (ortalanınca kayıyordu) */
+  display: flex; align-items: flex-start; justify-content: space-between;
   padding: calc(14px + env(safe-area-inset-top)) 4px 8px; position: sticky; top: 0; z-index: 20;
   background: linear-gradient(180deg, #0b1120 80%, transparent);
 }
 .brand { font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
 .brand span { color: var(--accent); }
+/* Marka alt yazısı — "GYMO" kısaltmasının açılımı. Aynı camgöbeği ailesinden
+   (accent2) ama soluk; logoyla yarışmadan okunur kalsın diye harf aralıklı. */
+.brand-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--accent2); opacity: .85; margin-top: 1px; line-height: 1.2;
+}
+.splash-word + .brand-tag { font-size: 12px; letter-spacing: 3px; margin-top: 4px; }
 .btn-ghost { background: var(--card2); color: var(--text); padding: 8px 12px; border-radius: 10px; font-size: 13px; }
 
 /* alt navigasyon */
