@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import BarcodeScanner from "./BarcodeScanner";
 import { dbGet, dbSet } from "../firebase";
 
 const z = (n) => String(n).padStart(2, "0");
@@ -38,6 +39,7 @@ export default function NutritionDiary() {
   const [kcal, setKcal] = useState("");
   const [prot, setProt] = useState("");
   const [editGoal, setEditGoal] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [gKcal, setGKcal] = useState("");
   const [gProt, setGProt] = useState("");
 
@@ -173,6 +175,11 @@ export default function NutritionDiary() {
 
       {/* Öğün ekle */}
       <div className="section-title">Yiyecek Ekle</div>
+      <button className="btn-primary" style={{ width: "100%", padding: 13, marginBottom: 10 }}
+        onClick={() => setScanOpen(true)}>
+        📷 Barkod Tara (paketli ürün)
+      </button>
+      {scanOpen && <BarcodeScanner onAdd={addItemWithRecent} onClose={() => setScanOpen(false)} />}
       <div className="row" style={{ gap: 6, marginBottom: 8 }}>
         <input className="input" placeholder="Yiyecek adı" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 2 }} />
         <input className="input" type="number" inputMode="numeric" placeholder="kcal" value={kcal} onChange={(e) => setKcal(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
