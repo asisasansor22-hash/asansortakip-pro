@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { getExercise } from "../data/exercises";
+import React, { useState, useMemo } from "react";
+import { getExercise, getAlternatives, exercisesByRegion, subOf } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 import IntervalTimer from "./IntervalTimer";
@@ -18,8 +18,9 @@ function parseSetCount(s) {
 }
 
 export default function ProgramBuilder({
-  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onSetCount, onToggleSuperset, onStart,
+  programs, schedule, history, onSetSchedule, onCreate, onDelete, onRemoveExercise, onMoveExercise, onSetCount, onToggleSuperset, onSwapExercise, onStart,
 }) {
+  const [swapAt, setSwapAt] = useState(null); // {programId, index} — açık değiştirme paneli
   const [newName, setNewName] = useState("");
   const [openId, setOpenId] = useState(null);
   const [dayPickerId, setDayPickerId] = useState(null);
@@ -40,10 +41,44 @@ export default function ProgramBuilder({
     setNewName("");
   }
 
+  // --- Haftalık toplam hacim: takvime ATANMIŞ tüm programların toplamı ---
+  // Bir program iki güne atanmışsa iki kez sayılır (haftada 2 kez yapılıyor demektir).
+  const weekly = useMemo(() => {
+    const days = [];
+    const names = [];
+    for (let d = 0; d < 7; d++) {
+      const p = programs.find((x) => x.id === sch[d]);
+      if (!p) continue;
+      days.push(p);
+      names.push(p.name);
+    }
+    const unassigned = programs.filter((p) => !Object.values(sch).includes(p.id));
+    return { days, names, unassigned };
+  }, [programs, sch]);
+
   // Bu program hangi günlere atanmış (birden fazla olabilir, ör. Full Body Pzt+Çar+Cum)
   function daysOf(programId) {
     return Object.keys(sch).filter((k) => sch[k] === programId).map(Number);
   }
+  // Bir hareketin yerine önerilecek alternatifler: önce elle tanımlı
+  // alternatifler, sonra aynı bölge + aynı anatomik alt-gruptaki hareketler.
+  // Programda zaten bulunanlar listeye alınmaz.
+  function altsFor(program, exId) {
+    const ex = getExercise(exId);
+    if (!ex) return [];
+    const used = new Set(program.exercises);
+    const seen = new Set([exId]);
+    const out = [];
+    const push = (e) => {
+      if (!e || seen.has(e.id) || used.has(e.id)) return;
+      seen.add(e.id); out.push(e);
+    };
+    getAlternatives(exId).forEach(push);
+    const sub = subOf(ex);
+    exercisesByRegion(ex.region).filter((e) => subOf(e) === sub).forEach(push);
+    return out.slice(0, 14);
+  }
+
   function toggleDay(program, dayIdx) {
     const isAssigned = sch[dayIdx] === program.id;
     onSetSchedule(dayIdx, isAssigned ? null : program.id);
@@ -71,6 +106,32 @@ export default function ProgramBuilder({
       {programs.length > 0 && (
         <WeeklyPlan programs={programs} schedule={schedule} history={history}
           onSetSchedule={onSetSchedule} onStart={onStart} sel={selDay} onSel={(d) => { setSelDay(d); setShowAll(false); }} />
+      )}
+
+      {/* HAFTALIK TOPLAM — takvime atanmış tüm günlerin toplam hacmi.
+          Tek bir programın hacmi yanıltıcıdır (o yalnız 1 günü gösterir);
+          hipertrofi hedefleri haftalık toplam üzerinden değerlendirilir. */}
+      {programs.length > 0 && (
+        <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>
+          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 2 }}>📊 Haftalık Toplam Hacim</div>
+          <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "0 0 10px" }}>
+            {weekly.days.length > 0
+              ? "Takvimine atadığın " + weekly.days.length + " günün toplamı: " + weekly.names.join(", ")
+              : "Henüz hiçbir program güne atanmamış."}
+          </p>
+          {weekly.days.length > 0 ? (
+            <VolumeSummary days={weekly.days} title="" />
+          ) : (
+            <p style={{ color: "#fbbf24", fontSize: 12, margin: 0 }}>
+              ⚠️ Haftalık hacmi görebilmek için programlarını günlere ata (aşağıdaki 📅 “Güne ata” düğmesi).
+            </p>
+          )}
+          {weekly.unassigned.length > 0 && (
+            <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8, marginBottom: 0 }}>
+              Güne atanmamış (toplama dahil değil): {weekly.unassigned.map((p) => p.name).join(", ")}
+            </p>
+          )}
+        </div>
       )}
 
       {programs.length === 0 && (
@@ -141,9 +202,10 @@ export default function ProgramBuilder({
                 {/* Haftalık kas grubu hacmi — hareket ekleyip çıkardıkça anında güncellenir */}
                 {p.exercises.length > 0 && (
                   <div className="card" style={{ background: "var(--card2)", marginBottom: 12 }}>
-                    <VolumeSummary days={[p]} title="📊 Bu Programın Hacmi (set/kas)" />
+                    <VolumeSummary days={[p]} title={"📊 Sadece bu günün hacmi" + (daysOf(p.id).length > 1 ? " (×" + daysOf(p.id).length + " gün atanmış)" : "")} />
                     <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 8, marginBottom: 0 }}>
-                      Bu program haftada 1 kez yapılırsa geçerli. Aynı programı haftada 2 kez yaparsan setleri 2 ile çarp.
+                      Bu <b>tek bir antrenman gününün</b> hacmidir — eşiklerin altında görünmesi normaldir.
+                      Haftalık toplam için sayfanın üstündeki <b>📊 Haftalık Toplam Hacim</b> kartına bak.
                     </p>
                   </div>
                 )}
@@ -158,7 +220,8 @@ export default function ProgramBuilder({
                   const linkedNext = i < p.exercises.length - 1 && ssl.some((l) => l[0] === exId && l[1] === p.exercises[i + 1]);
                   const linkedPrev = i > 0 && ssl.some((l) => l[0] === p.exercises[i - 1] && l[1] === exId);
                   return (
-                    <div key={exId + "-" + i} className="prog-ex-row"
+                    <React.Fragment key={exId + "-" + i}>
+                    <div className="prog-ex-row"
                       style={linkedPrev ? { borderLeft: "3px solid var(--accent2)", paddingLeft: 6 } : undefined}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
                         <button className="icon-btn" disabled={i === 0}
@@ -192,6 +255,13 @@ export default function ProgramBuilder({
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
                         <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)}>×</button>
+                        {onSwapExercise && (
+                          <button className="icon-btn" title="Bu hareketi değiştir"
+                            style={{ padding: "2px 8px", fontSize: 12, color: "var(--accent)" }}
+                            onClick={() => setSwapAt(
+                              (swapAt && swapAt.programId === p.id && swapAt.index === i) ? null : { programId: p.id, index: i }
+                            )}>⇄</button>
+                        )}
                         {i < p.exercises.length - 1 && (
                           <button className="icon-btn" title="Bir sonrakiyle süperset"
                             style={{ padding: "2px 8px", fontSize: 12, color: linkedNext ? "#04321f" : "var(--accent2)", background: linkedNext ? "var(--accent2)" : "var(--card2)" }}
@@ -199,6 +269,40 @@ export default function ProgramBuilder({
                         )}
                       </div>
                     </div>
+                    {swapAt && swapAt.programId === p.id && swapAt.index === i && (() => {
+                      const alts = altsFor(p, exId);
+                      return (
+                        <div className="card" style={{ background: "var(--card2)", padding: 10, margin: "0 0 8px" }}>
+                          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13 }}>“{ex.name}” yerine:</span>
+                            <button className="icon-btn" style={{ padding: "2px 8px" }} onClick={() => setSwapAt(null)}>✕</button>
+                          </div>
+                          {alts.length === 0 ? (
+                            <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
+                              Aynı kası çalıştıran ve programda bulunmayan alternatif yok.
+                            </p>
+                          ) : (
+                            <>
+                              <p style={{ color: "var(--muted)", fontSize: 11, margin: "0 0 8px" }}>
+                                Aynı kası çalıştıran hareketler. Set/tekrar ayarın ve süperset bağın korunur.
+                              </p>
+                              <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                                {alts.map((o) => (
+                                  <button key={o.id}
+                                    onClick={() => { onSwapExercise(p.id, i, o.id); setSwapAt(null); }}
+                                    style={{ display: "block", width: "100%", textAlign: "left", background: "var(--card)",
+                                      border: "none", borderRadius: 8, padding: "9px 10px", marginBottom: 6, color: "var(--text)" }}>
+                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{o.name}</div>
+                                    <div style={{ color: "var(--muted)", fontSize: 11 }}>{o.equip || "serbest"} · {o.sets || ""}</div>
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    </React.Fragment>
                   );
                 })}
                 {(p.ssLinks || []).length > 0 && (

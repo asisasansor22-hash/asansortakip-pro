@@ -616,6 +616,31 @@ export default function App() {
     ));
   }
 
+  // Programdaki bir hareketi kalıcı olarak başkasıyla değiştir. Sıra korunur;
+  // eski hareketin set/tekrar ayarı ve süperset bağları yeni harekete taşınır.
+  function swapExercise(programId, index, newExId) {
+    setPrograms((prev) => prev.map((p) => {
+      if (p.id !== programId) return p;
+      const oldId = p.exercises[index];
+      if (!oldId || !newExId || oldId === newExId) return p;
+      if (p.exercises.includes(newExId)) return p; // aynı hareket iki kez olmasın
+      const exercises = p.exercises.slice();
+      exercises[index] = newExId;
+
+      // set/tekrar override'larını taşı
+      const sets = { ...(p.sets || {}) };
+      if (sets[oldId] != null) { sets[newExId] = sets[oldId]; delete sets[oldId]; }
+      const reps = { ...(p.reps || {}) };
+      if (reps[oldId] != null) { reps[newExId] = reps[oldId]; delete reps[oldId]; }
+
+      // süperset bağlarında eski id'yi yenisiyle değiştir
+      const ssLinks = (Array.isArray(p.ssLinks) ? p.ssLinks : [])
+        .map((l) => [l[0] === oldId ? newExId : l[0], l[1] === oldId ? newExId : l[1]]);
+
+      return { ...p, exercises, sets, reps, ssLinks };
+    }));
+  }
+
   // Süperset: bir hareketi bir SONRAKİYLE bağla/çöz. ssLinks = [aId, bId] çiftleri.
   // Antrenman modunda bağlı ardışık hareketler dinlenmesiz arka arkaya yapılır.
   function toggleSuperset(programId, index) {
@@ -762,6 +787,7 @@ export default function App() {
           onRemoveExercise={removeExercise}
           onMoveExercise={moveExercise}
           onSetCount={setExerciseSets}
+          onSwapExercise={swapExercise}
           onToggleSuperset={toggleSuperset}
           onStart={(p) => { setResumeState(null); lsClearActiveWorkout(); setWorkout(p); }}
         />
