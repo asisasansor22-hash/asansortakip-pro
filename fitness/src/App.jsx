@@ -151,6 +151,21 @@ function normalizeList(list) {
   }));
 }
 
+// Apple GÜNLÜK AKTİVİTE deposu: { "2026-07-18": {min, kcal, t}, ... }
+// Antrenman geçmişinden AYRI tutulur — lig puanına ve seri sayısına girmez.
+function dayKeyStr(ms) {
+  const d = new Date(ms);
+  const z = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
+}
+function lsGetAppleDaily() {
+  try { const o = JSON.parse(localStorage.getItem("fitbe_apple_daily") || "null"); return (o && typeof o === "object") ? o : {}; }
+  catch (e) { return {}; }
+}
+function lsSetAppleDaily(o) {
+  try { localStorage.setItem("fitbe_apple_daily", JSON.stringify(o || {})); } catch (e) {}
+}
+
 function lsGetAvatar() {
   try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
 }
@@ -179,6 +194,7 @@ export default function App() {
   const workoutBusyRef = useRef(false);                  // antrenman/devam penceresi açık mı
   const [history, setHistory] = useState([]);
   const [progress, setProgress] = useState({ weights: [], measures: [] });
+  const [appleDaily, setAppleDaily] = useState(lsGetAppleDaily); // Apple günlük aktivite (antrenmandan ayrı)
   const [schedule, setSchedule] = useState({});
   const [avatar, setAvatar] = useState(lsGetAvatar);
   const [mentionCount, setMentionCount] = useState(0);
@@ -218,11 +234,11 @@ export default function App() {
       }
       if (!u) {
         loaded.current = false; cloudReady.current = false; edited.current = false;
-        setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
+        setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]); setAppleDaily({});
         setWorkout(null); setResumeState(null); setResumeAsk(null); setImportKey(null);
         // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
         // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
-        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout", "fitbe_name"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout", "fitbe_name", "fitbe_apple_daily"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
       }
     });
   }, []);
@@ -286,6 +302,7 @@ export default function App() {
       const hist = await dbGetR("workouts");
       const prog = await dbGetR("progress");
       const favs = await dbGetR("favorites");
+      const ad = await dbGetR("apple_daily");
       const prof = await dbGet("profile");
       const av = await dbGet("avatar");
       if (cancelled) return;
@@ -295,6 +312,7 @@ export default function App() {
 
       if (sc.ok && sc.data && typeof sc.data === "object") setSchedule(normalizeSchedule(sc.data));
       if (favs.ok && Array.isArray(favs.data)) setFavorites(favs.data);
+      if (ad.ok && ad.data && typeof ad.data === "object") { setAppleDaily(ad.data); lsSetAppleDaily(ad.data); }
       if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); }
       if (prog.ok && prog.data && typeof prog.data === "object") {
         setProgress({
@@ -427,11 +445,46 @@ export default function App() {
       .concat(direct ? Object.values(direct) : [])
       .filter((x) => x && (x.start || x.date));
     if (!entries.length) { if (!silent) flash("Yeni Apple verisi yok"); return 0; }
+
+    // GÜNLÜK AKTİVİTE (kind="daily") ayrı tutulur: antrenman geçmişine ve
+    // GYMO Ligi puanına KARIŞMAZ. Yoksa her gün bir kayıt eklenip "toplam
+    // antrenman" ve "seri" sayıları hak edilmeden şişerdi.
+    const dailyIn = entries.filter((e) => String(e.kind || "").toLowerCase() === "daily");
+    const workoutIn = entries.filter((e) => String(e.kind || "").toLowerCase() !== "daily");
+    let dailyAdded = 0;
+    if (dailyIn.length) {
+      setAppleDaily((prev) => {
+        const next = { ...prev };
+        dailyIn.forEach((e) => {
+          const ms = parseAppleDate(e.start || e.date);
+          if (!ms) return;
+          const k = dayKeyStr(ms);
+          const min = Math.round(Number(e.durationMin || e.duration) || 0);
+          const kcal = Math.round(Number(e.kcal || e.energy) || 0);
+          // Aynı güne ait iki ayrı gönderim (dakika ve kalori) birleştirilir
+          const cur = next[k] || {};
+          next[k] = {
+            min: min || cur.min || 0,
+            kcal: kcal || cur.kcal || 0,
+            t: ms,
+          };
+          dailyAdded++;
+        });
+        // Son 120 günü sakla
+        const keys = Object.keys(next).sort().slice(-120);
+        const trimmed = {};
+        keys.forEach((k) => { trimmed[k] = next[k]; });
+        lsSetAppleDaily(trimmed);
+        if (cloudReady.current) dbSet("apple_daily", trimmed);
+        return trimmed;
+      });
+    }
+
     let added = 0;
     setHistory((prev) => {
       const seen = new Set(prev.map((s) => s.id).filter(Boolean));
       const news = [];
-      entries.forEach((e) => {
+      workoutIn.forEach((e) => {
         const start = parseAppleDate(e.start || e.date);
         if (!start) return;
         const id = "apple_" + start;
@@ -455,8 +508,13 @@ export default function App() {
       dbSet("imports_inbox", null),
       key ? importInboxClear(key) : Promise.resolve(),
     ]);
-    if (!silent) flash(added ? added + " Apple antrenmanı aktarıldı ✓" : "Yeni Apple verisi yok");
-    return added;
+    if (!silent) {
+      const parts = [];
+      if (added) parts.push(added + " antrenman");
+      if (dailyAdded) parts.push(dailyAdded + " günlük aktivite");
+      flash(parts.length ? "Apple: " + parts.join(" + ") + " aktarıldı ✓" : "Yeni Apple verisi yok");
+    }
+    return added + dailyAdded;
   }
 
   // İlerleme verisini kaydet (kilo + ölçüler)
@@ -860,7 +918,7 @@ export default function App() {
         />
       )}
       {tab === "nutrition" && <Nutrition />}
-      {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
+      {tab === "progress" && <Progress data={progress} history={history} appleDaily={appleDaily} onSave={saveProgress} />}
       {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
         importUrl={importKey ? importInboxUrl(importKey) : null}

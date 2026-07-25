@@ -149,12 +149,24 @@ function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
       {open && (
         <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Kısayol kurulumu (tek seferlik)</div>
+          <p style={{ color: "#fbbf24", fontSize: 11.5, margin: "0 0 8px", lineHeight: 1.5 }}>
+            ⚠️ iOS Kısayollar <b>tek tek antrenmanları okuyamıyor</b> — yalnızca günlük toplamları verebiliyor.
+            Bu yüzden aşağıdaki kurulum <b>günlük egzersiz dakikası ve aktif kaloriyi</b> aktarır.
+            Bunlar İlerleme sekmesinde ayrı bir bölümde görünür; antrenman geçmişine ve lig puanına karışmaz.
+          </p>
           <ol style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6, paddingLeft: 18, margin: 0 }}>
-            <li>iPhone'da <b>Kısayollar</b> uygulaması → <b>+</b> ile yeni kısayol.</li>
-            <li><b>“Sağlık Örnekleri Bul”</b> ekle → tür <b>Antrenman</b>, tarih aralığı <b>bugün/son 7 gün</b>.</li>
-            <li>Her antrenman için (Repeat/Yinele) şu alanları içeren bir <b>Sözlük</b> oluştur: <code>type</code> (Antrenman Türü), <code>start</code> (Başlangıç · Unix zamanı), <code>durationMin</code> (Süre · dk), <code>kcal</code> (Aktif Enerji).</li>
-            <li><b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>, İstek Gövdesi <b>JSON</b> = Sözlük; URL olarak aşağıdaki <b>sana özel</b> bağlantı.</li>
-            <li>Kaydet. Uygulamayı her açtığında veri otomatik çekilir (ya da “Şimdi içe aktar”).</li>
+            <li>iPhone'da <b>Kısayollar</b> → <b>+</b> ile yeni kısayol.</li>
+            <li><b>“Sağlık Örneklerini Bul”</b> ekle → Tür <b>Exercise Time</b> (Egzersiz Süresi),
+              Başlangıç Tarihi <b>önceki 7 gün</b> (“sonraki” DEĞİL), Birim <b>dk</b>, Grupla <b>Gün</b>.</li>
+            <li><b>“Her Biriyle Yinele”</b> ekle.</li>
+            <li>Yinele'nin içine <b>Sözlük</b> ekle — 3 anahtar:
+              <br /><code>kind</code> = <code>daily</code> (düz metin)
+              <br /><code>start</code> = Yinele Öğesi › <b>Başlangıç Tarihi</b>
+              <br /><code>durationMin</code> = Yinele Öğesi › <b>Değer</b></li>
+            <li>Yine Yinele'nin içine <b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>,
+              İstek Gövdesi <b>JSON</b> = Sözlük, URL = aşağıdaki <b>sana özel</b> bağlantı.</li>
+            <li>Kaydet ve çalıştır. Kalori de istersen aynı adımları <b>Active Calories</b> türü ve
+              <code>kcal</code> anahtarıyla tekrarla — uygulama ikisini aynı günde birleştirir.</li>
           </ol>
           <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, marginTop: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
             {importUrl}

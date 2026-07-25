@@ -116,6 +116,8 @@ exports.appleImport = functions.https.onRequest(async (req, res) => {
       const start = parseAppleDate(it.start || it.date);
       if (!start) continue;
       const rec = {
+        // kind="daily" → günlük aktivite özeti (antrenman geçmişine yazılmaz)
+        kind: String(it.kind || "").toLowerCase() === "daily" ? "daily" : "workout",
         type: String(it.type || it.workoutType || "Apple Antrenman").slice(0, 60),
         start: start,
         durationMin: Number(it.durationMin || it.duration || 0) || 0,

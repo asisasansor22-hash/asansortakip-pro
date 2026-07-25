@@ -116,7 +116,45 @@ const MEASURES = [
   { key: "thigh", label: "Bacak", unit: "cm" },
 ];
 
-export default function Progress({ data, history = [], onSave }) {
+// 🍎 Apple günlük aktivite — antrenman geçmişinden AYRI gösterilir.
+// Lig puanına, seriye ve "toplam antrenman" sayısına dahil DEĞİLDİR.
+function AppleDaily({ daily }) {
+  const rows = Object.keys(daily || {}).sort().reverse().slice(0, 14)
+    .map((k) => ({ k, ...daily[k] }));
+  if (rows.length === 0) return null;
+  const maxMin = Math.max(30, ...rows.map((r) => r.min || 0));
+  return (
+    <>
+      <div className="section-title">🍎 Apple Günlük Aktivite</div>
+      <p style={{ color: "var(--muted)", fontSize: 11.5, marginTop: -4, marginBottom: 10 }}>
+        Apple Sağlık'tan gelen günlük egzersiz dakikası ve aktif kalori.
+        <b> Antrenman geçmişine ve GYMO Ligi puanına dahil edilmez</b> — bunlar gün toplamıdır, ayrı antrenman değil.
+      </p>
+      <div className="card" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
+        {rows.map((r, i) => (
+          <div key={r.k} style={{ padding: "9px 12px", borderTop: i ? "1px solid var(--line)" : "none" }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+              <span style={{ color: "var(--muted)" }}>
+                {new Date(r.t || Date.parse(r.k)).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}
+              </span>
+              <span style={{ fontWeight: 700 }}>
+                {r.min ? r.min + " dk" : "–"}
+                {r.kcal ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {r.kcal} kcal</span> : null}
+              </span>
+            </div>
+            {r.min > 0 && (
+              <div style={{ height: 5, background: "var(--card2)", borderRadius: 999, marginTop: 5 }}>
+                <div style={{ width: Math.min(100, (r.min / maxMin) * 100) + "%", height: "100%", background: "var(--accent2)", borderRadius: 999 }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export default function Progress({ data, history = [], appleDaily = {}, onSave }) {
   const weights = (data && data.weights) || [];
   const measures = (data && data.measures) || [];
 
@@ -503,6 +541,8 @@ export default function Progress({ data, history = [], onSave }) {
           </div>
         </div>
       )}
+
+      <AppleDaily daily={appleDaily} />
 
       {/* Son antrenmanlar (manuel + Apple Sağlık) */}
       {history.length > 0 && (
