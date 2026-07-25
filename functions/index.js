@@ -66,6 +66,27 @@ exports.adminSetDisabled = functions.https.onCall(async (data, context) => {
 // doğrulanır. Geçerliyse veri, ADMIN yetkisiyle yalnız o kullanıcının kendi
 // /fitness/users/{uid}/imports_inbox düğümüne yazılır. Böylece herkese açık
 // (".write": true) bir düğüme gerek kalmaz — eski /fitness/imports kaldırılabilir.
+// Kısayol tarihi SAYI değil METİN olarak gönderebilir ("2026-07-25T18:30:00Z",
+// "25.07.2026 18:30") ya da Unix saniyesi/milisaniyesi olarak. Hepsini kabul et.
+function parseAppleDate(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number" || /^\d+(\.\d+)?$/.test(String(v).trim())) {
+    let n = Number(v);
+    if (!isFinite(n) || n <= 0) return 0;
+    if (n < 1e12) n *= 1000;
+    return Math.round(n);
+  }
+  const s = String(v).trim();
+  let t = Date.parse(s);
+  if (!isNaN(t)) return t;
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) {
+    t = new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+}
+
 exports.appleImport = functions.https.onRequest(async (req, res) => {
   try {
     if (req.method === "OPTIONS") { res.set("Access-Control-Allow-Origin", "*").set("Access-Control-Allow-Methods", "POST").set("Access-Control-Allow-Headers", "Content-Type").status(204).end(); return; }
@@ -92,7 +113,7 @@ exports.appleImport = functions.https.onRequest(async (req, res) => {
     let added = 0;
     for (const it of items) {
       if (!it || typeof it !== "object") continue;
-      let start = Number(it.start || it.date || 0) || 0;
+      const start = parseAppleDate(it.start || it.date);
       if (!start) continue;
       const rec = {
         type: String(it.type || it.workoutType || "Apple Antrenman").slice(0, 60),

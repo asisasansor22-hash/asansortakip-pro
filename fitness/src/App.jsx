@@ -36,6 +36,30 @@ function randHex(n) {
   catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 }
 
+// Apple Kısayolu'ndan gelen tarihi ms'ye çevir. Kısayollar tarihi çoğu zaman
+// SAYI değil METİN olarak gönderir ("2026-07-25T18:30:00Z", "25.07.2026 18:30"),
+// bazen de Unix saniyesi/milisaniyesi olarak. Hepsini kabul et — aksi halde
+// veri gelse bile atlanır ve "yeni veri yok" denir.
+function parseAppleDate(v) {
+  if (v == null || v === "") return 0;
+  if (typeof v === "number" || /^\d+(\.\d+)?$/.test(String(v).trim())) {
+    let n = Number(v);
+    if (!isFinite(n) || n <= 0) return 0;
+    if (n < 1e12) n *= 1000; // saniye → milisaniye
+    return Math.round(n);
+  }
+  const s = String(v).trim();
+  let t = Date.parse(s);                       // ISO ve benzeri biçimler
+  if (!isNaN(t)) return t;
+  // "25.07.2026 18:30" / "25/07/2026 18:30" (gün önce — TR biçimi)
+  const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (m) {
+    t = new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return 0;
+}
+
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MAX_HISTORY = 60; // saklanan antrenman geçmişi (manuel + Apple) üst sınırı
 
@@ -408,8 +432,7 @@ export default function App() {
       const seen = new Set(prev.map((s) => s.id).filter(Boolean));
       const news = [];
       entries.forEach((e) => {
-        let start = Number(e.start || e.date) || 0;
-        if (start > 0 && start < 1e12) start *= 1000; // saniye → ms
+        const start = parseAppleDate(e.start || e.date);
         if (!start) return;
         const id = "apple_" + start;
         if (seen.has(id)) return;
