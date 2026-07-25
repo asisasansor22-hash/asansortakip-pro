@@ -1,9 +1,9 @@
 {
   "name": "functions",
-  "description": "Fit+be admin Cloud Functions",
+  "description": "GYMO & AsansörTakip Cloud Functions",
   "main": "index.js",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "firebase-admin": "^12.6.0",
