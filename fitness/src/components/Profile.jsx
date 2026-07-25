@@ -122,7 +122,8 @@ function Avatar({ avatar, email, onSaveAvatar }) {
 }
 
 // Apple Sağlık (iPhone Kısayolu) ile antrenman içe aktarma bölümü
-function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
+function AppleHealth({ importUrl, importUrlSecure, onImportApple, onRepairKey }) {
+  const [fixing, setFixing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -195,6 +196,20 @@ function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
               <button className="btn-primary" style={{ width: "100%", padding: 12, marginTop: 8 }} onClick={copySecure}>
                 {copiedSec ? "✓ Kopyalandı — Kısayol'a yapıştır" : "📋 Güvenli URL'yi kopyala"}
               </button>
+              {onRepairKey && (
+                <>
+                  <button className="btn-ghost" style={{ width: "100%", padding: 11, marginTop: 8 }}
+                    disabled={fixing}
+                    onClick={async () => { setFixing(true); try { await onRepairKey(); } catch (e) {} setFixing(false); }}>
+                    {fixing ? "Onarılıyor…" : "🔧 Bağlantıyı onar (yeni anahtar üret)"}
+                  </button>
+                  <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
+                    Sunucu <b>“yetki yok”</b> diyorsa buna bas: yeni bir anahtar üretilir ve
+                    veritabanına yazıldığı <b>doğrulanır</b>. Sonra yukarıdaki URL'yi tekrar kopyalayıp
+                    Kısayol'a yapıştır (eski URL geçersiz olur).
+                  </p>
+                </>
+              )}
             </details>
           )}
         </div>
@@ -204,7 +219,7 @@ function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
 }
 
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, importUrlSecure, onImportApple, history = [] }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, importUrlSecure, onImportApple, onRepairKey, history = [] }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
@@ -227,7 +242,7 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       <div style={{ marginBottom: 16 }}><Achievements history={history} /></div>
 
-      {importUrl && <AppleHealth importUrl={importUrl} importUrlSecure={importUrlSecure} onImportApple={onImportApple} />}
+      {importUrl && <AppleHealth importUrl={importUrl} importUrlSecure={importUrlSecure} onImportApple={onImportApple} onRepairKey={onRepairKey} />}
 
       <div className="section-title">Tercihleri güncelle</div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 12 }}>

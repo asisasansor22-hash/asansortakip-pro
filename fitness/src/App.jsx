@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, appleImportUrl, importInboxUrl, importInboxRead, importInboxClear, lbPublish, dirPublish, dmMetaGet } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, dbSetR, feedList, feedCommentsGet, setPublicAvatar, appleImportUrl, importInboxUrl, importInboxRead, importInboxClear, lbPublish, dirPublish, dmMetaGet } from "./firebase";
 import { dmSeenGet } from "./components/Messages";
 import { earnedCount } from "./data/achievements";
 import Login from "./components/Login";
@@ -431,6 +431,25 @@ export default function App() {
   // Cloud Function, doğruladığı kayıtları kullanıcının kendi authlı düğümüne
   // (/fitness/users/{uid}/imports_inbox) yazar; burada onu okuyoruz.
   // Her kayıt: { type, start(ms|s), durationMin, kcal }.
+  // Apple bağlantısını onar: yeni gizli anahtar üret ve veritabanına
+  // YAZILDIĞINI DOĞRULA. Uygulamanın gösterdiği anahtar ile sunucudakinin
+  // farklı olması (ilk yazmanın sessizce başarısız olması) "yetki yok"
+  // hatasının en yaygın sebebi.
+  async function repairAppleKey() {
+    const secret = randHex(20);
+    const okSec = await dbSetR("importsecret", secret);
+    const key = "k_" + randHex(18);
+    const okKey = await dbSetR("importkey", key);
+    if (!okSec) { flash("Anahtar yazılamadı — bağlantını kontrol et"); return false; }
+    // Gerçekten okunabiliyor mu? (yazma başarılı görünse de doğrula)
+    const back = await dbGetR("importsecret", 2);
+    if (!back.ok || back.data !== secret) { flash("Anahtar doğrulanamadı"); return false; }
+    setImportSecret(secret);
+    if (okKey) setImportKey(key);
+    flash("Bağlantı onarıldı ✓ Yeni URL'yi kopyala");
+    return true;
+  }
+
   async function importApple(silent, keyArg) {
     const key = keyArg !== undefined ? keyArg : importKey;
     // Her iki gelen kutusunu da oku: Cloud Function yazdıysa authlı düğüm,
@@ -923,7 +942,7 @@ export default function App() {
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
         importUrl={importKey ? importInboxUrl(importKey) : null}
         importUrlSecure={importSecret ? appleImportUrl(importSecret) : null}
-        onImportApple={() => importApple(false)} history={history} />}
+        onImportApple={() => importApple(false)} onRepairKey={repairAppleKey} history={history} />}
 
       {resumeAsk && (
         <div style={{
