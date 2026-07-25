@@ -4,6 +4,7 @@ import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 import IntervalTimer from "./IntervalTimer";
 import OneRMTool from "./OneRMTool";
+import VolumeSummary from "./VolumeSummary";
 
 const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const DAY_FULL = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
@@ -137,6 +138,15 @@ export default function ProgramBuilder({
 
             {open && (
               <div style={{ marginTop: 12 }}>
+                {/* Haftalık kas grubu hacmi — hareket ekleyip çıkardıkça anında güncellenir */}
+                {p.exercises.length > 0 && (
+                  <div className="card" style={{ background: "var(--card2)", marginBottom: 12 }}>
+                    <VolumeSummary days={[p]} title="📊 Bu Programın Hacmi (set/kas)" />
+                    <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 8, marginBottom: 0 }}>
+                      Bu program haftada 1 kez yapılırsa geçerli. Aynı programı haftada 2 kez yaparsan setleri 2 ile çarp.
+                    </p>
+                  </div>
+                )}
                 {p.exercises.length === 0 && <div className="empty" style={{ padding: 18 }}>Bu programda hareket yok.</div>}
                 {p.exercises.map((exId, i) => {
                   const ex = getExercise(exId);

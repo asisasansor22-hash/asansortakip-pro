@@ -3,6 +3,8 @@ import { READY_PROGRAMS } from "../data/programs";
 import { getExercise } from "../data/exercises";
 import ExerciseAnimation from "./ExerciseAnimation";
 import ProgramWizard from "./ProgramWizard";
+import VolumeSummary from "./VolumeSummary";
+import AutoPlanner from "./AutoPlanner";
 
 export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [open, setOpen] = useState(null);
@@ -11,6 +13,7 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
   const [showAll, setShowAll] = useState(false);
   const [princ, setPrinc] = useState(false);
   const [wizard, setWizard] = useState(false);
+  const [auto, setAuto] = useState(false);
 
   function copy(p) {
     if (onCopy) onCopy(p);
@@ -43,7 +46,12 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
         {profile && !showAll ? "Profiline göre önerilen programlar." : "Tüm hazır programlar."} Kopyala, "Programım"da düzenle.
       </p>
 
-      <button className="btn-primary" style={{ width: "100%", marginBottom: 12, padding: 14 }} onClick={() => setWizard(true)}>
+      <button className="btn-primary" style={{ width: "100%", marginBottom: 8, padding: 14 }} onClick={() => setAuto(true)}>
+        🗓️ Haftada Kaç Gün? — Hacim Garantili Otomatik Program
+      </button>
+      {auto && <AutoPlanner onCopy={onCopy} onClose={() => setAuto(false)} />}
+
+      <button className="btn-ghost" style={{ width: "100%", marginBottom: 12, padding: 12 }} onClick={() => setWizard(true)}>
         🪄 Program Sihirbazı — Bana Özel Program Üret
       </button>
       {wizard && <ProgramWizard onGenerate={onCopy} onClose={() => setWizard(false)} />}
@@ -102,6 +110,10 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
 
             {isOpen && (
               <div style={{ marginTop: 12 }}>
+                {/* Programın tüm günleri 1 hafta boyunca yapılırsa oluşan hacim */}
+                <div className="card" style={{ background: "var(--card2)", marginBottom: 12 }}>
+                  <VolumeSummary days={p.days} title="📊 Haftalık Hacim (set/kas)" />
+                </div>
                 {p.days.length > 1 && (
                   <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 4px 10px" }}>
                     💡 Her günü ayrı program olarak ekleyip <b>Haftalık Plan</b>'dan istediğin güne atayabilirsin (ör. Push→Salı, Pull→Cuma).
