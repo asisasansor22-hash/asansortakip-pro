@@ -223,12 +223,11 @@ export default function ProgramBuilder({
                     <React.Fragment key={exId + "-" + i}>
                     <div className="prog-ex-row"
                       style={linkedPrev ? { borderLeft: "3px solid var(--accent2)", paddingLeft: 6 } : undefined}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
-                        <button className="icon-btn" disabled={i === 0}
-                          style={{ padding: "2px 8px", fontSize: 13, opacity: i === 0 ? 0.3 : 1 }}
+                      <div className="prog-ex-main">
+                      <div className="prog-ex-move">
+                        <button disabled={i === 0} title="Yukarı taşı"
                           onClick={() => onMoveExercise(p.id, i, -1)}>▲</button>
-                        <button className="icon-btn" disabled={i === p.exercises.length - 1}
-                          style={{ padding: "2px 8px", fontSize: 13, opacity: i === p.exercises.length - 1 ? 0.3 : 1 }}
+                        <button disabled={i === p.exercises.length - 1} title="Aşağı taşı"
                           onClick={() => onMoveExercise(p.id, i, 1)}>▼</button>
                       </div>
                       <div className="figbox" style={{ width: 56, height: 56, padding: 0 }}>
@@ -239,13 +238,11 @@ export default function ProgramBuilder({
                           {(linkedPrev || linkedNext) && <span style={{ color: "var(--accent2)", fontSize: 11 }}>🔗 </span>}{ex.name}
                         </div>
                         {cur != null ? (
-                          <div className="row" style={{ gap: 6, alignItems: "center", marginTop: 4 }}>
-                            <button className="icon-btn" disabled={cur <= 1}
-                              style={{ padding: "2px 9px", fontSize: 15, opacity: cur <= 1 ? 0.3 : 1 }}
+                          <div className="row prog-ex-sets" style={{ gap: 8, alignItems: "center", marginTop: 6 }}>
+                            <button disabled={cur <= 1}
                               onClick={() => onSetCount && onSetCount(p.id, exId, cur - 1)}>−</button>
-                            <span style={{ fontWeight: 700, fontSize: 13, minWidth: 42, textAlign: "center" }}>{cur} set</span>
-                            <button className="icon-btn" disabled={cur >= 12}
-                              style={{ padding: "2px 9px", fontSize: 15, opacity: cur >= 12 ? 0.3 : 1 }}
+                            <span style={{ fontWeight: 700, fontSize: 14, minWidth: 46, textAlign: "center" }}>{cur} set</span>
+                            <button disabled={cur >= 12}
                               onClick={() => onSetCount && onSetCount(p.id, exId, cur + 1)}>＋</button>
                             {repsShown && <span style={{ color: "var(--muted)", fontSize: 12 }}>× {repsShown}</span>}
                           </div>
@@ -253,20 +250,22 @@ export default function ProgramBuilder({
                           <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 4 }}>{i + 1}. sıra · {ex.sets}</div>
                         )}
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
-                        <button className="icon-btn danger" onClick={() => onRemoveExercise(p.id, i)}>×</button>
+                      </div>
+
+                      {/* Eylem çubuğu — tam genişlik, ~44px dokunma hedefi */}
+                      <div className="prog-ex-actions">
                         {onSwapExercise && (
-                          <button className="icon-btn" title="Bu hareketi değiştir"
-                            style={{ padding: "2px 8px", fontSize: 12, color: "var(--accent)" }}
-                            onClick={() => setSwapAt(
-                              (swapAt && swapAt.programId === p.id && swapAt.index === i) ? null : { programId: p.id, index: i }
-                            )}>⇄</button>
+                          <button onClick={() => setSwapAt(
+                            (swapAt && swapAt.programId === p.id && swapAt.index === i) ? null : { programId: p.id, index: i }
+                          )}>⇄ Değiştir</button>
                         )}
                         {i < p.exercises.length - 1 && (
-                          <button className="icon-btn" title="Bir sonrakiyle süperset"
-                            style={{ padding: "2px 8px", fontSize: 12, color: linkedNext ? "#04321f" : "var(--accent2)", background: linkedNext ? "var(--accent2)" : "var(--card2)" }}
-                            onClick={() => onToggleSuperset && onToggleSuperset(p.id, i)}>🔗</button>
+                          <button className={linkedNext ? "on" : ""}
+                            onClick={() => onToggleSuperset && onToggleSuperset(p.id, i)}>
+                            🔗 Süperset
+                          </button>
                         )}
+                        <button className="danger" onClick={() => onRemoveExercise(p.id, i)}>✕ Çıkar</button>
                       </div>
                     </div>
                     {swapAt && swapAt.programId === p.id && swapAt.index === i && (() => {

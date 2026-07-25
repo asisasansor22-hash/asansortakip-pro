@@ -105,8 +105,32 @@ h1, h2, h3 { margin: 0 0 8px; }
 .err { color: var(--danger); font-size: 13px; }
 
 /* program builder */
-.prog-ex-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
-.prog-ex-row .grow { flex: 1; }
+/* Program hareket satırı: üstte bilgi, altta tam genişlikte eylem çubuğu.
+   Butonlar eskiden sağda dar bir sütuna sıkışıyordu; dokunma hedefleri
+   Apple HIG'in önerdiği ~44px'e çıkarıldı. */
+.prog-ex-row { display: flex; flex-direction: column; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+.prog-ex-main { display: flex; align-items: center; gap: 10px; }
+.prog-ex-row .grow { flex: 1; min-width: 0; }
+
+/* Sırayı değiştir (▲▼) */
+.prog-ex-move { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.prog-ex-move button { min-width: 40px; min-height: 32px; background: var(--card2); color: var(--text); border-radius: 8px; font-size: 14px; font-weight: 700; }
+.prog-ex-move button:disabled { opacity: .3; }
+
+/* Set sayısı −/+ */
+.prog-ex-sets button { min-width: 40px; min-height: 40px; background: var(--card2); color: var(--text); border-radius: 9px; font-size: 19px; font-weight: 700; line-height: 1; }
+.prog-ex-sets button:disabled { opacity: .3; }
+
+/* Alt eylem çubuğu: Değiştir · Süperset · Sil */
+.prog-ex-actions { display: flex; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.prog-ex-actions button {
+  flex: 1; min-height: 44px; border-radius: 10px;
+  background: var(--card2); color: var(--text);
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.prog-ex-actions button.on { background: var(--accent2); color: #04321f; }
+.prog-ex-actions button.danger { color: var(--danger); }
 .icon-btn { background: var(--card2); color: var(--text); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 700; }
 .icon-btn.danger { color: var(--danger); }
 .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
