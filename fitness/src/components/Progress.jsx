@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise, REGIONS } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
+import DeloadCard from "./DeloadCard";
 
 // Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
 function resizeImage(file, maxDim = 900, quality = 0.72) {
@@ -452,6 +453,10 @@ export default function Progress({ data, history = [], onSave }) {
       )}
 
       {/* Antrenman hacmi */}
+      {/* Yorgunluk radarı / deload önerisi */}
+      <div className="section-title">Toparlanma</div>
+      <DeloadCard history={history} />
+
       <div className="section-title">Antrenman Hacmi (8 hafta)</div>
       <div className="row" style={{ gap: 8, marginBottom: 10 }}>
         <span className="pill" style={{ fontSize: 13 }}>Bu hafta: <b>{volume.thisWeek} set</b></span>
@@ -481,14 +486,20 @@ export default function Progress({ data, history = [], onSave }) {
                   <span>{r.emoji} {r.name}</span>
                   <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", fontWeight: 700 }}>{r.sets} set</span>
                 </div>
-                <div style={{ height: 8, background: "var(--card2)", borderRadius: 999, overflow: "hidden" }}>
+                <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999 }}>
                   <div style={{ width: Math.round((r.sets / muscleVol.max) * 100) + "%", height: "100%", background: col, borderRadius: 999 }} />
+                  {/* 10 set = hipertrofi için etkili alt eşik (görsel işaret) */}
+                  <div title="10 set — etkili alt eşik" style={{
+                    position: "absolute", top: -2, bottom: -2,
+                    left: Math.round((10 / muscleVol.max) * 100) + "%",
+                    width: 2, background: "var(--text)", opacity: 0.45, borderRadius: 2,
+                  }} />
                 </div>
               </div>
             );
           })}
           <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
-            🟡 az (&lt;10) · 🟢 ideal (10-20) · 🟠 yüksek (&gt;20)
+            🟡 az (&lt;10) · 🟢 ideal (10-20) · 🟠 yüksek (&gt;20) · dikey çizgi = 10 set eşiği
           </div>
         </div>
       )}

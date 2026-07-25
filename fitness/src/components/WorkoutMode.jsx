@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getExercise } from "../data/exercises";
+import { getExercise, getAlternatives, exercisesByRegion, subOf } from "../data/exercises";
 import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
 import SpotifyBar from "./SpotifyBar";
@@ -62,7 +62,12 @@ function overloadSuggestion(prev, metaReps) {
 
 // Antrenman modu: ısınma → hareket hareket çalış → özet/soğuma/paylaş.
 export default function WorkoutMode({ program, onExit, onFinish, onPersist, resume, lastLog, bestE1RM }) {
-  const exIds = (program.exercises || []).filter((id) => getExercise(id));
+  const baseIds = (program.exercises || []).filter((id) => getExercise(id));
+  // Bu oturuma özel hareket değişiklikleri (sıra no → yeni hareket id).
+  // Kaydedilmiş programı DEĞİŞTİRMEZ; sadece bugünkü antrenman için geçerlidir.
+  const [swaps, setSwaps] = useState(() => (resume && resume.swaps) || {});
+  const [swapOpen, setSwapOpen] = useState(false);
+  const exIds = baseIds.map((id, k) => (swaps[k] && getExercise(swaps[k])) ? swaps[k] : id);
   const maxIdx = Math.max(0, exIds.length - 1);
   const [i, setI] = useState(resume && resume.i != null ? Math.min(resume.i, maxIdx) : 0);
   const [setNo, setSetNo] = useState(resume && resume.setNo ? resume.setNo : 1);
@@ -96,6 +101,38 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
 
   const ex = exIds.length ? getExercise(exIds[i]) : null;
   const meta = ex ? parseSets(ex.sets) : { sets: 1, reps: "-" };
+
+  // Bu hareketin yerine yapılabilecekler: önce elle tanımlı alternatifler,
+  // sonra aynı bölge + aynı anatomik alt-gruptan diğer hareketler. Zaten
+  // programda olanlar ve mevcut hareket listeden çıkarılır.
+  const swapOptions = (() => {
+    if (!ex) return [];
+    const used = new Set(exIds);
+    const seen = new Set([ex.id]);
+    const out = [];
+    const push = (e) => {
+      if (!e || seen.has(e.id) || used.has(e.id)) return;
+      seen.add(e.id); out.push(e);
+    };
+    getAlternatives(ex.id).forEach(push);
+    const sub = subOf(ex);
+    exercisesByRegion(ex.region).filter((e) => subOf(e) === sub).forEach(push);
+    return out.slice(0, 12);
+  })();
+
+  // Hareketi bu oturum için değiştir (kaydedilmiş program etkilenmez).
+  function swapTo(newId) {
+    setSwaps((prev) => ({ ...prev, [i]: newId }));
+    setSwapOpen(false);
+    setWeight(""); setReps(""); setRir(""); setNote("");
+    setSetNo(1);
+  }
+  function undoSwap() {
+    setSwaps((prev) => { const n = { ...prev }; delete n[i]; return n; });
+    setSwapOpen(false);
+    setWeight(""); setReps(""); setRir(""); setNote("");
+    setSetNo(1);
+  }
   // Programda bu hareket için özel set/tekrar ayarlandıysa (ör. 3×5, 5×5) onu kullan
   const targetSets = (ex && program.sets && program.sets[ex.id] != null) ? program.sets[ex.id] : meta.sets;
   const targetReps = (ex && program.reps && program.reps[ex.id] != null) ? String(program.reps[ex.id]) : meta.reps;
@@ -139,9 +176,9 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   useEffect(() => {
     if (!onPersist) return;
     if (done) { onPersist(null); return; }
-    onPersist({ i, setNo, warmup, log: log.current.slice() });
+    onPersist({ i, setNo, warmup, swaps, log: log.current.slice() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, setNo, warmup, done]);
+  }, [i, setNo, warmup, done, swaps]);
 
   if (exIds.length === 0) {
     return (
@@ -360,7 +397,48 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         <div className="figbox" style={{ width: 200, height: 200 }}>
           <ExerciseAnimation type={ex.anim} gear={ex.equip} exId={ex.id} size={190} />
         </div>
-        <h2 style={{ margin: "6px 0 0", textAlign: "center" }}>{ex.name}</h2>
+        <div className="row" style={{ gap: 8, alignItems: "center", justifyContent: "center", marginTop: 6, maxWidth: "100%" }}>
+          <h2 style={{ margin: 0, textAlign: "center", minWidth: 0 }}>{ex.name}</h2>
+          {!resting && swapOptions.length > 0 && (
+            <button className="icon-btn" title="Bu hareketi değiştir"
+              onClick={() => setSwapOpen((v) => !v)}
+              style={{ flexShrink: 0, padding: "4px 10px", color: swaps[i] ? "var(--accent)" : "var(--muted)" }}>
+              ⇄
+            </button>
+          )}
+        </div>
+        {swaps[i] && (
+          <div style={{ color: "var(--accent)", fontSize: 11 }}>
+            değiştirildi · asıl: {getExercise(baseIds[i]) ? getExercise(baseIds[i]).name : "-"}
+          </div>
+        )}
+
+        {swapOpen && (
+          <div className="card" style={{ width: "100%", maxWidth: 340, padding: 10, marginTop: 4 }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>Yerine ne yapayım?</span>
+              <button className="icon-btn" style={{ padding: "2px 8px" }} onClick={() => setSwapOpen(false)}>✕</button>
+            </div>
+            <p style={{ color: "var(--muted)", fontSize: 11, margin: "0 0 8px" }}>
+              Aynı kası çalıştıran alternatifler. Yalnız bu antrenman için geçerli — programın değişmez.
+            </p>
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {swapOptions.map((o) => (
+                <button key={o.id} onClick={() => swapTo(o.id)}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "var(--card2)",
+                    border: "none", borderRadius: 8, padding: "9px 10px", marginBottom: 6, color: "var(--text)" }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{o.name}</div>
+                  <div style={{ color: "var(--muted)", fontSize: 11 }}>{o.equip || "serbest"} · {o.sets || ""}</div>
+                </button>
+              ))}
+            </div>
+            {swaps[i] && (
+              <button className="btn-ghost" style={{ width: "100%", padding: 9, marginTop: 2 }} onClick={undoSwap}>
+                ↩︎ Asıl harekete dön
+              </button>
+            )}
+          </div>
+        )}
         {grp && (
           <div style={{ color: "var(--accent2)", fontSize: 12, fontWeight: 700 }}>
             🔗 Süperset · {(i - grp.start + 1)}/{grp.end - grp.start + 1} hareket{i < grp.end ? " · sonra dinlenme YOK" : ""}
