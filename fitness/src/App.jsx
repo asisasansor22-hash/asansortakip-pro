@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, appleImportUrl, lbPublish, dirPublish, dmMetaGet } from "./firebase";
+import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, appleImportUrl, importInboxUrl, importInboxRead, importInboxClear, lbPublish, dirPublish, dmMetaGet } from "./firebase";
 import { dmSeenGet } from "./components/Messages";
 import { earnedCount } from "./data/achievements";
 import Login from "./components/Login";
@@ -163,7 +163,8 @@ export default function App() {
   const [addPick, setAddPick] = useState(null); // eklenmek istenen hareket (program seçimi bekliyor)
   const [copyPick, setCopyPick] = useState(null); // hazır program ekleme: {rp, days:[idx], sel:{idx:weekday}}
   const [favorites, setFavorites] = useState([]); // favori hareket id'leri
-  const [importSecret, setImportSecret] = useState(null); // Apple Sağlık içe-aktarma gizli anahtarı (token'ın 2. parçası)
+  const [importSecret, setImportSecret] = useState(null); // Cloud Function yolu için gizli anahtar (token'ın 2. parçası)
+  const [importKey, setImportKey] = useState(null);       // Doğrudan-DB yolu için anahtar (fonksiyon deploy edilmemişse)
 
   // --- Açılış (splash) ekranı ---
   const [splash, setSplash] = useState(true);
@@ -308,11 +309,21 @@ export default function App() {
 
       // Apple Sağlık içe-aktarma gizli anahtarı: yoksa üret (kullanıcının kendi
       // authlı düğümüne). Token = uid + "." + gizli. Sonra gelen kutusunu içe aktar.
+      // İKİ YOL birden desteklenir:
+      //   1) Cloud Function (güvenli) → /fitness/users/{uid}/imports_inbox
+      //   2) Doğrudan DB (fonksiyon deploy edilmemişse) → /fitness/imports/{key}
+      // Uygulama her iki kutuyu da okur; hangisi doluysa oradan aktarır.
       if (!cancelled && cloudReady.current) {
-        const sr = await dbGetR("importsecret");
+        const [sr, kr] = await Promise.all([dbGetR("importsecret"), dbGetR("importkey")]);
         let secret = (sr.ok && typeof sr.data === "string" && sr.data) ? sr.data : null;
         if (!secret && sr.ok) { secret = randHex(20); dbSet("importsecret", secret); }
-        if (secret && !cancelled) { setImportSecret(secret); importApple(true); }
+        let key = (kr.ok && typeof kr.data === "string" && kr.data) ? kr.data : null;
+        if (!key && kr.ok) { key = "k_" + randHex(18); dbSet("importkey", key); }
+        if (!cancelled) {
+          if (secret) setImportSecret(secret);
+          if (key) setImportKey(key);
+          if (secret || key) importApple(true, key);
+        }
       }
 
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
@@ -378,11 +389,19 @@ export default function App() {
   // Cloud Function, doğruladığı kayıtları kullanıcının kendi authlı düğümüne
   // (/fitness/users/{uid}/imports_inbox) yazar; burada onu okuyoruz.
   // Her kayıt: { type, start(ms|s), durationMin, kcal }.
-  async function importApple(silent) {
-    const r = await dbGetR("imports_inbox");
-    if (!r.ok) { if (!silent) flash("Bağlantı yok, tekrar dene"); return 0; }
-    const inbox = r.data;
-    const entries = inbox ? Object.values(inbox).filter((x) => x && (x.start || x.date)) : [];
+  async function importApple(silent, keyArg) {
+    const key = keyArg !== undefined ? keyArg : importKey;
+    // Her iki gelen kutusunu da oku: Cloud Function yazdıysa authlı düğüm,
+    // Kısayol doğrudan yazdıysa /fitness/imports/{key}. Hangisi doluysa aktarılır.
+    const [r, direct] = await Promise.all([
+      dbGetR("imports_inbox"),
+      key ? importInboxRead(key) : Promise.resolve(null),
+    ]);
+    if (!r.ok && !direct) { if (!silent) flash("Bağlantı yok, tekrar dene"); return 0; }
+    const entries = []
+      .concat(r.data ? Object.values(r.data) : [])
+      .concat(direct ? Object.values(direct) : [])
+      .filter((x) => x && (x.start || x.date));
     if (!entries.length) { if (!silent) flash("Yeni Apple verisi yok"); return 0; }
     let added = 0;
     setHistory((prev) => {
@@ -408,7 +427,11 @@ export default function App() {
       if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
       return next;
     });
-    await dbSet("imports_inbox", null); // gelen kutusunu temizle
+    // Her iki gelen kutusunu da temizle (aynı antrenman iki kez aktarılmasın)
+    await Promise.all([
+      dbSet("imports_inbox", null),
+      key ? importInboxClear(key) : Promise.resolve(),
+    ]);
     if (!silent) flash(added ? added + " Apple antrenmanı aktarıldı ✓" : "Yeni Apple verisi yok");
     return added;
   }
@@ -817,7 +840,9 @@ export default function App() {
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
       {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar}
-        importUrl={importSecret ? appleImportUrl(importSecret) : null} onImportApple={() => importApple(false)} history={history} />}
+        importUrl={importKey ? importInboxUrl(importKey) : null}
+        importUrlSecure={importSecret ? appleImportUrl(importSecret) : null}
+        onImportApple={() => importApple(false)} history={history} />}
 
       {resumeAsk && (
         <div style={{

@@ -122,7 +122,7 @@ function Avatar({ avatar, email, onSaveAvatar }) {
 }
 
 // Apple Sağlık (iPhone Kısayolu) ile antrenman içe aktarma bölümü
-function AppleHealth({ importUrl, onImportApple }) {
+function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -160,8 +160,24 @@ function AppleHealth({ importUrl, onImportApple }) {
             {importUrl}
           </div>
           <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8 }}>
-            🔒 Bu bağlantı <b>sana özeldir</b> (içindeki gizli token yalnız senin verini yazar). Kimseyle paylaşma. Veriler güvenli bir sunucu (Cloud Function) üzerinden doğrulanır; herkese açık yazma yoktur.
+            🔒 Bu bağlantı <b>sana özeldir</b>, kimseyle paylaşma. Çalışması için veritabanı kuralında
+            <code> /fitness/imports</code> düğümü açık olmalı (anahtar tahmin edilemez olduğu için korunur).
           </p>
+          {importUrlSecure && (
+            <details style={{ marginTop: 10 }}>
+              <summary style={{ color: "var(--accent)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                Daha güvenli yöntem (Cloud Function) — isteğe bağlı
+              </summary>
+              <p style={{ color: "var(--muted)", fontSize: 11, margin: "8px 0" }}>
+                <code>appleImport</code> fonksiyonu deploy edildiyse aşağıdaki adresi kullan. Bu yöntemde
+                token sunucuda doğrulanır ve veritabanında herkese açık yazma düğümüne gerek kalmaz.
+                Uygulama her iki yolu da okur; hangisini kullanırsan kullan çalışır.
+              </p>
+              <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
+                {importUrlSecure}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </div>
@@ -169,7 +185,7 @@ function AppleHealth({ importUrl, onImportApple }) {
 }
 
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, onImportApple, history = [] }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, importUrlSecure, onImportApple, history = [] }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
@@ -192,7 +208,7 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       <div style={{ marginBottom: 16 }}><Achievements history={history} /></div>
 
-      {importUrl && <AppleHealth importUrl={importUrl} onImportApple={onImportApple} />}
+      {importUrl && <AppleHealth importUrl={importUrl} importUrlSecure={importUrlSecure} onImportApple={onImportApple} />}
 
       <div className="section-title">Tercihleri güncelle</div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 12 }}>
