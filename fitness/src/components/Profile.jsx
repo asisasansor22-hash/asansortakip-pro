@@ -126,9 +126,13 @@ function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedSec, setCopiedSec] = useState(false);
   if (!importUrl) return null;
   async function copy() {
     try { await navigator.clipboard.writeText(importUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) {}
+  }
+  async function copySecure() {
+    try { await navigator.clipboard.writeText(importUrlSecure); setCopiedSec(true); setTimeout(() => setCopiedSec(false), 2000); } catch (e) {}
   }
   async function imp() { setBusy(true); try { await onImportApple(); } catch (e) {} setBusy(false); }
   return (
@@ -188,6 +192,9 @@ function AppleHealth({ importUrl, importUrlSecure, onImportApple }) {
               <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
                 {importUrlSecure}
               </div>
+              <button className="btn-primary" style={{ width: "100%", padding: 12, marginTop: 8 }} onClick={copySecure}>
+                {copiedSec ? "✓ Kopyalandı — Kısayol'a yapıştır" : "📋 Güvenli URL'yi kopyala"}
+              </button>
             </details>
           )}
         </div>
