@@ -33,18 +33,18 @@ export default function Leaderboard() {
   return (
     <div>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>🏆 GYMO Ligi</h2>
+        <h2 style={{ margin: 0 }}>🏆 GYM<span style={{ color: "var(--accent)" }}>O</span> Ligi</h2>
         <button className="icon-btn" onClick={load}>🔄</button>
       </div>
       <p style={{ color: "var(--muted)", marginTop: 4, fontSize: 13 }}>
-        Antrenman kaydettikçe yüksel! Puan = 🔥 seri ×15 + bu hafta ×25 + toplam ×3 + tonaj + 🏅 rozet ×10.
+        Antrenman kaydettikçe yüksel! <b>GYMO Puanı</b> = 🔥 seri ×15 + bu hafta ×25 + toplam ×3 + tonaj + 🏅 rozet ×10.
       </p>
 
       {rows === null ? (
         <p style={{ color: "var(--muted)" }}>Yükleniyor…</p>
       ) : rows.length === 0 ? (
         <p style={{ color: "var(--muted)", fontSize: 13 }}>
-          Henüz kimse yok — ilk antrenmanını kaydet, ligin ilk sırasına yerleş! 💪
+          Henüz kimse yok — ilk antrenmanını kaydet, GYMO Ligi'nin ilk sırasına yerleş! 💪
         </p>
       ) : (
         rows.map((r, i) => {
@@ -74,7 +74,7 @@ export default function Leaderboard() {
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 16, color: i < 3 ? "#fbbf24" : "var(--text)" }}>{r.puan}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 10 }}>puan</div>
+                  <div style={{ color: "var(--muted)", fontSize: 10 }}>GYMO puanı</div>
                 </div>
               </div>
             </div>

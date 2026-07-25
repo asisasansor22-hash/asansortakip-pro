@@ -1,4 +1,4 @@
-# Fit+be — Antrenman Bilimi Referansı
+# GYMO — Antrenman Bilimi Referansı
 
 Bu belge, uygulamadaki **hazır programların, otomatik program üreticisinin ve
 form/gerilim notlarının** dayandığı bilimsel temeli toplar. Amaç: "kasları daha

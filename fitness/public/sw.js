@@ -1,4 +1,4 @@
-// Fitbe service worker — ONLINE-ONLY.
+// GYMO service worker — ONLINE-ONLY.
 // Offline cache YOK; sadece PWA kurulabilirliği için gerekli fetch handler'ı sağlar.
 // Her istek doğrudan ağdan karşılanır.
 
