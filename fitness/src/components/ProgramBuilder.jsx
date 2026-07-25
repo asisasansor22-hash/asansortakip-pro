@@ -60,6 +60,16 @@ export default function ProgramBuilder({
   function daysOf(programId) {
     return Object.keys(sch).filter((k) => sch[k] === programId).map(Number);
   }
+  // Atanmamış programları boş günlere dağıt. Öncelik sırası, antrenman
+  // günleri arasında dinlenme kalacak şekilde seçilir (Pzt-Çar-Cum-Sal-Per-Cmt-Paz).
+  const SPREAD_ORDER = [0, 2, 4, 1, 3, 5, 6];
+  function autoAssign() {
+    const free = SPREAD_ORDER.filter((d) => !sch[d]);
+    weekly.unassigned.forEach((p, k) => {
+      if (free[k] != null) onSetSchedule(free[k], p.id);
+    });
+  }
+
   // Bir hareketin yerine önerilecek alternatifler: önce elle tanımlı
   // alternatifler, sonra aynı bölge + aynı anatomik alt-gruptaki hareketler.
   // Programda zaten bulunanlar listeye alınmaz.
@@ -127,9 +137,18 @@ export default function ProgramBuilder({
             </p>
           )}
           {weekly.unassigned.length > 0 && (
-            <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-              Güne atanmamış (toplama dahil değil): {weekly.unassigned.map((p) => p.name).join(", ")}
-            </p>
+            <div style={{ marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+              <p style={{ color: "#fbbf24", fontSize: 12, margin: "0 0 8px", lineHeight: 1.5 }}>
+                ⚠️ <b>{weekly.unassigned.length} program güne atanmamış</b>, bu yüzden yukarıdaki toplama dahil
+                değil — hacim olduğundan düşük görünüyor. Tek dokunuşla boş günlere dağıtabilirsin:
+              </p>
+              <div style={{ color: "var(--muted)", fontSize: 11, marginBottom: 8 }}>
+                {weekly.unassigned.map((p) => p.name).join(", ")}
+              </div>
+              <button className="btn-primary" style={{ width: "100%", padding: 12 }} onClick={autoAssign}>
+                📅 Boş günlere otomatik ata
+              </button>
+            </div>
           )}
         </div>
       )}

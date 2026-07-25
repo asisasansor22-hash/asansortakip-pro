@@ -699,12 +699,30 @@ export default function App() {
 
   // Hazır program ekleme: önce gün atama penceresi aç (her gün ayrı program
   // olur; kullanıcı isterse eklerken haftanın gününe de atar).
+  // Gün sayısına göre önerilen haftalık dağılım (0=Pzt … 6=Paz).
+  // Antrenman günleri arasına dinlenme serpiştirilir; ardışık ağır günler
+  // toparlanmayı zorlar. 6 günde PPL×2 mantığıyla tek gün tam dinlenme kalır.
+  const SUGGESTED_DAYS = {
+    1: [0],
+    2: [0, 3],             // Pzt, Per
+    3: [0, 2, 4],          // Pzt, Çar, Cum
+    4: [0, 1, 3, 4],       // Pzt, Sal, Per, Cum
+    5: [0, 1, 2, 4, 5],    // Pzt, Sal, Çar, Cum, Cmt
+    6: [0, 1, 2, 3, 4, 5], // Pzt-Cmt
+    7: [0, 1, 2, 3, 4, 5, 6],
+  };
+
   function copyReady(rp) {
     const days = rp.days
       .map((d, idx) => idx)
       .filter((idx) => (rp.days[idx].exercises || []).some((id) => getExercise(id)));
     if (days.length === 0) { flash("Bu programda eklenebilir hareket yok"); return; }
-    setCopyPick({ rp, days, sel: {} });
+    // Günleri ÖNCEDEN ata: kullanıcı elle atamayı atlarsa haftalık hacim
+    // eksik hesaplanıyor ve program "yetersiz" görünüyordu.
+    const plan = SUGGESTED_DAYS[days.length] || [];
+    const sel = {};
+    days.forEach((di, k) => { if (plan[k] != null) sel[di] = plan[k]; });
+    setCopyPick({ rp, days, sel });
   }
 
   // Hazır programın TEK bir gününü ekle (yine gün atama penceresiyle)
@@ -898,8 +916,15 @@ export default function App() {
               <button className="icon-btn" onClick={() => setCopyPick(null)}>✕</button>
             </div>
             <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 12 }}>
-              Her gün ayrı bir program olarak eklenecek. İstersen şimdi haftanın gününe ata — sonradan da değiştirebilirsin.
+              Her gün ayrı bir program olarak eklenecek. Günler <b>önerilen dağılıma göre seçili geldi</b>
+              (arada dinlenme kalacak şekilde) — istersen değiştir.
             </div>
+            {copyPick.days.length > 1 && Object.values(copyPick.sel).filter((v) => v != null).length < copyPick.days.length && (
+              <div style={{ color: "#fbbf24", fontSize: 11.5, marginBottom: 10, lineHeight: 1.5 }}>
+                ⚠️ Güne atanmayan programlar <b>haftalık toplam hacme dahil edilmez</b> ve program olduğundan
+                düşük hacimli görünür. Tüm günleri atamanı öneririz.
+              </div>
+            )}
             {copyPick.days.map((di) => {
               const d = copyPick.rp.days[di];
               return (
