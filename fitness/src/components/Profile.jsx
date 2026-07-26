@@ -121,105 +121,8 @@ function Avatar({ avatar, email, onSaveAvatar }) {
   );
 }
 
-// Apple Sağlık (iPhone Kısayolu) ile antrenman içe aktarma bölümü
-function AppleHealth({ importUrl, importUrlSecure, onImportApple, onRepairKey }) {
-  const [fixing, setFixing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [copiedSec, setCopiedSec] = useState(false);
-  if (!importUrl) return null;
-  async function copy() {
-    try { await navigator.clipboard.writeText(importUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) {}
-  }
-  async function copySecure() {
-    try { await navigator.clipboard.writeText(importUrlSecure); setCopiedSec(true); setTimeout(() => setCopiedSec(false), 2000); } catch (e) {}
-  }
-  async function imp() { setBusy(true); try { await onImportApple(); } catch (e) {} setBusy(false); }
-  return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontWeight: 800, fontSize: 15 }}>🍎 Apple Sağlık'tan Aktar</div>
-        <button className="icon-btn" onClick={() => setOpen((v) => !v)}>{open ? "Gizle" : "Kurulum"}</button>
-      </div>
-      <p style={{ color: "var(--muted)", fontSize: 12, margin: "6px 0 10px" }}>
-        iPhone'daki antrenmanlarını bir kez kuracağın Apple Kısayolu ile buraya gönder.
-      </p>
-      <div className="row" style={{ gap: 8 }}>
-        <button className="btn-primary" style={{ flex: 1 }} disabled={busy} onClick={imp}>
-          {busy ? "Aktarılıyor…" : "⤵️ Şimdi içe aktar"}
-        </button>
-        <button className="icon-btn" onClick={copy}>{copied ? "Kopyalandı ✓" : "🔗 URL kopyala"}</button>
-      </div>
-      {open && (
-        <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Kısayol kurulumu (tek seferlik)</div>
-          <p style={{ color: "#fbbf24", fontSize: 11.5, margin: "0 0 8px", lineHeight: 1.5 }}>
-            ⚠️ iOS Kısayollar <b>tek tek antrenmanları okuyamıyor</b> — yalnızca günlük toplamları verebiliyor.
-            Bu yüzden aşağıdaki kurulum <b>günlük egzersiz dakikası ve aktif kaloriyi</b> aktarır.
-            Bunlar İlerleme sekmesinde ayrı bir bölümde görünür; antrenman geçmişine ve lig puanına karışmaz.
-          </p>
-          <ol style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.6, paddingLeft: 18, margin: 0 }}>
-            <li>iPhone'da <b>Kısayollar</b> → <b>+</b> ile yeni kısayol.</li>
-            <li><b>“Sağlık Örneklerini Bul”</b> ekle → Tür <b>Exercise Time</b> (Egzersiz Süresi),
-              Başlangıç Tarihi <b>önceki 7 gün</b> (“sonraki” DEĞİL), Birim <b>dk</b>, Grupla <b>Gün</b>.</li>
-            <li><b>“Her Biriyle Yinele”</b> ekle.</li>
-            <li>Yinele'nin içine <b>Sözlük</b> ekle — 3 anahtar:
-              <br /><code>kind</code> = <code>daily</code> (düz metin)
-              <br /><code>start</code> = Yinele Öğesi › <b>Başlangıç Tarihi</b>
-              <br /><code>durationMin</code> = Yinele Öğesi › <b>Değer</b></li>
-            <li>Yine Yinele'nin içine <b>“URL'nin İçeriğini Al”</b> ekle → Yöntem <b>POST</b>,
-              İstek Gövdesi <b>JSON</b> = Sözlük, URL = aşağıdaki <b>sana özel</b> bağlantı.</li>
-            <li>Kaydet ve çalıştır. Kalori de istersen aynı adımları <b>Active Calories</b> türü ve
-              <code>kcal</code> anahtarıyla tekrarla — uygulama ikisini aynı günde birleştirir.</li>
-          </ol>
-          <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, marginTop: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
-            {importUrl}
-          </div>
-          <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8 }}>
-            🔒 Bu bağlantı <b>sana özeldir</b>, kimseyle paylaşma. Çalışması için veritabanı kuralında
-            <code> /fitness/imports</code> düğümü açık olmalı (anahtar tahmin edilemez olduğu için korunur).
-          </p>
-          {importUrlSecure && (
-            <details style={{ marginTop: 10 }}>
-              <summary style={{ color: "var(--accent)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                Daha güvenli yöntem (Cloud Function) — isteğe bağlı
-              </summary>
-              <p style={{ color: "var(--muted)", fontSize: 11, margin: "8px 0" }}>
-                <code>appleImport</code> fonksiyonu deploy edildiyse aşağıdaki adresi kullan. Bu yöntemde
-                token sunucuda doğrulanır ve veritabanında herkese açık yazma düğümüne gerek kalmaz.
-                Uygulama her iki yolu da okur; hangisini kullanırsan kullan çalışır.
-              </p>
-              <div style={{ background: "var(--card2)", borderRadius: 8, padding: 8, fontSize: 10, wordBreak: "break-all", color: "var(--muted)" }}>
-                {importUrlSecure}
-              </div>
-              <button className="btn-primary" style={{ width: "100%", padding: 12, marginTop: 8 }} onClick={copySecure}>
-                {copiedSec ? "✓ Kopyalandı — Kısayol'a yapıştır" : "📋 Güvenli URL'yi kopyala"}
-              </button>
-              {onRepairKey && (
-                <>
-                  <button className="btn-ghost" style={{ width: "100%", padding: 11, marginTop: 8 }}
-                    disabled={fixing}
-                    onClick={async () => { setFixing(true); try { await onRepairKey(); } catch (e) {} setFixing(false); }}>
-                    {fixing ? "Onarılıyor…" : "🔧 Bağlantıyı onar (yeni anahtar üret)"}
-                  </button>
-                  <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
-                    Sunucu <b>“yetki yok”</b> diyorsa buna bas: yeni bir anahtar üretilir ve
-                    veritabanına yazıldığı <b>doğrulanır</b>. Sonra yukarıdaki URL'yi tekrar kopyalayıp
-                    Kısayol'a yapıştır (eski URL geçersiz olur).
-                  </p>
-                </>
-              )}
-            </details>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, importUrl, importUrlSecure, onImportApple, onRepairKey, history = [] }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, history = [] }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   return (
     <div>
@@ -242,7 +145,6 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       <div style={{ marginBottom: 16 }}><Achievements history={history} /></div>
 
-      {importUrl && <AppleHealth importUrl={importUrl} importUrlSecure={importUrlSecure} onImportApple={onImportApple} onRepairKey={onRepairKey} />}
 
       <div className="section-title">Tercihleri güncelle</div>
       <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 12 }}>

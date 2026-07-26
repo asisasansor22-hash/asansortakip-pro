@@ -560,48 +560,6 @@ export async function dbSet(key, value) {
   await dbSetR(key, value);
 }
 
-// --- Apple Sağlık içe aktarma (iPhone Kısayolu köprüsü) ---
-// iPhone'daki Kısayol, Firebase kimlik doğrulaması YAPAMADIĞI için antrenmanları
-// token gerektirmeden /fitness/imports/{key} altına gönderir. key kullanıcıya
-// özel ve tahmin edilemezdir. Uygulama (kimlikli) kendi kutusunu okuyup siler.
-export function importInboxUrl(key) {
-  return FIREBASE_DB_URL + "/fitness/imports/" + encodeURIComponent(key) + ".json";
-}
-
-// GÜVENLİ Apple içe-aktarma köprüsü (Cloud Function). Her kullanıcının kendi
-// token'ı = uid + "." + gizli. Kısayol bu URL'ye POST eder; fonksiyon token'ı
-// sunucuda doğrulayıp veriyi yalnız o kullanıcının kendi düğümüne yazar.
-var CF_BASE = "https://us-central1-" + firebaseConfig.projectId + ".cloudfunctions.net";
-export function appleImportToken(secret) {
-  var u = auth.currentUser;
-  if (!u || !secret) return null;
-  return u.uid + "." + secret;
-}
-export function appleImportUrl(secret) {
-  var token = appleImportToken(secret);
-  if (!token) return null;
-  return CF_BASE + "/appleImport?token=" + encodeURIComponent(token);
-}
-export async function importInboxRead(key) {
-  try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + "/fitness/imports/" + encodeURIComponent(key) + ".json";
-    if (token) url += "?auth=" + token;
-    var res = await fetch(url);
-    if (!res.ok) return null;
-    var d = await res.json();
-    return (d && typeof d === "object") ? d : null;
-  } catch (e) { return null; }
-}
-export async function importInboxClear(key) {
-  try {
-    var token = await getToken();
-    var url = FIREBASE_DB_URL + "/fitness/imports/" + encodeURIComponent(key) + ".json";
-    if (token) url += "?auth=" + token;
-    await fetch(url, { method: "DELETE" });
-  } catch (e) {}
-}
-
 // Sonuç dönen yazma: true = buluta yazıldı, false = başarısız (eşitleme
 // bekleyen olarak işaretlenmeli).
 export async function dbSetR(key, value) {

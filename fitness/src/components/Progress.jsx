@@ -116,45 +116,7 @@ const MEASURES = [
   { key: "thigh", label: "Bacak", unit: "cm" },
 ];
 
-// 🍎 Apple günlük aktivite — antrenman geçmişinden AYRI gösterilir.
-// Lig puanına, seriye ve "toplam antrenman" sayısına dahil DEĞİLDİR.
-function AppleDaily({ daily }) {
-  const rows = Object.keys(daily || {}).sort().reverse().slice(0, 14)
-    .map((k) => ({ k, ...daily[k] }));
-  if (rows.length === 0) return null;
-  const maxMin = Math.max(30, ...rows.map((r) => r.min || 0));
-  return (
-    <>
-      <div className="section-title">🍎 Apple Günlük Aktivite</div>
-      <p style={{ color: "var(--muted)", fontSize: 11.5, marginTop: -4, marginBottom: 10 }}>
-        Apple Sağlık'tan gelen günlük egzersiz dakikası ve aktif kalori.
-        <b> Antrenman geçmişine ve GYMO Ligi puanına dahil edilmez</b> — bunlar gün toplamıdır, ayrı antrenman değil.
-      </p>
-      <div className="card" style={{ marginBottom: 16, padding: 0, overflow: "hidden" }}>
-        {rows.map((r, i) => (
-          <div key={r.k} style={{ padding: "9px 12px", borderTop: i ? "1px solid var(--line)" : "none" }}>
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-              <span style={{ color: "var(--muted)" }}>
-                {new Date(r.t || Date.parse(r.k)).toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}
-              </span>
-              <span style={{ fontWeight: 700 }}>
-                {r.min ? r.min + " dk" : "–"}
-                {r.kcal ? <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {r.kcal} kcal</span> : null}
-              </span>
-            </div>
-            {r.min > 0 && (
-              <div style={{ height: 5, background: "var(--card2)", borderRadius: 999, marginTop: 5 }}>
-                <div style={{ width: Math.min(100, (r.min / maxMin) * 100) + "%", height: "100%", background: "var(--accent2)", borderRadius: 999 }} />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-export default function Progress({ data, history = [], appleDaily = {}, onSave }) {
+export default function Progress({ data, history = [], onSave }) {
   const weights = (data && data.weights) || [];
   const measures = (data && data.measures) || [];
 
@@ -542,20 +504,16 @@ export default function Progress({ data, history = [], appleDaily = {}, onSave }
         </div>
       )}
 
-      <AppleDaily daily={appleDaily} />
-
-      {/* Son antrenmanlar (manuel + Apple Sağlık) */}
+      {/* Son antrenmanlar */}
       {history.length > 0 && (
         <>
           <div className="section-title">Son Antrenmanlar</div>
           {history.slice(0, 8).map((s, k) => (
             <div key={s.id || k} className="card" style={{ marginBottom: 8, padding: 12 }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ fontWeight: 700, fontSize: 14 }}>{s.source === "apple" ? "🍎 " : ""}{s.program || "Antrenman"}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{s.program || "Antrenman"}</div>
                 <span className="pill" style={{ fontSize: 12 }}>
-                  {s.source === "apple"
-                    ? ([s.durationMin ? s.durationMin + " dk" : null, s.kcal ? s.kcal + " kcal" : null].filter(Boolean).join(" · ") || "Apple")
-                    : (((s.sets && s.sets.length) || 0) + " set")}
+                  {((s.sets && s.sets.length) || 0) + " set"}
                 </span>
               </div>
               <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>{fmtDay(s.date)}</div>

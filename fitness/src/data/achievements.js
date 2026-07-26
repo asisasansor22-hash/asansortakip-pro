@@ -5,12 +5,11 @@ const firstInt = (s) => { const m = String(s || "").match(/\d+/); return m ? par
 
 export function achievementStats(history) {
   const list = Array.isArray(history) ? history : [];
-  let sets = 0, vol = 0, apple = false;
+  let sets = 0, vol = 0;
   list.forEach((s) => {
     const ss = Array.isArray(s.sets) ? s.sets : [];
     sets += ss.length;
     ss.forEach((st) => { vol += (Number(st.weight) || 0) * firstInt(st.reps); });
-    if (s.source === "apple") apple = true;
   });
   const days = new Set(list.map((s) => dayKey(s.date)));
   const t0 = dayKey(Date.now());
@@ -20,7 +19,7 @@ export function achievementStats(history) {
   const weekStart = t0 - ((new Date().getDay() + 6) % 7) * DAY;
   let week = 0;
   days.forEach((d) => { if (d >= weekStart) week++; });
-  return { sessions: list.length, sets, vol: Math.round(vol), streak, week, apple: apple ? 1 : 0 };
+  return { sessions: list.length, sets, vol: Math.round(vol), streak, week };
 }
 
 // need: eşik; metric: stats anahtarı. earned = stats[metric] >= need
@@ -40,7 +39,6 @@ export const ACHIEVEMENTS = [
   { id: "vol50", emoji: "🚀", name: "50 Ton", metric: "vol", need: 50000, desc: "50.000 kg toplam tonaj" },
   { id: "week3", emoji: "📅", name: "Haftalık Hedef", metric: "week", need: 3, desc: "Bir haftada 3 antrenman" },
   { id: "week5", emoji: "🗓️", name: "Tam Hafta", metric: "week", need: 5, desc: "Bir haftada 5 antrenman" },
-  { id: "apple", emoji: "🍎", name: "Bağlantılı", metric: "apple", need: 1, desc: "Apple Sağlık'tan antrenman aktar" },
 ];
 
 export function computeAchievements(history) {
