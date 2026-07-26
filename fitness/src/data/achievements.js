@@ -1,16 +1,15 @@
 // Rozetler / başarımlar — antrenman geçmişinden hesaplanır (dış servis yok).
+//
+// totalsOf arşivlenmiş (özet) seansları da sayar; böylece eski antrenmanlar
+// sıkıştırılsa bile kazanılmış bir rozet geri alınmaz.
+import { totalsOf } from "./history";
+
 const DAY = 86400000;
 const dayKey = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
-const firstInt = (s) => { const m = String(s || "").match(/\d+/); return m ? parseInt(m[0], 10) : 0; };
 
 export function achievementStats(history) {
   const list = Array.isArray(history) ? history : [];
-  let sets = 0, vol = 0;
-  list.forEach((s) => {
-    const ss = Array.isArray(s.sets) ? s.sets : [];
-    sets += ss.length;
-    ss.forEach((st) => { vol += (Number(st.weight) || 0) * firstInt(st.reps); });
-  });
+  const { sets, vol } = totalsOf(list);
   const days = new Set(list.map((s) => dayKey(s.date)));
   const t0 = dayKey(Date.now());
   let streak = 0;
@@ -19,7 +18,7 @@ export function achievementStats(history) {
   const weekStart = t0 - ((new Date().getDay() + 6) % 7) * DAY;
   let week = 0;
   days.forEach((d) => { if (d >= weekStart) week++; });
-  return { sessions: list.length, sets, vol: Math.round(vol), streak, week };
+  return { sessions: list.length, sets, vol, streak, week };
 }
 
 // need: eşik; metric: stats anahtarı. earned = stats[metric] >= need

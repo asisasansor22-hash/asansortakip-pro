@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise, REGIONS } from "../data/exercises";
 import { dbGet, dbSet } from "../firebase";
 import DeloadCard from "./DeloadCard";
+import { setCountOf, bestOf, isArchived } from "../data/history";
 
 // Fotoğrafı cihazda küçült (en uzun kenar ~900px, JPEG) — DB'de yer kaplamasın
 function resizeImage(file, maxDim = 900, quality = 0.72) {
@@ -242,16 +243,17 @@ export default function Progress({ data, history = [], onSave }) {
     weeks.forEach((w, i) => { idx[w.ws] = i; });
     let totalSets = 0, thisWeek = 0;
     (history || []).forEach((s) => {
-      if (!s.sets) return;
       const ws = weekStart(s.date);
-      s.sets.forEach((st) => {
+      const n = setCountOf(s); // arşivlenmiş seansta da doğru sayı
+      // 8 haftalık çubuklar son seansları kapsar; arşiv satırları (100'den eski)
+      // zaten bu pencerenin dışında kalır, set dökümleri olmasa da sorun olmaz.
+      (Array.isArray(s.sets) ? s.sets : []).forEach((st) => {
         const w = Number(st.weight) || 0;
         const r = firstInt(st.reps) || 0;
-        const vol = w * r;
-        if (idx[ws] != null) { weeks[idx[ws]].vol += vol; weeks[idx[ws]].sets += 1; }
+        if (idx[ws] != null) { weeks[idx[ws]].vol += w * r; weeks[idx[ws]].sets += 1; }
       });
-      if (ws === now) thisWeek += s.sets.length;
-      totalSets += s.sets.length;
+      if (ws === now) thisWeek += n;
+      totalSets += n;
     });
     const bars = weeks.map((w) => ({ label: fmtDay(w.ws).split(" ")[0], v: Math.round(w.vol) }));
     return { bars, thisWeek, totalSets, sessions: (history || []).length };
@@ -275,9 +277,19 @@ export default function Progress({ data, history = [], onSave }) {
   }, [history]);
 
   // --- Kişisel rekorlar (geçmişten) ---
+  // Arşivlenmiş seanslarda set dökümü yoktur ama harekete göre en iyi 1RM
+  // saklanır — rekor bu yüzden eski antrenmanlar sıkışsa da kaybolmaz.
+  // Sadece "en iyi set: X kg × Y" ayrıntısı arşivde yoktur (w/r = null).
   const prs = useMemo(() => {
     const best = {};
     (history || []).forEach((s) => {
+      if (isArchived(s)) {
+        Object.entries(bestOf(s)).forEach(([exId, e1rm]) => {
+          const cur = best[exId];
+          if (!cur || e1rm > cur.e1rm) best[exId] = { exId, w: null, r: null, e1rm };
+        });
+        return;
+      }
       (s.sets || []).forEach((st) => {
         const w = Number(st.weight);
         const r = firstInt(st.reps);
@@ -587,7 +599,9 @@ export default function Progress({ data, history = [], onSave }) {
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{ex ? ex.name : p.exId}</div>
                 <span className="pill musc-p" style={{ fontSize: 12 }}>~{p.e1rm} kg 1RM</span>
               </div>
-              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>En iyi set: {p.w} kg × {p.r} tekrar</div>
+              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
+                {p.w && p.r ? "En iyi set: " + p.w + " kg × " + p.r + " tekrar" : "Arşivlenmiş antrenmandan"}
+              </div>
             </div>
           );
         })

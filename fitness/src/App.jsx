@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedCommentsGet, setPublicAvatar, lbPublish, dirPublish, dmMetaGet } from "./firebase";
 import { dmSeenGet } from "./components/Messages";
 import { earnedCount } from "./data/achievements";
+import { compactHistory, totalsOf, bestOf } from "./data/history";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -31,7 +32,9 @@ function uid() {
   return "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 const DAY_SHORT = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-const MAX_HISTORY = 60; // saklanan antrenman geçmişi üst sınırı
+// Geçmiş sınırı artık burada değil: data/history.js son 100 seansı tam detayla,
+// öncesini özet (arşiv) satırı olarak tutar. Böylece toplam sayı, tonaj, seri,
+// rozet ve rekorlar silinmez.
 
 // GYMO Ligi (liderlik) istatistikleri: geçmişten seri/hafta/toplam/tonaj hesapla
 const DAY_MS = 86400000;
@@ -46,13 +49,9 @@ function computeLbStats(hist) {
   const weekStart = t0 - ((new Date().getDay() + 6) % 7) * DAY_MS;
   let week = 0;
   list.forEach((s) => { if (dayKey0(s.date) >= weekStart) week++; });
-  let vol = 0;
-  list.forEach((s) => (s.sets || []).forEach((st) => {
-    const w = Number(st.weight) || 0;
-    const m = String(st.reps || "").match(/\d+/);
-    vol += w * (m ? parseInt(m[0], 10) : 0);
-  }));
-  return { streak, week, total: list.length, vol: Math.round(vol), badges: earnedCount(list) };
+  // totalsOf arşiv satırlarını da sayar → lig tonajı geçmiş sıkışsa da düşmez
+  const { vol } = totalsOf(list);
+  return { streak, week, total: list.length, vol, badges: earnedCount(list) };
 }
 
 // Profil cihazda da saklanır (Firebase yazılamasa bile her açılışta sormamak için)
@@ -346,12 +345,14 @@ export default function App() {
     if (cloudReady.current) dbSet("profile", p);
   }
 
-  // Antrenman oturumunu kaydet (en yeni başta, son 50 tutulur).
+  // Antrenman oturumunu kaydet (en yeni başta).
+  // compactHistory: son 100 seans tam detay, öncesi özet satır — hiçbir seans
+  // tamamen silinmez (bkz. data/history.js).
   // Bulut okunamadıysa (cloudReady=false) buluta YAZMA — yoksa yeni oturum
   // buluttaki tüm geçmişi ezer. Bağlantı gelince geçmiş yeniden okunur.
   function saveWorkout(session) {
     setHistory((prev) => {
-      const next = [session, ...prev].slice(0, MAX_HISTORY);
+      const next = compactHistory([session, ...prev]);
       lsSetHist(next); // cihaza her zaman (güvenli)
       if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
       return next;
@@ -390,20 +391,14 @@ export default function App() {
     });
   }
 
-  // Bir hareketteki tüm zamanların en iyi tahmini 1RM'i (rekor tespiti için)
+  // Bir hareketteki tüm zamanların en iyi tahmini 1RM'i (rekor tespiti için).
+  // Arşivlenmiş seanslar da taranır — yoksa yıllar önceki bir rekor "unutulup"
+  // daha hafif bir set yanlışlıkla yeni rekor sayılırdı.
   function bestE1RM(exId) {
     let best = 0;
     for (const s of history) {
-      for (const st of (s.sets || [])) {
-        if (st.exId !== exId) continue;
-        const w = Number(st.weight);
-        const m = String(st.reps || "").match(/\d+/);
-        const r = m ? parseInt(m[0], 10) : 0;
-        if (w > 0 && r > 0) {
-          const e = Math.round(w * (1 + r / 30));
-          if (e > best) best = e;
-        }
-      }
+      const a = bestOf(s)[exId];
+      if (a > best) best = a;
     }
     return best;
   }
@@ -431,6 +426,48 @@ export default function App() {
       dbSet("schedule", schedule);
     }
   }, [programs, activeId, schedule, user]);
+
+  // --- Yedekleme ---
+  // snapshot: Profil'deki "Yedeği İndir" bunu JSON'a çevirip indirir.
+  function snapshot() {
+    return { programs, activeId, schedule, history, progress, favorites, profile, avatar };
+  }
+
+  // Yedekten geri yükle. Yalnızca dosyada BULUNAN alanlar değişir; eksik alanlar
+  // olduğu gibi kalır. programs/activeId/schedule yukarıdaki efektle kendiliğinden
+  // kaydedilir; geri kalanı burada açıkça kalıcılaştırılır.
+  async function restoreBackup(d) {
+    if (!user) return { success: false, error: "Önce giriş yapmalısın." };
+    try {
+      if (Array.isArray(d.programs)) setPrograms(normalizeList(d.programs));
+      if (d.activeId !== undefined) setActiveId(d.activeId || null);
+      if (d.schedule) setSchedule(normalizeSchedule(d.schedule));
+
+      if (Array.isArray(d.history)) {
+        const hist = compactHistory(d.history);
+        setHistory(hist);
+        lsSetHist(hist);
+        if (cloudReady.current) { dbSet("workouts", hist); lbPublish(computeLbStats(hist)); }
+      }
+      if (d.progress && typeof d.progress === "object") {
+        saveProgress({
+          weights: Array.isArray(d.progress.weights) ? d.progress.weights : [],
+          measures: Array.isArray(d.progress.measures) ? d.progress.measures : [],
+        });
+      }
+      if (Array.isArray(d.favorites)) {
+        setFavorites(d.favorites);
+        if (cloudReady.current) dbSet("favorites", d.favorites);
+      }
+      if (d.profile && typeof d.profile === "object") saveProfile(d.profile);
+      if (d.avatar !== undefined) saveAvatar(d.avatar || null);
+
+      edited.current = true; // kurtarma akışı bu değişikliği görsün
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Geri yükleme sırasında hata oluştu." };
+    }
+  }
 
   // --- Otomatik güncelleme: yeni sürüm yayınlandıysa algıla, bildir, yenile ---
   useEffect(() => {
@@ -761,7 +798,7 @@ export default function App() {
       {tab === "nutrition" && <Nutrition />}
       {tab === "progress" && <Progress data={progress} history={history} onSave={saveProgress} />}
       {tab === "feed" && <Social onDmSeen={() => setDmBump((b) => b + 1)} />}
-      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar} history={history} />}
+      {tab === "profile" && <Profile profile={profile} email={user && user.email} onSave={saveProfile} avatar={avatar} onSaveAvatar={saveAvatar} history={history} snapshot={snapshot} onRestore={restoreBackup} />}
 
       {resumeAsk && (
         <div style={{

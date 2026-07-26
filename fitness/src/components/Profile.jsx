@@ -4,6 +4,7 @@ import { firebaseLogout, changePassword, ADMIN_EMAIL, getDisplayName, setMyName 
 import PasswordInput from "./PasswordInput";
 import Admin from "./Admin";
 import Achievements from "./Achievements";
+import { downloadBackup, parseBackup, readFile, pickFields, fmtBackupDate } from "../utils/backup";
 
 function ChangePassword() {
   const [cur, setCur] = useState("");
@@ -121,6 +122,82 @@ function Avatar({ avatar, email, onSaveAvatar }) {
   );
 }
 
+// Yedekleme — tüm veriyi tek JSON dosyasına indir, istenirse geri yükle.
+// Geri yükleme ÜZERİNE YAZAR, o yüzden iki aşamalı: önce dosya okunup özeti
+// gösterilir, kullanıcı onaylamadan hiçbir şey değişmez.
+function Backup({ snapshot, onRestore }) {
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [pending, setPending] = useState(null); // { data, summary }
+  const [busy, setBusy] = useState(false);
+
+  function doExport() {
+    setErr(""); setPending(null);
+    try {
+      const d = downloadBackup(snapshot());
+      const n = Array.isArray(d.history) ? d.history.length : 0;
+      setMsg("Yedek indirildi ✓ (" + n + " antrenman)");
+    } catch (e) { setErr("İndirme başarısız oldu."); }
+  }
+
+  async function pickFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = ""; // aynı dosya tekrar seçilebilsin
+    if (!f) return;
+    setMsg(""); setErr(""); setPending(null);
+    try {
+      const res = parseBackup(await readFile(f));
+      if (!res.ok) { setErr(res.error); return; }
+      setPending(res);
+    } catch (x) { setErr("Dosya okunamadı."); }
+  }
+
+  async function confirmRestore() {
+    if (!pending) return;
+    setBusy(true);
+    const r = await onRestore(pickFields(pending.data));
+    setBusy(false);
+    setPending(null);
+    if (r && r.success) setMsg("Veriler geri yüklendi ✓");
+    else setErr((r && r.error) || "Geri yükleme başarısız oldu.");
+  }
+
+  const s = pending && pending.summary;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <button className="btn-primary" onClick={doExport}>⬇️ Yedeği İndir</button>
+
+      <label className="btn-ghost" style={{ cursor: "pointer", textAlign: "center", padding: 12 }}>
+        ⬆️ Yedekten Geri Yükle
+        <input type="file" accept="application/json,.json" style={{ display: "none" }} onChange={pickFile} />
+      </label>
+
+      {pending && (
+        <div className="card" style={{ padding: 12, borderColor: "var(--accent2)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Bu yedek yüklensin mi?</div>
+          <div style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.7 }}>
+            {s.at && <>📅 {fmtBackupDate(s.at)}<br /></>}
+            📋 {s.programs} program · 🏋️ {s.workouts} antrenman<br />
+            ⚖️ {s.weights} kilo kaydı · 📏 {s.measures} ölçüm
+          </div>
+          <p style={{ color: "var(--warn)", fontSize: 12, margin: "10px 0 0" }}>
+            ⚠️ Şu anki verilerinin <b>üzerine yazılır</b>. Emin değilsen önce mevcut hâlin yedeğini indir.
+          </p>
+          <div className="row" style={{ gap: 8, marginTop: 10 }}>
+            <button className="btn-primary" style={{ flex: 1 }} disabled={busy} onClick={confirmRestore}>
+              {busy ? "Yükleniyor..." : "Evet, geri yükle"}
+            </button>
+            <button className="btn-ghost" style={{ flex: 1 }} disabled={busy} onClick={() => setPending(null)}>Vazgeç</button>
+          </div>
+        </div>
+      )}
+
+      {err && <div className="err">{err}</div>}
+      {msg && <div style={{ color: "var(--ok)", fontSize: 13 }}>{msg}</div>}
+    </div>
+  );
+}
+
 // Katlanabilir bölüm — nadiren kullanılan formlar (ad, şifre) sürekli açık
 // durup sayfayı uzatmasın; başlığa dokununca açılsın.
 function Section({ title, sub, hint, children }) {
@@ -149,7 +226,7 @@ function Section({ title, sub, hint, children }) {
 }
 
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
-export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, history = [] }) {
+export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, history = [], snapshot, onRestore }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
   const [nameBump, setNameBump] = useState(0); // ad kaydedilince başlıktaki adı tazele
   return (
@@ -171,6 +248,13 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
         hint={"Yeni bir şifre belirle. (Şifreni unuttuysan giriş ekranındaki “Şifremi unuttum?”’u kullan.)"}>
         <ChangePassword />
       </Section>
+
+      {snapshot && onRestore && (
+        <Section title="💾 Yedekle & geri yükle" sub={history.length + " antrenman"}
+          hint="Tüm programların, antrenman geçmişin ve ölçümlerin tek bir dosyaya iner. Hesabına bir şey olursa bu dosyadan geri yüklersin. Dosyayı bulut deponda (iCloud, Drive) sakla.">
+          <Backup snapshot={snapshot} onRestore={onRestore} />
+        </Section>
+      )}
 
       {admin && (
         <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>
