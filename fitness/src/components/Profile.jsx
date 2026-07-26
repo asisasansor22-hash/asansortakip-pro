@@ -187,24 +187,11 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
       </p>
       <ProfileForm initial={profile} onSave={onSave} submitLabel="Güncelle" />
 
-      <button className="btn-ghost" style={{ width: "100%", marginTop: 20, padding: 14 }}
-        onClick={async () => {
-          try {
-            if ("serviceWorker" in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              await Promise.all(regs.map((r) => r.unregister()));
-            }
-            if (window.caches && caches.keys) {
-              const keys = await caches.keys();
-              await Promise.all(keys.map((k) => caches.delete(k)));
-            }
-          } catch (e) {}
-          window.location.reload();
-        }}>
-        🔄 Uygulamayı Güncelle
-      </button>
+      {/* "Uygulamayı Güncelle" düğmesi KALDIRILDI: App.jsx'teki otomatik
+          güncelleme (version.json + BUILD_ID karşılaştırması) açılışta,
+          90 sn'de bir ve uygulama öne geldiğinde zaten kontrol edip yeniliyor. */}
 
-      <button className="btn-ghost" style={{ width: "100%", marginTop: 10, padding: 14 }} onClick={firebaseLogout}>
+      <button className="btn-ghost" style={{ width: "100%", marginTop: 20, padding: 14 }} onClick={firebaseLogout}>
         Çıkış Yap
       </button>
     </div>
