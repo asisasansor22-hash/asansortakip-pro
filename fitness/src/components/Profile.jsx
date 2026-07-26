@@ -42,7 +42,7 @@ function ChangePassword() {
 }
 
 // Görünen ad — akış, lig, mesaj ve yorumlarda e-posta yerine bu ad görünür.
-function DisplayName() {
+function DisplayName({ onSaved }) {
   const [name, setName] = useState(() => getDisplayName());
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
@@ -56,7 +56,7 @@ function DisplayName() {
     setBusy(true);
     const res = await setMyName(nm);
     setBusy(false);
-    if (res.success) setMsg("Görünen adın güncellendi ✓");
+    if (res.success) { setMsg("Görünen adın güncellendi ✓"); if (onSaved) onSaved(); }
     else setErr(res.error || "Bir hata oluştu.");
   }
 
@@ -121,9 +121,37 @@ function Avatar({ avatar, email, onSaveAvatar }) {
   );
 }
 
+// Katlanabilir bölüm — nadiren kullanılan formlar (ad, şifre) sürekli açık
+// durup sayfayı uzatmasın; başlığa dokununca açılsın.
+function Section({ title, sub, hint, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="card" style={{ marginBottom: 10, padding: 0, overflow: "hidden" }}>
+      <button onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%", background: "none", color: "var(--text)", textAlign: "left",
+          padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, minHeight: 52,
+        }}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontWeight: 700, fontSize: 14 }}>{title}</span>
+          {sub && <span style={{ color: "var(--muted)", fontSize: 12, marginLeft: 8 }}>{sub}</span>}
+        </span>
+        <span style={{ color: "var(--muted)", fontSize: 13, flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0 14px 14px" }}>
+          {hint && <p style={{ color: "var(--muted)", fontSize: 12, margin: "0 0 10px" }}>{hint}</p>}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
 export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, history = [] }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
+  const [nameBump, setNameBump] = useState(0); // ad kaydedilince başlıktaki adı tazele
   return (
     <div>
       <h2>Profil</h2>
@@ -131,11 +159,18 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       {onSaveAvatar && <Avatar avatar={avatar} email={email} onSaveAvatar={onSaveAvatar} />}
 
-      <div className="section-title">Görünen ad</div>
-      <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
-        Akışta, GYMO Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.
-      </p>
-      <DisplayName />
+      {/* nameBump: ad kaydedilince Profile yeniden render olur ve başlıktaki
+          ad tazelenir. Section'a key VERİLMEZ — verilirse bölüm yeniden
+          kurulup kapanır ve "güncellendi" mesajı görünmeden kaybolur. */}
+      <Section title="👤 Görünen adı değiştir" sub={nameBump >= 0 ? getDisplayName() : ""}
+        hint="Akışta, GYMO Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.">
+        <DisplayName onSaved={() => setNameBump((n) => n + 1)} />
+      </Section>
+
+      <Section title="🔑 Şifreyi değiştir"
+        hint={"Yeni bir şifre belirle. (Şifreni unuttuysan giriş ekranındaki “Şifremi unuttum?”’u kullan.)"}>
+        <ChangePassword />
+      </Section>
 
       {admin && (
         <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>
@@ -151,12 +186,6 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
         Bu seçimler yalnızca <b>Hazır (otomatik) programları</b> filtreler. Kendi programını oluştururken hiçbir kısıtlama yoktur.
       </p>
       <ProfileForm initial={profile} onSave={onSave} submitLabel="Güncelle" />
-
-      <div className="section-title">Şifre Değiştir</div>
-      <p style={{ color: "var(--muted)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>
-        Yeni bir şifre belirle. (Şifreni unuttuysan giriş ekranındaki "Şifremi unuttum?"u kullan.)
-      </p>
-      <ChangePassword />
 
       <button className="btn-ghost" style={{ width: "100%", marginTop: 20, padding: 14 }}
         onClick={async () => {
