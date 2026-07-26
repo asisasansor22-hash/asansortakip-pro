@@ -318,6 +318,75 @@ select.input { appearance: none; }
 .fig-plank .forearm { transform: rotate(88deg); }
 @keyframes pk-breath { 0%,100% { transform: rotate(-72deg) translateY(8px); } 50% { transform: rotate(-72deg) translateY(11px); } }
 
+/* ================= EK HAREKET ANİMASYONLARI =================
+   Bu tipler daha önce yoktu; kürek/yan kaldırış/fly gibi hareketler
+   yanlış animasyona (deadlift, omuz presi…) düşüyordu. Eklem dönme
+   merkezleri yukarıdaki .exfig kurallarından gelir. */
+
+/* ---- KÜREK ÇEKME (row) — gövde öne eğik, dirsek geriye çeker ---- */
+.fig-row .upperbody { transform: rotate(34deg); }
+.fig-row .leg       { transform: rotate(-8deg); }
+.fig-row .shin      { transform: rotate(10deg); }
+.fig-row .arm       { animation: rw-arm 1.6s ease-in-out infinite; }
+.fig-row .forearm   { animation: rw-fore 1.6s ease-in-out infinite; }
+@keyframes rw-arm  { 0%,100% { transform: rotate(6deg); }  50% { transform: rotate(-26deg); } }
+@keyframes rw-fore { 0%,100% { transform: rotate(0); }     50% { transform: rotate(-72deg); } }
+
+/* ---- YAN KALDIRIŞ (lateralraise) — kol yanlardan omuz hizasına ---- */
+.fig-lateralraise .arm     { animation: lr-arm 1.7s ease-in-out infinite; }
+.fig-lateralraise .forearm { transform: rotate(6deg); }
+@keyframes lr-arm { 0%,100% { transform: rotate(4deg); } 50% { transform: rotate(-84deg); } }
+
+/* ---- FLY / KELEBEK — kollar açılıp kapanır (yatarak) ---- */
+.fig-fly .figure  { transform: rotate(-90deg) translateY(-26px); }
+.fig-fly .leg     { transform: rotate(28deg); }
+.fig-fly .shin    { transform: rotate(-55deg); }
+.fig-fly .arm     { animation: fl-arm 2s ease-in-out infinite; }
+.fig-fly .forearm { transform: rotate(12deg); }   /* dirsek hafif bükük sabit */
+@keyframes fl-arm { 0%,100% { transform: rotate(-58deg); } 50% { transform: rotate(4deg); } }
+
+/* ---- BACAK BUKME (legcurl) — yüzüstü, diz bükülür ---- */
+.fig-legcurl .figure { transform: rotate(-90deg) translateY(-24px); }
+.fig-legcurl .arm    { transform: rotate(-38deg); }
+.fig-legcurl .shin   { animation: lc-shin 1.6s ease-in-out infinite; }
+@keyframes lc-shin { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-104deg); } }
+
+/* ---- BACAK ITME/EXTENSION (legextension) — oturur, diz açılır ---- */
+.fig-legextension .upperbody { transform: rotate(-6deg); }
+.fig-legextension .leg       { transform: rotate(74deg); }
+.fig-legextension .arm       { transform: rotate(24deg); }
+.fig-legextension .shin      { animation: le-shin 1.6s ease-in-out infinite; }
+@keyframes le-shin { 0%,100% { transform: rotate(-88deg); } 50% { transform: rotate(-4deg); } }
+
+/* ---- HIP THRUST / KÖPRÜ — sırtüstü, kalça yukarı ---- */
+.fig-hipthrust .figure    { transform: rotate(-90deg) translateY(-30px); }
+.fig-hipthrust .leg       { transform: rotate(52deg); }
+.fig-hipthrust .shin      { transform: rotate(-96deg); }
+.fig-hipthrust .arm       { transform: rotate(-30deg); }
+.fig-hipthrust .upperbody { animation: ht-up 1.8s ease-in-out infinite; }
+@keyframes ht-up { 0%,100% { transform: rotate(0); } 50% { transform: rotate(-26deg); } }
+
+/* ---- TRICEPS PUSHDOWN — dirsek gövdede sabit, ön kol aşağı iter ---- */
+.fig-pushdown .arm     { transform: rotate(8deg); }
+.fig-pushdown .forearm { animation: pd-fore 1.4s ease-in-out infinite; }
+@keyframes pd-fore { 0%,100% { transform: rotate(-96deg); } 50% { transform: rotate(-4deg); } }
+
+/* ---- BAŞ ÜSTÜ TRİCEPS (tricepsext) — kol yukarıda, ön kol açılır ---- */
+.fig-tricepsext .arm     { transform: rotate(-158deg); }
+.fig-tricepsext .forearm { animation: te-fore 1.6s ease-in-out infinite; }
+@keyframes te-fore { 0%,100% { transform: rotate(112deg); } 50% { transform: rotate(6deg); } }
+
+/* ---- PARALEL DIPS — gövde dik, dirsek bükülür, vücut iner ---- */
+.fig-dip .figure  { animation: dp-body 1.8s ease-in-out infinite; }
+.fig-dip .leg     { transform: rotate(-14deg); }
+.fig-dip .shin    { transform: rotate(38deg); }
+.fig-dip .arm     { animation: dp-arm 1.8s ease-in-out infinite; }
+.fig-dip .forearm { animation: dp-fore 1.8s ease-in-out infinite; }
+@keyframes dp-body { 0%,100% { transform: translateY(0); }  50% { transform: translateY(17px); } }
+@keyframes dp-arm  { 0%,100% { transform: rotate(0); }      50% { transform: rotate(24deg); } }
+@keyframes dp-fore { 0%,100% { transform: rotate(-4deg); }  50% { transform: rotate(-48deg); } }
+
+
 @media (prefers-reduced-motion: reduce) {
   .exfig * { animation: none !important; }
 }

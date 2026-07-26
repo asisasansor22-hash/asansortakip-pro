@@ -46,7 +46,9 @@ function PhotoFlip({ frames, size, onError, still }) {
 //   omuz (100,78) · dirsek (100,104) · el (100,132)
 //   kalça (100,130) · diz (100,168) · ayak bileği (100,205)
 
-const LYING = { benchpress: true, crunch: true };
+// Yatarak yapılanlar → altına sehpa/mat çizilir, zemin çizgisi çizilmez.
+const LYING = { benchpress: true, crunch: true, fly: true, legcurl: true, hipthrust: true };
+// Yere paralel, yerde yapılanlar → geniş zemin çizgisi.
 const ON_FLOOR = { pushup: true, plank: true };
 
 const SKIN = "#b9c2cb";     // gri ten
