@@ -5,6 +5,67 @@ import PasswordInput from "./PasswordInput";
 import Admin from "./Admin";
 import Achievements from "./Achievements";
 import { downloadBackup, parseBackup, readFile, pickFields, fmtBackupDate } from "../utils/backup";
+import { remOn, setRemOn, remTime, setRemTime } from "../utils/reminder";
+import { notifSupported, notifPermission, requestNotif } from "../utils/alerts";
+
+// Antrenman günü hatırlatması ayarları.
+// Uygulama içi şerit her zaman açıktır (ReminderBar); buradaki anahtar
+// yalnızca BİLDİRİMİ kontrol eder — sınırı da açıkça yazar.
+function ReminderSettings() {
+  const [on, setOn] = useState(() => remOn());
+  const [time, setTime] = useState(() => remTime());
+  const [perm, setPerm] = useState(() => notifPermission());
+
+  async function toggle() {
+    if (!on) {
+      if (!notifSupported()) return;
+      let p = notifPermission();
+      if (p === "default") p = await requestNotif();
+      setPerm(p);
+      if (p !== "granted") return; // izin yoksa açık göstermenin anlamı yok
+    }
+    const v = !on;
+    setOn(v); setRemOn(v);
+  }
+
+  function pickTime(e) {
+    const v = e.target.value;
+    setTime(v); setRemTime(v);
+  }
+
+  const blocked = notifSupported() && perm === "denied";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <label className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 14 }}>🔔 Bildirim gönder</span>
+        <input type="checkbox" checked={on} onChange={toggle} disabled={!notifSupported() || blocked}
+          style={{ width: 22, height: 22, accentColor: "var(--accent)" }} />
+      </label>
+
+      <label className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 14 }}>⏰ Saat</span>
+        <input className="input" type="time" value={time} onChange={pickTime}
+          style={{ width: 130, textAlign: "center" }} />
+      </label>
+
+      {!notifSupported() && (
+        <div style={{ color: "var(--muted)", fontSize: 12 }}>Bu tarayıcı bildirimi desteklemiyor.</div>
+      )}
+      {blocked && (
+        <div style={{ color: "var(--warn)", fontSize: 12 }}>
+          Bildirim izni reddedilmiş. Tarayıcı/telefon ayarlarından GYMO için bildirimlere izin ver.
+        </div>
+      )}
+
+      <p style={{ color: "var(--muted)", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
+        <b>Nasıl çalışır:</b> Uygulama açıkken (arka planda da olur) seçtiğin saatte bildirim düşer.
+        Uygulama tamamen kapalıysa tarayıcı bildirimi gönderemez — bunun için sunucu gerekir.
+        Ama <b>uygulamayı her açtığında</b> o günkü antrenmanın en üstte şerit olarak çıkar; bu her koşulda çalışır.
+        {" "}iPhone'da bildirimler yalnızca uygulamayı <b>ana ekrana eklediysen</b> gelir.
+      </p>
+    </div>
+  );
+}
 
 function ChangePassword() {
   const [cur, setCur] = useState("");
@@ -247,6 +308,11 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
       <Section title="🔑 Şifreyi değiştir"
         hint={"Yeni bir şifre belirle. (Şifreni unuttuysan giriş ekranındaki “Şifremi unuttum?”’u kullan.)"}>
         <ChangePassword />
+      </Section>
+
+      <Section title="⏰ Antrenman günü hatırlatması" sub={remOn() ? remTime() : "kapalı"}
+        hint="Planında bugüne bir program atanmışsa ve henüz yapmadıysan hatırlatır.">
+        <ReminderSettings />
       </Section>
 
       {snapshot && onRestore && (

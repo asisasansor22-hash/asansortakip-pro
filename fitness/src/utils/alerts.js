@@ -112,6 +112,27 @@ export async function showRestDone(exName) {
   } catch (e) {}
 }
 
+// Antrenman günü hatırlatması (bkz. utils/reminder.js).
+// Dinlenme bildirimiyle aynı izni kullanır ama farklı "tag" taşır ki
+// biri diğerinin yerini almasın.
+export async function showWorkoutReminder(programName) {
+  if (!notifOn() || notifPermission() !== "granted") return;
+  const title = "🏋️ Bugün antrenman günün";
+  const body = programName ? programName + " seni bekliyor" : "Planındaki antrenmanı yapmayı unutma";
+  const opts = {
+    body, tag: "gymo-workout-day", renotify: false,
+    icon: "/pwa-192.png", badge: "/pwa-192.png",
+    vibrate: [120, 60, 120], silent: false,
+  };
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
+    }
+    new Notification(title, opts);
+  } catch (e) {}
+}
+
 // Hepsi birden
 export function alertRestDone(exName) {
   vibrateRestDone();

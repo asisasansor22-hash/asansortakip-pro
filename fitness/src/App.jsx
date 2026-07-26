@@ -15,6 +15,7 @@ import Progress from "./components/Progress";
 import Social from "./components/Social";
 import PublicPost from "./components/PublicPost";
 import WorkoutMode from "./components/WorkoutMode";
+import ReminderBar from "./components/ReminderBar";
 import { getExercise } from "./data/exercises";
 import { spotifyHandleRedirect } from "./spotify";
 
@@ -776,6 +777,12 @@ export default function App() {
             : "👤"}
         </button>
       </div>
+
+      {/* Bugünkü antrenman şeridi — hangi sekmede olursan ol görünür */}
+      {user && !workout && (
+        <ReminderBar schedule={schedule} programs={programs} history={history}
+          onStart={(p) => { setResumeState(null); lsClearActiveWorkout(); setWorkout(p); }} />
+      )}
 
       {tab === "regions" && <BodyRegions onAddToProgram={addToProgram} favorites={favorites} onToggleFavorite={toggleFavorite} />}
       {tab === "ready" && <ReadyPrograms onCopy={copyReady} onCopyDay={copyReadyDay} profile={profile} />}
