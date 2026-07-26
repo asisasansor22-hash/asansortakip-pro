@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { NUTRITION_PLANS } from "../data/nutrition";
-import { SUPPLEMENTS } from "../data/supplements";
+import { SUPPLEMENTS, TIERS } from "../data/supplements";
 import CalorieCalculator from "./CalorieCalculator";
 import NutritionDiary from "./NutritionDiary";
 
@@ -52,35 +52,66 @@ function DietPlans() {
 
 function Supplements() {
   const [open, setOpen] = useState(null);
-  const renk = (k) => k === "Güçlü" ? "#10b981" : k === "Orta" ? "#f59e0b" : "#94a3b8";
+  const renk = (k) => k === "Güçlü" ? "#10b981" : k === "Orta" ? "#f59e0b" : k === "Yok" ? "#ef4444" : "#94a3b8";
+  const tierRenk = { iyi: "#10b981", kosullu: "#f59e0b", gereksiz: "#ef4444" };
+
   return (
     <div>
-      <p style={{ color: "var(--muted)", marginTop: -4 }}>Kanıta dayalı supplement rehberi — dozaj ve araştırma notlarıyla.</p>
-      {SUPPLEMENTS.map((s) => {
-        const isOpen = open === s.id;
+      <p style={{ color: "var(--muted)", marginTop: -4 }}>
+        Kanıt düzeyine göre sıralanmış takviye rehberi — dozaj, çekince ve araştırma notlarıyla.
+      </p>
+
+      {/* Beklenti ayarı: takviye asıl işin yerine geçmez */}
+      <div className="card" style={{ marginBottom: 14, borderColor: "var(--accent2)" }}>
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>🎯 Önce şunu bil</div>
+        <p style={{ color: "var(--muted)", fontSize: 12.5, margin: 0, lineHeight: 1.6 }}>
+          Kas gelişiminin büyük kısmı <b>antrenman hacmi, aşamalı yüklenme, yeterli protein/kalori ve uykudan</b> gelir.
+          Takviye en iyi ihtimalle kenar süsüdür — aşağıdaki “işe yarar” listesindekiler bile tek başına fark yaratmaz.
+        </p>
+        <p style={{ color: "#fbbf24", fontSize: 12, margin: "10px 0 0", lineHeight: 1.6 }}>
+          ⚠️ <b>Pazarlama tuzağı:</b> “Kas protein sentezini %X artırır” iddiası tek başına bir şey ifade etmez.
+          Mitchell ve ark. (2014) akut protein sentezi yanıtı ile <b>16 haftalık gerçek kas büyümesi arasında
+          bağlantı bulamadı</b>. Bir ürün yalnızca bu veriyle pazarlanıyorsa, kas yaptığı kanıtlanmış değildir.
+        </p>
+      </div>
+
+      {TIERS.map((tier) => {
+        const list = SUPPLEMENTS.filter((s) => s.tier === tier.id);
+        if (!list.length) return null;
         return (
-          <div key={s.id} className="card" style={{ marginBottom: 12 }}>
-            <button onClick={() => setOpen(isOpen ? null : s.id)}
-              style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left" }}>
-              <div className="row" style={{ justifyContent: "space-between" }}>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>{s.emoji} {s.name}</div>
-                <span className="pill" style={{ color: renk(s.kanit) }}>Kanıt: {s.kanit}</span>
-              </div>
-              <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0" }}>{s.fayda}</p>
-            </button>
-            {isOpen && (
-              <div style={{ marginTop: 10 }}>
-                <div className="meal"><h4>💊 Dozaj</h4><p>{s.doz}</p></div>
-                <ul className="tips" style={{ marginTop: 6 }}>
-                  {s.notlar.map((t, i) => <li key={i}>• {t}</li>)}
-                </ul>
-              </div>
-            )}
+          <div key={tier.id} style={{ marginBottom: 6 }}>
+            <div className="section-title" style={{ color: tierRenk[tier.id] }}>{tier.label}</div>
+            <p style={{ color: "var(--muted)", fontSize: 12, margin: "-4px 4px 10px" }}>{tier.desc}</p>
+            {list.map((s) => {
+              const isOpen = open === s.id;
+              return (
+                <div key={s.id} className="card" style={{ marginBottom: 10, borderColor: isOpen ? tierRenk[tier.id] : undefined }}>
+                  <button onClick={() => setOpen(isOpen ? null : s.id)}
+                    style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left" }}>
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, minWidth: 0 }}>{s.emoji} {s.name}</div>
+                      <span className="pill" style={{ color: renk(s.kanit), flexShrink: 0 }}>Kanıt: {s.kanit}</span>
+                    </div>
+                    <p style={{ color: "var(--muted)", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>{s.fayda}</p>
+                  </button>
+                  {isOpen && (
+                    <div style={{ marginTop: 10 }}>
+                      <div className="meal"><h4>💊 Dozaj</h4><p>{s.doz}</p></div>
+                      <ul className="tips" style={{ marginTop: 6 }}>
+                        {s.notlar.map((t, i) => <li key={i}>• {t}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         );
       })}
-      <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", marginTop: 16 }}>
-        ⚠️ Supplementler dengeli beslenmenin yerini tutmaz. Sağlık sorunun varsa doktora danış.
+
+      <p style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
+        Kaynaklar: ISSN position stand'leri, sistematik derlemeler ve meta-analizler.<br />
+        ⚠️ Takviyeler dengeli beslenmenin yerini tutmaz. İlaç kullanıyorsan veya sağlık sorunun varsa doktoruna danış.
       </p>
     </div>
   );
