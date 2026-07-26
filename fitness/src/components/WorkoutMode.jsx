@@ -3,8 +3,9 @@ import { getExercise, getAlternatives, exercisesByRegion, subOf } from "../data/
 import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
 import SpotifyBar from "./SpotifyBar";
-
-const REST_SEC = 60;
+import { restFor, clampRest } from "../data/rest";
+import { alertRestDone, primeAudio, keepAwake, releaseAwake,
+         notifOn, setNotifOn, notifPermission, requestNotif, soundOn, setSoundOn } from "../utils/alerts";
 
 // Bölgeye göre dinamik ısınma önerileri (antrenman öncesi ~5 dk)
 const WARMUPS = {
@@ -87,6 +88,11 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const log = useRef(resume && Array.isArray(resume.log) ? resume.log.slice() : []); // {exId, weight, reps}
   const sessionPRs = useRef({}); // exId -> {name, w, r, e1rm}
   const stepsRef = useRef(null); // üstteki sıradaki-hareketler şeridi
+  const endAtRef = useRef(0);        // dinlenmenin biteceği an (ms)
+  const firedRef = useRef(false);    // bu dinlenme için uyarı verildi mi
+  const restOverride = useRef({});   // hareket id → kullanıcının seçtiği süre
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alertsBump, setAlertsBump] = useState(0); // ayar değişince paneli tazele
 
   // Aktif hareket değişince şeridi ortala (isimler üst üste binmesin, kayar)
   useEffect(() => {
@@ -155,6 +161,14 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const grp = ex ? groupBounds(i) : null;
   const groupSets = grp ? Math.max.apply(null, Array.from({ length: grp.end - grp.start + 1 }, (_, k) => setsForIdx(grp.start + k))) : targetSets;
   const curTotalSets = grp ? groupSets : targetSets;
+  // Bu hareket için önerilen dinlenme (bileşik/izolasyon + hedef tekrara göre)
+  const restPlan = (() => {
+    if (!ex) return { sec: 90, why: "", label: "" };
+    const base = restFor(ex.id, targetReps);
+    const ov = restOverride.current[ex.id];
+    return ov != null ? { ...base, sec: ov } : base;
+  })();
+
   const prev = ex && lastLog ? lastLog(ex.id) : null;
   const suggestion = overloadSuggestion(prev, targetReps);
   const curE1RM = est1RM(Number(weight), firstInt(reps));
@@ -169,6 +183,22 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   }, [i]);
 
   useEffect(() => () => { clearInterval(timer.current); clearTimeout(prTimer.current); }, []);
+
+  // Antrenman boyunca ekran kapanmasın (sayaç kesilmesin) ve iOS ses motoru
+  // kullanıcı hareketiyle açılmış olsun — dinlenme bitince ses çıkabilsin.
+  useEffect(() => {
+    primeAudio();
+    keepAwake();
+    return () => releaseAwake();
+  }, []);
+
+  // Uygulama geri geldiğinde süreyi zaman damgasından tazele (kaçan uyarıyı ver)
+  useEffect(() => {
+    function onVis() { if (document.visibilityState === "visible" && resting) tickRest(); }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resting]);
 
   // Aktif antrenman ilerlemesini cihaza yaz — uygulama kapanırsa yeniden
   // açılışta "kaldığın yerden devam et?" için. Bitince (done) snapshot temizlenir
@@ -189,22 +219,44 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     );
   }
 
-  function startRest() {
-    clearInterval(timer.current);
-    setResting(true);
-    setRest(REST_SEC);
-    timer.current = setInterval(() => {
-      setRest((r) => {
-        if (r <= 1) {
-          clearInterval(timer.current); setResting(false);
-          try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch (e) {}
-          return 0;
-        }
-        return r - 1;
-      });
-    }, 1000);
+  // Sayaç ZAMAN DAMGASINDAN hesaplanır (endAtRef), her saniye bir azaltılmaz.
+  // Sebep: uygulama arka plana alınınca tarayıcı zamanlayıcıları kısar/durdurur;
+  // sayaç kayardı. Bitiş anını saklayıp kalanı hesaplayınca geri dönüldüğünde
+  // süre doğru olur ve kaçan uyarı hemen verilir.
+  function tickRest() {
+    const left = Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000));
+    setRest(left);
+    if (left <= 0) {
+      clearInterval(timer.current);
+      setResting(false);
+      if (!firedRef.current) {
+        firedRef.current = true;
+        alertRestDone(ex ? ex.name : null);
+      }
+    }
   }
-  function adjustRest(d) { setRest((r) => Math.max(0, r + d)); }
+
+  function startRest(sec) {
+    clearInterval(timer.current);
+    const dur = clampRest(sec != null ? sec : restPlan.sec);
+    endAtRef.current = Date.now() + dur * 1000;
+    firedRef.current = false;
+    setResting(true);
+    setRest(dur);
+    timer.current = setInterval(tickRest, 250);
+  }
+
+  // Dinlenmeyi uzat/kısalt — bitiş anını kaydır ve bu hareket için hatırla
+  function adjustRest(d) {
+    const left = Math.max(0, Math.round((endAtRef.current - Date.now()) / 1000));
+    const next = clampRest(left + d);
+    endAtRef.current = Date.now() + next * 1000;
+    if (next > 0) firedRef.current = false;
+    setRest(next);
+    // Kullanıcının tercihi bu antrenman boyunca aynı harekette tekrar kullanılsın
+    if (ex) restOverride.current[ex.id] = clampRest(restPlan.sec + d);
+  }
+
   function skipRest() { clearInterval(timer.current); setResting(false); setRest(0); }
 
   function finishWorkout() {
@@ -351,8 +403,54 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
       <div className="workout-top">
         <button className="btn-ghost" onClick={onExit}>✕</button>
         <div className="workout-prog"><div className="workout-prog-bar" style={{ width: pct + "%" }} /></div>
-        <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 48, textAlign: "right" }}>{i + 1}/{exIds.length}</span>
+        <span style={{ color: "var(--muted)", fontSize: 13, minWidth: 42, textAlign: "right" }}>{i + 1}/{exIds.length}</span>
+        <button className="btn-ghost" title="Uyarı ayarları" style={{ padding: "8px 10px" }}
+          onClick={() => setAlertsOpen(true)}>🔔</button>
       </div>
+
+      {alertsOpen && (
+        <div onClick={() => setAlertsOpen(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 330,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <div key={alertsBump} onClick={(e) => e.stopPropagation()} className="card" style={{
+            width: "100%", maxWidth: 560, borderRadius: "16px 16px 0 0",
+            paddingBottom: "calc(16px + env(safe-area-inset-bottom))",
+          }}>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>🔔 Dinlenme uyarısı</div>
+              <button className="icon-btn" onClick={() => setAlertsOpen(false)}>✕</button>
+            </div>
+
+            <button className="btn-ghost" style={{ width: "100%", padding: 13, textAlign: "left", marginBottom: 8 }}
+              onClick={() => { setSoundOn(!soundOn()); setAlertsBump((n) => n + 1); }}>
+              {soundOn() ? "🔊" : "🔇"} Ses {soundOn() ? "açık" : "kapalı"}
+            </button>
+
+            {notifPermission() === "granted" ? (
+              <button className="btn-ghost" style={{ width: "100%", padding: 13, textAlign: "left" }}
+                onClick={() => { setNotifOn(!notifOn()); setAlertsBump((n) => n + 1); }}>
+                {notifOn() ? "🔔" : "🔕"} Bildirim {notifOn() ? "açık" : "kapalı"}
+              </button>
+            ) : notifPermission() === "unsupported" ? (
+              <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
+                Bu tarayıcı bildirimleri desteklemiyor. Ses ve titreşim çalışır.
+              </p>
+            ) : (
+              <button className="btn-primary" style={{ width: "100%", padding: 13 }}
+                onClick={async () => { await requestNotif(); setAlertsBump((n) => n + 1); }}>
+                🔔 Bildirime izin ver
+              </button>
+            )}
+
+            <p style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 10, marginBottom: 0, lineHeight: 1.55 }}>
+              Antrenman boyunca <b>ekran açık tutulur</b>, böylece sayaç kesilmez ve uyarı zamanında gelir.
+              Telefonu kilitlersen tarayıcı durdurulabilir; o durumda uygulamaya döndüğünde uyarı hemen verilir.
+              {notifPermission() === "default" && " Bildirimler iPhone'da yalnızca ana ekrana eklenmiş uygulamada çalışır."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Sıradaki hareketler — isimleriyle, yatay kayan şerit (üst üste binmez).
           minWidth:0 + maxWidth:100% flexbox taşmasını önler (ekran zoomlanmaz).
@@ -463,11 +561,17 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           <>
             <div style={{ color: "var(--muted)", marginTop: 4 }}>Dinlenme</div>
             <div className="rest-count">{rest}<span> sn</span></div>
-            <div className="row" style={{ justifyContent: "center", gap: 8 }}>
-              <button className="btn-ghost" style={{ padding: "8px 14px" }} onClick={() => adjustRest(-15)}>−15</button>
-              <button className="btn-ghost" style={{ padding: "8px 14px" }} onClick={() => adjustRest(15)}>+15</button>
-              <button className="btn-ghost" style={{ padding: "8px 16px" }} onClick={skipRest}>Atla →</button>
+            <div style={{ color: "var(--accent2)", fontSize: 12, fontWeight: 700 }}>
+              {restPlan.label} · önerilen {Math.round(restPlan.sec / 5) * 5} sn
             </div>
+            <div className="row" style={{ justifyContent: "center", gap: 8, marginTop: 4 }}>
+              <button className="btn-ghost" style={{ padding: "10px 16px" }} onClick={() => adjustRest(-15)}>−15</button>
+              <button className="btn-ghost" style={{ padding: "10px 16px" }} onClick={() => adjustRest(15)}>+15</button>
+              <button className="btn-ghost" style={{ padding: "10px 18px" }} onClick={skipRest}>Atla →</button>
+            </div>
+            <p style={{ color: "var(--muted)", fontSize: 11.5, textAlign: "center", maxWidth: 320, margin: "6px 12px 0", lineHeight: 1.5 }}>
+              {restPlan.why}
+            </p>
           </>
         ) : (
           <>
