@@ -78,7 +78,7 @@ const CURATED = [
     sets: "3 x 15", desc: "Öne eğilip kolları açarak arka omuzu çalıştırır.", tips: ["Hafif ağırlık", "Sık"] },
   { id: "upright-row", name: "Upright Row", region: "omuz", anim: "row", equip: "Halter", level: "Orta",
     sets: "3 x 12", desc: "Barı çeneye doğru dik çekiş; omuz ve trapez.", tips: ["Dirsek yüksekte"] },
-  { id: "shrug", name: "Shrug (Trapez)", region: "omuz", anim: "calfraise", equip: "Dumbbell", level: "Başlangıç",
+  { id: "shrug", name: "Shrug (Trapez)", region: "omuz", anim: "shrug", equip: "Dumbbell", level: "Başlangıç",
     sets: "4 x 15", desc: "Omuzları yukarı silkerek trapez kasını çalıştırır.", tips: ["Tepede 1 sn dur", "Yuvarlama"] },
 
   // ============ KOL ============

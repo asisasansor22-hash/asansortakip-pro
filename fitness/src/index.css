@@ -387,6 +387,15 @@ select.input { appearance: none; }
 @keyframes dp-fore { 0%,100% { transform: rotate(-4deg); }  50% { transform: rotate(-48deg); } }
 
 
+/* ---- SHRUG (trapez silkme) — kollar düz sarkar, omuzlar yukarı kalkar ----
+   .arm grubu .upperbody içinde olduğu için gövdeyi yukarı ötelemek
+   omuzları ve kolları birlikte kaldırır: shrug hareketinin ta kendisi. */
+.fig-shrug .arm       { transform: rotate(2deg); }
+.fig-shrug .forearm   { transform: rotate(0); }
+.fig-shrug .upperbody { animation: sh-up 1.3s ease-in-out infinite; }
+@keyframes sh-up { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+
+
 @media (prefers-reduced-motion: reduce) {
   .exfig * { animation: none !important; }
 }
