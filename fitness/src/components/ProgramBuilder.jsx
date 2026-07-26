@@ -132,13 +132,13 @@ export default function ProgramBuilder({
           {weekly.days.length > 0 ? (
             <VolumeSummary days={weekly.days} title="" />
           ) : (
-            <p style={{ color: "#fbbf24", fontSize: 12, margin: 0 }}>
+            <p style={{ color: "var(--attn)", fontSize: 12, margin: 0 }}>
               ⚠️ Haftalık hacmi görebilmek için programlarını günlere ata (aşağıdaki 📅 “Güne ata” düğmesi).
             </p>
           )}
           {weekly.unassigned.length > 0 && (
             <div style={{ marginTop: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-              <p style={{ color: "#fbbf24", fontSize: 12, margin: "0 0 8px", lineHeight: 1.5 }}>
+              <p style={{ color: "var(--attn)", fontSize: 12, margin: "0 0 8px", lineHeight: 1.5 }}>
                 ⚠️ <b>{weekly.unassigned.length} program güne atanmamış</b>, bu yüzden yukarıdaki toplama dahil
                 değil — hacim olduğundan düşük görünüyor. Tek dokunuşla boş günlere dağıtabilirsin:
               </p>

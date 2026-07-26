@@ -10,6 +10,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="GYMO" />
     <title>GYMO — Gym Obsession</title>
+    <!-- Temayı ilk boyamadan ÖNCE uygula: aksi halde açık tema seçili olsa bile
+         bir an koyu ekran görünür ("flash of wrong theme"). Betik bilinçli
+         olarak satır içi ve senkron. JS çalışmazsa <html> üzerinde data-theme
+         olmaz ve CSS'teki koyu varsayılan geçerli kalır. -->
+    <script>
+      (function () {
+        try {
+          var m = localStorage.getItem("fitbe_theme") || "system";
+          var dark = m === "system"
+            ? !window.matchMedia("(prefers-color-scheme: light)").matches
+            : m === "dark";
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+          var mt = document.querySelector('meta[name="theme-color"]');
+          if (mt) mt.setAttribute("content", dark ? "#0f172a" : "#f1f5f9");
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -4,9 +4,9 @@ import { tensionMix } from "../data/tension";
 
 const COLOR = {
   none: "var(--line)",
-  low:  "#fbbf24",
+  low:  "var(--attn)",
   ok:   "var(--accent)",
-  high: "#fb923c",
+  high: "var(--attn2)",
 };
 
 // 📊 Haftalık kas grubu hacmi özeti — "omuz 10 set · göğüs 15 set" gibi.
@@ -76,14 +76,14 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
       </div>
 
       {low.length > 0 && (
-        <p style={{ color: "#fbbf24", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
+        <p style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
           ⚠️ {low.map((r) => `${r.name} (${r.sets}/${r.min})`).join(", ")} eşiğin altında.
           Hipertrofi hedefliyorsan bu bölgelere hareket/set ekle.
         </p>
       )}
 
       {showTension && (
-        <p style={{ color: mix.hasStretch ? "var(--muted)" : "#fbbf24", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
+        <p style={{ color: mix.hasStretch ? "var(--muted)" : "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
           {mix.hasStretch
             ? `🔵 Gerilme (uzun boy) hareketi: ${mix.uzun} · ⚪ orta: ${mix.orta} · 🟠 kasılma: ${mix.kisa}`
             : "⚠️ Programda kası gerilmiş boyda yükleyen hareket yok. Hipertrofi için her kasa en az bir gerilme hareketi ekle."}

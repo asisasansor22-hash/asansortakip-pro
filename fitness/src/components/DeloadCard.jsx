@@ -3,8 +3,8 @@ import { assessFatigue } from "../data/deload";
 
 const STYLE = {
   ok:      { emoji: "✅", title: "Toparlanma iyi", color: "var(--ok)",     bg: "rgba(34,197,94,.10)" },
-  watch:   { emoji: "⚠️", title: "Yorgunluk birikiyor", color: "#fbbf24", bg: "rgba(251,191,36,.10)" },
-  deload:  { emoji: "🛑", title: "Deload haftası zamanı", color: "#f87171", bg: "rgba(248,113,113,.10)" },
+  watch:   { emoji: "⚠️", title: "Yorgunluk birikiyor", color: "var(--attn)", bg: "rgba(251,191,36,.10)" },
+  deload:  { emoji: "🛑", title: "Deload haftası zamanı", color: "var(--bad)", bg: "rgba(248,113,113,.10)" },
 };
 
 // 🔋 Yorgunluk radarı — hacim ve RIR trendinden birikmiş yorgunluğu okur,

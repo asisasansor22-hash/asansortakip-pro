@@ -52,8 +52,8 @@ function DietPlans() {
 
 function Supplements() {
   const [open, setOpen] = useState(null);
-  const renk = (k) => k === "Güçlü" ? "#10b981" : k === "Orta" ? "#f59e0b" : k === "Yok" ? "#ef4444" : "#94a3b8";
-  const tierRenk = { iyi: "#10b981", kosullu: "#f59e0b", gereksiz: "#ef4444" };
+  const renk = (k) => k === "Güçlü" ? "var(--ok)" : k === "Orta" ? "var(--warn)" : k === "Yok" ? "var(--danger)" : "var(--muted)";
+  const tierRenk = { iyi: "var(--ok)", kosullu: "var(--warn)", gereksiz: "var(--danger)" };
 
   return (
     <div>
@@ -68,7 +68,7 @@ function Supplements() {
           Kas gelişiminin büyük kısmı <b>antrenman hacmi, aşamalı yüklenme, yeterli protein/kalori ve uykudan</b> gelir.
           Takviye en iyi ihtimalle kenar süsüdür — aşağıdaki “işe yarar” listesindekiler bile tek başına fark yaratmaz.
         </p>
-        <p style={{ color: "#fbbf24", fontSize: 12, margin: "10px 0 0", lineHeight: 1.6 }}>
+        <p style={{ color: "var(--attn)", fontSize: 12, margin: "10px 0 0", lineHeight: 1.6 }}>
           ⚠️ <b>Pazarlama tuzağı:</b> “Kas protein sentezini %X artırır” iddiası tek başına bir şey ifade etmez.
           Mitchell ve ark. (2014) akut protein sentezi yanıtı ile <b>16 haftalık gerçek kas büyümesi arasında
           bağlantı bulamadı</b>. Bir ürün yalnızca bu veriyle pazarlanıyorsa, kas yaptığı kanıtlanmış değildir.

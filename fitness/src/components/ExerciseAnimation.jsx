@@ -51,12 +51,14 @@ const LYING = { benchpress: true, crunch: true, fly: true, legcurl: true, hipthr
 // Yere paralel, yerde yapılanlar → geniş zemin çizgisi.
 const ON_FLOOR = { pushup: true, plank: true };
 
-const SKIN = "#b9c2cb";     // gri ten
-const SHORTS = "#262b36";   // koyu şort
-const LINE = "rgba(33,42,54,.40)"; // kas çizgisi / gölge
-const METAL = "#3a4458";    // bar/sap
-const PLATE = "#1b2230";    // ağırlık plakası
-const CABLE = "#64748b";    // kablo/çerçeve
+// Renkler index.css'teki tema değişkenlerinden gelir; açık temada figür
+// beyaz kartın üstünde de okunur kalsın diye ayrı tonlara geçer.
+const SKIN = "var(--fig-skin)";     // ten
+const SHORTS = "var(--fig-shorts)"; // şort
+const LINE = "var(--fig-line)";     // kas çizgisi / gölge
+const METAL = "var(--fig-metal)";   // bar/sap
+const PLATE = "var(--fig-plate)";   // ağırlık plakası
+const CABLE = "var(--fig-cable)";   // kablo/çerçeve
 
 // Ekipman tipini "equip" metninden çıkar
 function gearType(equip) {

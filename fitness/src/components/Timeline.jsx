@@ -353,7 +353,7 @@ export default function Timeline() {
                 <div style={{ marginTop: 10 }}>
                   <div className="row" style={{ gap: 8 }}>
                     <button className="icon-btn" onClick={() => toggleLike(post)}
-                      style={{ color: iLiked ? "#f87171" : "var(--muted)", fontWeight: 700 }}>
+                      style={{ color: iLiked ? "var(--bad)" : "var(--muted)", fontWeight: 700 }}>
                       {iLiked ? "❤️" : "🤍"} {likeCount > 0 ? likeCount : ""}
                     </button>
                     <button className="icon-btn" onClick={() => { setOpenComments(isOpen ? null : post.id); setCommentText(""); }}

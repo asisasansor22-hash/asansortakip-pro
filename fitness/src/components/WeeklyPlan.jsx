@@ -36,7 +36,7 @@ export default function WeeklyPlan({ programs, schedule, onSetSchedule, history,
     <div className="card" style={{ marginBottom: 16, borderColor: "var(--accent2)" }}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div style={{ fontWeight: 800, fontSize: 15 }}>📅 Haftalık Plan</div>
-        <span className="pill" style={{ color: streak > 0 ? "#fdba74" : "var(--muted)" }}>
+        <span className="pill" style={{ color: streak > 0 ? "var(--streak)" : "var(--muted)" }}>
           🔥 {streak} gün · bu hafta {week}
         </span>
       </div>

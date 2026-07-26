@@ -20,7 +20,7 @@ export default function ExerciseDetail({ ex, onBack, onAddToProgram, onOpenExerc
         <button className="btn-back" onClick={onBack}>← Geri</button>
         {onToggleFavorite && (
           <button className="icon-btn" onClick={() => onToggleFavorite(ex.id)}
-            style={{ color: isFavorite ? "#fbbf24" : "var(--muted)", fontSize: 13 }}>
+            style={{ color: isFavorite ? "var(--attn)" : "var(--muted)", fontSize: 13 }}>
             {isFavorite ? "⭐ Favoride" : "☆ Favorilere ekle"}
           </button>
         )}

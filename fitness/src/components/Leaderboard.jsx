@@ -53,7 +53,7 @@ export default function Leaderboard() {
           return (
             <div key={r.uid} className="card" style={{
               marginBottom: 8, padding: "10px 12px",
-              borderColor: mine ? "var(--accent)" : (i < 3 ? "#fbbf24" : undefined),
+              borderColor: mine ? "var(--accent)" : (i < 3 ? "var(--attn)" : undefined),
             }}>
               <div className="row" style={{ alignItems: "center", gap: 10 }}>
                 <div style={{ width: 28, textAlign: "center", fontWeight: 800, fontSize: i < 3 ? 20 : 14, color: "var(--muted)", flexShrink: 0 }}>
@@ -73,7 +73,7 @@ export default function Leaderboard() {
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: i < 3 ? "#fbbf24" : "var(--text)" }}>{r.puan}</div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: i < 3 ? "var(--attn)" : "var(--text)" }}>{r.puan}</div>
                   <div style={{ color: "var(--muted)", fontSize: 10 }}>GYMO puanı</div>
                 </div>
               </div>

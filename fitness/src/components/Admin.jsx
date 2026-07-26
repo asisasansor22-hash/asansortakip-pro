@@ -128,7 +128,7 @@ export default function Admin() {
         }}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720, margin: "0 auto" }}>
             <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
-              <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{gallery.email}</div>
+              <div style={{ color: "var(--text)", fontWeight: 700, fontSize: 14, wordBreak: "break-all" }}>{gallery.email}</div>
               <button className="icon-btn" onClick={() => closeNow(setGallery)}>Kapat ✕</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>

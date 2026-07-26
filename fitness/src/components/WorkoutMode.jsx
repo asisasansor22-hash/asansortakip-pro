@@ -364,7 +364,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
         </div>
 
         {s.prs.length > 0 && (
-          <div className="card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", borderColor: "#fbbf24" }}>
+          <div className="card" style={{ maxWidth: 420, width: "100%", margin: "0 auto", borderColor: "var(--attn)" }}>
             <div style={{ fontWeight: 800, marginBottom: 6 }}>🏆 Yeni rekorlar</div>
             {s.prs.map((p) => (
               <div key={p.name} style={{ fontSize: 14, padding: "2px 0" }}>
@@ -486,6 +486,9 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
       {prFlash && (
         <div style={{
           position: "fixed", top: "calc(16px + env(safe-area-inset-top))", left: "50%", transform: "translateX(-50%)",
+          // Rekor rozeti sabit amber kalır: dolu zemin + koyu yazı her iki
+          // temada da okunur, --attn ise açık temada koyulaştığı için burada
+          // yazıyla çakışırdı.
           background: "#fbbf24", color: "#451a03", padding: "10px 18px", borderRadius: 12,
           fontWeight: 800, fontSize: 13, zIndex: 80, maxWidth: "90%", textAlign: "center",
           boxShadow: "0 6px 24px rgba(0,0,0,.4)",

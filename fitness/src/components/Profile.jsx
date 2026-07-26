@@ -6,12 +6,34 @@ import Admin from "./Admin";
 import Achievements from "./Achievements";
 import { downloadBackup, parseBackup, readFile, pickFields, fmtBackupDate } from "../utils/backup";
 import { remOn, setRemOn, remTime, setRemTime } from "../utils/reminder";
+import { MODES, themeMode, setThemeMode, resolvedTheme } from "../utils/theme";
 import { notifSupported, notifPermission, requestNotif } from "../utils/alerts";
+
+// Tema seçici — koyu / açık / sistem. Seçim anında uygulanır.
+function ThemePicker({ onChange }) {
+  const [mode, setMode] = useState(() => themeMode());
+  function pick(id) {
+    setThemeMode(id);
+    setMode(id);
+    if (onChange) onChange(id);
+  }
+  return (
+    <div className="row" style={{ gap: 8 }}>
+      {MODES.map((m) => (
+        <button key={m.id} onClick={() => pick(m.id)}
+          className={"seg" + (mode === m.id ? " on" : "")}
+          style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 13, fontWeight: 700 }}>
+          {m.emoji} {m.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Antrenman günü hatırlatması ayarları.
 // Uygulama içi şerit her zaman açıktır (ReminderBar); buradaki anahtar
 // yalnızca BİLDİRİMİ kontrol eder — sınırı da açıkça yazar.
-function ReminderSettings() {
+function ReminderSettings({ onChange }) {
   const [on, setOn] = useState(() => remOn());
   const [time, setTime] = useState(() => remTime());
   const [perm, setPerm] = useState(() => notifPermission());
@@ -26,11 +48,13 @@ function ReminderSettings() {
     }
     const v = !on;
     setOn(v); setRemOn(v);
+    if (onChange) onChange();
   }
 
   function pickTime(e) {
     const v = e.target.value;
     setTime(v); setRemTime(v);
+    if (onChange) onChange();
   }
 
   const blocked = notifSupported() && perm === "denied";
@@ -289,7 +313,10 @@ function Section({ title, sub, hint, children }) {
 // Profil sekmesi — profil fotoğrafı, tercihler, şifre, güncelle & çıkış.
 export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, history = [], snapshot, onRestore }) {
   const admin = (email || "").toLowerCase() === ADMIN_EMAIL;
-  const [nameBump, setNameBump] = useState(0); // ad kaydedilince başlıktaki adı tazele
+  // Bölüm başlıklarındaki özet (ad, tema, saat) localStorage'dan okunuyor;
+  // React bunu izleyemez. Bir ayar kaydedilince setBump ile yeniden render
+  // tetiklenir ve özetler tazelenir.
+  const [, setBump] = useState(0);
   return (
     <div>
       <h2>Profil</h2>
@@ -297,12 +324,11 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
 
       {onSaveAvatar && <Avatar avatar={avatar} email={email} onSaveAvatar={onSaveAvatar} />}
 
-      {/* nameBump: ad kaydedilince Profile yeniden render olur ve başlıktaki
-          ad tazelenir. Section'a key VERİLMEZ — verilirse bölüm yeniden
-          kurulup kapanır ve "güncellendi" mesajı görünmeden kaybolur. */}
-      <Section title="👤 Görünen adı değiştir" sub={nameBump >= 0 ? getDisplayName() : ""}
+      {/* Section'a key VERİLMEZ — verilirse bölüm yeniden kurulup kapanır ve
+          "güncellendi" mesajı görünmeden kaybolur. */}
+      <Section title="👤 Görünen adı değiştir" sub={getDisplayName()}
         hint="Akışta, GYMO Ligi'nde, mesajlarda ve yorumlarda e-posta yerine bu ad görünür.">
-        <DisplayName onSaved={() => setNameBump((n) => n + 1)} />
+        <DisplayName onSaved={() => setBump((n) => n + 1)} />
       </Section>
 
       <Section title="🔑 Şifreyi değiştir"
@@ -310,9 +336,14 @@ export default function Profile({ profile, email, onSave, avatar, onSaveAvatar, 
         <ChangePassword />
       </Section>
 
+      <Section title="🎨 Görünüm" sub={MODES.find((m) => m.id === themeMode()).label}
+        hint="“Sistem” seçiliyken telefonun gece moduna geçtiğinde uygulama da kendiliğinden koyulaşır.">
+        <ThemePicker onChange={() => setBump((n) => n + 1)} />
+      </Section>
+
       <Section title="⏰ Antrenman günü hatırlatması" sub={remOn() ? remTime() : "kapalı"}
         hint="Planında bugüne bir program atanmışsa ve henüz yapmadıysan hatırlatır.">
-        <ReminderSettings />
+        <ReminderSettings onChange={() => setBump((n) => n + 1)} />
       </Section>
 
       {snapshot && onRestore && (

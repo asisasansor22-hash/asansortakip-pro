@@ -139,7 +139,7 @@ export default function NutritionDiary() {
             <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
               Hedef {goal.kcal} kcal · Kalan {Math.max(0, goal.kcal - totKcal)} kcal
             </div>
-            <Bar val={totKcal} goal={goal.kcal} color={totKcal > goal.kcal ? "#fca5a5" : "var(--accent)"} />
+            <Bar val={totKcal} goal={goal.kcal} color={totKcal > goal.kcal ? "var(--bad2)" : "var(--accent)"} />
           </>
         )}
         <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>

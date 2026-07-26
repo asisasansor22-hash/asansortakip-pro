@@ -103,13 +103,13 @@ export default function AutoPlanner({ onCopy, onClose }) {
               <div style={{ fontWeight: 800, fontSize: 15 }}>{plan.name}</div>
               <div style={{ color: "var(--muted)", fontSize: 12 }}>{plan.split}</div>
             </div>
-            <span className="pill" style={{ fontSize: 11, color: plan.meets ? "var(--ok)" : "#fbbf24" }}>
+            <span className="pill" style={{ fontSize: 11, color: plan.meets ? "var(--ok)" : "var(--attn)" }}>
               {plan.meets ? "✓ Hacim yeterli" : "⚠ Bazı bölgeler eksik"}
             </span>
           </div>
           <VolumeSummary days={plan.days} title="" showTension />
           {!plan.meets && (
-            <p style={{ color: "#fbbf24", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
+            <p style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
               {days <= 2
                 ? "Haftada 2 günle tüm kaslara 10+ set vermek zordur — bu bölünme bileşiklere öncelik verir. Hipertrofi önceliğinse 3+ gün öneririz."
                 : "Gün başına hareket sınırı nedeniyle bazı bölgeler hedefin altında kaldı; gün sayısını artırabilirsin."}

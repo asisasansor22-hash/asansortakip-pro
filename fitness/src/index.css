@@ -1,5 +1,11 @@
 /* ============ TEMA ============ */
+/* Koyu VARSAYILANDIR. Açık tema yalnızca <html data-theme="light"> ile açılır;
+   bu özniteliği index.html'deki satır içi betik ilk boyamadan önce yazar
+   (seçim yoksa sistem tercihine bakar). Böylece:
+     • JS/localStorage çalışmazsa uygulama eski hâlinde, koyu kalır
+     • medya sorgusu + elle seçim için aynı renkleri iki kez yazmak gerekmez */
 :root {
+  color-scheme: dark;
   --bg: #0f172a;
   --bg2: #1e293b;
   --card: #1e293b;
@@ -12,15 +18,83 @@
   --ok: #10b981;
   --warn: #f59e0b;
   --danger: #ef4444;
+
+  /* Sayfa arka planı (gradyan durakları) ve vurgu üstündeki yazı rengi */
+  --grad1: #0b1120;
+  --grad2: #0f172a;
+  --on-accent: #042f3a;
+  --bar: rgba(15, 23, 42, .96);  /* alt navigasyon (yarı saydam) */
+  --lvl: #fde68a;                /* zorluk rozeti */
+  --evidence-text: #fcd9a0;      /* "kanıt" bilgi kutusu */
+  --fig-stroke: rgba(0, 0, 0, .22);
+
+  /* Bileşenlerdeki anlamsal uyarı renkleri (satır içi stillerden kullanılır).
+     Koyu temadaki değerler eskisiyle birebir aynıdır; açık temada beyaz zemin
+     üzerinde okunabilmeleri için koyulaştırılır. */
+  --attn: #fbbf24;    /* dikkat / hedefin altında */
+  --attn2: #fb923c;   /* hedefin üstünde / fazla */
+  --bad: #f87171;     /* kötü / beğeni */
+  --bad2: #fca5a5;    /* hafif olumsuz */
+  --streak: #fdba74;  /* seri (streak) alevi */
+
+  /* Egzersiz SVG figürü — kart zeminine göre değişir */
+  --fig-skin: #b9c2cb;
+  --fig-shorts: #262b36;
+  --fig-line: rgba(33, 42, 54, .40);
+  --fig-metal: #3a4458;
+  --fig-plate: #1b2230;
+  --fig-cable: #64748b;
+}
+
+/* Açık tema — GYMO renk kimliği (camgöbeği vurgu) korunur, yalnızca zemin
+   ve metin tersine döner. Vurgu tonları açık zeminde okunaklı olsun diye
+   bir tık koyulaştırıldı. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --bg2: #ffffff;
+  --card: #ffffff;
+  /* card2 sayfa zemininden (grad1) belirgin biçimde AYRI olmalı: hayalet
+     düğmeler, çipler ve figür kutuları zemine karışıp görünmez olmasın. */
+  --card2: #e3eaf3;
+  --line: #d3dce8;
+  --text: #0f172a;
+  --muted: #5b6b7f;
+  --accent: #0891b2;
+  --accent2: #0369a1;
+  --ok: #059669;
+  --warn: #b45309;
+  --danger: #dc2626;
+
+  --grad1: #f1f5f9;
+  --grad2: #f8fafc;
+  --on-accent: #ffffff;
+  --bar: rgba(255, 255, 255, .96);
+  --lvl: #a16207;
+  --evidence-text: #78350f;
+  --fig-stroke: rgba(15, 23, 42, .20);
+
+  --attn: #b45309;
+  --attn2: #c2410c;
+  --bad: #dc2626;
+  --bad2: #b91c1c;
+  --streak: #c2410c;
+
+  --fig-skin: #94a3b8;
+  --fig-shorts: #475569;
+  --fig-line: rgba(15, 23, 42, .35);
+  --fig-metal: #64748b;
+  --fig-plate: #334155;
+  --fig-cable: #94a3b8;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #root { margin: 0; min-height: 100%; }
 /* iOS PWA'da safe-area / overscroll bölgesinin beyaz görünmemesi için kök arka plan koyu */
-html { background: #0f172a; }
+html { background: var(--bg); }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  background: linear-gradient(180deg, var(--grad1) 0%, var(--grad2) 100%);
   background-attachment: fixed;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -37,7 +111,7 @@ h1, h2, h3 { margin: 0 0 8px; }
   /* marka + alt yazı iki satır olduğu için üstten hizala (ortalanınca kayıyordu) */
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: calc(14px + env(safe-area-inset-top)) 4px 8px; position: sticky; top: 0; z-index: 20;
-  background: linear-gradient(180deg, #0b1120 80%, transparent);
+  background: linear-gradient(180deg, var(--grad1) 80%, transparent);
 }
 .brand { font-weight: 800; font-size: 20px; letter-spacing: -.5px; }
 .brand span { color: var(--accent); }
@@ -57,7 +131,7 @@ h1, h2, h3 { margin: 0 0 8px; }
      yan boşluğunu iptal edip kenardan kenara uzanır. */
   margin: auto -14px 0;
   display: flex; justify-content: space-around;
-  background: rgba(15,23,42,.96); backdrop-filter: blur(8px);
+  background: var(--bar); backdrop-filter: blur(8px);
   border-top: 1px solid var(--line); padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
 }
 .tabbar button {
@@ -87,7 +161,7 @@ h1, h2, h3 { margin: 0 0 8px; }
 .figbox { background: var(--card2); border-radius: 14px; width: 100%; display: flex; justify-content: center; padding: 6px 0; }
 
 .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--card2); color: var(--muted); }
-.pill.lvl { color: #fde68a; }
+.pill.lvl { color: var(--lvl); }
 .pill.musc-p { background: rgba(34,211,238,.18); color: var(--accent); }
 .pill.musc-s { background: var(--card2); color: var(--muted); }
 .search-input { width: 100%; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--text); font-size: 15px; margin-bottom: 10px; }
@@ -102,7 +176,7 @@ h1, h2, h3 { margin: 0 0 8px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .tips li { margin: 6px 0; color: var(--muted); font-size: 14px; }
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #042f3a;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--on-accent);
   font-weight: 800; padding: 14px; border-radius: 14px; width: 100%; font-size: 15px;
 }
 .btn-back { background: none; color: var(--accent); font-size: 14px; font-weight: 600; padding: 6px 0; margin: 6px 0; }
@@ -138,7 +212,7 @@ h1, h2, h3 { margin: 0 0 8px; }
   font-size: 13px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; gap: 5px;
 }
-.prog-ex-actions button.on { background: var(--accent2); color: #04321f; }
+.prog-ex-actions button.on { background: var(--accent2); color: var(--on-accent); }
 .prog-ex-actions button.danger { color: var(--danger); }
 .icon-btn { background: var(--card2); color: var(--text); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 700; }
 .icon-btn.danger { color: var(--danger); }
@@ -156,7 +230,7 @@ h1, h2, h3 { margin: 0 0 8px; }
 /* ============ ANTRENMAN MODU ============ */
 .workout {
   position: fixed; inset: 0; z-index: 300;
-  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  background: linear-gradient(180deg, var(--grad1) 0%, var(--grad2) 100%);
   display: flex; flex-direction: column; gap: 12px;
   padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
   max-width: 720px; margin: 0 auto;
@@ -176,7 +250,7 @@ h1, h2, h3 { margin: 0 0 8px; }
 /* ============ ONBOARDING ============ */
 .onboarding {
   position: fixed; inset: 0; z-index: 200; overflow-y: auto;
-  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  background: linear-gradient(180deg, var(--grad1) 0%, var(--grad2) 100%);
   display: flex; align-items: center;
   padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
 }
@@ -186,7 +260,7 @@ h1, h2, h3 { margin: 0 0 8px; }
 .splash {
   position: fixed; inset: 0; z-index: 999;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  background: linear-gradient(180deg, var(--grad1) 0%, var(--grad2) 100%);
   transition: opacity .45s ease;
 }
 .splash.hide { opacity: 0; pointer-events: none; }
@@ -202,18 +276,18 @@ h1, h2, h3 { margin: 0 0 8px; }
 .subtab.on { background: var(--card2); color: var(--accent); }
 
 .seg { flex: 1; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-weight: 700; font-size: 13px; padding: 11px; border-radius: 10px; }
-.seg.on { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #042f3a; border-color: transparent; }
+.seg.on { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--on-accent); border-color: transparent; }
 select.input { appearance: none; }
 
 .kcal-big { text-align: center; font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; }
 .kcal-big span { font-size: 15px; color: var(--muted); font-weight: 600; }
 
 .top-badge { position: absolute; top: 6px; left: 6px; z-index: 3; background: rgba(245,158,11,.92); color: #3a2606; font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 999px; }
-.evidence { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: #fcd9a0; margin: 12px 0; line-height: 1.45; }
+.evidence { background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--evidence-text); margin: 12px 0; line-height: 1.45; }
 
 /* ============ KARAKTER FİGÜRÜ ============ */
 .exfig { display: block; overflow: visible; }
-.exfig .figure { stroke: rgba(0,0,0,.22); stroke-width: 1.5; stroke-linejoin: round; }
+.exfig .figure { stroke: var(--fig-stroke); stroke-width: 1.5; stroke-linejoin: round; }
 .exfig .part { stroke: inherit; }
 .exfig .far { filter: brightness(.68); }      /* arka taraftaki uzuvlar (derinlik) */
 .exfig .ground { stroke: #475569; stroke-width: 4; stroke-linecap: round; }

@@ -73,8 +73,8 @@ function LineChart({ data, unit = "", color = "var(--accent)", goal = null }) {
       <text x="2" y={H - pad + 4} fill="var(--muted)" fontSize="9">{Math.round(min * 10) / 10}</text>
       {goal != null && (
         <>
-          <line x1={pad} y1={Y(goal)} x2={W - pad} y2={Y(goal)} stroke="#fbbf24" strokeWidth="1.5" strokeDasharray="5 4" />
-          <text x={W - pad} y={Y(goal) - 4} fill="#fbbf24" fontSize="9" textAnchor="end">🎯 {goal}{unit}</text>
+          <line x1={pad} y1={Y(goal)} x2={W - pad} y2={Y(goal)} stroke="var(--attn)" strokeWidth="1.5" strokeDasharray="5 4" />
+          <text x={W - pad} y={Y(goal) - 4} fill="var(--attn)" fontSize="9" textAnchor="end">🎯 {goal}{unit}</text>
         </>
       )}
       {data.length > 1 && <polyline points={pts} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
@@ -353,11 +353,11 @@ export default function Progress({ data, history = [], onSave }) {
       {wStat && (
         <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
           <span className="pill" style={{ fontSize: 13 }}>Güncel: <b>{wStat.cur} kg</b></span>
-          <span className="pill" style={{ fontSize: 13, color: wStat.diff < 0 ? "var(--ok)" : wStat.diff > 0 ? "#fca5a5" : "var(--muted)" }}>
+          <span className="pill" style={{ fontSize: 13, color: wStat.diff < 0 ? "var(--ok)" : wStat.diff > 0 ? "var(--bad2)" : "var(--muted)" }}>
             {wStat.diff > 0 ? "+" : ""}{wStat.diff} kg ({wStat.sinceTxt}’den beri)
           </span>
           {goalKg != null && (
-            <span className="pill" style={{ fontSize: 13, color: "#fbbf24" }}>
+            <span className="pill" style={{ fontSize: 13, color: "var(--attn)" }}>
               🎯 Hedefe {Math.abs(Math.round((wStat.cur - goalKg) * 10) / 10)} kg
             </span>
           )}
@@ -491,7 +491,7 @@ export default function Progress({ data, history = [], onSave }) {
       ) : (
         <div className="card" style={{ marginBottom: 10 }}>
           {muscleVol.rows.map((r) => {
-            const col = r.sets === 0 ? "var(--line)" : r.sets < 10 ? "#fbbf24" : r.sets <= 20 ? "var(--accent)" : "#fb923c";
+            const col = r.sets === 0 ? "var(--line)" : r.sets < 10 ? "var(--attn)" : r.sets <= 20 ? "var(--accent)" : "var(--attn2)";
             return (
               <div key={r.id} style={{ marginBottom: 8 }}>
                 <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
@@ -553,7 +553,7 @@ export default function Progress({ data, history = [], onSave }) {
             <>
               {selData.bestSet && (
                 <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span className="pill" style={{ fontSize: 13, color: "#fbbf24" }}>
+                  <span className="pill" style={{ fontSize: 13, color: "var(--attn)" }}>
                     🏆 En iyi: <b>{selData.bestSet.w ? selData.bestSet.w + " kg × " : ""}{selData.bestSet.reps}</b> (~{selData.bestSet.e1rm} kg 1RM)
                   </span>
                 </div>
