@@ -2678,18 +2678,49 @@ function App(){
                 )
                 /* Bakım geçmişi satır inline panel */
                 , asansorDetay===e.id&&(function(){
-                    var sonBakimlar=maints.filter(function(m){return m.asansorId===e.id;}).sort(function(a,b){return b.tarih.localeCompare(a.tarih);}).slice(0,5);
+                    function gkey(d){return d?(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")):"";}
+                    function trG(k){var p=String(k||"").split("-");return p.length===3?p[2]+"."+p[1]+"."+p[0]:k;}
+                    var binaMaints=maints.filter(function(m){return Number(m.asansorId)===Number(e.id)&&m.yapildi;});
+                    var binaOdemeler=(sonOdemeler||[]).filter(function(o){return Number(o.aid)===Number(e.id)&&!o.iptal&&(Number(o.alinanTutar)||0)>0;});
+                    var olaylar=[];
+                    /* Bakım olayları — bakımın yapıldığı tarih */
+                    binaMaints.forEach(function(m){
+                      var d=maintFiiliTarih(m); var k=gkey(d); var alinan=finansMaintAlinan(m);
+                      olaylar.push({key:"b"+m.id, s:k+"-1", tip:"bakim", tarih:k, alinan:alinan, notlar:m.notlar, yapan:m.bakimciAd||m.tahsilatBakimciAd||""});
+                    });
+                    /* Ödeme olayları — bakımla AYNI GÜN bakımda alınmış olanı tekrar ekleme;
+                       farklı günde/manuel alınanları ayrı satır göster (kullanıcı isteği). */
+                    binaOdemeler.forEach(function(o){
+                      var d=parseFinansDate(o.tarih); var k=gkey(d);
+                      var ayniGunBakimdaAlindi=binaMaints.some(function(m){return gkey(maintFiiliTarih(m))===k&&finansMaintAlinan(m)>0;});
+                      if(ayniGunBakimdaAlindi) return;
+                      olaylar.push({key:"o"+o.id, s:k+"-2", tip:"odeme", tarih:k, tutar:Number(o.alinanTutar)||0, not:o.not||"", manuel:!o.tahsilatYapan, yapan:o.tahsilatYapan||""});
+                    });
+                    olaylar.sort(function(a,b){return String(b.s).localeCompare(String(a.s));});
+                    olaylar=olaylar.slice(0,8);
                     return React.createElement('div', {style:{marginTop:8,background:"#0d1321",borderRadius:10,overflow:"hidden",border:"1px solid #1e2a40"}}
-                      , React.createElement('div', {style:{padding:"7px 10px",fontSize:10,fontWeight:700,color:"#3b82f6",borderBottom:"1px solid #1e2a40"}}, "Son 5 Bakım")
-                      , sonBakimlar.length===0
-                          ? React.createElement('div', {style:{padding:"8px 10px",fontSize:11,color:"#475569"}}, "Henüz bakım kaydı yok.")
-                          : sonBakimlar.map(function(m){
-                              return React.createElement('div', {key:m.id,style:{padding:"7px 10px",borderTop:"1px solid #1e2a40",display:"flex",justifyContent:"space-between",alignItems:"center"}}
-                                , React.createElement('div', null
-                                  , React.createElement('div', {style:{fontSize:11,fontWeight:600,color:m.yapildi?"#34c759":"#94a3b8"}}, m.yapildi?"✅":"⏳"," ",m.tarih)
-                                  , m.notlar&&React.createElement('div', {style:{fontSize:10,color:"#475569"}}, m.notlar)
+                      , React.createElement('div', {style:{padding:"7px 10px",fontSize:10,fontWeight:700,color:"#3b82f6",borderBottom:"1px solid #1e2a40"}}, "Bakım & Ödeme Geçmişi")
+                      , olaylar.length===0
+                          ? React.createElement('div', {style:{padding:"8px 10px",fontSize:11,color:"#475569"}}, "Henüz kayıt yok.")
+                          : olaylar.map(function(x){
+                              if(x.tip==="bakim"){
+                                return React.createElement('div', {key:x.key,style:{padding:"7px 10px",borderTop:"1px solid #1e2a40",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}
+                                  , React.createElement('div', {style:{minWidth:0}}
+                                    , React.createElement('div', {style:{fontSize:11,fontWeight:600,color:"#34c759"}}, "🔧 Bakım · "+trG(x.tarih))
+                                    , x.yapan&&React.createElement('div', {style:{fontSize:9,color:"#64748b"}}, "👤 "+x.yapan)
+                                    , x.notlar&&React.createElement('div', {style:{fontSize:10,color:"#475569"}}, x.notlar)
+                                  )
+                                  , x.alinan>0
+                                      ? React.createElement('span', {style:{fontSize:11,fontWeight:700,color:"#34c759",whiteSpace:"nowrap"}}, "+"+x.alinan.toLocaleString("tr-TR")+"₺")
+                                      : React.createElement('span', {style:{fontSize:10,fontWeight:700,color:"#ef4444",whiteSpace:"nowrap"}}, "ödeme yok")
+                                );
+                              }
+                              return React.createElement('div', {key:x.key,style:{padding:"7px 10px",borderTop:"1px solid #1e2a40",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,background:"#0a1a12"}}
+                                , React.createElement('div', {style:{minWidth:0}}
+                                  , React.createElement('div', {style:{fontSize:11,fontWeight:600,color:"#10b981"}}, "💰 Ödeme · "+trG(x.tarih)+(x.manuel?" (manuel)":""))
+                                  , (x.not||x.yapan)&&React.createElement('div', {style:{fontSize:9,color:"#64748b"}}, (x.yapan?"👤 "+x.yapan:"")+(x.not&&x.yapan?" · ":"")+(x.not||""))
                                 )
-                                , m.yapildi&&React.createElement('span', {style:{fontSize:11,fontWeight:700,color:"#34c759"}}, finansMaintAlinan(m).toLocaleString("tr-TR"),"₺")
+                                , React.createElement('span', {style:{fontSize:11,fontWeight:700,color:"#10b981",whiteSpace:"nowrap"}}, "+"+x.tutar.toLocaleString("tr-TR")+"₺")
                               );
                             })
                     );
