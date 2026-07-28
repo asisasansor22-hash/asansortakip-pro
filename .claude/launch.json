@@ -12,6 +12,21 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview"],
       "port": 4173
+    },
+    {
+      "name": "asistor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\Özi''\\Desktop\\Berat''\\Asistor",
+        "run",
+        "dev",
+        "--",
+        "C:\\Users\\Özi''\\Desktop\\Berat''\\Asistor",
+        "--port",
+        "5180"
+      ],
+      "port": 5180
     }
   ]
 }
