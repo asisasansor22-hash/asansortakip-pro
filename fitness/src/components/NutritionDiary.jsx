@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import BarcodeScanner from "./BarcodeScanner";
-import { dbGet, dbSet } from "../firebase";
+import { dbGetR, dbSet } from "../firebase";
 
 const z = (n) => String(n).padStart(2, "0");
 const dayKey = (d = new Date()) => d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
@@ -33,6 +33,11 @@ function Bar({ val, goal, color }) {
 export default function NutritionDiary() {
   const [diary, setDiary] = useState({ goal: { kcal: 0, protein: 0 }, days: {} });
   const [loaded, setLoaded] = useState(false);
+  // Bulut okuması BAŞARILI oldu mu? Bu ayrım kritik: okuma başarısızsa state boş
+  // kalır, ama eskiden yine de yazılıyordu — eklenen ilk yemek buluttaki TÜM
+  // günlüğü tek günle değiştiriyordu. Okuma başarısızken artık hiç yazmıyoruz.
+  const okRef = useRef(false);
+  const [readOk, setReadOk] = useState(true); // yalnızca uyarıyı göstermek için
   const today = dayKey();
 
   const [name, setName] = useState("");
@@ -46,19 +51,31 @@ export default function NutritionDiary() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const d = await dbGet("diary");
-      if (alive && d && typeof d === "object") {
-        setDiary({ goal: d.goal || { kcal: 0, protein: 0 }, days: d.days || {} });
+      // dbGetR: {ok, data}. "ağ hatası" ile "veri yok" ayrımı şart — ikisi de
+      // null döndüğü için dbGet ile ayırt edilemiyordu.
+      const r = await dbGetR("diary");
+      if (!alive) return;
+      okRef.current = r.ok;
+      setReadOk(r.ok);
+      if (r.ok && r.data && typeof r.data === "object") {
+        // recent (son kullanılanlar) de taşınmalı: eskiden düşürülüyordu, bu
+        // yüzden yüklemeden sonraki ilk yazma listeyi buluttan da siliyordu.
+        setDiary({
+          goal: r.data.goal || { kcal: 0, protein: 0 },
+          days: r.data.days || {},
+          recent: Array.isArray(r.data.recent) ? r.data.recent : [],
+        });
       }
-      if (alive) setLoaded(true);
+      setLoaded(true);
     })();
     return () => { alive = false; };
   }, []);
 
   // Fonksiyonel kalıcılık: en güncel state üzerinden hesapla (hızlı ardışık
   // eklemelerde bayat-closure yüzünden veri kaybı olmasın).
+  // Okuma başarısızsa YAZMA — elimizdeki state buluttaki günlüğü temsil etmiyor.
   function persistFn(updater) {
-    setDiary((prev) => { const next = updater(prev); dbSet("diary", next); return next; });
+    setDiary((prev) => { const next = updater(prev); if (okRef.current) dbSet("diary", next); return next; });
   }
   const mkItem = (item) => ({
     id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -125,6 +142,16 @@ export default function NutritionDiary() {
   return (
     <div>
       <p style={{ color: "var(--muted)", marginTop: -4 }}>Bugün yediklerini ekle, kalori ve proteini hedefine göre takip et.</p>
+
+      {!readOk && (
+        <div className="card" style={{ marginBottom: 12, borderColor: "var(--warn)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Günlük yüklenemedi</div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
+            İnternet bağlantısı kurulamadı. Şu an eklediklerin <b>kaydedilmiyor</b> — mevcut
+            günlüğünün üzerine yazılmasın diye. Bağlantı gelince sayfayı yenile.
+          </p>
+        </div>
+      )}
 
       {/* Özet */}
       <div className="card" style={{ marginBottom: 12 }}>

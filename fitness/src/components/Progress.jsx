@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise, REGIONS } from "../data/exercises";
-import { dbGet, dbSet } from "../firebase";
+import { dbGetR, dbSet } from "../firebase";
 import DeloadCard from "./DeloadCard";
 import { setCountOf, bestOf, isArchived } from "../data/history";
 
@@ -161,11 +161,20 @@ export default function Progress({ data, history = [], onSave }) {
   const justClosed = () => Date.now() - closedAt.current < 450;
   const closeViewer = () => { closedAt.current = Date.now(); setViewer(null); };
 
+  // Bulut okuması başarılı oldu mu? Başarısızsa state boş kalır ve eskiden yine
+  // de yazılıyordu — eklenen ilk fotoğraf buluttaki TÜM fotoğrafları siliyordu.
+  const photosOk = useRef(false);
+  const [photoReadOk, setPhotoReadOk] = useState(true); // yalnızca uyarı için
+
   useEffect(() => {
     let alive = true;
     (async () => {
-      const p = await dbGet("photos");
-      if (alive && Array.isArray(p)) setPhotos(p);
+      // dbGetR: "ağ hatası" ile "hiç fotoğraf yok" ayrımı — ikisi de null döner.
+      const r = await dbGetR("photos");
+      if (!alive) return;
+      photosOk.current = r.ok;
+      setPhotoReadOk(r.ok);
+      if (r.ok && Array.isArray(r.data)) setPhotos(r.data);
     })();
     return () => { alive = false; };
   }, []);
@@ -181,7 +190,7 @@ export default function Progress({ data, history = [], onSave }) {
   async function onPhoto(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
-    if (!file) return;
+    if (!file || !photosOk.current) return;
     setPhotoBusy(true);
     try {
       const src = await resizeImage(file);
@@ -193,6 +202,7 @@ export default function Progress({ data, history = [], onSave }) {
     setPhotoBusy(false);
   }
   function delPhoto(id) {
+    if (!photosOk.current) return;
     const next = photos.filter((p) => p.id !== id);
     setPhotos(next);
     dbSet("photos", next);
@@ -416,10 +426,20 @@ export default function Progress({ data, history = [], onSave }) {
 
       {/* Gelişim fotoğrafları */}
       <div className="section-title">Gelişim Fotoğrafları</div>
-      <label className="btn-primary" style={{ display: "block", textAlign: "center", marginBottom: 10, opacity: photoBusy ? 0.6 : 1 }}>
-        {photoBusy ? "Ekleniyor…" : "📷 Fotoğraf Ekle"}
-        <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={photoBusy} onChange={onPhoto} />
-      </label>
+      {!photoReadOk ? (
+        <div className="card" style={{ marginBottom: 10, borderColor: "var(--warn)" }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Fotoğraflar yüklenemedi</div>
+          <p style={{ color: "var(--muted)", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
+            İnternet bağlantısı kurulamadı. Mevcut fotoğraflarının üzerine yazılmasın diye
+            ekleme ve silme geçici olarak kapalı. Bağlantı gelince sayfayı yenile.
+          </p>
+        </div>
+      ) : (
+        <label className="btn-primary" style={{ display: "block", textAlign: "center", marginBottom: 10, opacity: photoBusy ? 0.6 : 1 }}>
+          {photoBusy ? "Ekleniyor…" : "📷 Fotoğraf Ekle"}
+          <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={photoBusy} onChange={onPhoto} />
+        </label>
+      )}
       {photos.length === 0 ? (
         <p style={{ color: "var(--muted)", fontSize: 13 }}>Düzenli aralıklarla fotoğraf ekle; zamanla değişimini yan yana görürsün.</p>
       ) : (
