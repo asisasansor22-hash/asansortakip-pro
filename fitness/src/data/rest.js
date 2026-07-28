@@ -11,6 +11,9 @@
 // Pratik kural: yeni sete başlarken hâlâ nefes nefese kalmışsan dinlenme kısa;
 // tekrar sayın belirgin düşüyorsa (ör. 10 → 6) dinlenmeyi uzat.
 
+import { getMuscles } from "./exerciseMuscles";
+import { getExercise } from "./exercises";
+
 // Çok eklemli (bileşik) hareketler — birden fazla eklem ve büyük kas kütlesi
 // çalıştığı için daha uzun toparlanma isterler.
 const COMPOUND = new Set([
@@ -33,6 +36,35 @@ const COMPOUND = new Set([
 ]);
 
 export function isCompound(exId) { return COMPOUND.has(exId); }
+
+// Hareketin "büyüklüğü" — ne kadar kas kütlesi çalışıyor.
+//
+// Neden isCompound tek başına yetmiyor: yukarıdaki COMPOUND kümesi yalnızca
+// elle yazılmış ~55 kebab-case id içeriyor ("bench-press"). exercisesGenerated.js
+// içindeki ~780 hareketin id'si Title_Snake_Case ("Barbell_Full_Squat"), yani
+// hepsi yanlışlıkla "izolasyon" sayılırdı.
+//
+// Çözüm zaten repoda: exerciseMuscles.js'teki kas tablosu üretilmiş hareketlerin
+// TAMAMINI kapsıyor (784/784). İkincil kas sayısı temiz bir bileşik göstergesi:
+// yan kaldırış / leg extension / triceps pushdown gibi net izolasyonlarda s: [],
+// çok eklemlilerde birden fazla ikincil kas var.
+//
+// NOT: restFor() hâlâ yalnızca isCompound kullanıyor — dinlenme sürelerini
+// değiştirmek ayrı bir kullanıcıya görünür davranış değişikliği, bilinçli
+// olarak bu işin dışında bırakıldı.
+export function exerciseSize(exId) {
+  if (isCompound(exId)) return "large";
+  const m = getMuscles(exId);
+  if (m) {
+    const n = Array.isArray(m.s) ? m.s.length : 0;
+    if (n >= 3) return "large";
+    if (n >= 1) return "medium";
+    return "small";
+  }
+  const ex = getExercise(exId);
+  const r = ex && ex.region;
+  return (r === "bacak" || r === "sirt") ? "medium" : "small";
+}
 
 // Hedef tekrar metninden ilk sayıyı al ("6-10" → 6, "5" → 5, "30 sn" → 30)
 function firstInt(s) {

@@ -529,6 +529,22 @@ export default function App() {
     return best;
   }
 
+  // Bir hareketin son n seansı (yeni→eski), yalnızca o hareketin setleriyle.
+  // Yüklenme önerisi bunu kullanır: tek sete değil, birkaç seansa bakabilmek
+  // takılma (üst üste başarısızlık) tespitini mümkün kılıyor.
+  // Arşiv satırları atlanır — onlarda set dökümü ve RIR yok (data/history.js).
+  function exHistory(exId, n = 3) {
+    const out = [];
+    for (const s of history) {
+      if (!s.sets) continue;
+      const sets = s.sets.filter((st) => st.exId === exId);
+      if (!sets.length) continue;
+      out.push({ date: s.date, sets });
+      if (out.length >= n) break;
+    }
+    return out;
+  }
+
   // Bir hareket için en son girilen kilo/tekrar
   function lastLog(exId) {
     for (const s of history) {
@@ -933,7 +949,7 @@ export default function App() {
         onExit={() => { setWorkout(null); setResumeState(null); lsClearActiveWorkout(); }}
         onFinish={(s) => { saveWorkout(s); setResumeState(null); lsClearActiveWorkout(); }}
         onPersist={(snap) => { if (snap === null) lsClearActiveWorkout(); else lsSetActiveWorkout({ program: workout, ...snap, savedAt: Date.now() }); }}
-        lastLog={lastLog} bestE1RM={bestE1RM} />}
+        lastLog={lastLog} bestE1RM={bestE1RM} exHistory={exHistory} />}
       <div className="topbar">
         <div>
           <div className="brand">GYM<span>O</span></div>

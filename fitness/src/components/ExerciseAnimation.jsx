@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Lottie from "lottie-react";
 import { getLottie } from "../data/lottieMap";
 import { exerciseFrames } from "../data/exerciseImages";
+import { gearOf } from "../data/overload";
 
 // Gerçek egzersiz fotoğrafı. still=true ise tek kare (liste/kart performansı için);
 // değilse başlangıç↔bitiş kareleri cross-fade ile döner (detay/antrenman).
@@ -60,15 +61,14 @@ const METAL = "var(--fig-metal)";   // bar/sap
 const PLATE = "var(--fig-plate)";   // ağırlık plakası
 const CABLE = "var(--fig-cable)";   // kablo/çerçeve
 
-// Ekipman tipini "equip" metninden çıkar
+// Ekipman tipini "equip" metninden çıkar.
+// Sınıflandırma data/overload.js'teki gearOf'a taşındı (tek kaynak); burada
+// yalnızca çizilebilen beş tipe indirgeniyor. Not: "EZ Bar" eskiden yanlışlıkla
+// pullbar'a düşüyordu, artık halter gibi çiziliyor.
+const DRAWABLE = { barbell: "barbell", ezbar: "barbell", dumbbell: "dumbbell", machine: "machine", cable: "machine", plate: "plate", pullbar: "pullbar" };
 function gearType(equip) {
   if (!equip) return null;
-  if (/halter/i.test(equip)) return "barbell";
-  if (/dumbbell/i.test(equip)) return "dumbbell";
-  if (/makine/i.test(equip)) return "machine";
-  if (/plaka/i.test(equip)) return "plate";
-  if (/(^|[^a-z])bar($|[^a-z])/i.test(equip)) return "pullbar"; // "Bar" (barfiks vb.)
-  return null;
+  return DRAWABLE[gearOf(equip)] || null;
 }
 
 // Elde tutulan ekipman (forearm grubu içinde, el ~ 100,134)

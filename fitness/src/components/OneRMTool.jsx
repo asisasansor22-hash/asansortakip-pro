@@ -1,8 +1,8 @@
 import React, { useState } from "react";
+import { round05 } from "../data/overload";
 
 // Epley: 1RM = w × (1 + r/30)
 const est1RM = (w, r) => (w > 0 && r > 0 ? w * (1 + r / 30) : 0);
-const round05 = (x) => Math.round(x * 2) / 2;
 
 // % → yaklaşık yapılabilir tekrar (kaba rehber)
 const PCT = [

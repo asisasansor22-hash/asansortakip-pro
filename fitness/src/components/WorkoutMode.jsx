@@ -4,6 +4,7 @@ import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
 import SpotifyBar from "./SpotifyBar";
 import { restFor, clampRest } from "../data/rest";
+import { overloadSuggestion } from "../data/overload";
 import { alertRestDone, primeAudio, keepAwake, releaseAwake,
          notifOn, setNotifOn, notifPermission, requestNotif, soundOn, setSoundOn } from "../utils/alerts";
 
@@ -48,21 +49,11 @@ const firstInt = (s) => { const m = String(s || "").match(/\d+/); return m ? par
 // Tahmini 1 tekrar maksimumu (Epley)
 const est1RM = (w, r) => (w > 0 && r > 0 ? Math.round(w * (1 + r / 30)) : null);
 
-// Progressive overload önerisi: son sefere göre bir sonraki hedef
-function overloadSuggestion(prev, metaReps) {
-  if (!prev || !prev.weight) return null;
-  const w = Number(prev.weight);
-  const r = firstInt(prev.reps);
-  if (!w || !r) return null;
-  const range = repRange(metaReps) || { low: r, high: r };
-  // Aralığın üstüne ulaştıysa kiloyu artır, tekrarı aralığın altına çek
-  if (r >= range.high) return { weight: Math.round((w + 2.5) * 2) / 2, reps: String(range.low) };
-  // Aksi halde aynı kiloda bir tekrar daha hedefle
-  return { weight: w, reps: String(r + 1) };
-}
+// Yüklenme önerisi artık data/overload.js'te: RIR'a, hareketin büyüklüğüne ve
+// ekipmanına bakıyor, takılmayı fark ediyor ve gerekçesini yazıyor.
 
 // Antrenman modu: ısınma → hareket hareket çalış → özet/soğuma/paylaş.
-export default function WorkoutMode({ program, onExit, onFinish, onPersist, resume, lastLog, bestE1RM }) {
+export default function WorkoutMode({ program, onExit, onFinish, onPersist, resume, lastLog, bestE1RM, exHistory }) {
   const baseIds = (program.exercises || []).filter((id) => getExercise(id));
   // Bu oturuma özel hareket değişiklikleri (sıra no → yeni hareket id).
   // Kaydedilmiş programı DEĞİŞTİRMEZ; sadece bugünkü antrenman için geçerlidir.
@@ -170,7 +161,10 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   })();
 
   const prev = ex && lastLog ? lastLog(ex.id) : null;
-  const suggestion = overloadSuggestion(prev, targetReps);
+  // Son 3 seans: takılma (üst üste başarısızlık) tespiti için birden fazla
+  // seans gerekiyor; tek set yetmiyor.
+  const exSessions = ex && exHistory ? exHistory(ex.id, 3) : [];
+  const suggestion = ex ? overloadSuggestion(ex.id, targetReps, exSessions) : null;
   const curE1RM = est1RM(Number(weight), firstInt(reps));
 
   // Hareket değişince kilo/tekrar alanlarını son kayıttan / hedeften doldur
@@ -588,10 +582,23 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
               </div>
             )}
             {suggestion && (
-              <button className="chip on" style={{ marginTop: 4 }}
-                onClick={() => { setWeight(String(suggestion.weight)); setReps(String(suggestion.reps)); }}>
-                🎯 Hedef: {suggestion.weight} kg × {suggestion.reps} (uygula)
-              </button>
+              <div style={{ marginTop: 4, textAlign: "center", maxWidth: 320 }}>
+                <button className="chip on"
+                  onClick={() => {
+                    // weight null olabilir (vücut ağırlığı / izometrik) —
+                    // String(null) girdiye "null" yazardı.
+                    setWeight(suggestion.weight == null ? "" : String(suggestion.weight));
+                    setReps(String(suggestion.reps));
+                  }}>
+                  {suggestion.tone === "down" ? "🔻 Hafifle: " : suggestion.tone === "hold" ? "🔁 Aynı: " : "🎯 Hedef: "}
+                  {suggestion.weight != null ? suggestion.weight + " kg × " : ""}
+                  {suggestion.reps}
+                  {suggestion.weight == null && !/sn|dk/i.test(suggestion.reps) ? " tekrar" : ""} (uygula)
+                </button>
+                <p style={{ color: "var(--muted)", fontSize: 11.5, margin: "4px 0 0", lineHeight: 1.5 }}>
+                  {suggestion.why}
+                </p>
+              </div>
             )}
             <div className="row" style={{ justifyContent: "center", gap: 8, marginTop: 6, width: "100%", maxWidth: 320 }}>
               <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
