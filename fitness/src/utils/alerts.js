@@ -92,6 +92,20 @@ export function vibrateRestDone() {
   try { if (navigator.vibrate) navigator.vibrate([160, 70, 160, 70, 260]); } catch (e) {}
 }
 
+// navigator.serviceWorker.ready, KAYIT YOKSA asla çözülmeyen bir sözdür —
+// reddetmez de, sonsuza kadar bekler. Güncelleme sırasında kayıt bir an
+// kaybolabildiği için burada zaman aşımıyla yarıştırılır; aksi halde bildirim
+// hiç gösterilmeden sessizce kaybolurdu.
+async function swReady(ms) {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((res) => setTimeout(() => res(null), ms || 2000)),
+    ]);
+  } catch (e) { return null; }
+}
+
 // Bildirim göster. Servis çalışanı varsa onun üzerinden (kilit ekranında da
 // görünür), yoksa doğrudan Notification ile.
 export async function showRestDone(exName) {
@@ -104,10 +118,8 @@ export async function showRestDone(exName) {
     vibrate: [160, 70, 160], silent: false,
   };
   try {
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
-    }
+    const reg = await swReady();
+    if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
     new Notification(title, opts);
   } catch (e) {}
 }
@@ -125,10 +137,8 @@ export async function showWorkoutReminder(programName) {
     vibrate: [120, 60, 120], silent: false,
   };
   try {
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
-    }
+    const reg = await swReady();
+    if (reg && reg.showNotification) { await reg.showNotification(title, opts); return; }
     new Notification(title, opts);
   } catch (e) {}
 }

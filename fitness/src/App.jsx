@@ -74,8 +74,28 @@ function normalizeSchedule(v) {
   Object.keys(v).forEach((k) => { if (v[k]) out[k] = v[k]; });
   return out;
 }
-// Service worker'ları kaldırıp sayfayı ağdan tazeleyerek zorla güncelle.
-async function hardReload() {
+// Yeni sürüme geç.
+//
+// Eskiden burası her sürüm yükseltmesinde TÜM service worker kayıtlarını
+// kaldırıp TÜM önbellekleri siliyordu. Uygulama kabuğu önbelleği eklendiği için
+// bu artık kabul edilemez: her dağıtımdan sonra çevrimdışı yeteneği sıfırlanır
+// ve geri gelmesi için internet gerekir. Ayrıca kayıt kaldırma penceresi
+// utils/alerts.js'teki navigator.serviceWorker.ready sözünü süresiz askıda
+// bırakabiliyordu (kayıt yoksa o söz asla çözülmez).
+//
+// Yeni akış: bekleyen service worker'a "devral" de, önbelleği ELLEME.
+// Eski önbellekleri temizlemek service worker'ın activate adımının işi.
+//
+// KAÇIŞ KAPISI: iki denemede güncellenemediyse eski davranışa (tam temizlik)
+// dönülür. Güncelleme yolu bozulursa kullanıcı eski sürümde mahsur kalır ve
+// uzaktan kurtarma imkânı yoktur — bu yüzden bu kapı pazarlık konusu değil.
+const UPD_TRIES = "fitbe_upd_tries";
+
+export function clearUpdateTries() {
+  try { sessionStorage.removeItem(UPD_TRIES); } catch (e) {}
+}
+
+async function nukeEverything() {
   try {
     if ("serviceWorker" in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
@@ -84,6 +104,30 @@ async function hardReload() {
     if (window.caches && caches.keys) {
       const keys = await caches.keys();
       await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch (e) {}
+}
+
+async function hardReload() {
+  let n = 0;
+  try { n = Number(sessionStorage.getItem(UPD_TRIES) || 0) || 0; } catch (e) {}
+
+  if (n >= 2) {
+    await nukeEverything();
+    clearUpdateTries();
+    window.location.reload();
+    return;
+  }
+
+  try { sessionStorage.setItem(UPD_TRIES, String(n + 1)); } catch (e) {}
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        // sw.js _headers'ta no-store → update() gerçekten yeniden indirir
+        await reg.update();
+        if (reg.waiting) reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      }
     }
   } catch (e) {}
   window.location.reload();
@@ -601,12 +645,17 @@ export default function App() {
         const r = await fetch("/version.json?ts=" + Date.now(), { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
-        if (j && j.v && typeof __BUILD_ID__ !== "undefined" && j.v !== __BUILD_ID__) {
-          if (workoutBusyRef.current) return; // fetch sırasında antrenman başladıysa iptal
-          triggered = true;
-          setToast("Yeni sürüm yüklendi, güncelleniyor…");
-          setTimeout(hardReload, 1500);
+        if (!j || !j.v || typeof __BUILD_ID__ === "undefined") return;
+        if (j.v === __BUILD_ID__) {
+          // Güncel sürümdeyiz → hardReload'un kaçış kapısı sayacını sıfırla,
+          // yoksa bir sonraki güncelleme gereksiz yere tam temizliğe düşerdi.
+          clearUpdateTries();
+          return;
         }
+        if (workoutBusyRef.current) return; // fetch sırasında antrenman başladıysa iptal
+        triggered = true;
+        setToast("Yeni sürüm yüklendi, güncelleniyor…");
+        setTimeout(hardReload, 1500);
       } catch (e) {}
     }
     check();

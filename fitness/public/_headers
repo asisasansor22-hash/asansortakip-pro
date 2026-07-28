@@ -6,5 +6,16 @@
 /index.html
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
 
+# Gezinme isteği "/" yoluna gelir, "/index.html" yoluna değil — bu kural
+# olmadan kök belge kenarda/tarayıcıda önbelleğe alınabiliyordu. Service worker
+# gezinmeyi karşıladığında büyük ölçüde önemsiz ama service worker'ın henüz
+# kurulmadığı ilk yükleme için gerekli.
+/
+  Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
 /sw.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+
+# İçerik hash'li: aynı URL asla farklı içerik döndürmez, sonsuza kadar saklanabilir.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
