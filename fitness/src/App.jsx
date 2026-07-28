@@ -3,6 +3,9 @@ import { onAuthChange, firebaseLogout, dbGet, dbGetR, dbSet, feedList, feedComme
 import { dmSeenGet } from "./components/Messages";
 import { earnedCount } from "./data/achievements";
 import { compactHistory, totalsOf, bestOf } from "./data/history";
+import { mergeHistory, sameHistory, mergePrograms, mergeSchedule, mergeProgress, mergeFavorites } from "./data/merge";
+import { push, flushOutbox, onReconnect, surelyOffline } from "./utils/sync";
+import { clearAll as clearOutbox } from "./utils/outbox";
 import Login from "./components/Login";
 import BodyRegions from "./components/BodyRegions";
 import ProgramBuilder from "./components/ProgramBuilder";
@@ -102,6 +105,20 @@ function lsGetHist() {
 function lsSetHist(a) {
   try { localStorage.setItem("fitbe_workouts", JSON.stringify(Array.isArray(a) ? a : [])); } catch (e) {}
 }
+// İlerleme (kilo/ölçü) ve favoriler de cihazda yedeklenir. Eskiden yalnızca
+// bulutta duruyorlardı; çevrimdışıyken girilen ölçüm sekme kapanınca gidiyordu.
+function lsGetProgress() {
+  try { const o = JSON.parse(localStorage.getItem("fitbe_progress") || "null"); return o && typeof o === "object" ? o : null; } catch (e) { return null; }
+}
+function lsSetProgress(o) {
+  try { localStorage.setItem("fitbe_progress", JSON.stringify(o || { weights: [], measures: [] })); } catch (e) {}
+}
+function lsGetFavs() {
+  try { const a = JSON.parse(localStorage.getItem("fitbe_favorites") || "null"); return Array.isArray(a) ? a : null; } catch (e) { return null; }
+}
+function lsSetFavs(a) {
+  try { localStorage.setItem("fitbe_favorites", JSON.stringify(Array.isArray(a) ? a : [])); } catch (e) {}
+}
 // Yarım kalan (aktif) antrenman: uygulama kapanınca kaybolmasın, yeniden
 // açılışta "devam edilsin mi?" diye sorulsun. { program, i, setNo, warmup, log, savedAt }
 function lsGetActiveWorkout() {
@@ -137,9 +154,16 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const loaded = useRef(false);        // ilk yükleme bitti mi (kaydetme açık)
   const cloudReady = useRef(false);    // buluta bu oturumda ULAŞILDI mı → yazma güvenli
-  const edited = useRef(false);        // kullanıcı bu oturumda program/plan değiştirdi mi
-  const scheduleRef = useRef({});      // kurtarma (recovery) sırasında güncel değerler
+  // Kurtarma ve gönderim (flushOutbox) sırasında bayat closure yerine güncel
+  // değerleri okumak için. "edited" bayrağı KALDIRILDI: yalnızca program/plan
+  // yazmalarında set ediliyordu, antrenman kaydını kapsamıyordu ve yeniden
+  // bağlanmada yanlış dala sokup geçmişi kaybettiriyordu. Artık her zaman
+  // birleştiriyoruz, bayrağa gerek yok.
+  const scheduleRef = useRef({});
   const activeIdRef = useRef(null);
+  const programsRef = useRef([]);
+  const historyRef = useRef([]);
+  const snapshotRef = useRef({});
   const [toast, setToast] = useState("");
   const [profile, setProfile] = useState(lsGetProfile);
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -185,19 +209,37 @@ export default function App() {
         } catch (e) {}
       }
       if (!u) {
-        loaded.current = false; cloudReady.current = false; edited.current = false;
+        loaded.current = false; cloudReady.current = false;
         setPrograms([]); setActiveId(null); setProfile(null); setProfileLoaded(false); setHistory([]); setProgress({ weights: [], measures: [] }); setSchedule({}); setAvatar(null); setFavorites([]);
         setWorkout(null); setResumeState(null); setResumeAsk(null);
         // Çıkışta cihaz önbelleğini temizle — başka bir kullanıcı aynı cihazda
         // giriş yapınca önceki kullanıcının verisi görünmesin/karışmasın.
-        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout", "fitbe_name"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+        try { ["fitbe_programs", "fitbe_workouts", "fitbe_profile", "fitbe_avatar", "fitbe_active_workout", "fitbe_name", "fitbe_progress", "fitbe_favorites"].forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+        // Bekleyen yazmalar da gitmeli: başka kullanıcı girince önceki
+        // kullanıcının kuyruğu onun verisine gönderilmesin.
+        clearOutbox();
       }
     });
   }, []);
 
-  // Kurtarma (recovery) yazmaları için güncel değerleri ref'te tut
+  // Kurtarma ve gönderim yazmaları için güncel değerleri ref'te tut
   useEffect(() => { scheduleRef.current = schedule; }, [schedule]);
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => { programsRef.current = programs; }, [programs]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+  // flushOutbox'ın bekleyen anahtar başına okuyacağı anlık görüntü.
+  // Anahtar adları Firebase düğüm adlarıyla birebir aynı olmalı.
+  useEffect(() => {
+    snapshotRef.current = {
+      workouts: history,
+      programs: { list: programs, activeId },
+      schedule,
+      progress,
+      favorites,
+      profile,
+      avatar: avatar || "",
+    };
+  }, [history, programs, activeId, schedule, progress, favorites, profile, avatar]);
   // Antrenman veya "devam et?" penceresi açıkken oto-güncelleme ERTELENİR
   useEffect(() => { workoutBusyRef.current = !!(workout || resumeAsk); }, [workout, resumeAsk]);
 
@@ -211,14 +253,25 @@ export default function App() {
     let cancelled = false;
     let retryTimer = null;
 
-    // Bulut programlarını uygula + cihaza yedekle
-    function applyCloudPrograms(data, sched) {
-      if (data && Array.isArray(data.list)) {
-        const list = normalizeList(data.list);
-        setPrograms(list);
-        setActiveId(data.activeId || (list[0] && list[0].id) || null);
-        lsSetPack({ list, activeId: data.activeId || null, schedule: normalizeSchedule(sched || {}) });
-      }
+    // Bulut programlarını cihazdakiyle BİRLEŞTİRİP uygula + cihaza yedekle.
+    // Eskiden bulut listesi yereli koşulsuz eziyordu; çevrimdışı oluşturulan
+    // program ve o programa yapılan atamalar kayboluyordu (bkz. data/merge.js).
+    function applyMergedPrograms(cloudData, cloudSched, localPack) {
+      const cloudList = cloudData && Array.isArray(cloudData.list) ? normalizeList(cloudData.list) : null;
+      if (!cloudList && !(localPack && Array.isArray(localPack.list))) return null;
+      const { list, activeId: aid } = mergePrograms(
+        { list: normalizeList((localPack && localPack.list) || []), activeId: localPack && localPack.activeId },
+        { list: cloudList || [], activeId: cloudData && cloudData.activeId }
+      );
+      const sched = mergeSchedule(
+        normalizeSchedule((localPack && localPack.schedule) || {}),
+        normalizeSchedule(cloudSched || {})
+      );
+      setPrograms(list);
+      setActiveId(aid || (list[0] && list[0].id) || null);
+      setSchedule(sched);
+      lsSetPack({ list, activeId: aid || null, schedule: sched });
+      return { list, activeId: aid, schedule: sched };
     }
 
     // 0) Yarım kalan antrenman var mı? — SADECE cihaz kaydına bakar; bulut
@@ -247,6 +300,10 @@ export default function App() {
       }
       const localHist = lsGetHist();
       if (localHist && !cancelled) setHistory(localHist);
+      const localProgress = lsGetProgress();
+      if (localProgress && !cancelled) setProgress(localProgress);
+      const localFavs = lsGetFavs();
+      if (localFavs && !cancelled) setFavorites(localFavs);
 
       // 2) Buluttan oku — kritik anahtarlar SONUÇ DURUMLU (ok/veri ayrımı).
       const pr = await dbGetR("programs");
@@ -261,45 +318,66 @@ export default function App() {
       // programs okuması başarılıysa ağ ayakta → yazma güvenli
       if (pr.ok) cloudReady.current = true;
 
-      if (sc.ok && sc.data && typeof sc.data === "object") setSchedule(normalizeSchedule(sc.data));
-      if (favs.ok && Array.isArray(favs.data)) setFavorites(favs.data);
+      // --- BİRLEŞTİR, EZME ---
+      // Her anahtar için yerel ve bulut hâli data/merge.js kurallarıyla
+      // birleştirilir. Okuma başarısızsa (ok=false) yereli olduğu gibi bırak.
       if (typeof av === "string" && av) { setAvatar(av); lsSetAvatar(av); setPublicAvatar(av); }
-      if (prog.ok && prog.data && typeof prog.data === "object") {
-        setProgress({
-          weights: Array.isArray(prog.data.weights) ? prog.data.weights : [],
-          measures: Array.isArray(prog.data.measures) ? prog.data.measures : [],
-          goalKg: (typeof prog.data.goalKg === "number" && prog.data.goalKg > 0) ? prog.data.goalKg : null,
-        });
+
+      if (favs.ok) {
+        const mf = mergeFavorites(localFavs, favs.data, false);
+        setFavorites(mf); lsSetFavs(mf);
       }
-      if (hist.ok) {
-        if (Array.isArray(hist.data) && hist.data.length) { setHistory(hist.data); lsSetHist(hist.data); }
-        else if (localHist && localHist.length) { dbSet("workouts", localHist); } // bulut boş ama cihazda var → geri yükle
+      if (prog.ok) {
+        const mp = mergeProgress(localProgress, prog.data, false);
+        setProgress(mp); lsSetProgress(mp);
       }
 
+      let mergedHist = localHist || [];
+      if (hist.ok) {
+        mergedHist = mergeHistory(localHist, hist.data);
+        setHistory(mergedHist); lsSetHist(mergedHist);
+      }
+
+      let mergedPack = null;
       if (pr.ok) {
-        if (pr.data && Array.isArray(pr.data.list)) {
-          applyCloudPrograms(pr.data, sc.ok ? sc.data : (pack && pack.schedule));
-        } else if (pack && Array.isArray(pack.list) && pack.list.length) {
-          // Bulut boş ama cihazda program var → buluta geri yükle (kayıp önleme)
-          dbSet("programs", { list: pack.list, activeId: pack.activeId || null });
-          if (pack.schedule) dbSet("schedule", normalizeSchedule(pack.schedule));
-        }
+        mergedPack = applyMergedPrograms(pr.data, sc.ok ? sc.data : null, pack);
+      } else if (sc.ok && sc.data) {
+        // programlar okunamadı ama plan okundu → yalnızca planı birleştir
+        setSchedule(mergeSchedule(normalizeSchedule((pack && pack.schedule) || {}), normalizeSchedule(sc.data)));
       }
 
       if (prof && prof.gender) { setProfile(prof); lsSetProfile(prof); }
-      else if (localProf && cloudReady.current) { dbSet("profile", localProf); }
 
       setProfileLoaded(true);
       loaded.current = true;
+
       if (cloudReady.current) {
+        // Birleşme sonucu buluttakinden farklıysa geri yaz — çevrimdışı yapılan
+        // antrenman/program böylece buluta çıkar. Aynıysa boşuna PUT atma.
+        if (hist.ok && !sameHistory(mergedHist, hist.data)) push("workouts", mergedHist);
+        if (mergedPack) {
+          const cloudCount = (pr.data && Array.isArray(pr.data.list)) ? pr.data.list.length : 0;
+          if (mergedPack.list.length !== cloudCount) {
+            push("programs", { list: mergedPack.list, activeId: mergedPack.activeId || null });
+            push("schedule", mergedPack.schedule);
+          }
+        }
+        if (localProf && !(prof && prof.gender)) push("profile", localProf);
         dbSet("info", { email: user.email || "", lastSeen: Date.now() });
         // Kullanıcı aramada görünsün + GYMO Ligi istatistiklerini yayınla
         dirPublish();
-        const lbHist = (hist.ok && Array.isArray(hist.data) && hist.data.length) ? hist.data : (localHist || []);
-        lbPublish(computeLbStats(lbHist));
+        lbPublish(computeLbStats(mergedHist));
       }
 
+      // Açılışta bekleyen yazma varsa (önceki oturum çevrimdışı bitmişse) gönder
+      if (cloudReady.current) flushOutbox(() => snapshotRef.current);
+
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
+      // Eskiden burada "kullanıcı düzenledi mi?" (edited) diye bir ayrım vardı;
+      // düzenlemediyse bulut verisi yerelin üzerine yazılıyordu. edited bayrağı
+      // antrenman kaydını hiç kapsamadığı için, sadece antrenman yapıp çıkan
+      // kullanıcı YANLIŞ dala girip geçmişini kaybediyordu. Artık tek dal var:
+      // her zaman birleştir. Bayrağa da gerek kalmadı, kaldırıldı.
       if (!pr.ok) {
         let attempt = 0;
         const retry = async () => {
@@ -309,29 +387,25 @@ export default function App() {
           if (cancelled) return;
           if (!r.ok) { retryTimer = setTimeout(retry, Math.min(1500 * attempt, 8000)); return; }
           cloudReady.current = true;
-          if (edited.current) {
-            // Kullanıcı çevrimdışıyken düzenledi → yerel ve bulutu id bazında
-            // BİRLEŞTİR (yerel öncelikli); hiçbir taraf kaybolmasın.
-            const cloudList = (r.data && Array.isArray(r.data.list)) ? normalizeList(r.data.list) : [];
-            setPrograms((cur) => {
-              const byId = {};
-              cloudList.forEach((p) => { byId[p.id] = p; });
-              cur.forEach((p) => { byId[p.id] = p; });
-              const merged = Object.values(byId);
-              lsSetPack({ list: merged, activeId: activeIdRef.current, schedule: scheduleRef.current });
-              dbSet("programs", { list: merged, activeId: activeIdRef.current });
-              dbSet("schedule", scheduleRef.current);
-              return merged;
-            });
-          } else {
-            // Kullanıcı hiç düzenlemedi → bulut verisini uygula
-            const sc2 = await dbGetR("schedule", 1);
-            if (cancelled) return;
-            if (sc2.ok && sc2.data) setSchedule(normalizeSchedule(sc2.data));
-            applyCloudPrograms(r.data, sc2.ok ? sc2.data : null);
-            const h2 = await dbGetR("workouts", 1);
-            if (!cancelled && h2.ok && Array.isArray(h2.data) && h2.data.length) { setHistory(h2.data); lsSetHist(h2.data); }
+
+          const sc2 = await dbGetR("schedule", 1);
+          if (cancelled) return;
+          const mp = applyMergedPrograms(r.data, sc2.ok ? sc2.data : null, {
+            list: programsRef.current, activeId: activeIdRef.current, schedule: scheduleRef.current,
+          });
+          if (mp) {
+            push("programs", { list: mp.list, activeId: mp.activeId || null });
+            push("schedule", mp.schedule);
           }
+
+          const h2 = await dbGetR("workouts", 1);
+          if (cancelled || !h2.ok) return;
+          const mh = mergeHistory(historyRef.current, h2.data);
+          setHistory(mh); lsSetHist(mh);
+          if (!sameHistory(mh, h2.data)) push("workouts", mh);
+          lbPublish(computeLbStats(mh));
+
+          flushOutbox(() => snapshotRef.current);
         };
         retryTimer = setTimeout(retry, 1500);
       }
@@ -340,22 +414,26 @@ export default function App() {
     return () => { cancelled = true; if (retryTimer) clearTimeout(retryTimer); };
   }, [user]);
 
+  // --- Kaydetme ---
+  // Ortak kalıp: cihaza HER ZAMAN yaz (çevrimdışı da olsa kaybolmasın), buluta
+  // ise push() ile. push başarısız olursa anahtar "bekliyor" olarak işaretlenir
+  // ve bağlantı dönünce flushOutbox onu birleştirip gönderir (utils/sync.js).
+  // cloudReady=false iken hiç denemeyip doğrudan işaretliyoruz.
   function saveProfile(p) {
     setProfile(p);
     lsSetProfile(p);
-    if (cloudReady.current) dbSet("profile", p);
+    push("profile", p);
   }
 
   // Antrenman oturumunu kaydet (en yeni başta).
   // compactHistory: son 100 seans tam detay, öncesi özet satır — hiçbir seans
   // tamamen silinmez (bkz. data/history.js).
-  // Bulut okunamadıysa (cloudReady=false) buluta YAZMA — yoksa yeni oturum
-  // buluttaki tüm geçmişi ezer. Bağlantı gelince geçmiş yeniden okunur.
   function saveWorkout(session) {
     setHistory((prev) => {
       const next = compactHistory([session, ...prev]);
       lsSetHist(next); // cihaza her zaman (güvenli)
-      if (cloudReady.current) { dbSet("workouts", next); lbPublish(computeLbStats(next)); }
+      push("workouts", next);
+      if (cloudReady.current) lbPublish(computeLbStats(next));
       return next;
     });
   }
@@ -363,21 +441,24 @@ export default function App() {
   // İlerleme verisini kaydet (kilo + ölçüler)
   function saveProgress(next) {
     setProgress(next);
-    if (cloudReady.current) dbSet("progress", next);
+    lsSetProgress(next);
+    push("progress", next);
   }
 
   // Profil fotoğrafı (avatar) kaydet/sil
   function saveAvatar(dataUrl) {
     setAvatar(dataUrl || null);
     lsSetAvatar(dataUrl || null);
-    if (cloudReady.current) { dbSet("avatar", dataUrl || ""); setPublicAvatar(dataUrl || null); }
+    push("avatar", dataUrl || "");
+    if (cloudReady.current) setPublicAvatar(dataUrl || null);
   }
 
   // Favori hareket ekle/çıkar
   function toggleFavorite(exId) {
     setFavorites((prev) => {
       const next = prev.includes(exId) ? prev.filter((x) => x !== exId) : [...prev, exId];
-      if (cloudReady.current) dbSet("favorites", next);
+      lsSetFavs(next);
+      push("favorites", next);
       return next;
     });
   }
@@ -415,17 +496,14 @@ export default function App() {
     return null;
   }
 
-  // --- Değişiklikte kaydet: cihaza HER ZAMAN (güvenli), buluta yalnız bulut
-  // bu oturumda OKUNABİLDİYSE (cloudReady) — okuma başarısızken yazmak
-  // buluttaki iyi veriyi ezebilir. Banner/kilit yok; sessiz çalışır. ---
+  // --- Değişiklikte kaydet: cihaza HER ZAMAN (güvenli), buluta push() ile.
+  // Çevrimdışıysa push anahtarı "bekliyor" işaretler; bağlantı dönünce
+  // flushOutbox buluttakiyle birleştirip gönderir. ---
   useEffect(() => {
     if (!user || !loaded.current) return;
-    edited.current = true;
     lsSetPack({ list: programs, activeId, schedule });
-    if (cloudReady.current) {
-      dbSet("programs", { list: programs, activeId });
-      dbSet("schedule", schedule);
-    }
+    push("programs", { list: programs, activeId });
+    push("schedule", schedule);
   }, [programs, activeId, schedule, user]);
 
   // --- Yedekleme ---
@@ -448,27 +526,68 @@ export default function App() {
         const hist = compactHistory(d.history);
         setHistory(hist);
         lsSetHist(hist);
-        if (cloudReady.current) { dbSet("workouts", hist); lbPublish(computeLbStats(hist)); }
+        push("workouts", hist);
+        if (cloudReady.current) lbPublish(computeLbStats(hist));
       }
       if (d.progress && typeof d.progress === "object") {
         saveProgress({
           weights: Array.isArray(d.progress.weights) ? d.progress.weights : [],
           measures: Array.isArray(d.progress.measures) ? d.progress.measures : [],
+          goalKg: (typeof d.progress.goalKg === "number" && d.progress.goalKg > 0) ? d.progress.goalKg : null,
         });
       }
       if (Array.isArray(d.favorites)) {
         setFavorites(d.favorites);
-        if (cloudReady.current) dbSet("favorites", d.favorites);
+        lsSetFavs(d.favorites);
+        push("favorites", d.favorites);
       }
       if (d.profile && typeof d.profile === "object") saveProfile(d.profile);
       if (d.avatar !== undefined) saveAvatar(d.avatar || null);
 
-      edited.current = true; // kurtarma akışı bu değişikliği görsün
       return { success: true };
     } catch (e) {
       return { success: false, error: "Geri yükleme sırasında hata oluştu." };
     }
   }
+
+  // --- Bağlantı geri geldiğinde bekleyenleri gönder ---
+  // Eskiden hiçbir online/offline dinleyicisi yoktu: uygulama çevrimiçi açılıp
+  // sonra bağlantı koparsa cloudReady sonsuza dek true kalıyor, her yazma
+  // sessizce düşüyor ve bir daha asla senkron olmuyordu.
+  useEffect(() => {
+    if (!user) return;
+    let attempt = 0;
+    let timer = null;
+    let dead = false;
+
+    async function probeAndFlush() {
+      if (dead || surelyOffline()) return;
+      // navigator.onLine "erişilebilir" demek değil (otel portalı, Firebase
+      // kesintisi) — kararı gerçek okuma sonucu verir.
+      const r = await dbGetR("programs", 1);
+      if (dead) return;
+      if (!r.ok) {
+        cloudReady.current = false;
+        attempt++;
+        clearTimeout(timer);
+        timer = setTimeout(probeAndFlush, Math.min(1500 * attempt, 8000));
+        return;
+      }
+      attempt = 0;
+      cloudReady.current = true;
+      flushOutbox(() => snapshotRef.current);
+    }
+
+    const off = onReconnect(probeAndFlush);
+    const onOffline = () => { cloudReady.current = false; };
+    window.addEventListener("offline", onOffline);
+    return () => {
+      dead = true;
+      clearTimeout(timer);
+      off();
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [user]);
 
   // --- Otomatik güncelleme: yeni sürüm yayınlandıysa algıla, bildir, yenile ---
   useEffect(() => {
