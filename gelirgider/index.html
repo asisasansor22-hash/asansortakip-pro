@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0F17" />
+    <meta name="description" content="Gelir gider takibi: kasa, kâr/zarar, bütçe ve raporlar. Veriler yalnızca cihazında." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/simge.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Gelir Gider" />
+    <title>Gelir Gider — Kasa ve Kâr/Zarar Defteri</title>
+    <!-- Temayı ilk boyamadan önce uygula: aksi hâlde açık tema seçiliyken
+         bir an koyu ekran görünür. JS çalışmazsa koyu varsayılan geçerli kalır. -->
+    <script>
+      (function () {
+        try {
+          var ham = localStorage.getItem("gg_veri_v1");
+          var tema = ham ? (JSON.parse(ham).ayarlar || {}).tema : null;
+          if (tema === "acik") {
+            document.documentElement.setAttribute("data-tema", "acik");
+            var mt = document.querySelector('meta[name="theme-color"]');
+            if (mt) mt.setAttribute("content", "#F4F6FB");
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Bu uygulamayı kullanmak için JavaScript gerekiyor.</noscript>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
