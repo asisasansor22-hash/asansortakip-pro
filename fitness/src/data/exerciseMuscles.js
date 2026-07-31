@@ -922,6 +922,7 @@ const MUSCLE_FIXES = {
   "l-sit": { p: ["Karın"], s: ["Ön Bacak (Quad)"] },
   "v-up": { p: ["Karın"], s: ["Ön Bacak (Quad)"] },
   "dragon-flag": { p: ["Karın"], s: ["Bel"] },
+  "squeeze-press": { p: ["Göğüs"], s: ["Triceps","Omuz"] },
 };
 
 export function getMuscles(id) { return MUSCLE_FIXES[id] || EXERCISE_MUSCLES[id] || null; }
