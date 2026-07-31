@@ -1,6 +1,20 @@
 import React from "react";
 import { volumeRows, TARGET_MIN, TARGET_MAX } from "../data/volume";
 import { tensionMix } from "../data/tension";
+import { REGIONS } from "../data/exercises";
+
+const REGION_NAME = {};
+REGIONS.forEach((r) => { REGION_NAME[r.id] = r.name; });
+
+// Kas grubuna özel "neden dolaylı yetmez" açıklaması (bkz. docs/dolayli-hacim.md)
+const HINT = {
+  triceps: "(uzun baş preslerde hiç büyümüyor)",
+  biceps: "(omuz fleksiyon görevi çekişlerde yüklenmiyor)",
+  hamstring: "(çift bacak squat hamstringde anlamlı hipertrofi üretmiyor)",
+  yanDeltoid: "(yan deltoid preslerde çalışmaz)",
+  arkaDeltoid: "(arka deltoid preslerde çalışmaz)",
+  baldir: "(baldır squat'ta sabitler, boyu değişmez)",
+};
 
 const COLOR = {
   none: "var(--line)",
@@ -64,8 +78,15 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
   return (
     <div>
       {title && <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{title}</div>}
-      {rows.map((r) => (
+      {rows.map((r, i) => (
         <div key={r.id} style={{ marginBottom: 8 }}>
+          {/* Kas grupları bölge başlığı altında gruplanır — 14 satır düz liste
+              olarak okunmuyordu. */}
+          {(i === 0 || rows[i - 1].region !== r.region) && (
+            <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginTop: i === 0 ? 0 : 10, marginBottom: 4 }}>
+              {REGION_NAME[r.region] || r.region}
+            </div>
+          )}
           <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3, gap: 6, flexWrap: "nowrap" }}>
             <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.emoji} {r.name}</span>
             {/* Başlık sayı DOĞRUDAN settir. Dolaylı katkı ayrı ve soluk yazılır —
@@ -110,25 +131,28 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
       <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
         Koyu = doğrudan set · soluk = dolaylı (bileşik hareketlerden)
         <br />🟡 az / dolaylı ağırlıklı · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek · dikey çizgi = alt eşik
-        <br />Karın eşiği 6'dır: bileşik hareketlerde gövde stabilizasyonundan yoğun izometrik yük alır.
+        <br />Hacim kas grubu başına sayılır: "bacak" yerine quad, arka bacak ve kalça ayrı ayrı.
       </div>
 
       {low.length > 0 && (
         <p style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
-          ⚠️ {low.map((r) => `${r.name} (${num(r.sets)}/${r.min})`).join(", ")} eşiğin altında.
-          Hipertrofi hedefliyorsan bu bölgelere hareket/set ekle.
+          {/* En eksik 3 tanesi yazılır; 14 kas grubunu tek tek listelemek
+              okunmaz bir duvar oluşturuyordu. */}
+          ⚠️ {low.slice()
+                .sort((a, b) => (a.sets / a.min) - (b.sets / b.min))
+                .slice(0, 3)
+                .map((r) => `${r.name} (${num(r.sets)}/${r.min})`).join(", ")}
+          {low.length > 3 ? ` ve ${low.length - 3} kas daha` : ""} eşiğin altında.
+          Hipertrofi hedefliyorsan bu kaslara hareket/set ekle.
         </p>
       )}
 
       {thin.map((r) => (
         <p key={r.id} style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0, lineHeight: 1.6 }}>
-          ⚠️ <b>{r.name}</b>: {num(r.sets)} setin {r.direct === 0 ? "tamamı" : num(r.indirect) + " kadarı"} bileşik
-          hareketlerden <b>dolaylı</b> geliyor. Dolaylı yük doğrudan setin yaklaşık yarısı sayılır; ayrıca
-          {r.id === "kol"
-            ? " triceps'in uzun başı ile biceps'in omuz görevi preslerde/çekişlerde eksik kalır"
-            : " yan ve arka deltoid preslerde neredeyse hiç yüklenmez"}.
-          Haftada en az <b>{r.directMin} doğrudan {r.name.toLowerCase()} seti</b> ekle
-          {r.id === "kol" ? " (ör. 3 set curl + 3 set baş üstü triceps uzatma)" : " (ör. 3 set yan kaldırış + 3 set face pull)"}.
+          ⚠️ <b>{r.name}</b>: {num(r.sets)} setin <b>tamamı</b> bileşik hareketlerden <b>dolaylı</b> geliyor —
+          bu kası doğrudan çalıştıran tek bir hareket yok. Dolaylı yük doğrudan setin yaklaşık yarısı
+          sayılır ve kasın bazı bölümlerine hiç ulaşmaz{HINT[r.id] ? " " + HINT[r.id] : ""}.
+          Programa <b>{r.name.toLowerCase()}</b> için doğrudan bir hareket ekle.
         </p>
       ))}
 

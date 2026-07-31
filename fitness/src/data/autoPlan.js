@@ -16,7 +16,8 @@
 
 import { getExercise } from "./exercises";
 import { tensionOf } from "./tension";
-import { volumeOf, minFor, maxFor, directMinFor, TARGET_MIN, TARGET_MAX } from "./volume";
+import { volumeOf, TARGET_MIN, TARGET_MAX } from "./volume";
+import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "./muscles";
 
 // Hacim eşikleri tek yerde: data/volume.js. Burada yeniden dışa aktarılıyor
 // çünkü AutoPlanner.jsx bunları bu modülden içe aktarıyor.
@@ -115,20 +116,33 @@ const SPLIT_BY_DAYS = {
 
 // Vurgu (emphasis): hangi bölgeye öncelik verilerek eksik hacim tamamlanacak.
 // Bilimsel not: vurgu bir TERCİHTİR, cinsiyet zorunluluğu değildir.
+// Vurgu sırası KAS GRUBU bazında. Eskiden bölge bazındaydı ve "bacak" tek kova
+// olduğu için üreteç 20 set quad ile bacağı "dolu" sayıp hamstringi hiç
+// eklemeyebiliyordu.
 export const EMPHASIS = {
-  denge:  { name: "Dengeli", order: ["bacak", "sirt", "gogus", "omuz", "kol", "karin"] },
-  altvucut:{ name: "Kalça & Bacak", order: ["bacak", "karin", "sirt", "omuz", "gogus", "kol"] },
-  ustvucut:{ name: "Üst Vücut", order: ["sirt", "gogus", "omuz", "kol", "bacak", "karin"] },
+  denge:   { name: "Dengeli", order: ["quad", "hamstring", "glute", "lat", "ustSirt", "gogus", "onDeltoid", "yanDeltoid", "arkaDeltoid", "biceps", "triceps", "karin", "baldir", "erektor"] },
+  altvucut:{ name: "Kalça & Bacak", order: ["glute", "quad", "hamstring", "baldir", "karin", "lat", "ustSirt", "onDeltoid", "yanDeltoid", "arkaDeltoid", "gogus", "biceps", "triceps", "erektor"] },
+  ustvucut:{ name: "Üst Vücut", order: ["lat", "ustSirt", "gogus", "onDeltoid", "yanDeltoid", "arkaDeltoid", "biceps", "triceps", "quad", "hamstring", "glute", "karin", "baldir", "erektor"] },
 };
 
-// Eksik kalan bölgeyi tamamlamak için kullanılacak havuz sırası
+// Eksik kalan KAS GRUBUNU tamamlamak için havuz sırası.
+// erektor listede yok: menteşe hareketleri onu zaten dolduruyor, ayrıca
+// doğrudan bel hareketi (hyperextension) her ekipman modunda yok.
 const FILL_POOLS = {
-  gogus: ["chestIso", "chestUp", "chest"],
-  sirt:  ["backHoriz", "backVert", "backLow"],
-  omuz:  ["shLat", "shRear", "shPress"],
-  kol:   ["biceps", "triceps"],
-  bacak: ["glute", "hamGlute", "quad", "calf"],
-  karin: ["core"],
+  gogus:       ["chestIso", "chestUp", "chest"],
+  lat:         ["backVert", "backHoriz"],
+  ustSirt:     ["backHoriz", "shRear", "backVert"],
+  onDeltoid:   ["shPress", "chestUp"],
+  yanDeltoid:  ["shLat"],
+  arkaDeltoid: ["shRear", "backHoriz"],
+  biceps:      ["biceps"],
+  triceps:     ["triceps"],
+  quad:        ["quad"],
+  hamstring:   ["hamGlute"],
+  glute:       ["glute", "hamGlute"],
+  baldir:      ["calf"],
+  karin:       ["core"],
+  erektor:     ["backLow"],
 };
 
 // Günde en fazla hareket. Az günle çalışanın seansı zorunlu olarak uzundur,
@@ -175,7 +189,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     //   • toplam yeterli AMA doğrudan set alt sınırın altında — yani bölge
     //     yalnızca bileşiklerden dolaylı kredi toplamış. Eskiden bu görülmüyordu
     //     ve üreteç kola hiç hareket eklemiyordu.
-    const gap = order.find((r) => vol.total[r] < minFor(r) || vol.direct[r] < directMinFor(r));
+    const gap = order.find((r) => vol.total[r] < muscleMinFor(r) || vol.direct[r] === 0);
     if (!gap) break;
 
     // Bu bölgeyi çalıştıran havuzlardan, en az dolu güne bir hareket ekle
@@ -211,7 +225,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     // Eskiden bu koşul yoktu: kolun hayali (dolaylı) hacmi 20'yi geçtiği için
     // budama, üretecin kendi koyduğu curl ve pushdown'ları siliyordu.
     const over = Object.keys(vol.total)
-      .filter((r) => vol.total[r] > maxFor(r) && vol.direct[r] >= directMinFor(r))
+      .filter((r) => vol.total[r] > MUSCLE_MAX_DEFAULT && vol.direct[r] > 0)
       .sort((a, b) => vol.total[b] - vol.total[a])[0];
     if (!over) break;
 
@@ -221,10 +235,11 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     for (const di of dayOrder) {
       const day = built[di];
       const idx = day.slots.findIndex((s) => {
-        const ex = getExercise(s.id);
-        if (!ex || ex.region !== over || !ISOLATION.has(s.pool)) return false;
-        // Bu slotu silmek bölgeyi doğrudan alt sınırın altına düşürüyorsa dokunma.
-        return (vol.direct[over] - s.sets) >= directMinFor(over);
+        // "over" artık BÖLGE değil KAS GRUBU — o kası DOĞRUDAN çalıştıran
+        // (katsayı 1) bir izolasyon slotu mu?
+        if (!ISOLATION.has(s.pool) || (musclesOf(s.id)[over] || 0) < 1) return false;
+        // Bu slotu silmek kası tek doğrudan uyaranından mahrum bırakıyorsa dokunma.
+        return (vol.direct[over] - s.sets) > 0;
       });
       // Günü tamamen boşaltma; en az 4 hareket kalsın
       if (idx >= 0 && day.slots.length > 4) { day.slots.splice(idx, 1); removed = true; break; }
@@ -265,7 +280,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   // Doldurma döngüsüyle AYNI koşul: aksi halde "3 doğrudan kol seti" olan bir
   // plan sessizce "✓ Hacim yeterli" rozetini alırdı.
   const gaps = Object.keys(volume.total).filter(
-    (r) => volume.total[r] < minFor(r) || volume.direct[r] < directMinFor(r));
+    (r) => volume.total[r] < muscleMinFor(r) || volume.direct[r] === 0);
   const goalName = { guc: "Güç", kasyap: "Kütle", yagver: "Yağ Yakım", fitkal: "Form" }[goal] || "Program";
 
   const outDays = built.map((d) => {

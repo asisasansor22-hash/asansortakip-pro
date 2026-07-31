@@ -22,6 +22,7 @@
 // Bu yüzden aşağıda DIRECT_MIN alt sınırı ve "thin" seviyesi var.
 
 import { getExercise, REGIONS } from "./exercises";
+import { MUSCLES, MUSCLE_IDS, musclesOf, muscleMinFor, MUSCLE_MAX_DEFAULT } from "./muscles";
 
 export const TARGET_MIN = 10;
 export const TARGET_MAX = 20;
@@ -139,10 +140,16 @@ const INDIRECT_BY_ID = {
 //
 // autoPlan.js ve (ileride) İlerleme ekranı da bunu kullanır — tek uygulama,
 // tek doğru. Eskiden autoPlan'ın kendi ayrı ve UYUŞMAYAN kopyası vardı.
+// KAS GRUBU bazında hesaplar (bölge bazında değil). Bölge çözünürlüğü hacim için
+// çok kabaydı: 20 set squat + leg press "Bacak 20 · ideal" gösteriyordu, hamstringe
+// hiç dokunmadan. Artık quad ve hamstring ayrı satır.
+//
+// Katsayı 1 ise DOĞRUDAN, 1'den küçükse DOLAYLI sayılır. Katsayıların dayanağı
+// docs/dolayli-hacim.md'de; her biri ya kaynaklı ya da "tahmin" işaretli.
 export function volumeOf(items) {
   const direct = {};
   const indirect = {};
-  REGIONS.forEach((r) => { if (r.id !== "kardiyo") { direct[r.id] = 0; indirect[r.id] = 0; } });
+  MUSCLE_IDS.forEach((m) => { direct[m] = 0; indirect[m] = 0; });
 
   (items || []).forEach((it) => {
     if (!it) return;
@@ -150,20 +157,19 @@ export function volumeOf(items) {
     if (!ex || ex.region === "kardiyo") return;
     const n = Number(it.sets) || 0;
     if (!n) return;
-    if (direct[ex.region] !== undefined) direct[ex.region] += n;
-    const ind = INDIRECT_BY_ID[it.id];
-    if (ind) Object.keys(ind).forEach((r) => {
-      // Bir hareket KENDİ bölgesine dolaylı kredi veremez — yoksa doğrudan
-      // setin üstüne bir de yarım/çeyrek eklenir ve hareket kendini çoğaltır.
-      if (r === ex.region) return;
-      if (indirect[r] !== undefined) indirect[r] += n * ind[r];
+    const mix = musclesOf(it.id);
+    Object.keys(mix).forEach((m) => {
+      if (direct[m] === undefined) return;
+      const c = mix[m];
+      if (c >= 1) direct[m] += n;
+      else indirect[m] += n * c;
     });
   });
 
   const total = {};
-  Object.keys(direct).forEach((k) => {
-    indirect[k] = Math.round(indirect[k] * 2) / 2;
-    total[k] = direct[k] + indirect[k];
+  MUSCLE_IDS.forEach((m) => {
+    indirect[m] = Math.round(indirect[m] * 2) / 2;
+    total[m] = direct[m] + indirect[m];
   });
   return { direct, indirect, total };
 }
@@ -180,30 +186,34 @@ export function weeklyVolume(days) {
   return volumeOf(items);
 }
 
-// Görüntüleme için satırlar.
+// Görüntüleme için satırlar — artık KAS GRUBU başına.
 // level:
 //   "none" — hiç çalışılmıyor
 //   "low"  — toplam eşiğin altında
-//   "thin" — toplam yeterli AMA doğrudan set alt sınırın altında (dolaylı ağırlıklı)
+//   "thin" — toplam yeterli AMA hiç doğrudan set yok (tamamı dolaylı)
 //   "high" — toplam üst sınırın üstünde
 //   "ok"   — iyi
 //
 // SIRA ÖNEMLİ: "thin" mutlaka "low"dan SONRA değerlendirilir, yani yalnızca
-// aksi hâlde "ok"/"high" görünecek bir satırı düşürebilir. Önce konulsaydı
-// zaten eşiğin altındaki bölgelerde de tetiklenir ve gereksiz gürültü yapardı.
+// aksi hâlde "ok"/"high" görünecek bir satırı düşürebilir.
+//
+// NOT: Kas grubuna inince eski "doğrudan set alt sınırı" (kol için 6) gereksizleşti.
+// O kural, kova biceps ile triceps'i ayırmadığı için gerekiyordu. Artık ayırıyor:
+// biceps'e yalnız kürekle ulaşmak 20 set kürek gerektirir, yani eşik kendiliğinden
+// doğrudan çalışmayı zorluyor. Geriye yalnızca "hiç doğrudan set yok" uyarısı kalıyor.
 export function volumeRows(days) {
   const { direct, indirect, total } = weeklyVolume(days);
-  return REGIONS.filter((r) => r.id !== "kardiyo").map((r) => {
-    const d = direct[r.id] || 0;
-    const ind = indirect[r.id] || 0;
-    const sets = total[r.id] || 0;
-    const min = minFor(r.id);
-    const directMin = directMinFor(r.id);
+  return MUSCLES.map((m) => {
+    const d = direct[m.id] || 0;
+    const ind = indirect[m.id] || 0;
+    const sets = total[m.id] || 0;
+    const min = muscleMinFor(m.id);
     const level = sets === 0 ? "none"
       : sets < min ? "low"
-      : d < directMin ? "thin"
-      : sets > maxFor(r.id) ? "high"
+      : d === 0 ? "thin"
+      : sets > MUSCLE_MAX_DEFAULT ? "high"
       : "ok";
-    return { id: r.id, name: r.name, emoji: r.emoji, direct: d, indirect: ind, sets, min, directMin, level };
+    return { id: m.id, name: m.name, emoji: m.emoji, region: m.region,
+             direct: d, indirect: ind, sets, min, directMin: min, level };
   });
 }

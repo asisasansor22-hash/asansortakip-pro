@@ -5,7 +5,8 @@
 // olarak yarım set sayılır) ama ekran bunu söylemiyordu ve bir bölge SIFIR doğrudan
 // çalışmayla "ideal" (yeşil) görünebiliyordu.
 
-import { volumeRows, weeklyVolume, minFor, maxFor, directMinFor } from "../src/data/volume.js";
+import { volumeRows, weeklyVolume } from "../src/data/volume.js";
+import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "../src/data/muscles.js";
 import { READY_PROGRAMS, getReadyProgram } from "../src/data/programs.js";
 import { buildAutoPlan } from "../src/data/autoPlan.js";
 
@@ -36,18 +37,32 @@ ok("thin ⟹ sets >= min", bad.length === 0, bad.join(" | "));
 // romanian-deadlift'in region'i "sirt" ve dolayli tabloda da { sirt: 0.25 } vardi:
 // once 3 dogrudan, sonra 0.75 dolayli eklenip 3.75 sirt seti sayiliyordu.
 const rdl = weeklyVolume([{ exercises: ["romanian-deadlift"], sets: { "romanian-deadlift": 3 } }]);
-ok("kendi bolgesine cift sayim yok (sirt=3)", rdl.total.sirt === 3, "sirt=" + rdl.total.sirt);
-ok("RDL katkisi bacaga yaziliyor", rdl.indirect.bacak === 1.5, "bacak dolayli=" + rdl.indirect.bacak);
+ok("RDL -> hamstring DOGRUDAN", rdl.direct.hamstring === 3, "=" + rdl.direct.hamstring);
+ok("RDL -> baldir sayilmiyor (sabitleyici)", rdl.total.baldir === 0, "=" + rdl.total.baldir);
 
-// --- 0.25 katmani korunuyor ---
-const fp = weeklyVolume([{ exercises: ["face-pull"], sets: { "face-pull": 4 } }]);
-ok("face-pull 4 set -> kol 1 dolayli", fp.indirect.kol === 1, "kol dolayli=" + fp.indirect.kol);
+// --- Bolge kovasinin gizledigi hata: quad doldu diye hamstring atlanamaz ---
+const quadOnly = weeklyVolume([{ exercises: ["squat","leg-press","leg-extension","lunge"],
+  sets: { squat:5, "leg-press":5, "leg-extension":5, lunge:5 } }]);
+ok("20 set quad -> hamstring HALA esik alti", quadOnly.total.hamstring < muscleMinFor("hamstring"),
+   "hamstring=" + quadOnly.total.hamstring);
+ok("squat karin'a kredi VERMIYOR", quadOnly.total.karin === 0, "karin=" + quadOnly.total.karin);
+ok("squat erektore kredi veriyor", quadOnly.indirect.erektor > 0, "erektor=" + quadOnly.indirect.erektor);
+
+// --- Presler yan/arka deltoide kredi vermemeli ---
+const press = weeklyVolume([{ exercises: ["bench-press","shoulder-press"], sets: { "bench-press":5, "shoulder-press":5 } }]);
+ok("pres -> yan deltoid 0", press.total.yanDeltoid === 0, "=" + press.total.yanDeltoid);
+ok("pres -> arka deltoid 0", press.total.arkaDeltoid === 0, "=" + press.total.arkaDeltoid);
+ok("pres -> triceps dolayli var", press.indirect.triceps === 5, "=" + press.indirect.triceps);
+
+// --- Kavrama sayilmiyor: on kol hic bir kas grubunda yok ---
+ok("on kol hacme girmiyor", !("onKol" in press.total) && !("forearm" in press.total));
 
 // --- Bildirilen hata: fullbody-beginner ---
-const fb = volumeRows(getReadyProgram("fullbody-beginner").days).find((r) => r.id === "kol");
-ok("fullbody-beginner kol: dogrudan set var",
-   fb.direct >= directMinFor("kol"), "dogrudan=" + fb.direct + " gereken=" + directMinFor("kol"));
-ok("fullbody-beginner kol: artik 'thin' degil", fb.level !== "thin", "level=" + fb.level);
+const fbRows = volumeRows(getReadyProgram("fullbody-beginner").days);
+const fbT = fbRows.find((r) => r.id === "triceps");
+const fbB = fbRows.find((r) => r.id === "biceps");
+ok("fullbody-beginner triceps: dogrudan set var", fbT.direct > 0, "dogrudan=" + fbT.direct);
+ok("fullbody-beginner biceps: dogrudan set var", fbB.direct > 0, "dogrudan=" + fbB.direct);
 
 // --- Sinif korumasi: hicbir program sifir dogrudan ile "ideal" gorunmesin ---
 bad = [];
@@ -101,10 +116,10 @@ ok("uretec hacmi = ekran hacmi", bad.length === 0, bad.slice(0, 3).join(" | "));
 bad = [];
 plans.forEach(({ key, plan }) => {
   Object.keys(plan.volume.direct).forEach((r) => {
-    if (plan.volume.direct[r] < directMinFor(r) && !plan.gaps.includes(r)) bad.push(key + "/" + r + " dogrudan=" + plan.volume.direct[r]);
+    if (plan.volume.direct[r] === 0 && plan.volume.total[r] > 0 && !plan.gaps.includes(r)) bad.push(key + "/" + r + " dogrudan=0");
   });
 });
-ok("dogrudan alt siniri karsilanmayan bolge 'gap' olarak raporlaniyor", bad.length === 0, bad.slice(0, 3).join(" | "));
+ok("dogrudan seti olmayan kas 'gap' olarak raporlaniyor", bad.length === 0, bad.slice(0, 3).join(" | "));
 
 // Doldurma ve budama donguleri artik salinamaz: doldurma yalniz
 // (total < min || direct < directMin), budama yalniz (total > max && direct >= directMin)
@@ -112,16 +127,19 @@ ok("dogrudan alt siniri karsilanmayan bolge 'gap' olarak raporlaniyor", bad.leng
 bad = [];
 plans.forEach(({ key, plan }) => {
   Object.keys(plan.volume.total).forEach((r) => {
-    if (plan.volume.total[r] > maxFor(r) && plan.volume.direct[r] < directMinFor(r)) bad.push(key + "/" + r);
+    if (plan.volume.total[r] > MUSCLE_MAX_DEFAULT && plan.volume.direct[r] === 0) bad.push(key + "/" + r);
   });
 });
 ok("salinim yok (tavan ustu + alt sinir alti ayni anda olmuyor)", bad.length === 0, bad.slice(0, 3).join(" | "));
 
 // Doldurma dongusu sabit TARGET_MIN kullaniyordu, minFor(r) degil — bu yuzden
 // karin 6 yerine 10'a zorlanip 180 kombinasyonun HEPSINDE 12'ye cakiliyordu.
-const karinler = new Set(plans.map(({ plan }) => plan.volume.total.karin));
-ok("karin artik hep ayni degere cakili degil", karinler.size > 1,
-   "farkli deger sayisi=" + karinler.size + " (" + [...karinler].slice(0, 5).join(",") + ")");
+// Kas grubuna gecince uretecin hamstringi atlayamamasi gerek
+bad = [];
+plans.forEach(({ key, plan }) => {
+  if (plan.volume.direct.hamstring === 0 && !plan.gaps.includes("hamstring")) bad.push(key);
+});
+ok("uretec hamstringi atlamiyor", bad.length === 0, bad.slice(0,3).join(" | "));
 
 console.log(fail ? "\n" + fail + " TEST BASARISIZ" : "\nhepsi gecti");
 if (fail) process.exit(1);

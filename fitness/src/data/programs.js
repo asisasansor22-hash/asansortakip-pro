@@ -14,6 +14,7 @@ export const READY_PROGRAMS = [
     gender: "herkes", style: "salon", goalTag: "fitkal",
     level: "Başlangıç", goal: "Genel form & güç", freq: "Haftada 3 gün (gün aşırı)",
     desc: "Yeni başlayanlar için en kanıtlı şablon: tüm vücut, haftada 3 kez. Yüksek sıklık hareketi öğrenmeyi ve kas gelişimini hızlandırır.",
+    volumeNote: "BAŞLANGIÇ programıdır: haftada 3 gün ve günde ~6 hareketle her kas grubuna 10+ set düşmesi matematiksel olarak mümkün değildir; bu bilinçlidir — yeni başlayanlar düşük hacimle de belirgin ilerler. Arka omuz gibi küçük kaslar yalnızca dolaylı yüklenir; 2-3 ay sonra Üst/Alt ya da PPL bölünmesine geçtiğinde bu boşluklar kapanır.",
     days: [
       // Kol hareketleri BİLEREK eklendi: program 3 presleme + 2 çekiş içeriyor ve
       // dolaylı katkı kola "yeterli" görüntüsü veriyordu, ama triceps'in uzun başı
