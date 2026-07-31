@@ -1,11 +1,57 @@
 import React, { useState, useMemo } from 'react'
 import { MONTHS } from '../utils/constants.js'
+import { dbGet, dbSet, getTenantId } from '../firebase.js'
+
+/* Bina self-servis linki: token üret / mevcut olanı bul, URL'yi kopyala */
+function binaTokenUret() {
+  var arr = new Uint8Array(18)
+  ;(window.crypto || {}).getRandomValues ? window.crypto.getRandomValues(arr) : arr.forEach(function (_, i) { arr[i] = Math.floor(Math.random() * 256) })
+  var s = ''
+  for (var i = 0; i < arr.length; i++) s += String.fromCharCode(arr[i])
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function binaLinkiPaylas(elev) {
+  try {
+    var mevcut = (await dbGet('at_bina_links')) || {}
+    if (Array.isArray(mevcut)) mevcut = {}
+    var token = null
+    for (var k in mevcut) {
+      if (mevcut[k] && Number(mevcut[k].elevId) === Number(elev.id) && mevcut[k].aktif !== false) { token = k; break }
+    }
+    if (!token) {
+      token = binaTokenUret()
+      mevcut[token] = { elevId: elev.id, ad: elev.ad || '', olusturma: new Date().toISOString() }
+      var ok = await dbSet('at_bina_links', mevcut)
+      if (ok === false) { alert('Link kaydedilemedi (bağlantı/izin). Tekrar deneyin.'); return }
+    }
+    var url = window.location.origin + '/?f=' + encodeURIComponent(getTenantId() || 'asis') + '&bina=' + token
+    try { navigator.clipboard.writeText(url) } catch (e) {}
+
+    // Hazır mesaj: binanın kayıtlı yöneticisine doğrudan WhatsApp sohbeti aç
+    var mesaj =
+      'Sayın ' + (elev.yonetici || (elev.ad || '') + ' Yönetimi') + ',\n\n' +
+      (elev.ad || 'Binanız') + ' asansörü için özel bilgi sayfanız hazır:\n\n' + url + '\n\n' +
+      'Bu sayfadan bakım geçmişinizi, ödemelerinizi ve güncel bakiyenizi dilediğiniz an görüntüleyebilir, ' +
+      'tek dokunuşla bize ulaşabilir veya arıza bildirebilirsiniz. Giriş ya da uygulama gerektirmez.\n\n' +
+      'Sağlıklı günler dileriz.'
+    var tel = String(elev.tel || '').replace(/\D/g, '')
+    if (tel.length === 10 && tel[0] === '5') tel = '90' + tel
+    else if (tel.length === 11 && tel[0] === '0' && tel[1] === '5') tel = '9' + tel
+    else if (!(tel.length === 12 && tel.indexOf('90') === 0)) tel = ''
+
+    // Kayıtlı cep varsa sohbet doğrudan açılır; yoksa WhatsApp kişi seçtirir
+    window.open('https://wa.me/' + (tel ? tel : '') + '?text=' + encodeURIComponent(mesaj), '_blank')
+  } catch (e) {
+    alert('Link oluşturulamadı: ' + (e && e.message))
+  }
+}
 
 function ekstraSiraKey(k){
   return String(k.tarih||"") + " " + String(k.saat||"");
 }
 
-export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler, ekstraIsler}){
+export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozlesmeler, ekstraIsler, sonOdemeler}){
   const [seciliId, setSeciliId] = useState(null);
   const [aramaText, setAramaText] = useState("");
   const [ilce, setIlce] = useState("Tümü");
@@ -33,14 +79,29 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
       : [],
     [ekstraIsler,seciliId]
   );
+  // Alınan ödemeler: sonOdemeler kayıtları (iptal edilmemiş), yeniden eskiye
+  const eOdemeler = useMemo(
+    ()=>seciliId
+      ? [...(sonOdemeler||[]).filter(o=>Number(o.aid)===Number(seciliId)&&!o.iptal)]
+          .sort((a,b)=>(String(b.tarih||"")+" "+String(b.saat||"")).localeCompare(String(a.tarih||"")+" "+String(a.saat||"")))
+      : [],
+    [sonOdemeler,seciliId]
+  );
+  const eOdemeToplam = useMemo(()=>eOdemeler.reduce((s,o)=>s+(Number(o.alinanTutar)||0),0),[eOdemeler]);
 
   if(secili){
     return (
       <div>
-        <button onClick={()=>setSeciliId(null)}
-          style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"8px 14px",color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:13,marginBottom:14}}>
-          ← Geri
-        </button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <button onClick={()=>setSeciliId(null)}
+            style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg-elevated)",border:"none",borderRadius:10,padding:"8px 14px",color:"var(--text-muted)",cursor:"pointer",fontWeight:600,fontSize:13}}>
+            ← Geri
+          </button>
+          <button onClick={()=>binaLinkiPaylas(secili)}
+            style={{display:"flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#10b981,#059669)",border:"none",borderRadius:10,padding:"8px 14px",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:12}}>
+            📲 Yöneticiye Gönder
+          </button>
+        </div>
 
         {/* Asansör Başlığı */}
         <div style={{background:"var(--bg-panel)",borderRadius:16,padding:"16px",marginBottom:12,borderLeft:"4px solid var(--accent)"}}>
@@ -61,6 +122,44 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
               {secili.tip&&<div style={{fontSize:11}}><span style={{color:"var(--text-muted)"}}>Tip: </span><b>{secili.tip}</b></div>}
             </div>
           )}
+          {/* Finansal Özet */}
+          <div style={{marginTop:10,display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,padding:"10px 12px",background:"var(--bg-elevated)",borderRadius:10}}>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:(Number(secili.bakiyeDevir)||0)>0?"var(--ios-red)":"var(--ios-green)"}}>{(Number(secili.bakiyeDevir)||0).toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Devir Bakiye</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:"var(--accent)"}}>{(Number(secili.aylikUcret)||0).toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Aylık Ücret</div>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:14,fontWeight:800,color:"var(--ios-green)"}}>{eOdemeToplam.toLocaleString("tr-TR")} ₺</div>
+              <div style={{fontSize:10,color:"var(--text-muted)",marginTop:1}}>Toplam Tahsilat</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Alınan Ödemeler */}
+        <div style={{background:"var(--bg-panel)",borderRadius:14,overflow:"hidden",marginBottom:10}}>
+          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>💰 Alınan Ödemeler</span>
+            {eOdemeler.length>0&&<span style={{fontSize:11,fontWeight:700,color:"var(--ios-green)"}}>{eOdemeler.length} ödeme</span>}
+          </div>
+          {eOdemeler.length===0
+            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Ödeme kaydı yok.</div>
+            :eOdemeler.slice(0,15).map(o=>(
+              <div key={o.id} style={{padding:"10px 14px",borderTop:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>📅 {o.tarih}{o.saat?" · 🕐 "+o.saat:""}</div>
+                  {(o.not||o.tahsilatYapan)&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:2}}>
+                    {o.not?"📝 "+o.not:""}{o.not&&o.tahsilatYapan?" · ":""}{o.tahsilatYapan?"🔧 "+o.tahsilatYapan:""}
+                  </div>}
+                </div>
+                <div style={{fontSize:13,fontWeight:800,color:"var(--ios-green)",whiteSpace:"nowrap"}}>+{(Number(o.alinanTutar)||0).toLocaleString("tr-TR")} ₺</div>
+              </div>
+            ))
+          }
+          {eOdemeler.length>15&&<div style={{padding:"8px 14px",fontSize:11,color:"var(--text-muted)",textAlign:"center",borderTop:"0.5px solid var(--border-soft)"}}>+{eOdemeler.length-15} ödeme daha (Finans sekmesinde)</div>}
         </div>
 
         {/* Son Bakım Geçmişi */}
@@ -77,9 +176,12 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
                   {m.yapildiSaat&&<div style={{fontSize:11,color:"var(--text-dim)"}}>{m.yapildiSaat}</div>}
                   {m.notlar&&<div style={{fontSize:11,color:"var(--text-muted)",marginTop:2}}>📝 {m.notlar}</div>}
                 </div>
-                {m.yapildi&&<div style={{fontSize:12,fontWeight:700,color:"var(--ios-green)",whiteSpace:"nowrap"}}>
-                  {(m.alinanTutar||m.tutar||0).toLocaleString("tr-TR")} ₺
-                </div>}
+                {m.yapildi&&(function(){
+                  var alinan=(m.alinanTutar!==undefined&&m.alinanTutar!==null&&m.alinanTutar!=="")?(Number(m.alinanTutar)||0):(m.odendi?(Number(m.tutar)||0):0);
+                  return alinan>0
+                    ?<div style={{fontSize:12,fontWeight:700,color:"var(--ios-green)",whiteSpace:"nowrap"}}>+{alinan.toLocaleString("tr-TR")} ₺</div>
+                    :<div style={{fontSize:11,fontWeight:700,color:"var(--ios-red)",whiteSpace:"nowrap"}}>ödeme alınmadı</div>;
+                })()}
               </div>
             ))
           }
@@ -87,9 +189,9 @@ export default function YoneticiPortali({elevs, maints, faults, muayeneler, sozl
 
         {/* Ekstra İş Geçmişi (Bakımın altında) */}
         <div style={{background:"var(--bg-panel)",borderRadius:14,overflow:"hidden",marginBottom:10}}>
-          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)"}}>🔩 Ekstra İş Geçmişi</div>
+          <div style={{padding:"12px 14px 8px",fontWeight:700,fontSize:14,borderBottom:"0.5px solid var(--border)"}}>🔩 Takılan Parçalar & Ekstra İşler</div>
           {eEkstra.length===0
-            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Ekstra iş kaydı yok.</div>
+            ?<div style={{padding:12,color:"var(--text-dim)",fontSize:13}}>Parça / ekstra iş kaydı yok.</div>
             :eEkstra.slice(0,10).map(k=>(
               <div key={k.id} style={{padding:"10px 14px",borderTop:"0.5px solid var(--border-soft)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>

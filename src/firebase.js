@@ -1,5 +1,6 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+import { getMessaging, getToken as getFcmToken, isSupported as fcmIsSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAWU95hhLKUKc_bTX5fqlLjDyPtOJ8w5r4",
@@ -262,6 +263,16 @@ export async function dbGet(key) {
   return dbGetRaw(p);
 }
 
+// dbGetWithMeta — App.jsx ana yükleyici için "okuma başarısız" ile
+// "veri yok" durumlarını ayırt eder. {ok, data} döner.
+// ok=false → fetch/timeout/permission hatası; çağıran taraf yedeğe düşer
+// ve dbSet'i bloklayarak boş state ile Firebase'i ezmeyi engeller.
+export async function dbGetWithMeta(key) {
+  var p = tenantKeyPath(key);
+  if (p === null) return { ok: false, data: null, error: "tenant-yok" };
+  return dbGetRawWithMeta(p);
+}
+
 export async function dbSet(key, value) {
   var p = tenantKeyPath(key);
   if (p === null) return;
@@ -271,51 +282,140 @@ export async function dbSet(key, value) {
 // ------- Database: raw (tenant-bypass, global yollar için) -----------------
 // Örn: users/{uid}, superadmins/{uid}, tenants (liste), tenants/{tid}/config
 export async function dbGetRaw(path) {
+  var r = await dbGetRawWithMeta(path);
+  return r && r.ok ? r.data : null;
+}
+
+async function dbGetRawWithMeta(path) {
   try {
     var token = await getToken();
     var url = buildDbUrl(path, token);
     var controller = new AbortController();
-    var timer = setTimeout(function(){ controller.abort(); }, 8000);
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
     var res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
-    if(!res.ok) return null;
+    if (!res.ok) return { ok: false, data: null, status: res.status };
     var data = await res.json();
-    return (data !== null && data !== undefined) ? data : null;
-  } catch(e) { return null; }
+    return { ok: true, data: (data !== null && data !== undefined) ? data : null };
+  } catch(e) { return { ok: false, data: null, error: (e && e.message) || "fetch-hata" }; }
 }
 
+// Yazma hatası global handler'ı — App.jsx kullanıcıya bildirim göstermek
+// için kayıt olur. Sessiz veri kaybını engeller.
+var _dbSetErrorHandler = null;
+export function setDbErrorHandler(fn) { _dbSetErrorHandler = fn; }
+
 export async function dbSetRaw(path, value) {
-  try {
-    var token = await getToken();
-    var url = buildDbUrl(path, token);
-    var res = await fetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-    return res.ok;
-  } catch(e) { return false; }
+  var attempts = 4;
+  var delay = 200;
+  var lastError = null;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var token = await getToken();
+      if (!token) {
+        lastError = "auth-yok";
+      } else {
+        var url = buildDbUrl(path, token);
+        var controller = new AbortController();
+        var timer = setTimeout(function(){ controller.abort(); }, 15000);
+        var res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) return true;
+        lastError = "http-" + res.status;
+        // 4xx (auth/permission) — retry'la düzelmez
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
+      }
+    } catch (e) {
+      lastError = (e && e.message) || "fetch-hata";
+    }
+    if (i < attempts - 1) {
+      await new Promise(function(r){ setTimeout(r, delay); });
+      delay = delay * 3;
+    }
+  }
+  try { if (_dbSetErrorHandler) _dbSetErrorHandler(path, lastError); } catch(e) {}
+  return false;
 }
 
 async function dbPushResolvedPath(path, value) {
-  try {
-    var token = await getToken();
-    var url = buildDbUrl(path, token);
-    var res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value)
-    });
-    if (!res.ok) return null;
-    var data = await res.json();
-    return data && data.name ? data.name : null;
-  } catch (e) { return null; }
+  var attempts = 3;
+  var delay = 300;
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var token = await getToken();
+      if (token) {
+        var url = buildDbUrl(path, token);
+        var controller = new AbortController();
+        var timer = setTimeout(function(){ controller.abort(); }, 12000);
+        var res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(value),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          var data = await res.json();
+          return data && data.name ? data.name : null;
+        }
+        // 4xx (izin/auth) — retry'la düzelmez
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) return null;
+      }
+    } catch (e) {}
+    if (i < attempts - 1) {
+      await new Promise(function(r){ setTimeout(r, delay); });
+      delay = delay * 3;
+    }
+  }
+  return null;
 }
 
 export async function dbPush(key, value) {
   var p = tenantKeyPath(key);
   if (p === null) return null;
   return dbPushResolvedPath(p, value);
+}
+
+// ------- ETag'li koşullu okuma/yazma (kapama kilidi) ------------------------
+// Aylık/haftalık kapama birden fazla cihazda aynı anda tetiklenebilir.
+// Firebase REST ETag desteğiyle "oku → değişmediyse yaz" yapılır; yarışı
+// kaybeden cihaz 412 alır ve kapamayı tekrarlamaz.
+export async function dbGetWithETag(key) {
+  var p = tenantKeyPath(key);
+  if (p === null) return null;
+  try {
+    var token = await getToken();
+    var url = buildDbUrl(p, token);
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 12000);
+    var res = await fetch(url, { headers: { "X-Firebase-ETag": "true" }, signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    var etag = res.headers.get("ETag");
+    var data = await res.json();
+    return { etag: etag || null, data: (data !== undefined) ? data : null };
+  } catch(e) { return null; }
+}
+
+export async function dbSetIfMatch(key, value, etag) {
+  var p = tenantKeyPath(key);
+  if (p === null) return false;
+  try {
+    var token = await getToken();
+    var url = buildDbUrl(p, token);
+    var headers = { "Content-Type": "application/json" };
+    if (etag) headers["if-match"] = etag;
+    var controller = new AbortController();
+    var timer = setTimeout(function(){ controller.abort(); }, 15000);
+    var res = await fetch(url, { method: "PUT", headers: headers, body: JSON.stringify(value), signal: controller.signal });
+    clearTimeout(timer);
+    return res.ok; // 412 → başka cihaz önce yazdı
+  } catch(e) { return false; }
 }
 
 export async function dbDeleteRaw(path) {
@@ -451,6 +551,174 @@ export async function appendReversalEvent(originalEvent, reason, meta) {
     createdByUid: m.createdByUid || null,
     createdByRole: m.createdByRole || null
   });
+}
+
+// ------- Bakım bildirimleri (uygulama-içi, yöneticiye) ----------------------
+// Bakımcı bir bakımı tamamladığında küçük bir olay yazar. Firma yöneticisi
+// oturumu açıkken periyodik olarak okur ve yeni olanları toast gösterir.
+// (Option A — sadece uygulama açıkken, FCM/service worker yok.)
+export async function pushBakimBildirim(payload) {
+  var p = payload || {};
+  var evt = {
+    tip: "bakim_tamamlandi",
+    elevAd: p.elevAd || "",
+    ilce: p.ilce || "",
+    bakimciAd: p.bakimciAd || "",
+    tutar: Number(p.tutar) || 0,
+    ts: new Date().toISOString()
+  };
+  return dbPush("at_bakim_bildirimleri", evt);
+}
+
+export async function listBakimBildirimleri() {
+  var raw = await dbGet("at_bakim_bildirimleri");
+  if (!raw) return [];
+  var out = [];
+  if (Array.isArray(raw)) {
+    for (var i = 0; i < raw.length; i++) {
+      var a = raw[i];
+      if (a && typeof a === "object") { if (!a.id) a.id = String(i); out.push(a); }
+    }
+  } else if (typeof raw === "object") {
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (v && typeof v === "object") { if (!v.id) v.id = k; out.push(v); }
+    }
+  }
+  out.sort(function (a, b) { return String(a.ts || "").localeCompare(String(b.ts || "")); });
+  return out;
+}
+
+// ------- ÖDEME DEFTERİ (append-only hareket kaydı) --------------------------
+// Amaç: bakiyeyi değiştiren HER işlemin silinemez bir kaydını tutmak.
+// Aşama 1 (çift kayıt): bakiyeDevir aynen çalışır; defter paralel yazılır.
+// Bakiye formülü: at_defter_meta.bakiyeler[aid] (açılış) + sum(at_defter delta).
+// Tutarlılık kuralı: açılış fotoğrafı (meta) oluşmadan olay YAZILMAZ — flag
+// kapalıyken yapılan işlemler zaten açılış bakiyesinin içinde yer alır.
+var _defterHazir = false;
+
+/** Sunucudaki defter meta durumunu okur; olay yazımını etkinleştirir. */
+export async function defterDurumTazele() {
+  try {
+    var meta = await dbGet("at_defter_meta");
+    _defterHazir = !!(meta && meta.acilisTs);
+  } catch (e) { _defterHazir = false; }
+  return _defterHazir;
+}
+
+/** Açılış fotoğrafı: tüm binaların o anki bakiyesi tek yazımda kaydedilir.
+ *  ETag ile koşullu — yarışan ikinci cihaz 412 alır, çift açılış olmaz.
+ *  Yalnızca yönetici çağırmalı (elevs'in sunucudan doğrulanmış olması şart). */
+export async function defterBootstrap(elevs, yazan) {
+  if (_defterHazir) return true;
+  if (!Array.isArray(elevs) || elevs.length === 0) return false;
+  var srv = await dbGetWithETag("at_defter_meta");
+  if (!srv) return false;
+  if (srv.data && srv.data.acilisTs) { _defterHazir = true; return true; }
+  var bakiyeler = {};
+  elevs.forEach(function (e) {
+    if (e && e.id != null) bakiyeler[String(e.id)] = Number(e.bakiyeDevir) || 0;
+  });
+  var meta = { acilisTs: new Date().toISOString(), yazan: yazan || "", binaSayisi: elevs.length, bakiyeler: bakiyeler };
+  var ok = await dbSetIfMatch("at_defter_meta", meta, srv.etag);
+  if (ok) { _defterHazir = true; return true; }
+  // Yarışı kaybettik — diğer cihaz yazdı; durumu tazele
+  return defterDurumTazele();
+}
+
+/** Açılışı yeniden başlat (re-baseline): kontrol noktasını (acilisTs) BUGÜNE
+ *  taşır ve açılış bakiyelerini o anki gerçek bakiyelerle günceller. Non-destructive:
+ *  eski olaylar SİLİNMEZ; Defter Kontrolü yalnızca acilisTs SONRASI olayları toplar.
+ *  Böylece geçiş dönemi farkları temizlenir ve defter temiz bir "Tam uyum" ile başlar.
+ *  Yalnızca yönetici, elevs sunucudan doğrulanmışken çağırmalı. */
+export async function defterAcilisYenile(elevs, yazan) {
+  if (!Array.isArray(elevs) || elevs.length === 0) return false;
+  var bakiyeler = {};
+  elevs.forEach(function (e) { if (e && e.id != null) bakiyeler[String(e.id)] = Number(e.bakiyeDevir) || 0; });
+  var meta = { acilisTs: new Date().toISOString(), yazan: yazan || "", binaSayisi: elevs.length, bakiyeler: bakiyeler, yenileme: true };
+  var ok = await dbSet("at_defter_meta", meta);
+  if (ok !== false) _defterHazir = true;
+  return ok !== false;
+}
+
+/** Defter olayı ekler. delta: bakiyeye işaret ETKİSİ (ödeme -, tahakkuk +).
+ *  tip: odeme | tahakkuk | ekstra | manuel | iptal | ekstra_pesin
+ *  Açılış yoksa sessizce atlanır (tutarlılık kuralı). Başarısız yazım bakiyeyi
+ *  ETKİLEMEZ (çift kayıt aşaması) — Defter Kontrolü ekranında fark görünür. */
+export function defterKaydet(evt) {
+  if (!_defterHazir) return;
+  try {
+    var e = evt || {};
+    var kayit = {
+      aid: Number(e.aid),
+      tip: String(e.tip || "diger"),
+      delta: Number(e.delta) || 0,
+      tutar: Math.abs(Number(e.delta) || 0),
+      aciklama: String(e.aciklama || ""),
+      kaynak: e.kaynak != null ? String(e.kaynak) : "",
+      yazan: String(e.yazan || ""),
+      ts: new Date().toISOString(),
+      tarih: (function () { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); })()
+    };
+    dbPush("at_defter", kayit).then(function (key) {
+      if (!key) console.warn("Defter kaydı yazılamadı:", kayit.tip, kayit.aid);
+    });
+  } catch (err) { try { console.warn("Defter kaydı hatası:", err); } catch (e2) {} }
+}
+
+/** Defter meta + tüm olayları okur (Defter Kontrolü ekranı için). */
+export async function defterOku() {
+  var meta = await dbGet("at_defter_meta");
+  var raw = await dbGet("at_defter");
+  var olaylar = [];
+  if (raw && typeof raw === "object") {
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (v && typeof v === "object") { v.id = k; olaylar.push(v); }
+    }
+  } else if (Array.isArray(raw)) {
+    olaylar = raw.filter(Boolean);
+  }
+  olaylar.sort(function (a, b) { return String(a.ts || "").localeCompare(String(b.ts || "")); });
+  return { meta: meta || null, olaylar: olaylar };
+}
+
+// ------- FCM web push (uygulama kapalıyken bildirim) ------------------------
+// Firebase Console → Proje Ayarları → Cloud Messaging → Web Push certificates
+// bölümünden "Key pair" değerini buraya yapıştırın.
+const FCM_VAPID_KEY = "BB67K3liRRkXwqOfseHSbwtduEigcTKS8rXEzSzRVszICVW9Obn7oHy7EQewH-llyvUc5EOmkNHrKwltAEfFBPo";
+
+/** Push bildirim durumu: "hazir-degil" (vapid yok / tarayıcı desteklemiyor),
+ *  "granted" | "denied" | "default" (Notification.permission) */
+export function pushBildirimDurumu() {
+  if (!FCM_VAPID_KEY) return "hazir-degil";
+  if (typeof Notification === "undefined" || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return "hazir-degil";
+  return Notification.permission;
+}
+
+/** İzin ister, FCM token alır ve at_push_tokens/{uid} altına yazar.
+ *  Tenant'larda tenants/{tid}/at_push_tokens, Asis'te flat at_push_tokens. */
+export async function enablePushBildirim() {
+  try {
+    if (pushBildirimDurumu() === "hazir-degil") return { ok: false, reason: "desteklenmiyor" };
+    if (!(await fcmIsSupported())) return { ok: false, reason: "desteklenmiyor" };
+    var perm = await Notification.requestPermission();
+    if (perm !== "granted") return { ok: false, reason: "izin-reddedildi" };
+    var reg = await navigator.serviceWorker.ready;
+    var messaging = getMessaging(app);
+    var token = await getFcmToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return { ok: false, reason: "token-alinamadi" };
+    var user = auth.currentUser;
+    if (!user) return { ok: false, reason: "oturum-yok" };
+    var p = tenantKeyPath("at_push_tokens/" + user.uid);
+    if (!p) return { ok: false, reason: "tenant-yok" };
+    var ok = await dbSetRaw(p, { token: token, email: user.email || "", ts: new Date().toISOString() });
+    return ok ? { ok: true } : { ok: false, reason: "kayit-yazilamadi" };
+  } catch (e) {
+    return { ok: false, reason: (e && e.message) || "hata" };
+  }
 }
 
 // ------- Kullanıcı / süper-admin profil yardımcıları ------------------------

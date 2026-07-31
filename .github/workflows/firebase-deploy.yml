@@ -1,0 +1,43 @@
+name: Firebase Functions + Rules Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - claude/fix-data-loss-v6deploy
+    paths:
+      - "functions/**"
+      - "database.rules.json"
+      - ".github/workflows/firebase-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Functions bağımlılıklarını yükle
+        run: npm ci
+        working-directory: functions
+
+      - name: Service account anahtarını yaz
+        run: |
+          cat > "$RUNNER_TEMP/sa.json" <<'SAEOF'
+          ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SAEOF
+
+      - name: Functions + Database rules deploy
+        run: npx firebase-tools@latest deploy --only functions,database --project asansortakipv3 --force
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

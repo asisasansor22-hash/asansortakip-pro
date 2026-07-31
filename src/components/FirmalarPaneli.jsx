@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react'
 import { listTenants, dbSetRaw, dbGetRaw, dbDeleteRaw, setUserProfile, createTenantAdmin, setTenantPublic } from '../firebase.js'
 
+var ASIS_DEFAULTS = {
+  ad: "Asis Asansör Sistemleri",
+  adres: "Zafer Mahallesi Yüksel Sk. No:23, 34194 Bahçelievler / İstanbul",
+  tel: "0212 703 20 52",
+  tel2: "0536 565 92 23",
+  tel3: "0543 507 07 94",
+  email: "berat@asisasansor.com",
+  email2: "tolga@asisasansor.com"
+}
+
 function slugify(value){
   return String(value||"")
     .toLowerCase()
@@ -149,23 +159,25 @@ function FirmalarPaneli({ currentTenantId }) {
   function duzenle(t){
     var cfg = t.config || {};
     var sub = t.subscription || {};
+    var isAsis = t.id === "asis";
+    var d = isAsis ? ASIS_DEFAULTS : {};
     setEditId(t.id);
     setForm({
       tenantId: t.id,
-      ad: cfg.ad || "",
+      ad: d.ad || cfg.ad || "",
       yetkili: cfg.yetkili || "",
-      tel: cfg.tel || "",
-      tel2: cfg.tel2 || "",
-      tel3: cfg.tel3 || "",
-      email: cfg.email || "",
-      email2: cfg.email2 || "",
-      adres: cfg.adres || "",
+      tel: d.tel || cfg.tel || "",
+      tel2: d.tel2 || cfg.tel2 || "",
+      tel3: d.tel3 || cfg.tel3 || "",
+      email: d.email || cfg.email || "",
+      email2: d.email2 || cfg.email2 || "",
+      adres: d.adres || cfg.adres || "",
       logoUrl: cfg.logoUrl || "",
       aylikUcret: sub.aylikUcret || "",
       bitis: sub.bitis || "",
       yoneticiSifre: "",
       aktif: (sub.status || "active") === "active",
-      plan: sub.plan || "baslangic"
+      plan: (isAsis && (sub.plan || "baslangic") === "baslangic") ? "kurumsal" : (sub.plan || "baslangic")
     });
     setMesaj("");
   }
@@ -234,7 +246,8 @@ function FirmalarPaneli({ currentTenantId }) {
         },
           React.createElement('option', { value: "baslangic" }, "🚀 Başlangıç — 250 asansör, 3 kullanıcı (Finans/Teklif/Sözleşme yok)"),
           React.createElement('option', { value: "profesyonel" }, "⚡ Profesyonel — 1.000 asansör, 10 kullanıcı (Tüm özellikler)"),
-          React.createElement('option', { value: "kurumsal" }, "🏛️ Kurumsal — Sınırsız asansör/kullanıcı (Özel destek)")
+          React.createElement('option', { value: "kurumsal" }, "🏛️ Kurumsal — Sınırsız asansör/kullanıcı (Özel destek)"),
+          editId === "asis" && React.createElement('option', { value: "superadmin" }, "🔑 Süper Admin — Sınırsız (Asis)")
         )
       ),
       React.createElement('div', null, React.createElement('div', { style: lbl }, editId ? "Yeni Sifre (degistirmek icin doldur)" : "Yonetici Giris Sifresi *"), React.createElement('input', { type: "password", style: inp, value: form.yoneticiSifre, onChange: e => F("yoneticiSifre", e.target.value), placeholder: "en az 6 karakter" })),

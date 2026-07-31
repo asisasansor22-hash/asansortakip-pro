@@ -1,23 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Arka plan -->
-  <rect width="512" height="512" rx="80" fill="#0057B8"/>
-
-  <!-- Sol mavi yukarı ok -->
-  <polygon points="90,290 130,290 130,400 170,400 170,290 210,290 150,170" fill="#FFFFFF"/>
-
-  <!-- Asansör kabini (sağ taraf) -->
-  <rect x="240" y="130" width="200" height="260" rx="14" fill="#FFFFFF"/>
-  <!-- Kapı çizgisi ortası -->
-  <line x1="340" y1="148" x2="340" y2="372" stroke="#0057B8" stroke-width="8"/>
-  <!-- Üst ray -->
-  <rect x="248" y="130" width="184" height="16" rx="4" fill="#CCE0FF"/>
-  <!-- Sol kapı kol -->
-  <rect x="312" y="230" width="10" height="40" rx="5" fill="#0057B8" opacity="0.5"/>
-  <!-- Sağ kapı kol -->
-  <rect x="358" y="230" width="10" height="40" rx="5" fill="#0057B8" opacity="0.5"/>
-  <!-- Makine dairesi -->
-  <rect x="270" y="92" width="140" height="38" rx="8" fill="#FFFFFF" opacity="0.25"/>
-  <rect x="312" y="100" width="56" height="22" rx="6" fill="#FFFFFF" opacity="0.7"/>
-  <!-- Alt zemin çizgisi -->
-  <rect x="240" y="375" width="200" height="15" rx="4" fill="#CCE0FF"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="0.55" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e40af"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#bg)"/>
+  <!-- kabin gövdesi -->
+  <rect x="146" y="108" width="220" height="296" rx="26" fill="#ffffff"/>
+  <!-- üst gösterge: yukarı/aşağı üçgenler -->
+  <path d="M 226 148 L 240 126 L 254 148 Z" fill="#10b981"/>
+  <path d="M 258 126 L 286 126 L 272 148 Z" fill="#ef4444"/>
+  <!-- kapılar -->
+  <rect x="168" y="168" width="84" height="212" rx="10" fill="url(#door)"/>
+  <rect x="260" y="168" width="84" height="212" rx="10" fill="url(#door)"/>
+  <!-- kapı ortası ışık çizgisi -->
+  <rect x="253" y="168" width="6" height="212" fill="#93c5fd"/>
+  <!-- zemin çizgisi -->
+  <rect x="130" y="416" width="252" height="14" rx="7" fill="#93c5fd" opacity="0.85"/>
 </svg>
