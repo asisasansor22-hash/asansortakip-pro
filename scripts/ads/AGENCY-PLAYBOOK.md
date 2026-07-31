@@ -35,20 +35,32 @@
 
 ## 4. Dönüşüm Takibi
 
-### Aktif dönüşüm tipleri (sayılan)
-- WEBPAGE (form gönderimi)
-- CLICK_TO_CALL (siteden tıkla-ara butonu)
-- LEAD_FORM_SUBMIT (Google Ads lead form — onay bekliyor, 20 May'dan beri)
+### Aktif dönüşüm tipleri — 6 adet, tümü BİRİNCİL (5 Haz 2026 itibarıyla)
 
-### KAPALI dönüşüm tipleri (eksik!)
-- **AD_CALL (TechSol)** — 19 Mayıs'ta kaldırıldı. Bu **gerçek arama takibinin** tek yolu.
-  Müşteri TechSol'u Google Ads müşteri hizmetleri telefon desteği ile kurmuştu.
-  **Kritik aksiyon:** 444 4 600 ara, TechSol kurulumunu geri iste.
+| # | Dönüşüm Adı | Tür | Açıklama | Değer |
+|---|---|---|---|---|
+| 1 | Tıkla ve ara | CLICK_TO_CALL | Siteden telefon butonuna basınca — **en çok çalışan (%80)** | — |
+| 2 | WhatsApp İletişimi | WEBPAGE | Siteden WhatsApp butonuna tıklayınca | — |
+| 3 | Reklamlardan sesli arama | AD_CALL | Reklamdaki numaradan direkt arama (Google native, TechSol değil) | — |
+| 4 | Potansiyel müşteri formu | LEAD_FORM_SUBMIT | Reklamdaki Google formu | — |
+| 5 | Clicks to call | GOOGLE_HOSTED | Google Harita / İşletme Profili'nden arama | — |
+| 6 | Local - Directions | GOOGLE_HOSTED | Haritada "yol tarifi" al | — | **İKİNCİL** ✅ |
+
+> **5 birincil, 1 ikincil:** "Local - Directions" 5 Haziran 2026'da **ikincile** alındı.
+> Bidding artık yol tarifini optimizasyon hedefi olarak saymıyor.
+
+### TechSol durumu
+- TechSol 5 Haziran 2026'da kalıcı iptal edildi (müşteri kararı)
+- AD_CALL (#3) TechSol üzerinden değil, Google'ın native call asset mekanizmasıyla çalışıyor
+- Önceki "0 dönüşüm" dönemlerinde AD_CALL takibi eksikti; artık aktif
 
 ### Konvansiyon değerleri (önerilmiş, henüz atanmadı)
-- LEAD_FORM_SUBMIT: 250₺
+- CLICK_TO_CALL: 200₺ (en değerli — %80 hacim)
 - AD_CALL: 200₺
-- CLICK_TO_CALL: 100₺
+- LEAD_FORM_SUBMIT: 150₺
+- WhatsApp: 100₺
+- GOOGLE_HOSTED calls: 150₺
+- GOOGLE_HOSTED directions: 30₺ (düşük niyet)
 - Toplam atanınca → **Maximize Conversion Value** stratejisine geçilebilir.
 
 ## 5. Yapısal Durum Snapshot (21 Mayıs 2026)
@@ -83,6 +95,7 @@
 | 18 May | 1 dönüşüm |
 | **19 May 16:40-16:43** | **Büyük değişiklik:** 19 URL değişti, 3 yeni reklam, 30+ keyword düzenleme, negatifler eklendi, geo daraltıldı |
 | 19 May (tarih net değil) | **TechSol kaldırıldı** (önceki Claude session'ı yanlışlıkla kaldırmış) |
+| 5 Haz 2026 | **TechSol kalıcı iptal** (müşteri kararı) — AD_CALL takibi sonlandı |
 | 19-21 May | 0 dönüşüm/gün (takip kopuk) |
 | 21 May 19:00 | Bidding strategy: Max Conversions → **Max Clicks (max CPC 100₺)** geçişi |
 | 21 May 19:30 | 3 bölgesel grup (Esenyurt/Avcılar/Beylikdüzü) aktif edildi |
@@ -101,7 +114,7 @@
 - [x] Routine kurulumu (her sabah 09:00 GitHub issue + email)
 
 ### 🟡 Bekleyenler — müşteri aksiyonu gerekli
-- [ ] **TechSol kurulumu geri istenecek** (444 4 600)
+- [x] ~~TechSol kurulumu geri istenecek~~ — **iptal edildi (5 Haz)**; alternatif arama takibi çözümü değerlendirilecek
 - [ ] **Lead Form review** durumu kontrol edilecek (20 May'dan beri)
 - [ ] **Google Business Profile** Location extension için bağlanmalı
 - [ ] **Conversion value** atamaları (250/200/100₺)
