@@ -285,11 +285,12 @@ exports.binaOzet = onRequest(
       if (!link || link.aktif === false) { res.status(404).json({ error: "bulunamadi" }); return; }
       const elevId = Number(link.elevId);
 
-      const [elevsSnap, maintsSnap, odemeSnap, muayeneSnap] = await Promise.all([
+      const [elevsSnap, maintsSnap, odemeSnap, muayeneSnap, ekstraSnap] = await Promise.all([
         admin.database().ref(base + "/at_elevs").get(),
         admin.database().ref(base + "/at_maints").get(),
         admin.database().ref(base + "/at_sonodemeler").get(),
-        admin.database().ref(base + "/at_muayeneler").get()
+        admin.database().ref(base + "/at_muayeneler").get(),
+        admin.database().ref(base + "/at_ekstraisler").get()
       ]);
       const elev = toList(elevsSnap.val()).find((e) => e && Number(e.id) === elevId);
       if (!elev) { res.status(404).json({ error: "bina-yok" }); return; }
@@ -313,6 +314,19 @@ exports.binaOzet = onRequest(
       const muayene = toList(muayeneSnap.val())
         .filter((m) => m && Number(m.asansorId) === elevId)
         .sort((a, b) => String(b.tarih || "").localeCompare(String(a.tarih || "")))[0] || null;
+
+      // Ekstra işler / takılan parçalar — bina yöneticisi borcunun kaynağını görsün
+      const ekstraIsler = toList(ekstraSnap.val())
+        .filter((k) => k && Number(k.binaId) === elevId)
+        .map((k) => ({
+          isAdi: k.isAdi || "Ekstra iş",
+          not: k.not || "",
+          tarih: k.tarih || "",
+          tutar: Number(k.tutar) || 0,
+          odendi: !!k.odendi
+        }))
+        .sort((a, b) => String(b.tarih).localeCompare(String(a.tarih)))
+        .slice(0, 12);
 
       // Firma iletişim bilgisi: müşteri sayfasındaki "Ara / Arıza Bildir" butonları
       // için firmanın TÜM telefonları (tel, tel2, tel3) döner; cep olanlar
@@ -352,6 +366,7 @@ exports.binaOzet = onRequest(
         aylikUcret: Number(elev.aylikUcret) || 0,
         bakimlar,
         odemeler,
+        ekstraIsler,
         muayene: muayene ? { tarih: muayene.tarih || "", sonraki: muayene.sonrakiTarih || "", sonuc: muayene.sonuc || "" } : null
       });
     } catch (e) {

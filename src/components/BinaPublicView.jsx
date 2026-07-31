@@ -96,6 +96,28 @@ export default function BinaPublicView({ firmaKodu, token }) {
                   })}
             </div>
 
+            {/* Ekstra işler / takılan parçalar */}
+            <div style={kart}>
+              <div style={kartBaslik}>🔩 Yapılan İşler & Takılan Parçalar</div>
+              {(!veri.ekstraIsler || veri.ekstraIsler.length === 0)
+                ? <div style={{ padding: 14, fontSize: 12, color: '#64748b' }}>Kayıt yok.</div>
+                : veri.ekstraIsler.map(function (k, i) {
+                    return (
+                      <div key={i} style={{ padding: '10px 16px', borderBottom: '1px solid #1e2d40', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#e0e6f0' }}>{k.isAdi}</div>
+                          {k.not && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{k.not}</div>}
+                          <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>📅 {kisaTarih(k.tarih)}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: 12.5, color: k.odendi ? '#10b981' : '#f59e0b' }}>{tl(k.tutar)} ₺</div>
+                          <div style={{ fontSize: 9, color: k.odendi ? '#10b981' : '#f59e0b', marginTop: 1 }}>{k.odendi ? 'ödendi' : 'bakiyeye eklendi'}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+            </div>
+
             {/* Son ödemeler */}
             <div style={kart}>
               <div style={kartBaslik}>💰 Son Ödemeleriniz</div>
