@@ -54,8 +54,21 @@ ok("pres -> yan deltoid 0", press.total.yanDeltoid === 0, "=" + press.total.yanD
 ok("pres -> arka deltoid 0", press.total.arkaDeltoid === 0, "=" + press.total.arkaDeltoid);
 ok("pres -> triceps dolayli var", press.indirect.triceps === 5, "=" + press.indirect.triceps);
 
-// --- Kavrama sayilmiyor: on kol hic bir kas grubunda yok ---
-ok("on kol hacme girmiyor", !("onKol" in press.total) && !("forearm" in press.total));
+// --- Kavrama sayilmaz AMA dogrudan bilek calismasi sayilir ---
+const kavrama = weeklyVolume([{ exercises: ["barbell-row","deadlift","barfiks"],
+  sets: { "barbell-row":4, deadlift:4, barfiks:4 } }]);
+ok("kavrama on kola kredi VERMIYOR", kavrama.total.onKol === 0, "=" + kavrama.total.onKol);
+
+// Bilek curl eskiden bolgeye dusup "triceps 1 set" sayiliyordu.
+const bilek = weeklyVolume([{ exercises: ["Cable_Wrist_Curl"], sets: { "Cable_Wrist_Curl": 3 } }]);
+ok("bilek curl -> on kol DOGRUDAN", bilek.direct.onKol === 3, "=" + bilek.direct.onKol);
+ok("bilek curl triceps'e SAYILMIYOR", bilek.total.triceps === 0, "=" + bilek.total.triceps);
+
+// Isege bagli kaslar "eksik" uyarisi uretmemeli (dogrudan-yanit verisi yok,
+// cogu program bunlari hic calistirmaz).
+const bosRows = volumeRows([{ exercises: ["bench-press"], sets: { "bench-press": 4 } }]);
+ok("on kol/boyun 'az' uyarisi uretmiyor",
+   bosRows.filter((r) => (r.id === "onKol" || r.id === "boyun") && (r.level === "low" || r.level === "thin")).length === 0);
 
 // --- Bildirilen hata: fullbody-beginner ---
 const fbRows = volumeRows(getReadyProgram("fullbody-beginner").days);

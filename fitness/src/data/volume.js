@@ -22,7 +22,7 @@
 // Bu yüzden aşağıda DIRECT_MIN alt sınırı ve "thin" seviyesi var.
 
 import { getExercise, REGIONS } from "./exercises";
-import { MUSCLES, MUSCLE_IDS, musclesOf, muscleMinFor, MUSCLE_MAX_DEFAULT } from "./muscles";
+import { MUSCLES, MUSCLE_IDS, musclesOf, muscleMinFor, MUSCLE_MAX_DEFAULT, OPTIONAL } from "./muscles";
 
 export const TARGET_MIN = 10;
 export const TARGET_MAX = 20;
@@ -208,9 +208,12 @@ export function volumeRows(days) {
     const ind = indirect[m.id] || 0;
     const sets = total[m.id] || 0;
     const min = muscleMinFor(m.id);
+    // İsteğe bağlı kaslar (ön kol, boyun) "az"/"dolaylı" uyarısı ÜRETMEZ:
+    // doz-yanıt verisi yok ve çoğu program bunları hiç çalıştırmaz.
+    const opt = OPTIONAL.has(m.id);
     const level = sets === 0 ? "none"
-      : sets < min ? "low"
-      : d === 0 ? "thin"
+      : (!opt && sets < min) ? "low"
+      : (!opt && d === 0) ? "thin"
       : sets > MUSCLE_MAX_DEFAULT ? "high"
       : "ok";
     return { id: m.id, name: m.name, emoji: m.emoji, region: m.region,

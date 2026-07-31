@@ -17,7 +17,7 @@
 import { getExercise } from "./exercises";
 import { tensionOf } from "./tension";
 import { volumeOf, TARGET_MIN, TARGET_MAX } from "./volume";
-import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "./muscles";
+import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf, OPTIONAL } from "./muscles";
 
 // Hacim eşikleri tek yerde: data/volume.js. Burada yeniden dışa aktarılıyor
 // çünkü AutoPlanner.jsx bunları bu modülden içe aktarıyor.
@@ -308,7 +308,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   // Doldurma döngüsüyle AYNI koşul: aksi halde "3 doğrudan kol seti" olan bir
   // plan sessizce "✓ Hacim yeterli" rozetini alırdı.
   const gaps = Object.keys(volume.total).filter(
-    (r) => volume.total[r] < muscleMinFor(r) || volume.direct[r] === 0);
+    (r) => !OPTIONAL.has(r) && (volume.total[r] < muscleMinFor(r) || volume.direct[r] === 0));
   const goalName = { guc: "Güç", kasyap: "Kütle", yagver: "Yağ Yakım", fitkal: "Form" }[goal] || "Program";
 
   const outDays = built.map((d) => {

@@ -33,7 +33,16 @@ export const MUSCLES = [
   { id: "glute",     name: "Kalça (Glute)",   emoji: "🍑", region: "bacak" },
   { id: "baldir",    name: "Baldır",          emoji: "🦵", region: "bacak" },
   { id: "karin",     name: "Karın",           emoji: "🧱", region: "karin" },
+  // İSTEĞE BAĞLI kaslar: hacimleri gösterilir ama "eksik" uyarısı ÜRETMEZ ve
+  // otomatik üreteç bunları doldurmaz. Gerekçe: 10-20 set doz-yanıt verisi bu
+  // ikisi için yok, ve çoğu program bunları hiç çalıştırmaz — herkese
+  // "Boyun 0 set · az" göstermek gürültüden ibaret olurdu.
+  { id: "onKol",     name: "Ön Kol",          emoji: "🤝", region: "kol",  optional: true },
+  { id: "boyun",     name: "Boyun",           emoji: "🧣", region: "omuz", optional: true },
 ];
+
+// İsteğe bağlı kaslar uyarı üretmez, üreteç tarafından doldurulmaz.
+export const OPTIONAL = new Set(MUSCLES.filter((m) => m.optional).map((m) => m.id));
 
 export const MUSCLE_IDS = MUSCLES.map((m) => m.id);
 const BY_ID = {};
@@ -88,7 +97,11 @@ const NAME_TO_MUSCLE = {
   "İç Bacak": "glute",        // adduktor ayrı takip edilmiyor; kalça altında toplanır
   "Dış Bacak": "glute",
   "Karın": "karin",
-  // "Ön Kol" ve "Boyun" — bilerek yok
+  // Ön kol ve boyun ARTIK eşleniyor — ama yalnızca BİRİNCİL olduklarında
+  // (bkz. coeffFor). Eskiden hiç eşlenmedikleri için bilek curl bölgeye düşüp
+  // "triceps 1 set", boyun hareketi de "ön omuz 1 set" sayılıyordu.
+  "Ön Kol": "onKol",
+  "Boyun": "boyun",
 };
 
 // Kaynak veri omzu tek isim olarak tutuyor ("Omuz"). Ön/yan/arka ayrımını
@@ -113,10 +126,21 @@ const HINGE = /deadlift|good-morning|hyperextension|glute-bridge|hip-thrust|nord
 const INCLINE = /incline/i;
 const CHINUP = /chin-up|barfiks|pull-up|pullup/i;
 const PRESS = /press|sinav|pushup|push-up|dips|fly|crossover|pec-deck/i;
+const CARRY = /farmer|carry|pinch|hold|walk|suitcase/i;
 
 // (exId, muscleId, rol) → katsayı. null dönerse varsayılan kullanılır.
 function coeffFor(exId, m, isPrimary) {
   const s = String(exId || "");
+
+  // KAVRAMA SAYILMAZ. Ön kol ve boyun yalnızca hareketin BİRİNCİL hedefiyken
+  // sayılır (bilek curl, boyun direnci). Kürek/deadlift/barfikste ön kol
+  // izometrik kavrama yapar — yorar ama boyu değişmediği için hipertrofi
+  // uyaranı sayılmaz. Aynı şekilde squat'ta boyun/trapez sabitleyicidir.
+  if ((m === "onKol" || m === "boyun") && !isPrimary) return 0;
+
+  // Taşıma/kavrama hareketleri (farmer's walk, plate pinch): gövde ve bacak
+  // kasları yükü TAŞIR, boyları değişmez — sabitleyici, uyaran değil.
+  if (CARRY.test(s) && !isPrimary) return 0;
 
   // Squat türevleri: hamstring neredeyse hiç, glute belirgin, karın yok, erektör var
   if (SQUAT.test(s) && !isPrimary) {
