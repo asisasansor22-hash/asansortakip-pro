@@ -5,9 +5,16 @@ import { tensionMix } from "../data/tension";
 const COLOR = {
   none: "var(--line)",
   low:  "var(--attn)",
+  // "thin" = toplam yeterli ama doğrudan set yok/az. Bilerek "low" ile AYNI
+  // amber: beşinci bir renk eklemek paleti gürültüye boğardı. Ayrımı metin
+  // ("· dolaylı") ve çubuktaki soluk parça taşıyor.
+  thin: "var(--attn)",
   ok:   "var(--accent)",
   high: "var(--attn2)",
 };
+
+// Sayıyı gereksiz ondalıksız yaz: 13.5 → "13,5", 12.0 → "12"
+const num = (n) => String(Math.round(n * 2) / 2).replace(".", ",");
 
 // 📊 Haftalık kas grubu hacmi özeti — "omuz 10 set · göğüs 15 set" gibi.
 // days: [{exercises, sets}] — tek program için [program] gönder.
@@ -28,19 +35,26 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
   }
 
   const low = active.filter((r) => r.level === "low");
+  // Toplamı yeterli ama doğrudan seti eksik olanlar — ayrı uyarı alır.
+  // Bunlar "low" listesine GİRMEMELİ: oradaki metin "bu bölgeye hareket ekle"
+  // diyor ve kullanıcı daha fazla pres ekleyerek sorunu büyütebilir.
+  const thin = active.filter((r) => r.level === "thin");
 
   // Kompakt: tek satır rozetler (ör. program kartı içinde)
   if (compact) {
     return (
-      <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
-        {active.map((r) => (
-          <span key={r.id} style={{
-            fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999,
-            background: "var(--card2)", color: COLOR[r.level],
-          }}>
-            {r.emoji} {r.name} {r.sets}
-          </span>
-        ))}
+      <div>
+        <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
+          {active.map((r) => (
+            <span key={r.id} style={{
+              fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 999,
+              background: "var(--card2)", color: COLOR[r.level],
+            }}>
+              {r.emoji} {r.name} {num(r.direct)}{r.indirect > 0 ? "+" + num(r.indirect) : ""}
+            </span>
+          ))}
+        </div>
+        <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 4 }}>sayı = doğrudan + dolaylı</div>
       </div>
     );
   }
@@ -52,35 +66,71 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
       {title && <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{title}</div>}
       {rows.map((r) => (
         <div key={r.id} style={{ marginBottom: 8 }}>
-          <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-            <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)" }}>{r.emoji} {r.name}</span>
-            <span style={{ fontWeight: 700, color: COLOR[r.level] }}>
-              {r.sets} set{r.level === "low" && r.sets > 0 ? " · az" : ""}
+          <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3, gap: 6, flexWrap: "nowrap" }}>
+            <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.emoji} {r.name}</span>
+            {/* Başlık sayı DOĞRUDAN settir. Dolaylı katkı ayrı ve soluk yazılır —
+                "13,5 set" tek parça gösterilince kullanıcı 13,5 kol hareketi
+                yaptığını sanıyordu. */}
+            {/* "· dolaylı" eki yazmıyoruz: "+ 13,5 dolaylı" zaten aynı şeyi
+                söylüyor ve satırı taşırıyordu. ⚠ hem kısa hem renk körlüğünde
+                da okunur. */}
+            <span style={{ fontWeight: 700, color: COLOR[r.level], flexShrink: 0, whiteSpace: "nowrap" }}>
+              {num(r.direct)} set
+              {r.indirect > 0 && (
+                <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 11 }}>
+                  {" + " + num(r.indirect) + " dolaylı"}
+                </span>
+              )}
+              {r.level === "low" ? " · az" : r.level === "thin" ? " ⚠" : ""}
             </span>
           </div>
-          <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999 }}>
-            <div style={{ width: Math.min(100, (r.sets / max) * 100) + "%", height: "100%", background: COLOR[r.level], borderRadius: 999 }} />
+          <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999, display: "flex", overflow: "hidden" }}>
+            {/* İki parça: dolu = doğrudan, soluk = dolaylı. "Bu çubuğun çoğu
+                hayalet" görüntüsü, sayının tek başına yapamadığı işi yapıyor. */}
+            <div style={{ width: Math.min(100, (r.direct / max) * 100) + "%", height: "100%", background: COLOR[r.level] }} />
+            <div style={{ width: Math.min(100, (r.indirect / max) * 100) + "%", height: "100%", background: COLOR[r.level], opacity: 0.35 }} />
             {/* Bölgenin etkili alt eşiği (karın için 6, diğerleri 10) */}
             <div title={r.min + " set — etkili alt eşik"} style={{
               position: "absolute", top: -2, bottom: -2,
               left: (r.min / max) * 100 + "%",
               width: 2, background: "var(--text)", opacity: 0.45, borderRadius: 2,
             }} />
+            {/* Doğrudan set alt sınırı — yalnız kol/omuz gibi ayrı sınırı olan bölgelerde */}
+            {r.directMin !== r.min && (
+              <div title={r.directMin + " doğrudan set — alt sınır"} style={{
+                position: "absolute", top: 0, bottom: 0,
+                left: (r.directMin / max) * 100 + "%",
+                width: 1.5, background: "var(--text)", opacity: 0.3,
+              }} />
+            )}
           </div>
         </div>
       ))}
 
       <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
-        🟡 az · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek (&gt;{TARGET_MAX}) · dikey çizgi = etkili alt eşik
+        Koyu = doğrudan set · soluk = dolaylı (bileşik hareketlerden)
+        <br />🟡 az / dolaylı ağırlıklı · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek · dikey çizgi = alt eşik
         <br />Karın eşiği 6'dır: bileşik hareketlerde gövde stabilizasyonundan yoğun izometrik yük alır.
       </div>
 
       {low.length > 0 && (
         <p style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
-          ⚠️ {low.map((r) => `${r.name} (${r.sets}/${r.min})`).join(", ")} eşiğin altında.
+          ⚠️ {low.map((r) => `${r.name} (${num(r.sets)}/${r.min})`).join(", ")} eşiğin altında.
           Hipertrofi hedefliyorsan bu bölgelere hareket/set ekle.
         </p>
       )}
+
+      {thin.map((r) => (
+        <p key={r.id} style={{ color: "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0, lineHeight: 1.6 }}>
+          ⚠️ <b>{r.name}</b>: {num(r.sets)} setin {r.direct === 0 ? "tamamı" : num(r.indirect) + " kadarı"} bileşik
+          hareketlerden <b>dolaylı</b> geliyor. Dolaylı yük doğrudan setin yaklaşık yarısı sayılır; ayrıca
+          {r.id === "kol"
+            ? " triceps'in uzun başı ile biceps'in omuz görevi preslerde/çekişlerde eksik kalır"
+            : " yan ve arka deltoid preslerde neredeyse hiç yüklenmez"}.
+          Haftada en az <b>{r.directMin} doğrudan {r.name.toLowerCase()} seti</b> ekle
+          {r.id === "kol" ? " (ör. 3 set curl + 3 set baş üstü triceps uzatma)" : " (ör. 3 set yan kaldırış + 3 set face pull)"}.
+        </p>
+      ))}
 
       {showTension && (
         <p style={{ color: mix.hasStretch ? "var(--muted)" : "var(--attn)", fontSize: 11.5, marginTop: 8, marginBottom: 0 }}>
@@ -90,8 +140,10 @@ export default function VolumeSummary({ days, title = "Haftalık Hacim (set/kas)
         </p>
       )}
 
-      <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6, marginBottom: 0 }}>
-        Not: Bileşik hareketlerin yardımcı kaslara katkısı yarım set sayılır (ör. bench press → omuz/kol).
+      <p style={{ color: "var(--muted)", fontSize: 10.5, marginTop: 6, marginBottom: 0, lineHeight: 1.6 }}>
+        Not: Bileşik hareketlerin yardımcı kaslara katkısı <b>yarım set</b>, bazı hareketlerde
+        <b> çeyrek set</b> sayılır (bench press → omuz/kol yarım; face pull → kol çeyrek).
+        Bu bir <b>ölçüm</b> yöntemidir; program tasarımında her bölgenin ayrıca <b>doğrudan</b> seti olmalıdır.
       </p>
     </div>
   );

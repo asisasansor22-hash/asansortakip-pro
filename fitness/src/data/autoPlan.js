@@ -16,10 +16,11 @@
 
 import { getExercise } from "./exercises";
 import { tensionOf } from "./tension";
+import { volumeOf, minFor, maxFor, directMinFor, TARGET_MIN, TARGET_MAX } from "./volume";
 
-// Kas başına haftalık hedef set aralığı
-export const TARGET_MIN = 10;
-export const TARGET_MAX = 20;
+// Hacim eşikleri tek yerde: data/volume.js. Burada yeniden dışa aktarılıyor
+// çünkü AutoPlanner.jsx bunları bu modülden içe aktarıyor.
+export { TARGET_MIN, TARGET_MAX };
 
 // Hareket havuzları (tercih sırasına göre)
 const POOLS = {
@@ -41,17 +42,11 @@ const POOLS = {
   core:      { region: "karin", ids: ["plank", "hanging-leg-raise", "hollow-body-hold", "crunch", "leg-raise", "ab-roller"] },
 };
 
-// Bileşik hareketlerin DOLAYLI kattığı hacim (yardımcı kaslar).
-// Kanıt: pres hareketleri triceps/ön omuza, çekişler biceps'e anlamlı yük bindirir;
-// bu yüzden yardımcı kaslar için doğrudan setin yarısı sayılır (yaygın uygulama).
-const INDIRECT = {
-  chest:     { omuz: 0.5, kol: 0.5 },
-  chestUp:   { omuz: 0.5, kol: 0.5 },
-  shPress:   { kol: 0.5 },
-  backVert:  { kol: 0.5 },
-  backHoriz: { kol: 0.5 },
-  backLow:   { bacak: 0.5 },
-};
+// NOT: Burada eskiden AYRI bir dolaylı hacim tablosu vardı ve data/volume.js'teki
+// tabloyla UYUŞMUYORDU (0.25 katmanı yoktu, bazı havuzlar eksikti). Üstelik
+// doğrudan bölgeyi POOLS[pool].region'dan alıyordu, volume.js ise hareketin
+// kendi region'ından — bu yüzden aynı plan için üreteç ve ekran farklı sayılar
+// gösteriyordu. Artık ikisi de volumeOf() kullanıyor: tek tablo, tek doğru.
 
 // Ekipman moduna göre uygunluk
 function accept(equip, mode) {
@@ -140,20 +135,11 @@ const FILL_POOLS = {
 // bu yüzden sınır gün sayısına göre esner.
 function maxPerDay(days) { return days <= 2 ? 10 : days === 3 ? 9 : 8; }
 
-// Haftalık hacmi hesapla: bölge → set sayısı (dolaylı katkılar dahil)
+// Haftalık hacim: { direct, indirect, total }. Ekranın kullandığı hesabın
+// birebir aynısı (data/volume.js) — slot zaten hareket id'si taşıdığı için
+// havuz anahtarına gerek yok.
 function computeVolume(days) {
-  const vol = { gogus: 0, sirt: 0, omuz: 0, kol: 0, bacak: 0, karin: 0 };
-  days.forEach((d) => {
-    d.slots.forEach((s) => {
-      const pool = POOLS[s.pool];
-      if (!pool) return;
-      vol[pool.region] = (vol[pool.region] || 0) + s.sets;
-      const ind = INDIRECT[s.pool];
-      if (ind) Object.keys(ind).forEach((r) => { vol[r] = (vol[r] || 0) + s.sets * ind[r]; });
-    });
-  });
-  Object.keys(vol).forEach((k) => { vol[k] = Math.round(vol[k] * 10) / 10; });
-  return vol;
+  return volumeOf(days.flatMap((d) => d.slots.map((s) => ({ id: s.id, sets: s.sets }))));
 }
 
 // Ana üretici
@@ -183,8 +169,13 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   const order = (EMPHASIS[emphasis] || EMPHASIS.denge).order;
   for (let guard = 0; guard < 40; guard++) {
     const vol = computeVolume(built);
-    // Hedefin altındaki bölgeler; vurgu sırasına göre en öncelikli olan
-    const gap = order.find((r) => vol[r] < TARGET_MIN);
+    // Açık sayılan iki durum var:
+    //   • toplam hacim bölgenin eşiğinin altında  (eskiden sabit TARGET_MIN
+    //     kullanılıyordu, bu yüzden karın 6 yerine 10'a zorlanıp fazla dolduruluyordu)
+    //   • toplam yeterli AMA doğrudan set alt sınırın altında — yani bölge
+    //     yalnızca bileşiklerden dolaylı kredi toplamış. Eskiden bu görülmüyordu
+    //     ve üreteç kola hiç hareket eklemiyordu.
+    const gap = order.find((r) => vol.total[r] < minFor(r) || vol.direct[r] < directMinFor(r));
     if (!gap) break;
 
     // Bu bölgeyi çalıştıran havuzlardan, en az dolu güne bir hareket ekle
@@ -216,8 +207,12 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   const ISOLATION = new Set(["chestIso", "shLat", "shRear", "biceps", "triceps", "calf", "glute", "core"]);
   for (let guard = 0; guard < 30; guard++) {
     const vol = computeVolume(built);
-    const over = Object.keys(vol).filter((r) => vol[r] > TARGET_MAX)
-      .sort((a, b) => vol[b] - vol[a])[0];
+    // Doğrudan set alt sınırının ALTINDAKİ bir bölgeden asla budama yapma.
+    // Eskiden bu koşul yoktu: kolun hayali (dolaylı) hacmi 20'yi geçtiği için
+    // budama, üretecin kendi koyduğu curl ve pushdown'ları siliyordu.
+    const over = Object.keys(vol.total)
+      .filter((r) => vol.total[r] > maxFor(r) && vol.direct[r] >= directMinFor(r))
+      .sort((a, b) => vol.total[b] - vol.total[a])[0];
     if (!over) break;
 
     // O bölgeyi besleyen izolasyon slotlarından, en dolu günden birini çıkar
@@ -226,8 +221,10 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     for (const di of dayOrder) {
       const day = built[di];
       const idx = day.slots.findIndex((s) => {
-        const pool = POOLS[s.pool];
-        return pool && pool.region === over && ISOLATION.has(s.pool);
+        const ex = getExercise(s.id);
+        if (!ex || ex.region !== over || !ISOLATION.has(s.pool)) return false;
+        // Bu slotu silmek bölgeyi doğrudan alt sınırın altına düşürüyorsa dokunma.
+        return (vol.direct[over] - s.sets) >= directMinFor(over);
       });
       // Günü tamamen boşaltma; en az 4 hareket kalsın
       if (idx >= 0 && day.slots.length > 4) { day.slots.splice(idx, 1); removed = true; break; }
@@ -265,7 +262,10 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
 
   // 4) Programa dönüştür + rapor
   const volume = computeVolume(built);
-  const gaps = Object.keys(volume).filter((r) => volume[r] < TARGET_MIN);
+  // Doldurma döngüsüyle AYNI koşul: aksi halde "3 doğrudan kol seti" olan bir
+  // plan sessizce "✓ Hacim yeterli" rozetini alırdı.
+  const gaps = Object.keys(volume.total).filter(
+    (r) => volume.total[r] < minFor(r) || volume.direct[r] < directMinFor(r));
   const goalName = { guc: "Güç", kasyap: "Kütle", yagver: "Yağ Yakım", fitkal: "Form" }[goal] || "Program";
 
   const outDays = built.map((d) => {

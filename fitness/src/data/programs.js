@@ -15,8 +15,13 @@ export const READY_PROGRAMS = [
     level: "Başlangıç", goal: "Genel form & güç", freq: "Haftada 3 gün (gün aşırı)",
     desc: "Yeni başlayanlar için en kanıtlı şablon: tüm vücut, haftada 3 kez. Yüksek sıklık hareketi öğrenmeyi ve kas gelişimini hızlandırır.",
     days: [
-      { name: "Gün A", note: "Her hareket 3 set. Bileşikte 6-10, izolasyonda 10-15 tekrar. Setler arası 1.5-2 dk dinlen.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "plank"] },
-      { name: "Gün B", note: "3 set. Form öncelik; ağırlığı yavaş artır.", exercises: ["romanian-deadlift", "lat-pulldown", "incline-press", "lunge", "crunch"] },
+      // Kol hareketleri BİLEREK eklendi: program 3 presleme + 2 çekiş içeriyor ve
+      // dolaylı katkı kola "yeterli" görüntüsü veriyordu, ama triceps'in uzun başı
+      // preslerde (omuz gerideyken kısalmış olduğu için) neredeyse hiç yüklenmiyor.
+      // Baş üstü uzatma pushdown'a tercih edildi: Maeo ve ark. (EJSS) uzun başta
+      // +%28,5'e karşı +%19,6 buldu — presin bıraktığı boşluğu dolduran varyant bu.
+      { name: "Gün A", note: "Her hareket 3 set. Bileşikte 6-10, izolasyonda 10-15 tekrar. Setler arası 1.5-2 dk dinlen.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "overhead-extension", "plank"] },
+      { name: "Gün B", note: "3 set. Form öncelik; ağırlığı yavaş artır.", exercises: ["romanian-deadlift", "lat-pulldown", "incline-press", "biceps-curl", "lunge", "crunch"] },
       { name: "Gün C", note: "3 set. A ve B'yi dönüşümlü uygula; her hafta 1 tekrar veya küçük kilo ekle.", exercises: ["squat", "sinav", "seated-row", "lateral-raise", "calf-raise", "crunch"] },
     ],
   },
@@ -62,7 +67,7 @@ export const READY_PROGRAMS = [
     level: "Başlangıç", goal: "Maksimal güç (lineer ilerleme)",
     freq: "Haftada 3 gün (A/B dönüşümlü, gün aşırı)",
     desc: "Starting Strength tarzı klasik güç şablonu: az hareket, ağır yük, her antrenmanda bara +2.5 kg (deadlift +5 kg). Yeni başlayanda güç en hızlı böyle artar; 5 tekrarlık setler teknik bozulmadan ağır çalışmaya izin verir.",
-    volumeNote: "Bu bir KUVVET programıdır: az hareket, ağır yük. Kas başına haftalık set sayısı bilinçli olarak hipertrofi aralığının (10-20) altındadır — amaç kas büyütmek değil maksimal kuvvet geliştirmektir.",
+    volumeNote: "Bu bir KUVVET programıdır: az hareket, ağır yük. Kas başına haftalık set sayısı bilinçli olarak hipertrofi aralığının (10-20) altındadır — amaç kas büyütmek değil maksimal kuvvet geliştirmektir. Kol ve karın için DOĞRUDAN set yoktur; bu programın orijinal tasarımı böyledir, eksiklik değildir. Hipertrofi de istiyorsan A/B günlerine 3'er set curl ve triceps uzatma eklemek bu şablonun bilinen isteğe bağlı ilavesidir.",
     days: [
       { name: "Antrenman A", note: "Squat ve bench 3×5, deadlift 1×5 (tek ağır set yeter). Setler arası 3-5 dk dinlen. Her başarılı antrenmanda +2.5 kg (deadlift +5 kg); 5 tekrar tamamlanamazsa kiloyu koru.",
         sets: { "squat": 3, "bench-press": 3, "deadlift": 1 },
@@ -80,7 +85,7 @@ export const READY_PROGRAMS = [
     level: "Başlangıç-Orta", goal: "Güç + kütle (lineer ilerleme)",
     freq: "Haftada 3 gün (A/B dönüşümlü, gün aşırı)",
     desc: "Klasik 5×5: iki antrenman (A/B) dönüşümlü, haftada 3 gün. 5×5 hacmi güçle birlikte kütle de kazandırır. Hafif başla, her antrenman +2.5 kg ekle; aynı kiloda 3 kez üst üste takılırsan %10 düşüp yeniden tırman (deload).",
-    volumeNote: "Bu bir KUVVET programıdır: hacim düşük, yük ağırdır. Hipertrofi önceliğinse PPL veya Üst/Alt bölünmesini tercih et.",
+    volumeNote: "Bu bir KUVVET programıdır: hacim düşük, yük ağırdır. Hipertrofi önceliğinse PPL veya Üst/Alt bölünmesini tercih et. Kol için DOĞRUDAN set yoktur; StrongLifts'in orijinal tasarımı böyledir. İstersen A/B günlerine 3'er set curl ve triceps uzatma ekleyebilirsin — programın kendisi bunu isteğe bağlı ilave olarak sayar.",
     days: [
       { name: "Antrenman A", note: "Hepsi 5×5. Setler arası kolayken 90 sn, zorlaştıkça 3-5 dk. Squat her antrenmanda; bu günde deadlift yok.",
         sets: { "squat": 5, "bench-press": 5, "barbell-row": 5 },
@@ -109,7 +114,7 @@ export const READY_PROGRAMS = [
     gender: "herkes", style: "ev", goalTag: "yagver",
     level: "Orta", goal: "Yağ yakımı (kas koruyarak)", freq: "Haftada 3-5 gün (günleri dönüşümlü tekrarla)",
     desc: "Yağ kaybını kalori açığı belirler; bu plan kuvvet + HIIT ile kası korurken kalori harcamayı artırır.",
-    volumeNote: "KONDİSYON programıdır: kalori harcaması ve dayanıklılık önceliklidir, hacim hipertrofi aralığının altındadır. Diyette kas korumak için haftaya 2 ağırlık günü eklemen önerilir.",
+    volumeNote: "KONDİSYON programıdır: kalori harcaması ve dayanıklılık önceliklidir, hacim hipertrofi aralığının altındadır. Diyette kas korumak için haftaya 2 ağırlık günü eklemen önerilir. Kol için doğrudan set yoktur — kol hacmi tamamen preslerden ve çekişlerden dolaylı gelir; kas korumak önceliğinse kuvvet gününe 3 set curl ve 3 set triceps uzatma ekle.",
     days: [
       { name: "HIIT 1", note: "30 sn maksimal / 30 sn yürü x 8-10 tur.", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees", "plank"] },
       { name: "Kuvvet (Full)", note: "Kası korumak için ağır bileşikler. 3-4 set, 6-10 tekrar.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "lunge"] },
@@ -127,7 +132,10 @@ export const READY_PROGRAMS = [
     days: [
       { name: "Glute Odak", note: "Hip thrust ve menteşe başta. 3-4 set, 8-12 tekrar; tepede 1 sn sık.", exercises: ["hip-thrust", "romanian-deadlift", "glute-kickback", "glute-bridge", "seated-calf-raise"] },
       { name: "Bacak (Quad)", note: "3-4 set.", exercises: ["squat", "bulgarian", "leg-press", "leg-curl", "calf-raise"] },
-      { name: "Üst Vücut & Core", note: "Alt vücut vurgulu bir programda bile üst vücut ihmal edilmez: sırt/omuz hacmi duruş ve dengeli gelişim için gerekli. 3 set. Tek kol row'da aşağıda omzu bırak (lat gerilsin).", exercises: ["lat-pulldown", "dumbbell-row", "incline-dumbbell-press", "shoulder-press", "preacher-curl", "plank", "hanging-leg-raise"] },
+      // preacher-curl zaten vardı (dirsek fleksörü); triceps-pushdown eklendi ki
+      // kol hacmi tek yönlü kalmasın — preslerden gelen dolaylı yük triceps'in
+      // uzun başını kapsamıyor.
+      { name: "Üst Vücut & Core", note: "Alt vücut vurgulu bir programda bile üst vücut ihmal edilmez: sırt/omuz hacmi duruş ve dengeli gelişim için gerekli. 3 set. Tek kol row'da aşağıda omzu bırak (lat gerilsin).", exercises: ["lat-pulldown", "dumbbell-row", "incline-dumbbell-press", "shoulder-press", "preacher-curl", "triceps-pushdown", "plank", "hanging-leg-raise"] },
     ],
   },
   {
@@ -138,7 +146,7 @@ export const READY_PROGRAMS = [
     volumeNote: "YAĞ YAKIM/kondisyon programıdır. Ekipmansız olduğu için sırt ve kol hacmi sınırlıdır; kas kütlesi önceliğinse ağırlıklı bir programa geç.",
     days: [
       { name: "Alt Vücut", note: "3-4 set, başarısızlığa yakın. Squat en ağır bileşik olduğu için başta.", exercises: ["squat", "lunge", "glute-bridge", "single-leg-glute-bridge", "calf-raise"] },
-      { name: "Core & Sırt", note: "3 set; pozisyonları 30-40 sn tut. Ters row için sağlam bir masa kenarı veya alçak bar kullan — evde sırt hacmi için en etkili hareket.", exercises: ["inverted-row", "superman", "plank", "side-plank", "hollow-body-hold", "v-up"] },
+      { name: "Core & Sırt", note: "3 set; pozisyonları 30-40 sn tut. Ters row için sağlam bir masa kenarı veya alçak bar kullan — evde sırt hacmi için en etkili hareket. Dips'i iki sandalye arasında ya da sağlam bir kanepe kenarında yap.", exercises: ["inverted-row", "triceps-dips", "superman", "plank", "side-plank", "hollow-body-hold", "v-up"] },
       { name: "Kardiyo", note: "Devre: 40 sn çalış / 20 sn dinlen x 3-4 tur.", exercises: ["jumping-jack", "high-knees", "jump-squat", "butt-kicks"] },
     ],
   },
@@ -173,6 +181,7 @@ export const READY_PROGRAMS = [
     gender: "erkek", style: "ev", goalTag: "kasyap",
     level: "Başlangıç-Orta", goal: "Ekipmansız kuvvet", freq: "Haftada 3-4 gün (günleri dönüşümlü tekrarla)",
     desc: "Vücut ağırlığıyla kas yapımı: setleri başarısızlığa yakın bitir ve zamanla daha zor varyasyona geç.",
+    volumeNote: "EKİPMANSIZ programdır: doğrudan biceps ve yan/arka omuz seti için bar-altı curl ya da direnç bandı gerekir. Barfiks/chin-up dirsek fleksörünü ağır yükler ama sırt hareketi sayılır; pike şınav ön deltoidi çalıştırır, yan ve arka deltoid ise ekipmansız zor yüklenir. Bu iki bölgenin hacminin büyük kısmı bileşiklerden DOLAYLI gelir — özet bunu ayrıca gösterir.",
     days: [
       { name: "İtme", note: "3-4 set. Kolaylaşınca archer/decline'a geç. Ellerin altına kitap/sehpa koyup göğsü daha aşağı indirirsen gerilme (ve uyaran) artar.", exercises: ["sinav", "wide-pushup", "decline-pushup", "chest-dips", "pike-pushup", "triceps-dips", "diamond-pushup"] },
       { name: "Çekme", note: "Bar varsa barfiks; yoksa masa altı inverted row. Her tekrarda kolu tam aç.", exercises: ["barfiks", "chin-up", "inverted-row", "negative-pullup", "scapular-pull"] },
@@ -184,7 +193,7 @@ export const READY_PROGRAMS = [
     gender: "erkek", style: "salon", goalTag: "yagver",
     level: "Orta", goal: "Yağ yakımı & kas koruma", freq: "Haftada 3-5 gün (günleri dönüşümlü tekrarla)",
     desc: "Ağır bileşikler kası korur, HIIT kalori açığını destekler. Yağ kaybının motoru beslenme açığıdır.",
-    volumeNote: "KONDİSYON programıdır: hacim hipertrofi aralığının altındadır. Diyette kas kaybını önlemek için ağırlık günlerini ihmal etme.",
+    volumeNote: "KONDİSYON programıdır: hacim hipertrofi aralığının altındadır. Diyette kas kaybını önlemek için ağırlık günlerini ihmal etme. Kol için doğrudan set yoktur; açıkta kalan bir kas diyette en çok kaybedilendir, o yüzden Full A ve Full B günlerine 3'er set curl / triceps uzatma eklemen önerilir.",
     days: [
       { name: "Full A", note: "Ağır, 4-6 tekrar bileşikler.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "plank"] },
       { name: "HIIT", note: "30 sn / 30 sn x 8-10 tur.", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees"] },
@@ -198,9 +207,9 @@ export const READY_PROGRAMS = [
     gender: "herkes", style: "kalistenik", goalTag: "fitkal",
     level: "Başlangıç", goal: "Vücut ağırlığı temeli", freq: "Haftada 3 gün (full body)",
     desc: "Kalistenikte yeni başlayanlar için full body. İt-çek-bacak-core dengesi; her hareketin kolay (regresyon) versiyonundan başla.",
-    volumeNote: "BAŞLANGIÇ programıdır: hacim bilinçli olarak düşük tutulur — yeni başlayanlar az hacimle de belirgin ilerler ve önce teknik oturmalıdır. 6-8 hafta sonra Kalistenik PPL'e geç.",
+    volumeNote: "BAŞLANGIÇ programıdır: hacim bilinçli olarak düşük tutulur — yeni başlayanlar az hacimle de belirgin ilerler ve önce teknik oturmalıdır. 6-8 hafta sonra Kalistenik PPL'e geç. EKİPMANSIZ olduğu için doğrudan biceps seti yoktur: vücut ağırlığıyla dirsek fleksörünü izole eden bir hareket yok, barfiks/chin-up en yakın karşılıktır ama sırt hareketi sayılır. Kol hacminin büyük kısmı bileşiklerden dolaylı gelir; bar veya direnç bandın varsa haftaya 3 set curl ekle.",
     days: [
-      { name: "Gün A", note: "3 set, başarısızlığa 1-2 tekrar kala. Şınav zorsa diz üstü/eğik yap; göğsü olabildiğince aşağı indir.", exercises: ["sinav", "wide-pushup", "inverted-row", "squat", "plank"] },
+      { name: "Gün A", note: "3 set, başarısızlığa 1-2 tekrar kala. Şınav zorsa diz üstü/eğik yap; göğsü olabildiğince aşağı indir. Dips'i iki sandalye arasında yapabilirsin.", exercises: ["sinav", "wide-pushup", "inverted-row", "triceps-dips", "squat", "plank"] },
       { name: "Gün B", note: "3 set. Barfiks zorsa negatif veya inverted row yap — negatifte kolu tam açık başlat.", exercises: ["pike-pushup", "negative-pullup", "inverted-row", "lunge", "hollow-body-hold"] },
       { name: "Gün C", note: "3 set. Her hafta 1-2 tekrar ekle (aşamalı yüklenme). Paralel/sandalye dipsinde öne eğil, dipte göğüs gerilsin.", exercises: ["decline-pushup", "chest-dips", "scapular-pull", "bulgarian", "single-leg-glute-bridge", "v-up"] },
     ],
@@ -210,6 +219,7 @@ export const READY_PROGRAMS = [
     gender: "herkes", style: "kalistenik", goalTag: "kasyap",
     level: "Orta", goal: "Ekipmansız güç & kütle", freq: "Haftada 3-6 gün",
     desc: "Vücut ağırlığıyla itme/çekme/bacak bölünmesi. Haftada 2 tur yaparsan her grup 2x çalışır.",
+    volumeNote: "EKİPMANSIZ programdır: doğrudan biceps ve yan/arka omuz seti için bar-altı curl ya da direnç bandı gerekir. Barfiks/chin-up dirsek fleksörünü ağır yükler ama sırt hareketi sayılır; benzer şekilde pike şınav ön deltoidi çalıştırır, yan ve arka deltoid ise ekipmansız zor yüklenir. Bu iki bölgenin hacminin büyük kısmı bileşiklerden DOLAYLI gelir — özet bunu ayrıca gösterir.",
     days: [
       { name: "İtme (Push)", note: "3-4 set. Göğüs + omuz + triceps. Geniş şınavda dipte göğüs daha çok gerilir; paralelde öne eğil.", exercises: ["sinav", "wide-pushup", "chest-dips", "decline-pushup", "pike-pushup", "archer-pushup", "triceps-dips"] },
       { name: "Çekme (Pull)", note: "İtişe denk hacim. Bar yoksa inverted row.", exercises: ["barfiks", "chin-up", "inverted-row", "scapular-pull", "hanging-leg-raise"] },
@@ -222,7 +232,7 @@ export const READY_PROGRAMS = [
     level: "Orta", goal: "Yağ yakımı (kas koruyarak, ekipmansız)",
     freq: "Haftada 4-5 gün (A / HIIT / B dönüşümlü)",
     desc: "Yağ kaybını kalori açığı belirler; bu plan vücut ağırlığı kuvvet devreleriyle kası korur, HIIT ile harcamayı artırır. Günde 8-10 bin adım eklemek sonucu belirgin hızlandırır.",
-    volumeNote: "KONDİSYON programıdır: hacim hipertrofi aralığının altındadır; amaç kalori harcaması ve kas korumadır.",
+    volumeNote: "KONDİSYON programıdır: hacim hipertrofi aralığının altındadır; amaç kalori harcaması ve kas korumadır. Ekipmansız olduğu için kol hacminin tamamı bileşiklerden dolaylı gelir — doğrudan kol seti eklemek istersen sandalye dips'i ve (bar/bant varsa) curl en pratik seçenekler.",
     days: [
       { name: "Kuvvet Devresi A", note: "Devre: her hareket 40 sn çalış / 20 sn geçiş, 3-4 tur; turlar arası 90 sn dinlen. Formu bozan tempodan kaçın.", exercises: ["sinav", "inverted-row", "squat", "pike-pushup", "hollow-body-hold"] },
       { name: "HIIT", note: "30 sn maksimal / 30 sn yürüyüş × 8-10 tur; 5 dk ısınma + 5 dk soğuma. Haftada en fazla 2-3 HIIT (toparlanma).", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees"] },
