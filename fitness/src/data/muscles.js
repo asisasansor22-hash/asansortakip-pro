@@ -107,12 +107,44 @@ const NAME_TO_MUSCLE = {
 // Kaynak veri omzu tek isim olarak tutuyor ("Omuz"). Ön/yan/arka ayrımını
 // hareketin kendisinden türetiyoruz. Küratörlü eşleme; kenar durumlarda
 // hatalı olabilir (bkz. docs/dolayli-hacim.md · Bölüm 4).
-function deltHead(exId, name) {
-  const s = String(exId || "").toLowerCase();
-  if (/lateral|yan-kaldir|upright-row/.test(s)) return "yanDeltoid";
-  if (/rear-delt|face-pull|reverse-fly|ters-fly/.test(s)) return "arkaDeltoid";
-  if (/row|pull|chin|barfiks|lat-|scapular/.test(s)) return "arkaDeltoid"; // çekişler arka deltoidi yükler
-  return "onDeltoid"; // presler, şınav, fly
+//
+// Hareket id'leri iki biçimde geliyor: elle yazılanlar tireli-küçük harf
+// ("rear-delt-fly"), free-exercise-db'den gelenler alt çizgili-Başlık
+// ("Cable_Rear_Delt_Fly"). ÖNCE tek biçime indirgiyoruz — bu yapılmadığı için
+// alt çizgili 6 arka omuz hareketi ön omuz sayılıyordu.
+function normId(exId) {
+  return String(exId || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+// Tire ile ayrılmış SÖZCÜK sınırı. Çıplak alt dizge araması "chin"in "machine"
+// içinde eşleşmesine yol açıyordu (Machine_Shoulder_Military_Press → arka omuz).
+function token(s, re) {
+  return new RegExp("(?:^|-)(?:" + re + ")(?:-|$)").test(s);
+}
+const FLY = "fl(?:y|ye|ies)s?";
+
+function deltHead(exId) {
+  const s = normId(exId);
+
+  // 1) ARKA — en özgül desenler önce.
+  //    "rear" sözcüğü rear-delt / rear-lateral / rear-delt-row hepsini yakalar.
+  if (token(s, "rear")) return "arkaDeltoid";
+  if (/face-pull|pull-apart|external-rotation|to-neck/.test(s)) return "arkaDeltoid";
+  if (/back-fl|ters-fl/.test(s)) return "arkaDeltoid";
+  // "reverse" tek başına ters lunge/crunch/curl'ü de yakalardı; fly şartı gerek.
+  if (token(s, "reverse") && new RegExp(FLY).test(s)) return "arkaDeltoid";
+  // Öne eğik her kaldırış/açış arka deltoide gider.
+  if (/bent-over|bent-arm/.test(s) && new RegExp("lateral|raise|" + FLY).test(s)) return "arkaDeltoid";
+
+  // 2) YAN — omuz düzleminde abdüksiyon.
+  if (/lateral|deltoid-raise|side-raise|scaption/.test(s)) return "yanDeltoid";
+  if (/upright-row|yan-kaldir|crucifix|iron-cross|power-partials/.test(s)) return "yanDeltoid";
+
+  // 3) ÇEKİŞLER → arka deltoid. Sözcük sınırı şart: "throw" içinde "row",
+  //    "pullover" içinde "pull", "machine" içinde "chin" var.
+  if (token(s, "rows?|pull|pulls|pull-?ups?|pull-?downs?|chins?|chin-?ups?|barfiks|lat|scapular")) return "arkaDeltoid";
+
+  // 4) Kalan her şey: presler, şınav, fly, öne kaldırış, koparma/silkme.
+  return "onDeltoid";
 }
 
 // --- Katsayı sapmaları (varsayılan: birincil 1,0 · ikincil 0,5) ---
@@ -126,21 +158,35 @@ const HINGE = /deadlift|good-morning|hyperextension|glute-bridge|hip-thrust|nord
 const INCLINE = /incline/i;
 const CHINUP = /chin-up|barfiks|pull-up|pullup/i;
 const PRESS = /press|sinav|pushup|push-up|dips|fly|crossover|pec-deck/i;
-const CARRY = /farmer|carry|pinch|hold|walk|suitcase/i;
+// Yüklü TAŞIMA hareketleri. Desen dar tutuldu: "walk" ve "hold" genel olarak
+// yazılırsa Barbell_Walking_Lunge ve hollow-body-hold gibi taşıma OLMAYAN
+// hareketleri de yakalıyor (yürüyen lunge'ın glute/hamstring katkısı bir ara
+// yanlışlıkla sıfırlanmıştı).
+const CARRY = /farmer|rickshaw|yoke|suitcase|carry|pinch/i;
 
 // (exId, muscleId, rol) → katsayı. null dönerse varsayılan kullanılır.
 function coeffFor(exId, m, isPrimary) {
   const s = String(exId || "");
 
-  // KAVRAMA SAYILMAZ. Ön kol ve boyun yalnızca hareketin BİRİNCİL hedefiyken
-  // sayılır (bilek curl, boyun direnci). Kürek/deadlift/barfikste ön kol
-  // izometrik kavrama yapar — yorar ama boyu değişmediği için hipertrofi
-  // uyaranı sayılmaz. Aynı şekilde squat'ta boyun/trapez sabitleyicidir.
+  // Kürek/deadlift/barfikste ön kol (ve boyun) yalnızca kavrar/sabitler:
+  // set başına birkaç saniye ve başarısızlığa uzak — küçük bir doz. Bu yüzden
+  // İKİNCİL olduklarında sayılmazlar.
+  //
+  // DİKKAT: gerekçe "izometrik olduğu için" DEĞİL. İzometrik çalışma gerçekten
+  // hipertrofi üretir (Oranchuk ve ark. 2019, sistematik derleme: 6-14 haftada
+  // %5,4-23 kesit alanı artışı, şiddetten bağımsız). Belirleyici olan DOZ:
+  // süre ve başarısızlığa yakınlık. Farmer's walk'ta kavrama 30-60 sn sürer ve
+  // sınırlayıcı faktörün kendisidir — orada ön kol BİRİNCİLdir ve tam sayılır.
   if ((m === "onKol" || m === "boyun") && !isPrimary) return 0;
 
-  // Taşıma/kavrama hareketleri (farmer's walk, plate pinch): gövde ve bacak
-  // kasları yükü TAŞIR, boyları değişmez — sabitleyici, uyaran değil.
-  if (CARRY.test(s) && !isPrimary) return 0;
+  // Yüklü taşımalar: bacaklar yükü taşıyor (lokomosyon — küçük uyaran), ama
+  // trapez, gövde ve bel yükü tüm süre boyunca tutuyor. Bu gerçek bir izometrik
+  // dozdur, sıfırlanamaz; varsayılan 0,5'te bırakılır.
+  // "Rickshaw Deadlift" bir TAŞIMA değil, bir deadlift'tir (rickshaw sadece
+  // aleti tarif ediyor). HINGE şartı olmadan bacak katkısı 0,25'e düşüyordu.
+  if (CARRY.test(s) && !HINGE.test(s) && !isPrimary) {
+    if (m === "quad" || m === "hamstring" || m === "glute" || m === "baldir") return 0.25;
+  }
 
   // Squat türevleri: hamstring neredeyse hiç, glute belirgin, karın yok, erektör var
   if (SQUAT.test(s) && !isPrimary) {
@@ -194,7 +240,7 @@ export function musclesOf(exId) {
   const add = (rawName, isPrimary) => {
     let m = NAME_TO_MUSCLE[rawName];
     if (!m) return;                                    // Ön Kol / Boyun → hacme girmez
-    if (rawName === "Omuz") m = deltHead(exId, rawName);
+    if (rawName === "Omuz") m = deltHead(exId);
     const c = coeffFor(exId, m, isPrimary);
     const val = c != null ? c : (isPrimary ? 1 : 0.5);
     if (val <= 0) return;
@@ -206,8 +252,11 @@ export function musclesOf(exId) {
     (mm.s || []).forEach((n) => add(n, false));
   }
 
-  // Kas tablosunda karşılığı olmayan ~19 hareket (çoğu vücut ağırlığı) için
-  // bölgeden tek bir kas grubuna düş. Kaba ama sıfırdan iyi.
+  // SON ÇARE. Bugün hiçbir hareket buraya düşmüyor (exerciseMuscles.js'teki
+  // MUSCLE_FIXES bloğu eksik 19 hareketi kapatıyor) — test bunu sabitliyor.
+  // Yalnızca ileride kas eşlemesi olmayan yeni bir hareket eklenirse devreye
+  // girer. Kaba bir tahmindir: nordic-curl'ü quad, single-leg-glute-bridge'i
+  // yine quad sayıyordu.
   if (!Object.keys(out).length && ex) {
     const fallback = { gogus: "gogus", sirt: "lat", omuz: "onDeltoid", kol: "triceps", bacak: "quad", karin: "karin" }[ex.region];
     if (fallback) out[fallback] = 1;

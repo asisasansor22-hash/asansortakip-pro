@@ -174,6 +174,38 @@ Bunlar dürüstlük için yazılıdır; "çözülmüş" gibi davranılmaz.
 4. **Katsayıların çoğu tek bir çalışmaya dayanıyor.** Bu alanda çoğu eşleşme için
    hipertrofi RCT'si yok; EMG'den hipertrofi çıkarımı yapılamayacağı için EMG yalnızca
    "hiç çalışmıyor / gerçekten çalışıyor" ayrımı için kullanıldı, katsayı belirlemek için değil.
+5. **Trapez ayrı bir grup değil**, "Üst / Orta Sırt" altında toplanıyor. Sonucu: shrug
+   hareketleri hareket tarama ekranında **Omuz** bölgesinde listelenirken hacimleri
+   **Sırt** başlığı altında görünür. Anatomik olarak doğru, ama iki ekran farklı
+   başlıklar gösteriyor.
+6. **Kalça fleksörleri ayrı takip edilmiyor.** Bacak kaldırma türü hareketlerde
+   rektus femoris (quad'ın bir parçası) sayılıyor; iliopsoas hiç sayılmıyor.
+
+---
+
+## 5. Kaynak veri denetimi
+
+Kaslar iki yerden geliyor: `exerciseMuscles.js` (874 hareket, free-exercise-db'den
+otomatik üretildi) ve `muscles.js`'teki katsayı kuralları. 872 kas hareketinin tamamı
+kural bazlı bir denetimden geçirildi (ad ↔ birincil kas ve bölge ↔ birincil kas
+tutarlılığı). Bulunan ve düzeltilen hatalar:
+
+| Hata sınıfı | Ne oluyordu | Düzeltme |
+|---|---|---|
+| Deltoid başı eşlemesi çıplak alt dizge arıyordu | `"chin"`, `"maCHINe"` içinde eşleşiyordu → makine presleri **arka omuz** sayılıyordu | id normalize edilip tire ile ayrılmış **sözcük sınırı** kullanılıyor |
+| Desenler tireli, üretilen id'ler alt çizgili | `Cable_Rear_Delt_Fly`, `Lying_Rear_Delt_Raise`, `Sled_Reverse_Flye` dahil **6 arka omuz hareketi ön omuz** sayılıyordu | id `[^a-z0-9]+ → "-"` ile tek biçime indirgeniyor |
+| 19 elle yazılmış vücut ağırlığı hareketinin kaynak veride karşılığı yoktu | "bölgeden tek kas" tahminine düşüyordu: `nordic-curl` → quad, `single-leg-glute-bridge` → quad | `exerciseMuscles.js` içinde elle bakımlı `MUSCLE_FIXES` bloğu |
+| Kaynak veride birincil kas yanlış | `flutter-kicks` → Kalça, `mountain-climber-ab` → Quad, `Split_Squats` → Arka Bacak, `Lower_Back_Curl` → Karın | Aynı blokta ezildi |
+| Mobilite hareketlerinde ÇALIŞAN değil GERİLEN kas yazılmıştı | `Rear_Leg_Raises` → Quad, `Front_Leg_Raises` → Arka Bacak | Aynı blokta ezildi |
+| Taşıma deseni deadlift'i de yakalıyordu | `Rickshaw_Deadlift`'in bacak katkısı 0,25'e düşüyordu | Taşıma kuralı menteşe hareketlerinde uygulanmıyor |
+
+Denetim sonrası kalan uyumsuzlukların hepsi elle incelendi ve **kural yanlış pozitifi**
+oldukları doğrulandı (ör. `upright-row` adında "row" geçiyor ama yan deltoid hareketi;
+`Neck_Press` adında "neck" geçiyor ama göğüs presi; `Cable_Incline_Pushdown` bir triceps
+pushdown değil, düz kollu lat pushdown'ı).
+
+Bu düzeltmelerin hepsi `test/volume.test.mjs` içinde kilitli — kas tablosu yeniden
+üretilirse testler kırılır.
 
 ---
 

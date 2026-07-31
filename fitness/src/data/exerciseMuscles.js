@@ -876,4 +876,52 @@ export const EXERCISE_MUSCLES = {
   "Zottman_Preacher_Curl": { p: ["Biceps"], s: ["Ön Kol"] },
 };
 
-export function getMuscles(id) { return EXERCISE_MUSCLES[id] || null; }
+// --- ELLE BAKIMLI DÜZELTMELER ---------------------------------------------
+// Yukarıdaki tablo otomatik üretildi; buradaki blok ELLE yazıldı ve üretilen
+// veriyi EZER. Tabloyu yeniden üretirsen bu bloğu koru.
+//
+// İki nedenden dolayı var:
+//   1. Kaynak veride (free-exercise-db) birincil kas açıkça yanlış olan birkaç
+//      hareket var. Ekranda "Flutter Kicks → Kalça" yazıyordu ve hacim hesabı
+//      karın setini kalçaya yazıyordu.
+//   2. Uygulamaya elle eklenen ~19 vücut ağırlığı hareketinin kaynak veride
+//      karşılığı yok. Bunlar tam da ev/kalistenik programlarını kuran
+//      hareketler; eşleşme olmayınca hacim "bölgeden tek kas" tahminine
+//      düşüyordu ve nordic-curl quad, single-leg-glute-bridge yine quad
+//      sayılıyordu.
+const MUSCLE_FIXES = {
+  // 1) Kaynak veri hatası
+  "flutter-kicks": { p: ["Karın"], s: ["Kalça (Glute)"] },              // p: Kalça idi
+  "mountain-climber-ab": { p: ["Karın"], s: ["Omuz","Ön Bacak (Quad)"] }, // p: Quad idi
+  "Split_Squats": { p: ["Ön Bacak (Quad)"], s: ["Kalça (Glute)","Arka Bacak","Baldır"] }, // p: Arka Bacak idi
+  "Lower_Back_Curl": { p: ["Bel"], s: ["Kalça (Glute)"] },              // p: Karın idi
+  // Kaynak veri bu üç mobilite hareketinde ÇALIŞAN değil GERİLEN kası yazmış.
+  "Front_Leg_Raises": { p: ["Ön Bacak (Quad)"], s: ["Karın"] },         // p: Arka Bacak idi (kalça fleksiyonu)
+  "Rear_Leg_Raises": { p: ["Kalça (Glute)"], s: ["Arka Bacak"] },       // p: Quad idi (kalça ekstansiyonu)
+  "Side_Leg_Raises": { p: ["Kalça (Glute)"], s: [] },                   // p: İç Bacak idi (kalça abdüksiyonu)
+
+  // 2) Kaynak veride hiç bulunmayan, elle yazılmış hareketler
+  "wide-pushup": { p: ["Göğüs"], s: ["Omuz","Triceps"] },
+  "decline-pushup": { p: ["Göğüs"], s: ["Omuz","Triceps"] },
+  "archer-pushup": { p: ["Göğüs"], s: ["Omuz","Triceps"] },
+  "pseudo-planche-pushup": { p: ["Göğüs"], s: ["Omuz","Triceps","Karın"] },
+  "pike-pushup": { p: ["Omuz"], s: ["Triceps"] },
+  "handstand-pushup": { p: ["Omuz"], s: ["Triceps"] },
+  "inverted-row": { p: ["Orta Sırt"], s: ["Sırt (Lat)","Biceps","Omuz"] },
+  "scapular-pull": { p: ["Orta Sırt"], s: ["Sırt (Lat)"] },
+  "negative-pullup": { p: ["Sırt (Lat)"], s: ["Biceps","Orta Sırt"] },
+  "muscle-up": { p: ["Sırt (Lat)"], s: ["Göğüs","Triceps","Biceps"] },
+  "superman": { p: ["Bel"], s: ["Kalça (Glute)","Orta Sırt"] },
+  "pistol-squat": { p: ["Ön Bacak (Quad)"], s: ["Kalça (Glute)","Arka Bacak"] },
+  "wall-sit": { p: ["Ön Bacak (Quad)"], s: ["Kalça (Glute)"] },
+  // nordic-curl'ün ikincili YOK: diz bükme hareketi, kalça açılmıyor.
+  // "Kalça (Glute)" yazsaydık HINGE kuralı ona tam (1,0) set yazardı.
+  "nordic-curl": { p: ["Arka Bacak"], s: [] },
+  "single-leg-glute-bridge": { p: ["Kalça (Glute)"], s: ["Arka Bacak"] },
+  "hollow-body-hold": { p: ["Karın"], s: [] },
+  "l-sit": { p: ["Karın"], s: ["Ön Bacak (Quad)"] },
+  "v-up": { p: ["Karın"], s: ["Ön Bacak (Quad)"] },
+  "dragon-flag": { p: ["Karın"], s: ["Bel"] },
+};
+
+export function getMuscles(id) { return MUSCLE_FIXES[id] || EXERCISE_MUSCLES[id] || null; }

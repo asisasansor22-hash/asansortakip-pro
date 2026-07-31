@@ -9,6 +9,8 @@ import { volumeRows, weeklyVolume } from "../src/data/volume.js";
 import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "../src/data/muscles.js";
 import { READY_PROGRAMS, getReadyProgram } from "../src/data/programs.js";
 import { buildAutoPlan } from "../src/data/autoPlan.js";
+import { EXERCISES } from "../src/data/exercises.js";
+import { getMuscles } from "../src/data/exerciseMuscles.js";
 
 let fail = 0;
 const ok = (n, c, x = "") => { console.log((c ? "  ok  " : "  FAIL") + "  " + n + (c ? "" : "  " + x)); if (!c) fail++; };
@@ -100,6 +102,60 @@ READY_PROGRAMS.forEach((p) => {
   if (thin.length && !p.volumeNote) bad.push(p.id + " (" + thin.map((r) => r.id).join(",") + ")");
 });
 ok("'thin' tasiyan her programda volumeNote var", bad.length === 0, bad.join(" | "));
+
+// --- Hareket -> kas eslemesi denetimi ---
+// Kural bazli denetim (scratchpad/audit.mjs) uc hata sinifi buldu; hepsi burada
+// kilitleniyor.
+
+// (a) Kaynak veri hicbir hareketi bos birakmamali. Bos kalirsa musclesOf
+// "bolgeden tek kas" tahminine duser: nordic-curl quad, single-leg-glute-bridge
+// yine quad sayiliyordu.
+const kapsamsiz = EXERCISES.filter((e) => e.region !== "kardiyo" && !getMuscles(e.id));
+ok("her hareketin kas eslemesi var", kapsamsiz.length === 0,
+   kapsamsiz.length + " eksik: " + kapsamsiz.slice(0, 5).map((e) => e.id).join(", "));
+
+const primOf = (id) => Object.keys(musclesOf(id)).filter((m) => musclesOf(id)[m] >= 1);
+const birincil = (id, m) => ok(id + " -> " + m, primOf(id).includes(m), "= " + primOf(id).join(","));
+
+// (b) Omuz basi ayrimi. Kaynak veri yalnizca "Omuz" diyor; on/yan/arka'yi
+// hareket adindan turetiyoruz.
+//   • "chin" cıplak alt dizge olarak aranıyordu ve "maCHINe" icinde eslesiyordu
+//     → makine presleri arka omuz sayiliyordu.
+//   • arka omuz desenleri tireliydi ("rear-delt") ama uretilen id'ler alt cizgili
+//     ("Cable_Rear_Delt_Fly") → 6 arka omuz hareketi on omuz sayiliyordu.
+birincil("Machine_Shoulder_Military_Press", "onDeltoid");
+birincil("Smith_Machine_Overhead_Shoulder_Press", "onDeltoid");
+birincil("Cable_Rear_Delt_Fly", "arkaDeltoid");
+birincil("Lying_Rear_Delt_Raise", "arkaDeltoid");
+birincil("Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench", "arkaDeltoid");
+birincil("Seated_Bent-Over_Rear_Delt_Raise", "arkaDeltoid");
+birincil("Reverse_Flyes_With_External_Rotation", "arkaDeltoid");
+birincil("Sled_Reverse_Flye", "arkaDeltoid");
+birincil("Reverse_Machine_Flyes", "arkaDeltoid");
+// "throw" icinde "row", "pullover" icinde "pull" var — sozcuk siniri sart.
+birincil("Backward_Medicine_Ball_Throw", "onDeltoid");
+birincil("upright-row", "yanDeltoid");
+birincil("Seated_Side_Lateral_Raise", "yanDeltoid");
+// Ters lunge/crunch/curl "reverse" tasir ama arka omuz DEGILDIR.
+ok("reverse-lunge arka omuza sayilmiyor", !primOf("reverse-lunge").includes("arkaDeltoid"));
+
+// (c) Elle yazilmis vucut agirligi hareketleri (kaynak veride yoklar).
+birincil("nordic-curl", "hamstring");
+ok("nordic-curl glute'a TAM set yazmiyor (diz bukme, kalca acilmiyor)",
+   !(musclesOf("nordic-curl").glute >= 1), "= " + musclesOf("nordic-curl").glute);
+birincil("single-leg-glute-bridge", "glute");
+birincil("pistol-squat", "quad");
+birincil("superman", "erektor");
+birincil("scapular-pull", "ustSirt");
+birincil("pike-pushup", "onDeltoid");
+birincil("hollow-body-hold", "karin");
+
+// (d) Kaynak veride birincil kas acikca yanlis olan hareketler.
+birincil("flutter-kicks", "karin");
+birincil("mountain-climber-ab", "karin");
+birincil("Split_Squats", "quad");
+birincil("Lower_Back_Curl", "erektor");
+birincil("Rear_Leg_Raises", "glute");
 
 // --- Otomatik uretec: 180 kombinasyon ---
 const GOALS = ["kasyap", "guc", "yagyak", "genel"];
