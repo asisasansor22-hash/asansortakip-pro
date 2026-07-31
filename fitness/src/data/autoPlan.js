@@ -38,6 +38,9 @@ const POOLS = {
   triceps:   { region: "kol",   ids: ["triceps-pushdown", "skull-crusher", "close-grip-bench", "triceps-dips", "overhead-extension"] },
   quad:      { region: "bacak", ids: ["squat", "front-squat", "leg-press", "goblet-squat", "hack-squat", "lunge", "bulgarian", "leg-extension"] },
   hamGlute:  { region: "bacak", ids: ["romanian-deadlift", "hip-thrust", "leg-curl", "glute-bridge", "nordic-curl", "single-leg-glute-bridge"] },
+  // Hamstring açığını kapatmak için AYRI havuz: hamGlute'un başında hip-thrust
+  // var ve o bir glute hareketi — hamstring eksikken onu seçmek açığı kapatmıyor.
+  ham:       { region: "bacak", ids: ["leg-curl", "romanian-deadlift", "nordic-curl", "good-morning"] },
   glute:     { region: "bacak", ids: ["hip-thrust", "glute-bridge", "bulgarian", "single-leg-glute-bridge", "lunge"] },
   calf:      { region: "bacak", ids: ["calf-raise", "seated-calf-raise"] },
   core:      { region: "karin", ids: ["plank", "hanging-leg-raise", "hollow-body-hold", "crunch", "leg-raise", "ab-roller"] },
@@ -138,7 +141,7 @@ const FILL_POOLS = {
   biceps:      ["biceps"],
   triceps:     ["triceps"],
   quad:        ["quad"],
-  hamstring:   ["hamGlute"],
+  hamstring:   ["ham", "hamGlute"],
   glute:       ["glute", "hamGlute"],
   baldir:      ["calf"],
   karin:       ["core"],
@@ -192,11 +195,19 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     const gap = order.find((r) => vol.total[r] < muscleMinFor(r) || vol.direct[r] === 0);
     if (!gap) break;
 
-    // Bu bölgeyi çalıştıran havuzlardan, en az dolu güne bir hareket ekle
+    // Bu kası çalıştıran havuzlardan bir hareket ekle.
     const candidates = FILL_POOLS[gap] || [];
     let placed = false;
-    // Günleri hareket sayısına göre sırala (dengeli dağılım)
-    const dayOrder = built.map((d, k) => k).sort((a, b) => built[a].slots.length - built[b].slots.length);
+    // Günleri önce UYUM'a, sonra doluluğa göre sırala.
+    //
+    // Eskiden yalnız doluluğa bakılıyordu ve sonuç saçmaydı: bacak gününe
+    // dumbbell-fly ve face-pull, "Alt B" gününe cable-lateral ekleniyordu.
+    // Uyum = o günde zaten aynı BÖLGEDEN hareket var mı. Böylece göğüs açığı
+    // itiş/üst gününe, bacak açığı bacak gününe gider.
+    const wantRegion = (POOLS[candidates[0]] || {}).region;
+    const fits = (day) => day.slots.some((s) => (POOLS[s.pool] || {}).region === wantRegion) ? 0 : 1;
+    const dayOrder = built.map((d, k) => k).sort((a, b) =>
+      (fits(built[a]) - fits(built[b])) || (built[a].slots.length - built[b].slots.length));
     for (const di of dayOrder) {
       const day = built[di];
       if (day.slots.length >= maxPerDay(n)) continue;
@@ -237,9 +248,17 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
       const idx = day.slots.findIndex((s) => {
         // "over" artık BÖLGE değil KAS GRUBU — o kası DOĞRUDAN çalıştıran
         // (katsayı 1) bir izolasyon slotu mu?
-        if (!ISOLATION.has(s.pool) || (musclesOf(s.id)[over] || 0) < 1) return false;
+        const mix = musclesOf(s.id);
+        if (!ISOLATION.has(s.pool) || (mix[over] || 0) < 1) return false;
         // Bu slotu silmek kası tek doğrudan uyaranından mahrum bırakıyorsa dokunma.
-        return (vol.direct[over] - s.sets) > 0;
+        if ((vol.direct[over] - s.sets) <= 0) return false;
+        // ...ve YAN ETKİ: hareket başka kasları da çalıştırıyor olabilir.
+        // glute-bridge glute için silinip hamstringi eşiğin altına düşürüyordu.
+        return Object.keys(mix).every((m) => {
+          if (m === over) return true;
+          const after = vol.total[m] - s.sets * mix[m];
+          return after >= muscleMinFor(m) || vol.total[m] < muscleMinFor(m); // zaten eksikse zaten raporlanıyor
+        });
       });
       // Günü tamamen boşaltma; en az 4 hareket kalsın
       if (idx >= 0 && day.slots.length > 4) { day.slots.splice(idx, 1); removed = true; break; }
@@ -266,9 +285,18 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
       const usedInDay = new Set(day.slots.map((s) => s.id));
       for (const s of slots) {
         const ids = (POOLS[s.pool] || {}).ids || [];
+        // Değişim, hareketin DOĞRUDAN çalıştırdığı bir kası kaybettirmemeli.
+        // Aksi halde gerilme uğruna hacim açığı açılıyordu: hamGlute havuzunda
+        // romanian-deadlift → hip-thrust değişimi hamstringi 10,5'ten 8,5'e
+        // düşürüp doldurma döngüsünün işini geri alıyordu (budama döngüsündeki
+        // hatanın aynısı).
+        const lost = Object.keys(musclesOf(s.id)).filter((m) => musclesOf(s.id)[m] >= 1);
         const alt = ids.find((id) => {
           const t = tensionOf(id);
-          return t && t.p === "uzun" && !usedInDay.has(id) && accept((getExercise(id) || {}).equip, mode);
+          if (!t || t.p !== "uzun" || usedInDay.has(id)) return false;
+          if (!accept((getExercise(id) || {}).equip, mode)) return false;
+          const gain = musclesOf(id);
+          return lost.every((m) => (gain[m] || 0) >= 1);
         });
         if (alt) { usedInDay.delete(s.id); s.id = alt; usedInDay.add(alt); break; }
       }
