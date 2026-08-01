@@ -17,7 +17,7 @@
 import { getExercise } from "./exercises";
 import { tensionOf } from "./tension";
 import { volumeOf, TARGET_MIN, TARGET_MAX } from "./volume";
-import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf, OPTIONAL } from "./muscles";
+import { muscleMinFor, muscleMaxFor, musclesOf, OPTIONAL } from "./muscles";
 
 // Hacim eşikleri tek yerde: data/volume.js. Burada yeniden dışa aktarılıyor
 // çünkü AutoPlanner.jsx bunları bu modülden içe aktarıyor.
@@ -177,8 +177,12 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   const built = split.keys.map((k) => {
     const [name, slots, rot] = D[k];
     const usedInDay = new Set();
-    const out = { name, rot, slots: [] };
+    const out = { name, rot, slots: [], baseRegions: new Set() };
     slots.forEach(([pool, compound]) => {
+      // Günün KİMLİĞİ şablondaki slotlardan gelir; doldurma sonradan eklediği
+      // için bunu doldurmadan ÖNCE kaydediyoruz. "Alt A" gününün kimliği
+      // bacak+karın'dır, sonradan oraya omuz hareketi düşse bile.
+      if (POOLS[pool]) out.baseRegions.add(POOLS[pool].region);
       const id = pick(pool, mode, usedInDay, rot);
       if (!id) return;
       usedInDay.add(id);
@@ -222,22 +226,71 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     // Uyum = o günde zaten aynı BÖLGEDEN hareket var mı. Böylece göğüs açığı
     // itiş/üst gününe, bacak açığı bacak gününe gider.
     const wantRegion = (POOLS[candidates[0]] || {}).region;
-    const fits = (day) => day.slots.some((s) => (POOLS[s.pool] || {}).region === wantRegion) ? 0 : 1;
-    const dayOrder = built.map((d, k) => k).sort((a, b) =>
-      (fits(built[a]) - fits(built[b])) || (built[a].slots.length - built[b].slots.length));
-    for (const di of dayOrder) {
-      const day = built[di];
-      if (day.slots.length >= maxPerDay(n)) continue;
+    // Uyum bir TERCİHTİR, kural değil — ama uyumlu günün KAPASİTESİ artırılır.
+    //
+    // Sorun şuydu: uyumlu günler tavana dayanınca hareket komşu güne taşıyordu
+    // ve "4 gün + üst vücut vurgusu" seçen kullanıcının BACAK gününe üç omuz
+    // hareketi (iki yan kaldırış + face pull) yazılıyordu (720 günün 69'u).
+    //
+    // Çözüm olarak taşmayı tamamen yasaklamayı denedim ve DAHA KÖTÜ oldu:
+    // "hacim yeterli" plan sayısı 57/180'den 39/180'e düştü, baldır açığı
+    // 84'ten 130'a çıktı — çünkü PPL'de baldır yalnız bacak gününe sığabiliyor.
+    // Gerçek hayatta da baldırı/karnı itiş gününe koymak normaldir; asıl garip
+    // olan, üst gün doluyken omuz izolasyonunun bacak gününe düşmesiydi.
+    //
+    // Bu yüzden: uyumlu gün +2 hareket taşıyabilir (önce o dolar), taşma yine
+    // de son çare olarak mümkündür.
+    const kisitli = built.some((d) => d.baseRegions.has(wantRegion))
+                 && built.some((d) => !d.baseRegions.has(wantRegion));
+    const fitDays = built.filter((d) => d.baseRegions.has(wantRegion));
+    const uygun = fitDays.length ? fitDays : built;
+    const digerleri = built.filter((d) => !uygun.includes(d));
+
+    // Boşluğu kapatmanın üç yolu, bu sırayla denenir.
+    const enBos = (list) => list.slice().sort((a, b) => a.slots.length - b.slots.length);
+
+    // (1) Uyumlu güne YENİ hareket. Tavan burada +2, çünkü bölge o günlere
+    //     hapsedilmişse yükü onlar taşımalı.
+    const cap = maxPerDay(n) + (kisitli ? 2 : 0);
+    for (const day of enBos(uygun)) {
+      if (day.slots.length >= cap) continue;
       const usedInDay = new Set(day.slots.map((s) => s.id));
       for (const pool of candidates) {
         const id = pick(pool, mode, usedInDay, day.rot);
         if (!id) continue;
-        const rx = prescribe(goal, false);
-        day.slots.push({ pool, id, sets: rx.s, reps: rx.r });
-        placed = true;
-        break;
+        day.slots.push({ pool, id, sets: prescribe(goal, false).s, reps: prescribe(goal, false).r });
+        placed = true; break;
       }
       if (placed) break;
+    }
+
+    // (2) Uyumlu günde ZATEN o kası doğrudan çalıştıran hareket varsa SET EKLE.
+    //     Bu adım olmadan üreteç, dumbbell modunda yan omuz için üçüncü bir
+    //     yan kaldırış seansını BACAK gününe koyuyordu — havuzda başka uygun
+    //     hareket kalmadığı için. Var olan hareketi 5 sete çıkarmak hem
+    //     programlama olarak doğru hem de günü bozmuyor.
+    if (!placed) {
+      for (const day of enBos(uygun)) {
+        const s = day.slots.find((x) => (musclesOf(x.id)[gap] || 0) >= 1 && x.sets < 5);
+        if (s) { s.sets += 1; placed = true; break; }
+      }
+    }
+
+    // (3) Son çare: uyumsuz güne yeni hareket. Baldır/karnı itiş gününe koymak
+    //     gerçek hayatta normaldir; tamamen yasaklamak açığı büyütüyordu
+    //     (ölçüldü: "hacim yeterli" 57/180 → 39/180).
+    if (!placed) {
+      for (const day of enBos(digerleri)) {
+        if (day.slots.length >= maxPerDay(n)) continue;
+        const usedInDay = new Set(day.slots.map((s) => s.id));
+        for (const pool of candidates) {
+          const id = pick(pool, mode, usedInDay, day.rot);
+          if (!id) continue;
+          day.slots.push({ pool, id, sets: prescribe(goal, false).s, reps: prescribe(goal, false).r });
+          placed = true; break;
+        }
+        if (placed) break;
+      }
     }
     if (!placed) break; // yer kalmadı — açık raporlanacak
   }
@@ -274,7 +327,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     // Eskiden bu koşul yoktu: kolun hayali (dolaylı) hacmi 20'yi geçtiği için
     // budama, üretecin kendi koyduğu curl ve pushdown'ları siliyordu.
     const over = Object.keys(vol.total)
-      .filter((r) => vol.total[r] > MUSCLE_MAX_DEFAULT && vol.direct[r] > 0)
+      .filter((r) => vol.total[r] > muscleMaxFor(r) && vol.direct[r] > 0)
       .sort((a, b) => vol.total[b] - vol.total[a])[0];
     if (!over) break;
 

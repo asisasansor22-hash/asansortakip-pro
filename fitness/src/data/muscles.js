@@ -71,6 +71,23 @@ export const MUSCLE_MAX_DEFAULT = 20;
 export function muscleMinFor(id) {
   return MUSCLE_MIN[id] != null ? MUSCLE_MIN[id] : 10;
 }
+
+// Haftalık ÜST sınır, kas grubu başına.
+//
+// ⚠️ glute: 26 bir MÜHENDİSLİK KARARI, ölçülmüş eşik değil.
+// Gerekçe: 10-20 set aralığı, çalışmalarda o kası HEDEFLEYEN setler sayılarak
+// bulundu. Bizim modelimizde ise glute, kalça ekstansiyonu içeren HER bileşikten
+// tam kredi alıyor — squat, front squat, lunge, RDL, hip thrust, glute bridge
+// hepsi 1,0 (Plotkin ve ark.: back squat ve hip thrust benzer glute hipertrofisi
+// üretiyor, bkz. docs/dolayli-hacim.md § 2.6). Sonuç: sıradan bir bacak günü
+// glute'u kolayca 20'nin üstüne çıkarıyordu ve 180 planın 115'inde turuncu
+// "fazla" uyarısı yanıyordu — uyarı gürültüye dönüşünce hiçbir şey ifade etmez.
+// Doğru çözüm glute'u "hedefli" ve "bileşikten gelen" diye ayırmak olurdu;
+// bu, bilinen sınır olarak docs'a yazıldı.
+export const MUSCLE_MAX = { glute: 26 };
+export function muscleMaxFor(id) {
+  return MUSCLE_MAX[id] != null ? MUSCLE_MAX[id] : MUSCLE_MAX_DEFAULT;
+}
 // Doğrudan set alt sınırı: kas grubuna inince ARTIK GEREKSİZ.
 // Eski modelde "kol 6 doğrudan set" kuralı vardı çünkü kova biceps ile triceps'i
 // ayırmıyordu. Artık ayırdığı için, biceps'in kendi eşiği zaten doğrudan

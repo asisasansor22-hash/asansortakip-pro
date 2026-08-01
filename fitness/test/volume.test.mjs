@@ -270,5 +270,31 @@ ok("ust vurgu lat hacmini artiriyor", vUst.lat > vDenge.lat, vDenge.lat + " -> "
 ok("alt vurgu quad hacmini artiriyor", vAlt.quad > vDenge.quad, vDenge.quad + " -> " + vAlt.quad);
 ok("alt vurgu hamstring hacmini artiriyor", vAlt.hamstring > vDenge.hamstring, vDenge.hamstring + " -> " + vAlt.hamstring);
 
+// Omuz/kol IZOLASYONU bacak gunune dusmemeli. "4 gun + ust vucut vurgusu"nda
+// ust gunler dolunca dolduma tasiyordu ve BACAK gunune iki yan kaldiris +
+// face pull yaziliyordu. Baldir/karin muaf: onlari itis gunune koymak normaldir.
+const UST_IZOLASYON = new Set(["lateral-raise", "cable-lateral", "upright-row", "face-pull",
+  "rear-delt-fly", "biceps-curl", "barbell-curl", "hammer-curl", "preacher-curl",
+  "concentration-curl", "triceps-pushdown", "skull-crusher", "overhead-extension",
+  "cable-crossover", "pec-deck", "dumbbell-fly"]);
+// Tasma tamamen yasak DEGIL: ust gunlerin ikisi de tavandayken, hic dogrudan
+// seti olmayan bir kasi (or. arka omuz) bacak gununde calismak, hic
+// calismamaktan iyidir. Kural: tasma YALNIZCA ust gunler doluyken olabilir.
+bad = [];
+plans.forEach(({ key, plan }) => {
+  const ustGunler = plan.days.filter((d) => /^(Üst|İtiş|Çekiş)/.test(d.name));
+  if (!ustGunler.length) return;                       // full body: ust/alt ayrimi yok
+  const ustDolu = ustGunler.every((d) => d.exercises.length >= 10);
+  plan.days.forEach((day) => {
+    if (!/^(Alt|Bacak)/.test(day.name)) return;
+    const yanlis = day.exercises.filter((id) => UST_IZOLASYON.has(id));
+    if (yanlis.length && !ustDolu)
+      bad.push(key + "/" + day.name + ": " + yanlis.join(",") +
+               "  (ust gunler: " + ustGunler.map((d) => d.exercises.length).join("/") + ")");
+  });
+});
+ok("ust vucut izolasyonu bacak gunune yalniz ust gunler doluyken tasiyor",
+   bad.length === 0, bad.slice(0, 3).join(" | "));
+
 console.log(fail ? "\n" + fail + " TEST BASARISIZ" : "\nhepsi gecti");
 if (fail) process.exit(1);

@@ -22,7 +22,7 @@
 // Bu yüzden aşağıda DIRECT_MIN alt sınırı ve "thin" seviyesi var.
 
 import { getExercise, REGIONS } from "./exercises";
-import { MUSCLES, MUSCLE_IDS, musclesOf, muscleMinFor, MUSCLE_MAX_DEFAULT, OPTIONAL } from "./muscles";
+import { MUSCLES, MUSCLE_IDS, musclesOf, muscleMinFor, muscleMaxFor, MUSCLE_MAX_DEFAULT, OPTIONAL } from "./muscles";
 
 export const TARGET_MIN = 10;
 export const TARGET_MAX = 20;
@@ -214,7 +214,7 @@ export function volumeRows(days) {
     const level = sets === 0 ? "none"
       : (!opt && sets < min) ? "low"
       : (!opt && d === 0) ? "thin"
-      : sets > MUSCLE_MAX_DEFAULT ? "high"
+      : sets > muscleMaxFor(m.id) ? "high"
       : "ok";
     return { id: m.id, name: m.name, emoji: m.emoji, region: m.region,
              direct: d, indirect: ind, sets, min, directMin: min, level };
