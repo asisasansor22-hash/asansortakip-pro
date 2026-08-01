@@ -9,7 +9,7 @@ import { volumeRows, weeklyVolume } from "../src/data/volume.js";
 import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "../src/data/muscles.js";
 import { READY_PROGRAMS, getReadyProgram } from "../src/data/programs.js";
 import { buildAutoPlan } from "../src/data/autoPlan.js";
-import { EXERCISES } from "../src/data/exercises.js";
+import { EXERCISES, getExercise } from "../src/data/exercises.js";
 import { getMuscles } from "../src/data/exerciseMuscles.js";
 
 let fail = 0;
@@ -158,9 +158,14 @@ birincil("Lower_Back_Curl", "erektor");
 birincil("Rear_Leg_Raises", "glute");
 
 // --- Otomatik uretec: 180 kombinasyon ---
-const GOALS = ["kasyap", "guc", "yagyak", "genel"];
-const EQUIPS = ["full", "ev", "dumbbell"];
-const EMPHS = ["denge", "ust", "alt"];
+// DIKKAT: degerler AutoPlanner.jsx'in GERCEKTEN gonderdikleri olmali.
+// Eskiden burada "yagyak/genel", "ev", "ust/alt" yaziyordu — hicbiri gercek
+// deger degildi, hepsi varsayilana dusuyordu ve 180 kombinasyon aslinda ayni
+// birkac plani tekrar tekrar test ediyordu. bodyweight modu hic test
+// edilmedigi icin "ekipmansiz plana barbell curl yaziliyor" hatasi gozden kacti.
+const GOALS = ["kasyap", "yagver", "guc", "fitkal"];
+const EQUIPS = ["full", "dumbbell", "bodyweight"];
+const EMPHS = ["denge", "altvucut", "ustvucut"];
 const plans = [];
 for (let d = 2; d <= 6; d++)
   for (const goal of GOALS)
@@ -209,6 +214,47 @@ plans.forEach(({ key, plan }) => {
   if (plan.volume.direct.hamstring === 0 && !plan.gaps.includes("hamstring")) bad.push(key);
 });
 ok("uretec hamstringi atlamiyor", bad.length === 0, bad.slice(0,3).join(" | "));
+
+// Ekipman sozu tutulmali: "ekipmansiz" secen kullanicinin planinda barbell,
+// "sadece dumbbell" secenin planinda makine hareketi OLAMAZ. pick()'in eski
+// yedek dongusu filtreyi yok sayip 180 kombinasyonda 520 ihlal uretiyordu.
+const equipOk = (mode, e) => {
+  if (mode === "full") return true;
+  if (mode === "dumbbell") return /dumbbell|vücut|bar|paralel/i.test(e);
+  return /vücut|bar|paralel|i̇p|ip/i.test(e);
+};
+bad = [];
+plans.forEach(({ key, plan }) => {
+  const mode = key.split("/")[2];
+  plan.days.forEach((day) => day.exercises.forEach((id) => {
+    const ex = getExercise(id);
+    if (!ex) { bad.push(key + "/" + id + " YOK"); return; }
+    if (!equipOk(mode, ex.equip)) bad.push(key + "/" + id + " (" + ex.equip + ")");
+  }));
+});
+ok("ekipman kisiti hic delinmiyor", bad.length === 0, bad.slice(0, 3).join(" | "));
+
+// Hicbir gun 2-3 hareketle kalmasin (6g/bodyweight Cekis B boyle kaliyordu),
+// gun ici tekrar da olmasin.
+bad = [];
+plans.forEach(({ key, plan }) => {
+  plan.days.forEach((day) => {
+    if (day.exercises.length < 4) bad.push(key + "/" + day.name + " " + day.exercises.length);
+    if (new Set(day.exercises).size !== day.exercises.length) bad.push(key + "/" + day.name + " TEKRAR");
+  });
+});
+ok("her gunde en az 4 benzersiz hareket var", bad.length === 0, bad.slice(0, 3).join(" | "));
+
+// Vurgu GERCEK etki yaratmali. Eskiden yalnizca doldurma sirasini
+// degistiriyordu ve her kas esigi gectigi anda etkisi sifirlaniyordu —
+// "Kalca & Bacak" secmek bacaga tek set eklemiyordu.
+const vDenge = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "denge" }).volume.total;
+const vUst = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "ustvucut" }).volume.total;
+const vAlt = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "altvucut" }).volume.total;
+ok("ust vurgu gogus hacmini artiriyor", vUst.gogus > vDenge.gogus, vDenge.gogus + " -> " + vUst.gogus);
+ok("ust vurgu lat hacmini artiriyor", vUst.lat > vDenge.lat, vDenge.lat + " -> " + vUst.lat);
+ok("alt vurgu quad hacmini artiriyor", vAlt.quad > vDenge.quad, vDenge.quad + " -> " + vAlt.quad);
+ok("alt vurgu hamstring hacmini artiriyor", vAlt.hamstring > vDenge.hamstring, vDenge.hamstring + " -> " + vAlt.hamstring);
 
 console.log(fail ? "\n" + fail + " TEST BASARISIZ" : "\nhepsi gecti");
 if (fail) process.exit(1);

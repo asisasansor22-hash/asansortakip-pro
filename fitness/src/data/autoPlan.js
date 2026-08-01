@@ -34,7 +34,11 @@ const POOLS = {
   shPress:   { region: "omuz",  ids: ["shoulder-press", "military-press", "arnold-press", "pike-pushup"] },
   shLat:     { region: "omuz",  ids: ["lateral-raise", "cable-lateral", "upright-row"] },
   shRear:    { region: "omuz",  ids: ["face-pull", "rear-delt-fly"] },
-  biceps:    { region: "kol",   ids: ["barbell-curl", "biceps-curl", "hammer-curl", "preacher-curl", "concentration-curl"] },
+  // chin-up listenin SONUNDA: salon/dumbbell modunda öndekiler hep uygun olduğu
+  // için asla seçilmez; yalnız ekipmansız modda devreye girer (kalisteniğin
+  // standart biceps hareketi). region'ı sirt olduğu için biceps'e 0,6 dolaylı
+  // sayılır ve biceps açığı dürüstçe raporlanmaya devam eder.
+  biceps:    { region: "kol",   ids: ["barbell-curl", "biceps-curl", "hammer-curl", "preacher-curl", "concentration-curl", "chin-up"] },
   triceps:   { region: "kol",   ids: ["triceps-pushdown", "skull-crusher", "close-grip-bench", "triceps-dips", "overhead-extension"] },
   quad:      { region: "bacak", ids: ["squat", "front-squat", "leg-press", "goblet-squat", "hack-squat", "lunge", "bulgarian", "leg-extension"] },
   hamGlute:  { region: "bacak", ids: ["romanian-deadlift", "hip-thrust", "leg-curl", "glute-bridge", "nordic-curl", "single-leg-glute-bridge"] },
@@ -72,7 +76,10 @@ function pick(poolKey, mode, usedInDay, rot) {
     const ex = getExercise(id);
     if (ex && accept(ex.equip, mode) && !usedInDay.has(id)) return id;
   }
-  for (const id of ids) if (getExercise(id) && !usedInDay.has(id)) return id;
+  // Uygun hareket yoksa null dön — slot boş kalır ve açık dürüstçe raporlanır.
+  // Eskiden burada ekipman filtresini YOK SAYAN bir yedek döngü vardı:
+  // "Ekipmansız" seçen kullanıcıya barbell curl, "sadece dumbbell" seçene
+  // makine hareketi yazıyordu (180 kombinasyonda 520 ihlal).
   return null;
 }
 
@@ -184,6 +191,16 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   // 2) Hacim açığını kapat: hedefin (10 set) altındaki bölgelere,
   //    vurgu sırasına göre, günlere dağıtarak hareket ekle.
   const order = (EMPHASIS[emphasis] || EMPHASIS.denge).order;
+  // Vurgunun GERÇEK etkisi: ilk 3 kasın doldurma hedefi +5 set (10 → 15;
+  // 20 tavanının güvenle altında, budamayla salınım yaratmaz).
+  //
+  // Eskiden vurgu yalnızca doldurma SIRASINI değiştiriyordu — her kas alt
+  // eşiği geçtiği anda sıranın önemi kalmıyordu ve "Kalça & Bacak" seçmek
+  // bacağa tek set bile eklemiyordu (ölçüldü: fark yalnız rotasyon gürültüsü).
+  // Not: "gaps" raporu bilimsel eşiği (muscleMinFor) kullanmaya devam eder;
+  // vurgu hedefine ulaşılamaması bir eksiklik değil, tercihtir.
+  const focus = new Set(emphasis === "denge" ? [] : order.slice(0, 3));
+  const targetFor = (r) => muscleMinFor(r) + (focus.has(r) ? 5 : 0);
   for (let guard = 0; guard < 40; guard++) {
     const vol = computeVolume(built);
     // Açık sayılan iki durum var:
@@ -192,7 +209,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     //   • toplam yeterli AMA doğrudan set alt sınırın altında — yani bölge
     //     yalnızca bileşiklerden dolaylı kredi toplamış. Eskiden bu görülmüyordu
     //     ve üreteç kola hiç hareket eklemiyordu.
-    const gap = order.find((r) => vol.total[r] < muscleMinFor(r) || vol.direct[r] === 0);
+    const gap = order.find((r) => vol.total[r] < targetFor(r) || vol.direct[r] === 0);
     if (!gap) break;
 
     // Bu kası çalıştıran havuzlardan bir hareket ekle.
@@ -224,6 +241,27 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     }
     if (!placed) break; // yer kalmadı — açık raporlanacak
   }
+
+  // 2a) Çok ince gün tamamlama: ekipman filtresi (artık delinemediği için)
+  //     bazı havuzları tamamen boşaltabiliyor — 6 gün + ekipmansız modda
+  //     "Çekiş B" 2 harekette kalıyordu. Haftalık hacim yerinde olsa da 2
+  //     hareketlik bir gün kullanıcıya bozuk görünür; günün KENDİ
+  //     havuzlarından (yani aynı bölgeden) en az 4 harekete tamamla.
+  built.forEach((day) => {
+    for (let guard = 0; day.slots.length < 4 && guard < 6; guard++) {
+      const usedInDay = new Set(day.slots.map((s) => s.id));
+      let placed = false;
+      for (const poolKey of [...new Set(day.slots.map((s) => s.pool))]) {
+        const id = pick(poolKey, mode, usedInDay, day.rot + 1 + guard);
+        if (!id) continue;
+        const rx = prescribe(goal, false);
+        day.slots.push({ pool: poolKey, id, sets: rx.s, reps: rx.r });
+        placed = true;
+        break;
+      }
+      if (!placed) break; // bu ekipmanla gerçekten başka hareket yok
+    }
+  });
 
   // 2b) Üst sınır budaması: hacim 20 setin üstüne çıkan bölgelerden İZOLASYON
   //     hareketi çıkar. Gerekçe: doz-yanıt eğrisi 10-20 set aralığından sonra
