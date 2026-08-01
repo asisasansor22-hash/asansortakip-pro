@@ -14,7 +14,7 @@
 // Katsayıların dayanağı: docs/dolayli-hacim.md (her sayı ya kaynaklı ya da
 // açıkça "tahmin" olarak işaretli).
 
-import { getExercise } from "./exercises";
+import { getExercise, getAlternatives, exercisesByRegion, subOf } from "./exercises";
 import { getMuscles } from "./exerciseMuscles";
 
 // region: hangi bölgenin altında gösterileceği (mevcut REGIONS id'leri)
@@ -281,4 +281,50 @@ export function musclesOf(exId) {
 
   CACHE[exId] = out;
   return out;
+}
+
+// --- Hareket değiştirme önerileri ---
+//
+// NEDEN BURADA: ProgramBuilder'ın kendi listesi yalnız iki şeye bakıyordu —
+// elle yazılmış ALTERNATIVES tablosu ve "aynı bölge + aynı alt-grup" etiketi.
+// Alt-grup etiketi elle yazıldığı için kas verisiyle çelişebiliyordu ve
+// 1276 önerinin 90'ında öneri, hareketin birincil kasını HİÇ çalıştırmıyordu.
+// Somut örnek (kullanıcı bildirdi): "Pec Deck yerine → Elmas Şınav".
+// Elmas şınavın birincil kası bizim kendi verimizde TRICEPS.
+//
+// Bu fonksiyon muscles.js'te çünkü kas verisiyle hareket verisini birlikte
+// görmesi gerekiyor ve bağımlılık yönü zaten muscles → exercises.
+//
+// Kural: aday, DEĞİŞTİRİLEN hareketin birincil kasını en az yarım set
+// değerinde yüklemeli. Sıralama: aynı kası doğrudan (1,0) çalıştıranlar önce.
+export function substitutesFor(exId, usedIds = [], limit = 14) {
+  const ex = getExercise(exId);
+  if (!ex) return [];
+  const used = new Set(usedIds);
+  const seen = new Set([exId]);
+  const cand = [];
+  const push = (e) => {
+    if (!e || seen.has(e.id) || used.has(e.id)) return;
+    seen.add(e.id); cand.push(e);
+  };
+  getAlternatives(exId).forEach(push);
+  const sub = subOf(ex);
+  exercisesByRegion(ex.region).filter((e) => subOf(e) === sub).forEach(push);
+
+  const hedef = Object.keys(musclesOf(exId)).filter((m) => musclesOf(exId)[m] >= 1);
+  if (!hedef.length) return cand.slice(0, limit);   // kas verisi yoksa eski davranış
+
+  // 2 = aynı kası doğrudan çalıştırıyor · 1 = yarım set değerinde yüklüyor
+  const skor = (id) => {
+    const mix = musclesOf(id);
+    let s = 0;
+    hedef.forEach((m) => { const c = mix[m] || 0; if (c >= 1) s = Math.max(s, 2); else if (c >= 0.5) s = Math.max(s, 1); });
+    return s;
+  };
+  return cand
+    .map((e, i) => ({ e, s: skor(e.id), i }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => (b.s - a.s) || (a.i - b.i))   // skor, sonra özgün sıra (kararlı)
+    .map((x) => x.e)
+    .slice(0, limit);
 }

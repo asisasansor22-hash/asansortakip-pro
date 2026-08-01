@@ -129,11 +129,31 @@ const SPLIT_BY_DAYS = {
 // Vurgu sırası KAS GRUBU bazında. Eskiden bölge bazındaydı ve "bacak" tek kova
 // olduğu için üreteç 20 set quad ile bacağı "dolu" sayıp hamstringi hiç
 // eklemeyebiliyordu.
+// focus: bu vurguda ÖNE ÇIKAN kaslar. Eskiden order.slice(0,3) ile örtük
+// hesaplanıyordu ve sonuç yanıltıcıydı: "Üst Vücut" seçen kullanıcının
+// KOLLARI hiç öne çıkmıyordu (biceps/triceps sırada 7. ve 8. idi). Artık açık
+// yazılıyor — hangi vurgunun neyi artırdığı tek bakışta okunuyor.
 export const EMPHASIS = {
-  denge:   { name: "Dengeli", order: ["quad", "hamstring", "glute", "lat", "ustSirt", "gogus", "onDeltoid", "yanDeltoid", "arkaDeltoid", "biceps", "triceps", "karin", "baldir", "erektor"] },
-  altvucut:{ name: "Kalça & Bacak", order: ["glute", "quad", "hamstring", "baldir", "karin", "lat", "ustSirt", "onDeltoid", "yanDeltoid", "arkaDeltoid", "gogus", "biceps", "triceps", "erektor"] },
-  ustvucut:{ name: "Üst Vücut", order: ["lat", "ustSirt", "gogus", "onDeltoid", "yanDeltoid", "arkaDeltoid", "biceps", "triceps", "quad", "hamstring", "glute", "karin", "baldir", "erektor"] },
+  denge:   { name: "Dengeli", focus: [],
+             order: ["quad", "hamstring", "glute", "lat", "ustSirt", "gogus", "onDeltoid", "yanDeltoid", "arkaDeltoid", "biceps", "triceps", "karin", "baldir", "erektor"] },
+  altvucut:{ name: "Kalça & Bacak", focus: ["glute", "quad", "hamstring"],
+             order: ["glute", "quad", "hamstring", "baldir", "karin", "lat", "ustSirt", "onDeltoid", "yanDeltoid", "arkaDeltoid", "gogus", "biceps", "triceps", "erektor"] },
+  // Kollar da üst vücuttur: etiket "Üst Vücut" derken sırt ve göğsü artırıp
+  // kolu dışarıda bırakmak sözü tutmamaktı.
+  ustvucut:{ name: "Üst Vücut", focus: ["lat", "ustSirt", "gogus", "biceps", "triceps"],
+             order: ["lat", "ustSirt", "gogus", "biceps", "triceps", "onDeltoid", "yanDeltoid", "arkaDeltoid", "quad", "hamstring", "glute", "karin", "baldir", "erektor"] },
+  kolomuz: { name: "Kol & Omuz", focus: ["biceps", "triceps", "yanDeltoid", "arkaDeltoid"],
+             order: ["biceps", "triceps", "yanDeltoid", "arkaDeltoid", "onDeltoid", "gogus", "lat", "ustSirt", "quad", "hamstring", "glute", "karin", "baldir", "erektor"] },
 };
+
+// Vurgulanan kas için DOĞRUDAN set hedefi.
+//
+// Bu olmadan vurgu kollarda işe yaramıyordu: biceps 6 doğrudan + 10,5 dolaylı
+// = 16,5 toplam, eşik 10 → sistem "yeterli" deyip duruyordu. Ama kol büyütmek
+// isteyen birine 6 doğrudan set azdır; dolaylı yük kürek ve preslerden geliyor
+// ve curl'ün yaklaşık yarısı değerinde (Mannarino 2019). Toplam hedefi
+// yükseltmek de çözmüyordu, çünkü dolaylı zaten hedefi doldurmuş oluyor.
+const FOCUS_DIRECT = 8;
 
 // Eksik kalan KAS GRUBUNU tamamlamak için havuz sırası.
 // erektor listede yok: menteşe hareketleri onu zaten dolduruyor, ayrıca
@@ -203,8 +223,10 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   // bacağa tek set bile eklemiyordu (ölçüldü: fark yalnız rotasyon gürültüsü).
   // Not: "gaps" raporu bilimsel eşiği (muscleMinFor) kullanmaya devam eder;
   // vurgu hedefine ulaşılamaması bir eksiklik değil, tercihtir.
-  const focus = new Set(emphasis === "denge" ? [] : order.slice(0, 3));
+  const focus = new Set((EMPHASIS[emphasis] || EMPHASIS.denge).focus || []);
   const targetFor = (r) => muscleMinFor(r) + (focus.has(r) ? 5 : 0);
+  // Vurgusuz kaslarda kural değişmedi: "en az bir doğrudan set".
+  const dogrudanHedef = (r) => (focus.has(r) ? FOCUS_DIRECT : 1);
   for (let guard = 0; guard < 40; guard++) {
     const vol = computeVolume(built);
     // Açık sayılan iki durum var:
@@ -213,7 +235,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
     //   • toplam yeterli AMA doğrudan set alt sınırın altında — yani bölge
     //     yalnızca bileşiklerden dolaylı kredi toplamış. Eskiden bu görülmüyordu
     //     ve üreteç kola hiç hareket eklemiyordu.
-    const gap = order.find((r) => vol.total[r] < targetFor(r) || vol.direct[r] === 0);
+    const gap = order.find((r) => vol.total[r] < targetFor(r) || vol.direct[r] < dogrudanHedef(r));
     if (!gap) break;
 
     // Bu kası çalıştıran havuzlardan bir hareket ekle.

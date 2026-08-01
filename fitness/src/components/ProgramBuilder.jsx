@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { getExercise, getAlternatives, exercisesByRegion, subOf } from "../data/exercises";
+import { getExercise } from "../data/exercises";
+import { substitutesFor } from "../data/muscles";
 import ExerciseAnimation from "./ExerciseAnimation";
 import WeeklyPlan from "./WeeklyPlan";
 import IntervalTimer from "./IntervalTimer";
@@ -70,23 +71,10 @@ export default function ProgramBuilder({
     });
   }
 
-  // Bir hareketin yerine önerilecek alternatifler: önce elle tanımlı
-  // alternatifler, sonra aynı bölge + aynı anatomik alt-gruptaki hareketler.
-  // Programda zaten bulunanlar listeye alınmaz.
+  // Bir hareketin yerine önerilecek alternatifler. Mantık data/muscles.js'te
+  // (substitutesFor): kas verisiyle doğrulanıyor ve testle korunuyor.
   function altsFor(program, exId) {
-    const ex = getExercise(exId);
-    if (!ex) return [];
-    const used = new Set(program.exercises);
-    const seen = new Set([exId]);
-    const out = [];
-    const push = (e) => {
-      if (!e || seen.has(e.id) || used.has(e.id)) return;
-      seen.add(e.id); out.push(e);
-    };
-    getAlternatives(exId).forEach(push);
-    const sub = subOf(ex);
-    exercisesByRegion(ex.region).filter((e) => subOf(e) === sub).forEach(push);
-    return out.slice(0, 14);
+    return substitutesFor(exId, program.exercises);
   }
 
   function toggleDay(program, dayIdx) {

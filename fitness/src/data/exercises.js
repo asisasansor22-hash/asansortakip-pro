@@ -429,7 +429,10 @@ const SUB_BY_ID = {
   // göğüs
   "bench-press": "Orta göğüs", "incline-press": "Üst göğüs", "decline-press": "Alt göğüs",
   "dumbbell-press": "Orta göğüs", "dumbbell-fly": "İç / İzolasyon", "sinav": "Orta göğüs",
-  "diamond-pushup": "İç / İzolasyon", "incline-pushup": "Alt göğüs", "cable-crossover": "İç / İzolasyon",
+  // diamond-pushup eskiden "İç / İzolasyon" idi ve fly'ların yerine öneriliyordu.
+  // Yanlış: elmas şınav dar tutuşlu bir PRES (birincil kası triceps, göğüs
+  // ikincil), fly ise tek eklemli bir addüksiyon izolasyonu. Pres ailesine ait.
+  "diamond-pushup": "Orta göğüs", "incline-pushup": "Alt göğüs", "cable-crossover": "İç / İzolasyon",
   "chest-dips": "Alt göğüs", "incline-dumbbell-press": "Üst göğüs", "machine-chest-press": "Orta göğüs",
   "pec-deck": "İç / İzolasyon", "wide-pushup": "Orta göğüs", "decline-pushup": "Üst göğüs",
   "archer-pushup": "Orta göğüs", "pseudo-planche-pushup": "Üst göğüs",
