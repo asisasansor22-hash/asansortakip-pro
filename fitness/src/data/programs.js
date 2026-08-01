@@ -118,7 +118,10 @@ export const READY_PROGRAMS = [
     volumeNote: "KONDİSYON programıdır: kalori harcaması ve dayanıklılık önceliklidir, hacim hipertrofi aralığının altındadır. Diyette kas korumak için haftaya 2 ağırlık günü eklemen önerilir. Kol için doğrudan set yoktur — kol hacmi tamamen preslerden ve çekişlerden dolaylı gelir; kas korumak önceliğinse kuvvet gününe 3 set curl ve 3 set triceps uzatma ekle.",
     days: [
       { name: "HIIT 1", note: "30 sn maksimal / 30 sn yürü x 8-10 tur.", exercises: ["burpee", "jump-squat", "mountain-climber", "high-knees", "plank"] },
-      { name: "Kuvvet (Full)", note: "Kası korumak için ağır bileşikler. 3-4 set, 6-10 tekrar.", exercises: ["squat", "bench-press", "barbell-row", "shoulder-press", "lunge"] },
+      // bench-press ve barbell-row halter ister — bu bir EV programı; diğer tüm
+      // ev programları vücut ağırlığı + dumbbell + bar ile kurulu. Dumbbell
+      // muadilleri aynı kasları aynı katsayılarla çalıştırır.
+      { name: "Kuvvet (Full)", note: "Kası korumak için ağır bileşikler. 3-4 set, 6-10 tekrar.", exercises: ["squat", "dumbbell-press", "dumbbell-row", "shoulder-press", "lunge"] },
       { name: "HIIT 2", note: "Devre tipi, kısa dinlenme.", exercises: ["jumping-jack", "burpee", "lunge", "v-up", "side-plank"] },
     ],
   },

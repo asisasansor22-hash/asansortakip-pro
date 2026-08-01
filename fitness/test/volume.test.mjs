@@ -103,6 +103,20 @@ READY_PROGRAMS.forEach((p) => {
 });
 ok("'thin' tasiyan her programda volumeNote var", bad.length === 0, bad.join(" | "));
 
+// --- Ev/kalistenik programlari salon aleti isteyemez ---
+// Gelenek: ev programlari vucut agirligi + dumbbell + bar ile kurulu.
+// fatloss "ev" etiketliydi ama bench-press ve barbell-row (saf halter)
+// iceriyordu — evde yapilamayan bir ev programi.
+// "Halter/Vücut" gibi bilesik etiketler serbest: vucut agirligiyla yapilabilir.
+bad = [];
+READY_PROGRAMS.filter((p) => p.style === "ev" || p.style === "kalistenik").forEach((p) => {
+  p.days.forEach((d) => (d.exercises || []).forEach((id) => {
+    const eq = (getExercise(id) || {}).equip || "";
+    if (/^(Halter|Makine|EZ Bar|Smith)$/i.test(eq)) bad.push(p.id + "/" + d.name + "/" + id + " [" + eq + "]");
+  }));
+});
+ok("ev/kalistenik programlarinda salon aleti yok", bad.length === 0, bad.slice(0, 3).join(" | "));
+
 // --- Hareket -> kas eslemesi denetimi ---
 // Kural bazli denetim (scratchpad/audit.mjs) uc hata sinifi buldu; hepsi burada
 // kilitleniyor.
