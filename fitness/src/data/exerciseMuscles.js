@@ -897,7 +897,8 @@ const MUSCLE_FIXES = {
   "Lower_Back_Curl": { p: ["Bel"], s: ["Kalça (Glute)"] },              // p: Karın idi
   // Kaynak veri bu üç mobilite hareketinde ÇALIŞAN değil GERİLEN kası yazmış.
   "Front_Leg_Raises": { p: ["Ön Bacak (Quad)"], s: ["Karın"] },         // p: Arka Bacak idi (kalça fleksiyonu)
-  "Rear_Leg_Raises": { p: ["Kalça (Glute)"], s: ["Arka Bacak"] },       // p: Quad idi (kalça ekstansiyonu)
+  "Rear_Leg_Raises": { p: ["Kalça (Glute)"], s: ["Arka Bacak"] },       // p: Quad idi
+  "box-jump": { p: ["Ön Bacak (Quad)"], s: ["Kalça (Glute)","Baldır","Arka Bacak"] }, // p: Arka Bacak idi (sıçrama quad/glute baskınıdır) (kalça ekstansiyonu)
   "Side_Leg_Raises": { p: ["Kalça (Glute)"], s: [] },                   // p: İç Bacak idi (kalça abdüksiyonu)
 
   // 2) Kaynak veride hiç bulunmayan, elle yazılmış hareketler

@@ -6,7 +6,7 @@
 // çalışmayla "ideal" (yeşil) görünebiliyordu.
 
 import { volumeRows, weeklyVolume } from "../src/data/volume.js";
-import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf } from "../src/data/muscles.js";
+import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf, substitutesFor } from "../src/data/muscles.js";
 import { READY_PROGRAMS, getReadyProgram } from "../src/data/programs.js";
 import { buildAutoPlan, EMPHASIS } from "../src/data/autoPlan.js";
 import { EXERCISES, getExercise } from "../src/data/exercises.js";
@@ -170,6 +170,39 @@ birincil("mountain-climber-ab", "karin");
 birincil("Split_Squats", "quad");
 birincil("Lower_Back_Curl", "erektor");
 birincil("Rear_Leg_Raises", "glute");
+
+
+// --- Hareket degistirme onerileri ---
+// Kullanici bildirdi: "Pec Deck yerine -> Elmas Sinav". Elmas sinavin birincil
+// kasi bizim kendi verimizde TRICEPS; bir fly'in yerine onerilemez.
+// Kural: aday, degistirilen hareketin birincil kasini en az YARIM set
+// degerinde yuklemeli. Hicbir hareket de onerisiz kalmamali.
+const curated = EXERCISES.filter((e) => !/_/.test(e.id) && e.region !== "kardiyo");
+bad = [];
+let onerisiz = 0;
+curated.forEach((e) => {
+  const P = Object.keys(musclesOf(e.id)).filter((m) => musclesOf(e.id)[m] >= 1);
+  if (!P.length) return;
+  const subs = substitutesFor(e.id);
+  if (!subs.length) onerisiz++;
+  subs.forEach((a) => {
+    if (!P.some((m) => (musclesOf(a.id)[m] || 0) >= 0.5)) bad.push(e.name + " -> " + a.name);
+  });
+});
+ok("her oneri, hedefin birincil kasini en az yarim set yukluyor", bad.length === 0, bad.slice(0, 4).join(" | "));
+ok("hicbir hareket onerisiz kalmiyor", onerisiz === 0, String(onerisiz));
+
+// Bildirilen vakalar tek tek
+const subIds = (id, used = []) => substitutesFor(id, used).map((e) => e.id);
+ok("pec-deck yerine elmas sinav ONERILMIYOR", !subIds("pec-deck").includes("diamond-pushup"), subIds("pec-deck").slice(0,4).join(","));
+ok("dumbbell-fly yerine elmas sinav ONERILMIYOR", !subIds("dumbbell-fly").includes("diamond-pushup"));
+ok("pec-deck yerine cable-crossover ONERILIYOR", subIds("pec-deck").includes("cable-crossover"));
+// Elle yazilmis ALTERNATIVES tablosunda da ayni kural gecerli olmali:
+// superman -> glute-bridge (bel -> kalca) ve leg-curl -> glute-bridge gibi
+// girdiler vardi.
+ok("superman yerine glute-bridge ONERILMIYOR", !subIds("superman").includes("glute-bridge"));
+ok("leg-curl yerine glute-bridge ONERILMIYOR", !subIds("leg-curl").includes("glute-bridge"));
+ok("face-pull yerine upright-row ONERILMIYOR", !subIds("face-pull").includes("upright-row"));
 
 // --- Otomatik uretec: 180 kombinasyon ---
 // DIKKAT: degerler AutoPlanner.jsx'in GERCEKTEN gonderdikleri olmali.

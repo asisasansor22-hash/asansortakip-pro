@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getExercise, getAlternatives, exercisesByRegion, subOf } from "../data/exercises";
+import { getExercise } from "../data/exercises";
+import { substitutesFor } from "../data/muscles";
 import { feedPost } from "../firebase";
 import ExerciseAnimation from "./ExerciseAnimation";
 import SpotifyBar from "./SpotifyBar";
@@ -63,6 +64,13 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const maxIdx = Math.max(0, exIds.length - 1);
   const [i, setI] = useState(resume && resume.i != null ? Math.min(resume.i, maxIdx) : 0);
   const [setNo, setSetNo] = useState(resume && resume.setNo ? resume.setNo : 1);
+  // Hareket sırası → o harekette kaçıncı sette kalındığı.
+  //
+  // NEDEN VAR: üstteki şeritten başka bir harekete dokunup geri dönünce set
+  // sayacı 1'e düşüyordu — kullanıcı için antrenman "sıfırlanmış" görünüyordu.
+  // Tek bir setNo tutulduğu için harekete geri dönüldüğünde nerede kalındığı
+  // bilinmiyordu. Kayıt (log) zaten tutuluyordu, kaybolan yalnızca YERdi.
+  const setNoMem = useRef((resume && resume.setNoMem) || {});
   const [resting, setResting] = useState(false);
   const [rest, setRest] = useState(0);
   const [done, setDone] = useState(false);
@@ -99,35 +107,25 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   const ex = exIds.length ? getExercise(exIds[i]) : null;
   const meta = ex ? parseSets(ex.sets) : { sets: 1, reps: "-" };
 
-  // Bu hareketin yerine yapılabilecekler: önce elle tanımlı alternatifler,
-  // sonra aynı bölge + aynı anatomik alt-gruptan diğer hareketler. Zaten
-  // programda olanlar ve mevcut hareket listeden çıkarılır.
-  const swapOptions = (() => {
-    if (!ex) return [];
-    const used = new Set(exIds);
-    const seen = new Set([ex.id]);
-    const out = [];
-    const push = (e) => {
-      if (!e || seen.has(e.id) || used.has(e.id)) return;
-      seen.add(e.id); out.push(e);
-    };
-    getAlternatives(ex.id).forEach(push);
-    const sub = subOf(ex);
-    exercisesByRegion(ex.region).filter((e) => subOf(e) === sub).forEach(push);
-    return out.slice(0, 12);
-  })();
+  // Bu hareketin yerine yapılabilecekler. Mantık data/muscles.js'te
+  // (substitutesFor): aday, değiştirilen hareketin BİRİNCİL kasını en az yarım
+  // set değerinde yüklemeli. Burada da aynı listeyi kullanıyoruz — bu ekranın
+  // kendi kopyası vardı ve doğrulamasızdı (fly yerine elmas şınav öneriyordu).
+  const swapOptions = ex ? substitutesFor(ex.id, exIds, 12) : [];
 
   // Hareketi bu oturum için değiştir (kaydedilmiş program etkilenmez).
   function swapTo(newId) {
     setSwaps((prev) => ({ ...prev, [i]: newId }));
     setSwapOpen(false);
     setWeight(""); setReps(""); setRir(""); setNote("");
+    setNoMem.current[i] = 1;   // başka hareket: set sayacı gerçekten sıfırlanmalı
     setSetNo(1);
   }
   function undoSwap() {
     setSwaps((prev) => { const n = { ...prev }; delete n[i]; return n; });
     setSwapOpen(false);
     setWeight(""); setReps(""); setRir(""); setNote("");
+    setNoMem.current[i] = 1;
     setSetNo(1);
   }
   // Programda bu hareket için özel set/tekrar ayarlandıysa (ör. 3×5, 5×5) onu kullan
@@ -200,7 +198,8 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
   useEffect(() => {
     if (!onPersist) return;
     if (done) { onPersist(null); return; }
-    onPersist({ i, setNo, warmup, swaps, log: log.current.slice() });
+    setNoMem.current[i] = setNo;
+    onPersist({ i, setNo, setNoMem: { ...setNoMem.current }, warmup, swaps, log: log.current.slice() });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i, setNo, warmup, done, swaps]);
 
@@ -259,9 +258,25 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     }
     setDone(true);
   }
+  // Şeritten hareket seçme. Antrenmanı SIFIRLAMAZ:
+  //  • ayrılırken bulunduğun set numarasını o harekete not eder,
+  //  • gittiğin harekette daha önce kaldığın yerden devam ettirir,
+  //  • dinlenme sayacını ÖLDÜRMEZ (ileriye bakmak dinlenmeyi iptal etmemeli;
+  //    gerçekten bitirmek isteyen "Atla →" düğmesini kullanır).
+  function goToExercise(k) {
+    if (k === i) return;
+    setNoMem.current[i] = setNo;
+    setI(k);
+    setSetNo(setNoMem.current[k] || 1);
+  }
   function nextExercise() {
     skipRest();
-    if (i < exIds.length - 1) { setI(i + 1); setSetNo(1); }
+    if (i < exIds.length - 1) {
+      // Doğal ilerleme: bitirdiğin hareketi "tamamlandı" say, sonrakine geç.
+      setNoMem.current[i] = setNo;
+      setI(i + 1);
+      setSetNo(setNoMem.current[i + 1] || 1);
+    }
     else finishWorkout();
   }
   function completeSet() {
@@ -286,9 +301,17 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
     if (grp) {
       // Süperset akışı: grup içindeyken dinlenmesiz sonraki harekete geç;
       // grubun son hareketinden sonra dinlen ve başa dön (bir sonraki tur).
-      if (i < grp.end) { skipRest(); setI(i + 1); }                       // aynı tur, sonraki hareket, dinlenme yok
-      else if (setNo < groupSets) { setI(grp.start); setSetNo(setNo + 1); startRest(); } // tur bitti → dinlen, başa dön
-      else if (grp.end < exIds.length - 1) { skipRest(); setI(grp.end + 1); setSetNo(1); } // grup bitti → sonraki istasyon
+      // Süpersette tur numarası GRUP boyunca ortaktır; her harekete aynı
+      // numarayı not ediyoruz ki şeritten grup içinde gezinmek turu bozmasın.
+      if (i < grp.end) { skipRest(); setNoMem.current[i] = setNo; setI(i + 1); }   // aynı tur, sonraki hareket, dinlenme yok
+      else if (setNo < groupSets) {                                                // tur bitti → dinlen, başa dön
+        for (let g = grp.start; g <= grp.end; g++) setNoMem.current[g] = setNo + 1;
+        setI(grp.start); setSetNo(setNo + 1); startRest();
+      }
+      else if (grp.end < exIds.length - 1) {                                       // grup bitti → sonraki istasyon
+        skipRest(); setNoMem.current[i] = setNo;
+        setI(grp.end + 1); setSetNo(setNoMem.current[grp.end + 1] || 1);
+      }
       else finishWorkout();
     } else if (setNo < targetSets) { setSetNo(setNo + 1); startRest(); }
     else nextExercise();
@@ -456,7 +479,7 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
           const e = getExercise(id);
           const state = k < i ? "done" : (k === i ? "cur" : "next");
           return (
-            <div key={id + "-" + k} onClick={() => { if (k !== i) { skipRest(); setI(k); setSetNo(1); } }}
+            <div key={id + "-" + k} onClick={() => { if (k !== i) goToExercise(k); }}
               style={{
                 flexShrink: 0, maxWidth: 150, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700,
