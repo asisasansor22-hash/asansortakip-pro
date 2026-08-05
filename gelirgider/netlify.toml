@@ -1,0 +1,19 @@
+# GelirGider için bağımsız Netlify yapılandırması.
+# Yalnızca Netlify'da "Base directory = gelirgider" olan AYRI bir site
+# bağlandığında devreye girer; kökteki netlify.toml etkilenmez.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Tek sayfa uygulaması: yenilemede 404 olmasın diye tüm yollar index.html'e.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Servis çalışanı asla önbelleğe alınmamalı; yoksa güncelleme hiç gelmez.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"

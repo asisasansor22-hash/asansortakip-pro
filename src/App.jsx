@@ -19,6 +19,7 @@ import MuayeneTakibi from './components/MuayeneTakibi.jsx'
 import SozlesmeYonetimi from './components/SozlesmeYonetimi.jsx'
 import YoneticiPortali from './components/YoneticiPortali.jsx'
 import BakimciYonetimPaneli from './components/BakimciYonetimPaneli.jsx'
+import GelirGiderTakip from './components/GelirGiderTakip.jsx'
 import { toXLSX, exportAsansorlerExcel, exportExcel } from './utils/excel.js'
 
 // _optionalChain helper (Babel/Sucrase tarafından üretilen uyumluluk yardımcısı)
@@ -593,6 +594,8 @@ function App(){
   const [giderForm,setGiderForm]=useState({tarih:"",aciklama:"",tutar:""});
   const [giderFormAcik,setGiderFormAcik]=useState(false);
   const [giderHaftaArsiv,setGiderHaftaArsiv]=useState([]);
+  const [gelirGider,setGelirGider]=useState([]);      // kalıcı gelir-gider defteri
+  const [sabitGiderler,setSabitGiderler]=useState([]); // her ay tekrarlayan giderler
   const [muayeneler,setMuayeneler]=useState([]);
   const [asansorDetay,setAsansorDetay]=useState(null); // bakım geçmişi için
   const [bakimcilar,setBakimcilar]=useState(function(){var c=lsGet("ls_bakimcilar");return Array.isArray(c)?c:[];}); // login ekranı için localStorage'dan
@@ -647,10 +650,13 @@ function App(){
           dbGet("at_ekstraisler"), // r12
           dbGet("at_muayeneler"),  // r13
           dbGet("at_bakimcilar"),  // r14
+          dbGet("at_gelirgider"),  // r15
+          dbGet("at_sabitgider"),  // r16
         ]);
         var r1=sonuclar[0],r2=sonuclar[1],r3=sonuclar[2],r4=sonuclar[3];
         var r5=sonuclar[4],r6=sonuclar[5],r7=sonuclar[6],r8=sonuclar[7];
         var r9=sonuclar[8],r10=sonuclar[9],r11=sonuclar[10],r12=sonuclar[11],r13=sonuclar[12],r14=sonuclar[13],r15=sonuclar[14];
+        var r16=sonuclar[15],r17=sonuclar[16];
         // ── Asansör listesi ──────────────────────────────────────
         // Firebase erişilemezse veya boş dönerse localStorage yedeğine bak,
         // o da yoksa ilk kez açılıyordur → EXCEL_ELEVS kullan.
@@ -701,6 +707,9 @@ function App(){
         if(r13){try{var d=fb(r13);if(Array.isArray(d))setEkstraIsler(d);}catch(e){}}
         if(r14){try{var d=fb(r14);if(Array.isArray(d))setMuayeneler(d);}catch(e){}}
         if(r15){try{var d=fb(r15);if(Array.isArray(d))setBakimcilar(d);}catch(e){}}
+        if(r16){try{var d=fb(r16);if(Array.isArray(d)){setGelirGider(d);lsSet("ls_gelirgider",d);}}catch(e){}}
+        else{var b=lsGet("ls_gelirgider");if(b)setGelirGider(b);}
+        if(r17){try{var d=fb(r17);if(Array.isArray(d))setSabitGiderler(d);}catch(e){}}
       }catch(e){}
       ilkYukleme.current=false;
     }
@@ -723,6 +732,8 @@ function App(){
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_ekstraisler",ekstraIsler);}},[ekstraIsler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_muayeneler",muayeneler);}},[muayeneler]);
   useEffect(function(){if(!ilkYukleme.current){dbSet("at_bakimcilar",bakimcilar);lsSet("ls_bakimcilar",bakimcilar);}},[bakimcilar]);
+  useEffect(function(){if(!ilkYukleme.current){dbSet("at_gelirgider",gelirGider);if(gelirGider.length>0)lsSet("ls_gelirgider",gelirGider);}},[gelirGider]);
+  useEffect(function(){if(!ilkYukleme.current){dbSet("at_sabitgider",sabitGiderler);}},[sabitGiderler]);
 
   // Yükleme ekranı
 
@@ -1194,10 +1205,10 @@ function App(){
   const bekleyenRotaIds=[...new Set(mMonth.filter(function(m){return m.planlanmis&&!m.yapildi&&elevs.some(function(e){return e.id===m.asansorId;});}).map(function(m){return m.asansorId;}))];
 
   // Tab yapısı
-  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portalı","👥 Bakımcılar"];
+  const TABS_YON=["📊 Dashboard","🛗 Asansörler","🔧 Bakım Atama","⚠️ Arızalar","📋 Günlük İşler","🗺️ Rota","💰 Finans","💸 Giderler","📝 Notlar","🔩 Ekstra İş","🔍 Muayene","📄 Sözleşmeler","🏢 Bina Portalı","👥 Bakımcılar","📒 Gelir/Gider"];
   const TABS_BAK=["🔧 Bakım & Arızalar","🗺️ Rota","📝 Notlar","🔩 Ekstra İş"];
   const visibleTabs=rol==="bakimci"?TABS_BAK:TABS_YON;
-  const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13];
+  const tabIdx=rol==="bakimci"?[2,5,8,9]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 
   if(rol===null) return React.createElement(LoginScreen, { onLogin: (r,bk)=>{setRol(r);setAktifBakimci(bk||null);setTab(r==="bakimci"?2:0);}, bakimcilar:bakimcilar,});
 
@@ -2013,7 +2024,14 @@ function App(){
 /* FİNANS */
 , tab===6&&(
   React.createElement('div', null
-    , React.createElement('h2', {style:{fontSize:18,fontWeight:900,marginBottom:14,marginTop:0}}, "💰 Finansal Durum")
+    , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:14}}
+      , React.createElement('h2', {style:{fontSize:18,fontWeight:900,margin:0}}, "💰 Finansal Durum")
+      , React.createElement('button', {
+          onClick:function(){setTab(14);},
+          title:"Gelir ve giderin birlikte göründüğü kâr/zarar defteri",
+          style:{padding:"7px 14px",background:"rgba(0,122,255,0.14)",border:"1px solid rgba(0,122,255,0.45)",borderRadius:8,color:"#007AFF",fontWeight:700,fontSize:11,cursor:"pointer"}
+        }, "📒 Gelir-Gider Defteri →")
+    )
 
     /* Özet İstatistikler */
     , (function(){
@@ -2497,6 +2515,11 @@ function App(){
     , React.createElement('div', {style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}
       , React.createElement('div', {style:{fontWeight:800,fontSize:14}}, "📋 Bu Haftaki Giderler")
       , React.createElement('div', {style:{display:"flex",gap:8,flexWrap:"wrap"}}
+        , React.createElement('button', {
+            onClick:function(){setTab(14);},
+            title:"Buradaki giderler her Cumartesi sıfırlanır; kalıcı kâr/zarar defteri Gelir/Gider sekmesindedir",
+            style:{padding:"7px 14px",background:"rgba(0,122,255,0.14)",border:"1px solid rgba(0,122,255,0.45)",borderRadius:8,color:"#007AFF",fontWeight:700,fontSize:11,cursor:"pointer"}
+          }, "📒 Gelir-Gider Defteri →")
         , giderler.length>0&&React.createElement('button', {
             onClick:function(){
               var konu="Asansör Takip - Güncel Gider Raporu "+new Date().toLocaleDateString("tr-TR");
@@ -2708,6 +2731,21 @@ function App(){
 , tab===13&&rol==="yonetici"&&(
   React.createElement('div', {className:"ios-animate"},
     React.createElement(BakimciYonetimPaneli, {bakimcilar:bakimcilar,setBakimcilar:setBakimcilar})
+  )
+)
+
+/* GELİR - GİDER TAKİBİ (kâr/zarar defteri) */
+, tab===14&&rol==="yonetici"&&(
+  React.createElement('div', {className:"ios-animate"},
+    React.createElement(GelirGiderTakip, {
+      kayitlar:gelirGider, setKayitlar:setGelirGider,
+      sabitGiderler:sabitGiderler, setSabitGiderler:setSabitGiderler,
+      elevs:elevs,
+      sonOdemeler:sonOdemeler, hesapKayitlari:hesapKayitlari,
+      haftalikKapamalar:haftalikKapamalar, aylikKapamalar:aylikKapamalar,
+      giderler:giderler, giderHaftaArsiv:giderHaftaArsiv,
+      ekstraIsler:ekstraIsler,
+    })
   )
 )
 

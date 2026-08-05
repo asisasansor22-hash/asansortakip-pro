@@ -1845,3 +1845,48 @@
     [data-tema="acik"] textarea::placeholder {
       color: rgba(26,26,46,0.35) !important;
     }
+
+    /* ═══════════════════════════════════════════
+       GELİR-GİDER MODÜLÜ
+       Renkler inline yerine className + CSS değişkeni ile veriliyor:
+       yukarıdaki eski açık tema kuralları inline "rgb(...)" içeren
+       kutuları yakalayıp ezdiği için modül renkleri bozuluyordu.
+    ═══════════════════════════════════════════ */
+    .gg-modul .gg-c{ color:var(--gg-c); }
+    .gg-modul .gg-text{ color:var(--text); }
+    .gg-modul .gg-muted{ color:var(--text-muted); }
+    .gg-modul .gg-dim{ color:var(--text-dim); }
+    .gg-modul .gg-kutu{
+      background:var(--bg-panel);
+      border:1px solid var(--border-soft);
+      border-radius:var(--radius-lg);
+    }
+    .gg-modul .gg-tint{
+      background:var(--gg-bg);
+      border:1px solid var(--gg-br);
+      border-radius:var(--radius-lg);
+    }
+    .gg-modul .gg-satir{ border-top:1px solid var(--border-soft); }
+    .gg-modul .gg-ic-kutu{ background:var(--bg-card); border:1px solid var(--border-soft); }
+    .gg-modul .gg-bar{ background:var(--bg-root); border-radius:8px; overflow:hidden; }
+    .gg-modul .gg-bar > i{ display:block; height:100%; border-radius:8px; background:var(--gg-c); transition:width .4s; }
+    .gg-modul .gg-overlay{ background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); }
+    .gg-modul table th, .gg-modul table td{ border-color:var(--border-soft); }
+
+    [data-tema="acik"] .gg-modul .gg-c{ color:var(--gg-c)!important; }
+    [data-tema="acik"] .gg-modul .gg-text{ color:var(--text)!important; }
+    [data-tema="acik"] .gg-modul .gg-muted{ color:var(--text-muted)!important; }
+    [data-tema="acik"] .gg-modul .gg-dim{ color:var(--text-dim)!important; }
+    [data-tema="acik"] .gg-modul .gg-kutu{ background:var(--bg-panel)!important; border-color:var(--border-soft)!important; }
+    [data-tema="acik"] .gg-modul .gg-tint{ background:var(--gg-bg)!important; border-color:var(--gg-br)!important; }
+    [data-tema="acik"] .gg-modul .gg-ic-kutu{ background:var(--bg-elevated)!important; border-color:var(--border-soft)!important; }
+    [data-tema="acik"] .gg-modul .gg-bar{ background:var(--bg-deep)!important; }
+    [data-tema="acik"] .gg-modul .gg-bar > i{ background:var(--gg-c)!important; }
+    .gg-modul .gg-btn{
+      background:var(--gg-bg); color:var(--gg-fg); border:1px solid var(--gg-br);
+      font-weight:700; cursor:pointer; white-space:nowrap;
+    }
+    .gg-modul .gg-btn:disabled{ cursor:not-allowed; opacity:.45; }
+    [data-tema="acik"] .gg-modul .gg-btn{
+      background:var(--gg-bg)!important; color:var(--gg-fg)!important; border-color:var(--gg-br)!important;
+    }
