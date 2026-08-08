@@ -364,6 +364,15 @@ ok("upright row trapeze YARIM set sayiyor", kat("upright-row", "ustSirt") === 0.
 ok("L-sit quad'a CEYREK set sayiyor", kat("l-sit", "quad") === 0.25, "=" + kat("l-sit", "quad"));
 ok("squat quad'a TAM set sayiyor", kat("squat", "quad") === 1, "=" + kat("squat", "quad"));
 
+// (4) SABITLEYICI SAYILMAZ. Belgedeki kural (§1) "kas yalniz sabitliyorsa
+// sayilmaz" diyordu ama koda uygulanmamisti: plank ailesinde omuz vucudu
+// tasiyor ama eklem HAREKET ETMIYOR — yine de yarim set yaziliyordu.
+ok("yan plank omuza set YAZMIYOR", kat("side-plank", "onDeltoid") === 0, "=" + kat("side-plank", "onDeltoid"));
+ok("mountain climber omuza set YAZMIYOR", kat("mountain-climber-ab", "onDeltoid") === 0, "=" + kat("mountain-climber-ab", "onDeltoid"));
+// ...ama omzun GERCEKTEN hareket ettigi yerde sayilmaya devam ediyor
+ok("ab wheel omuza yarim set sayiyor (kollar yay ciziyor)", kat("ab-roller", "onDeltoid") === 0.5, "=" + kat("ab-roller", "onDeltoid"));
+ok("sinav omuza yarim set sayiyor", kat("sinav", "onDeltoid") === 0.5, "=" + kat("sinav", "onDeltoid"));
+
 
 // Uretecin kendi hesabi ile ekranin hesabi AYNI olmali. Eskiden autoPlan'in
 // kendi ayri ve uyusmayan dolayli tablosu vardi.

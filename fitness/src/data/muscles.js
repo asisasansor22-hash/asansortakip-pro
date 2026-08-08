@@ -191,6 +191,8 @@ const LATERAL_RAISE = /lateral-raise|cable-lateral|yan-kaldir|side-lateral/i;
 // çalışır ama kısa boyda ve düşük yükle. "Yarım quad seti" saymak, squat'la
 // aynı kefeye koymak olurdu.
 const HIP_FLEX_CORE = /l-sit|v-up|leg-raise|mountain-climber|flutter|hanging-leg|toe-touches|hollow/i;
+// Vücut ağırlığını taşıyan ama eklemin hareket etmediği tutuşlar.
+const IZOMETRIK_DESTEK = /^(plank|side-plank|hollow-body-hold|mountain-climber-ab|l-sit)$/i;
 const INCLINE = /incline/i;
 const CHINUP = /chin-up|barfiks|pull-up|pullup/i;
 const PRESS = /press|sinav|pushup|push-up|dips|fly|crossover|pec-deck/i;
@@ -262,6 +264,17 @@ function coeffFor(exId, m, isPrimary) {
     if (m === "onDeltoid") return INCLINE.test(s) ? 0.6 : 0.5;  // eğimlide pay daha yüksek (tahmin)
     if (m === "yanDeltoid" || m === "arkaDeltoid") return 0;    // preslerde çalışmaz
   }
+
+  // İZOMETRİK DESTEK TUTUŞLARI. Plank ailesinde omuz vücudu taşır ama eklem
+  // HAREKET ETMEZ ve kas boyu değişmez — yani tanım gereği sabitleyicidir.
+  // Belgedeki kural bunu zaten söylüyordu ("yalnızca sabitliyorsa sayılmaz",
+  // bkz. docs/dolayli-hacim.md § 1) ama koda uygulanmamıştı: yan plank ve
+  // mountain climber ön omuza yarım set yazıyordu.
+  //
+  // Ab wheel BİLEREK dışarıda: orada kollar geniş bir yay çiziyor, omuz
+  // gerçekten uzayıp kısalıyor. Şınav türevleri de öyle.
+  if (IZOMETRIK_DESTEK.test(s) && !isPrimary &&
+      (m === "onDeltoid" || m === "yanDeltoid" || m === "arkaDeltoid")) return 0;
 
   // Yan kaldırış → trapez: sabitleyici dozu, çeyrek set.
   if (LATERAL_RAISE.test(s) && !isPrimary && m === "ustSirt") return 0.25;

@@ -148,7 +148,18 @@ izometrik yük alır" idi. Gerekçe hatalı olduğu için indirim kaldırıldı.
 `MUSCLE_MIN` içinde **8** ile duruyor — ana kasların 10'undan düşük, çünkü karın için
 10-20 set doz-yanıt verisi yok; bu sayı ölçülmüş değil, **tahmindir**.
 
-### 2.8 Kavrama → Ön kol: **0**
+### 2.8 Sabitleyici omuz (plank ailesi): **0**
+
+Bölüm 1'deki kural şunu diyordu: *"kas yalnızca sabitliyorsa sayılmaz"*. Ama bu
+kural koda tam uygulanmamıştı — yan plank ve mountain climber ön omuza **yarım
+set** yazıyordu. Oysa bu hareketlerde omuz vücut ağırlığını taşır ama **eklem
+hareket etmez**, kas boyu değişmez. Tanım gereği sabitleyicidir → **0**.
+
+Ayrım nerede: **omuz gerçekten uzayıp kısalıyorsa sayılır.** Ab wheel'de kollar
+geniş bir yay çizer, şınavda omuz açılıp kapanır — ikisi de **0,5** almaya devam
+eder. Fark "izometrik mi" değil, **eklem hareket ediyor mu**.
+
+### 2.9 Kavrama → Ön kol: **0**
 
 Kürek, deadlift ve barfikste ön kol izometrik kavrama yapar. Bu yorgunluk yaratır ama
 kas boyu değişmediği için hipertrofi uyaranı olarak sayılmaz. Uygulama ön kolu hacim
@@ -180,6 +191,7 @@ Varsayılan: birincil kas **1,0**, ikincil kas **0,5**. Aşağıdakiler bilinçl
 | Upright row | Trapez (üst/orta sırt) | 0,5 | Trapez asıl hareketi yapıyor |
 | Kalça fleksiyonlu karın (L-sit, v-up, bacak kaldırma) | Quad | **0,25** | Rektus femoris kısa boyda, düşük yükle |
 | Squat / menteşe | Baldır | 0 | Ayak bileğini sabitler, boyu değişmez |
+| Plank ailesi (yan plank, mountain climber) | Ön omuz | **0** | Eklem hareket etmiyor — tanım gereği sabitleyici |
 | Herhangi | Ön kol / boyun | 0 | Kavrama izometrik, hipertrofi uyaranı değil |
 
 ---
