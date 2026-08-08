@@ -47,7 +47,14 @@ const POOLS = {
   ham:       { region: "bacak", ids: ["leg-curl", "romanian-deadlift", "nordic-curl", "good-morning"] },
   glute:     { region: "bacak", ids: ["hip-thrust", "glute-bridge", "bulgarian", "single-leg-glute-bridge", "lunge"] },
   calf:      { region: "bacak", ids: ["calf-raise", "seated-calf-raise"] },
-  core:      { region: "karin", ids: ["plank", "hanging-leg-raise", "hollow-body-hold", "crunch", "leg-raise", "ab-roller"] },
+  // Sıra ÖNEMLİ ve alt gruplara göre dönüşümlü: alt karın → üst karın → oblik
+  // → izometrik. Sebep: pick() rotasyonu yalnız 0/1 değerini aldığı için
+  // pratikte havuzun ilk iki girdisi seçiliyor. Eski sıra ("plank",
+  // "hanging-leg-raise", ...) yüzünden 240 planın hepsinde yalnız 3 hareket
+  // çıkıyordu — ÜST KARIN ve OBLİK hiç çalışılmıyordu.
+  core:      { region: "karin", ids: ["hanging-leg-raise", "crunch", "bicycle-crunch", "plank",
+                                      "leg-raise", "russian-twist", "hollow-body-hold", "ab-roller",
+                                      "side-plank", "cable-crunch"] },
 };
 
 // NOT: Burada eskiden AYRI bir dolaylı hacim tablosu vardı ve data/volume.js'teki
@@ -194,16 +201,29 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   const mode = equip;
 
   // 1) Temel bölünmeyi kur
-  const built = split.keys.map((k) => {
-    const [name, slots, rot] = D[k];
+  const built = split.keys.map((k, gunIdx) => {
+    const [name, slots, rotBase] = D[k];
+    // Rotasyon: şablondaki rot yalnız 0/1 değeri alıyordu ve pick()
+    // `ids.slice(rot % ids.length)` yaptığı için havuzun pratikte yalnız İLK
+    // İKİ girdisi seçilebiliyordu. Somut sonucu: 240 planın tamamında karın
+    // havuzundan hep aynı 3 hareket çıkıyor, üst karın ve oblik hiç
+    // çalışılmıyordu.
+    //
+    // ⚠️ Gün sırası YALNIZ yardımcı (izolasyon) slotlara eklenir, bileşiklere
+    // DEĞİL. Havuzlar tercih sırasına göre dizili — en iyi hareket başta.
+    // Bileşiği de kaydırınca rotasyon havuzun dibindeki zayıf hareketi ana
+    // lift yapıyordu: 5 günlük GÜÇ programında ana menteşe hareketi
+    // "tek bacak glute bridge" oluyor ve bel hacmi 12,5'ten 5'e düşüyordu.
+    const rot = rotBase;                 // bileşikler: havuzun başı
+    const rotYardimci = rotBase + gunIdx; // yardımcılar: çeşitlilik
     const usedInDay = new Set();
-    const out = { name, rot, slots: [], baseRegions: new Set() };
+    const out = { name, rot, rotYardimci, slots: [], baseRegions: new Set() };
     slots.forEach(([pool, compound]) => {
       // Günün KİMLİĞİ şablondaki slotlardan gelir; doldurma sonradan eklediği
       // için bunu doldurmadan ÖNCE kaydediyoruz. "Alt A" gününün kimliği
       // bacak+karın'dır, sonradan oraya omuz hareketi düşse bile.
       if (POOLS[pool]) out.baseRegions.add(POOLS[pool].region);
-      const id = pick(pool, mode, usedInDay, rot);
+      const id = pick(pool, mode, usedInDay, compound ? rot : rotYardimci);
       if (!id) return;
       usedInDay.add(id);
       const rx = prescribe(goal, !!compound);
@@ -278,7 +298,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
       if (day.slots.length >= cap) continue;
       const usedInDay = new Set(day.slots.map((s) => s.id));
       for (const pool of candidates) {
-        const id = pick(pool, mode, usedInDay, day.rot);
+        const id = pick(pool, mode, usedInDay, day.rotYardimci);
         if (!id) continue;
         day.slots.push({ pool, id, sets: prescribe(goal, false).s, reps: prescribe(goal, false).r });
         placed = true; break;
@@ -306,7 +326,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
         if (day.slots.length >= maxPerDay(n)) continue;
         const usedInDay = new Set(day.slots.map((s) => s.id));
         for (const pool of candidates) {
-          const id = pick(pool, mode, usedInDay, day.rot);
+          const id = pick(pool, mode, usedInDay, day.rotYardimci);
           if (!id) continue;
           day.slots.push({ pool, id, sets: prescribe(goal, false).s, reps: prescribe(goal, false).r });
           placed = true; break;
@@ -327,7 +347,7 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
       const usedInDay = new Set(day.slots.map((s) => s.id));
       let placed = false;
       for (const poolKey of [...new Set(day.slots.map((s) => s.pool))]) {
-        const id = pick(poolKey, mode, usedInDay, day.rot + 1 + guard);
+        const id = pick(poolKey, mode, usedInDay, day.rotYardimci + 1 + guard);
         if (!id) continue;
         const rx = prescribe(goal, false);
         day.slots.push({ pool: poolKey, id, sets: rx.s, reps: rx.r });

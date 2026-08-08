@@ -9,7 +9,7 @@ import { volumeRows, weeklyVolume } from "../src/data/volume.js";
 import { muscleMinFor, MUSCLE_MAX_DEFAULT, musclesOf, substitutesFor } from "../src/data/muscles.js";
 import { READY_PROGRAMS, getReadyProgram } from "../src/data/programs.js";
 import { buildAutoPlan, EMPHASIS } from "../src/data/autoPlan.js";
-import { EXERCISES, getExercise } from "../src/data/exercises.js";
+import { EXERCISES, getExercise, subOf } from "../src/data/exercises.js";
 import { getMuscles } from "../src/data/exerciseMuscles.js";
 
 let fail = 0;
@@ -189,6 +189,7 @@ satirlar.forEach((r, k) => {
 ok("bolge basliklari tekrar etmiyor", bad.length === 0, bad.join(" | "));
 ok("tum kas gruplari listeleniyor", satirlar.length === 16, String(satirlar.length));
 
+
 // --- Iki ekran ayni hesabi kullanmali ---
 // Planlama (VolumeSummary) kas grubu + dogrudan/dolayli gosteriyordu, Ilerleme
 // ekrani ise BOLGE bazli ve yalniz dogrudan sayiyordu. Ayni hafta icin iki
@@ -264,6 +265,42 @@ for (let d = 2; d <= 6; d++)
       for (const emphasis of EMPHS)
         plans.push({ key: `${d}g/${goal}/${equip}/${emphasis}`, plan: buildAutoPlan({ days: d, goal, equip, emphasis }) });
 ok("240 kombinasyon uretildi", plans.length === 240, String(plans.length));
+
+// --- Karin kapsami ---
+// Kullanici bildirdi: "otomatik program karin hareketi ekliyor mu, alt/ust
+// bolgeyi kapsiyor mu?" Olcum: her planda karin VARDI ama havuzun sirasi ve
+// pick()'in 0/1 rotasyonu yuzunden 240 planin TAMAMINDA yalniz 3 hareket
+// cikiyordu — UST KARIN ve OBLIK hic calisilmiyordu.
+const abIds = new Set(), abSub = new Set();
+let karinsizPlan = 0;
+plans.forEach(({ plan }) => {
+  let varMi = false;
+  plan.days.forEach((d) => d.exercises.forEach((id) => {
+    const ex = getExercise(id);
+    if (!ex || ex.region !== "karin") return;
+    varMi = true; abIds.add(id); abSub.add(subOf(ex));
+  }));
+  if (!varMi) karinsizPlan++;
+});
+ok("her planda karin hareketi var", karinsizPlan === 0, String(karinsizPlan) + " plan karinsiz");
+ok("karin hareketi cesitliligi >= 6", abIds.size >= 6, abIds.size + " cesit");
+["Üst karın", "Alt karın", "Yan karın (Oblik)", "Core / İzometrik"].forEach((g) =>
+  ok("karin alt grubu kapsaniyor: " + g, abSub.has(g)));
+// Dogrudan karin seti hicbir planda sifir olmamali
+bad = [];
+plans.forEach(({ key, plan }) => { if (plan.volume.direct.karin === 0) bad.push(key); });
+ok("hicbir planda dogrudan karin seti sifir degil", bad.length === 0, bad.slice(0, 3).join(" | "));
+
+// Bilesik slotlar havuzun BASINDAN secilmeli. Rotasyona gun sirasi eklenince
+// 5 gunluk GUC programinin ana mentese hareketi "tek bacak glute bridge"
+// oluyordu ve bel hacmi 12,5'ten 5'e dusuyordu.
+const guc5 = buildAutoPlan({ days: 5, goal: "guc", equip: "full", emphasis: "denge" });
+const tumHareketler = guc5.days.flatMap((d) => d.exercises);
+ok("guc programinda ana mentese zayif varyanta dusmuyor",
+   !tumHareketler.includes("single-leg-glute-bridge"), tumHareketler.join(","));
+ok("guc programinda bel hacmi esigin uzerinde",
+   guc5.volume.total.erektor >= muscleMinFor("erektor"), "erektor=" + guc5.volume.total.erektor);
+
 
 // Uretecin kendi hesabi ile ekranin hesabi AYNI olmali. Eskiden autoPlan'in
 // kendi ayri ve uyusmayan dolayli tablosu vardi.

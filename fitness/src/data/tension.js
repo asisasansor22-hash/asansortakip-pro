@@ -96,6 +96,12 @@ export const TENSION = {
   "leg-raise":               { p: "orta", n: "Beli yere bastır; bacakları yavaş indir." },
   "crunch":                  { p: "kisa", n: "Zirve kasılmada; gerilme hareketiyle (asılı bacak/ab roller) eşleştir." },
   "plank":                   { p: "orta", n: "İzometrik stabilite; kalça düşmesin." },
+  // Otomatik üretecin karın havuzuna eklenen varyantlar. Etiketleri olmadan
+  // AutoPlanner'daki 🔵/⚪/🟠 göstergesi bu hareketlerde boş kalıyordu.
+  "bicycle-crunch":          { p: "kisa", n: "Zirve kasılmada; rotasyonu tam yap, hızlanma." },
+  "russian-twist":           { p: "kisa", n: "Zirve kasılmada; oblikler için ağırlığı kalça yanına götür." },
+  "side-plank":              { p: "orta", n: "İzometrik yan stabilite; kalçayı düşürme." },
+  "cable-crunch":            { p: "kisa", n: "Zirve kasılmada; kalça sabit, omurgayı karınla kıvır." },
   "dragon-flag":             { p: "uzun", n: "İleri seviye; negatifi kontrol et." },
   "v-up":                    { p: "orta", n: "Tam açılıp toparlan." },
 };
