@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise, REGIONS } from "../data/exercises";
+import { volumeRows, TARGET_MIN, TARGET_MAX } from "../data/volume";
 import { dbGetR, dbSet } from "../firebase";
 import DeloadCard from "./DeloadCard";
 import { setCountOf, bestOf, isArchived } from "../data/history";
@@ -270,20 +271,28 @@ export default function Progress({ data, history = [], onSave }) {
   }, [history]);
 
   // --- Bu haftaki kas grubu hacmi (set/kas) — denge takibi ---
+  //
+  // Planlama ekranıyla AYNI hesabı kullanır (volumeRows). Eskiden burada ayrı
+  // bir sayım vardı: BÖLGE bazlı ve yalnız DOĞRUDAN setler. Sonuç, iki ekranın
+  // aynı hafta için farklı sayı göstermesiydi — planlamada "Biceps 6 doğrudan
+  // + 10,5 dolaylı", İlerleme'de "Kol 12 set". Hangisine inanacağı belli
+  // olmayan bir kullanıcı için bu, sayının tamamını değersizleştiriyordu.
+  //
+  // Kaydedilen setleri sahte bir "gün"e çevirip volumeRows'a veriyoruz; böylece
+  // iki ekranın ayrışması yapısal olarak imkânsız.
   const muscleVol = useMemo(() => {
     const now = weekStart(Date.now());
     const counts = {};
     (history || []).forEach((s) => {
       if (weekStart(s.date) !== now) return;
+      // Arşivlenmiş seansta set dökümü yoktur (yalnız toplamlar) — atlanır.
       (s.sets || []).forEach((st) => {
-        const ex = getExercise(st.exId);
-        if (!ex || ex.region === "kardiyo") return;
-        counts[ex.region] = (counts[ex.region] || 0) + 1;
+        if (!getExercise(st.exId)) return;
+        counts[st.exId] = (counts[st.exId] || 0) + 1;
       });
     });
-    const rows = REGIONS.filter((r) => r.id !== "kardiyo").map((r) => ({ id: r.id, name: r.name, emoji: r.emoji, sets: counts[r.id] || 0 }));
-    const max = Math.max(20, ...rows.map((r) => r.sets));
-    return { rows, max, any: rows.some((r) => r.sets > 0) };
+    const rows = volumeRows([{ exercises: Object.keys(counts), sets: counts }]);
+    return { rows, any: rows.some((r) => r.sets > 0) };
   }, [history]);
 
   // --- Kişisel rekorlar (geçmişten) ---
@@ -510,28 +519,43 @@ export default function Progress({ data, history = [], onSave }) {
         <p style={{ color: "var(--muted)", fontSize: 13, marginBottom: 8 }}>Bu hafta henüz set yok — antrenman kaydedince kaslar dağılıma göre burada görünür.</p>
       ) : (
         <div className="card" style={{ marginBottom: 10 }}>
-          {muscleVol.rows.map((r) => {
-            const col = r.sets === 0 ? "var(--line)" : r.sets < 10 ? "var(--attn)" : r.sets <= 20 ? "var(--accent)" : "var(--attn2)";
-            return (
+          {(() => {
+            const COLOR = { none: "var(--line)", low: "var(--attn)", thin: "var(--attn)", ok: "var(--accent)", high: "var(--attn2)" };
+            const REGION_NAME = {}; REGIONS.forEach((r) => { REGION_NAME[r.id] = r.name; });
+            const num = (n) => String(Math.round(n * 2) / 2).replace(".", ",");
+            const rows = muscleVol.rows;
+            const max = Math.max(TARGET_MAX, ...rows.map((r) => r.sets));
+            return rows.map((r, k) => (
               <div key={r.id} style={{ marginBottom: 8 }}>
-                <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                  <span>{r.emoji} {r.name}</span>
-                  <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", fontWeight: 700 }}>{r.sets} set</span>
+                {(k === 0 || rows[k - 1].region !== r.region) && (
+                  <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginTop: k === 0 ? 0 : 10, marginBottom: 4 }}>
+                    {REGION_NAME[r.region] || r.region}
+                  </div>
+                )}
+                <div className="row" style={{ justifyContent: "space-between", fontSize: 12, marginBottom: 3, gap: 6, flexWrap: "nowrap" }}>
+                  <span style={{ color: r.sets === 0 ? "var(--muted)" : "var(--text)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.emoji} {r.name}</span>
+                  <span style={{ fontWeight: 700, color: COLOR[r.level], flexShrink: 0, whiteSpace: "nowrap" }}>
+                    {num(r.direct)} set
+                    {r.indirect > 0 && (
+                      <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 11 }}>{" + " + num(r.indirect) + " dolaylı"}</span>
+                    )}
+                  </span>
                 </div>
-                <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999 }}>
-                  <div style={{ width: Math.round((r.sets / muscleVol.max) * 100) + "%", height: "100%", background: col, borderRadius: 999 }} />
-                  {/* 10 set = hipertrofi için etkili alt eşik (görsel işaret) */}
-                  <div title="10 set — etkili alt eşik" style={{
-                    position: "absolute", top: -2, bottom: -2,
-                    left: Math.round((10 / muscleVol.max) * 100) + "%",
+                <div style={{ position: "relative", height: 8, background: "var(--card2)", borderRadius: 999, display: "flex", overflow: "hidden" }}>
+                  <div style={{ width: Math.min(100, (r.direct / max) * 100) + "%", height: "100%", background: COLOR[r.level] }} />
+                  <div style={{ width: Math.min(100, (r.indirect / max) * 100) + "%", height: "100%", background: COLOR[r.level], opacity: 0.35 }} />
+                  <div title={r.min + " set — etkili alt eşik"} style={{
+                    position: "absolute", top: -2, bottom: -2, left: (r.min / max) * 100 + "%",
                     width: 2, background: "var(--text)", opacity: 0.45, borderRadius: 2,
                   }} />
                 </div>
               </div>
-            );
-          })}
-          <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6 }}>
-            🟡 az (&lt;10) · 🟢 ideal (10-20) · 🟠 yüksek (&gt;20) · dikey çizgi = 10 set eşiği
+            ));
+          })()}
+          <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 6, lineHeight: 1.6 }}>
+            Koyu = doğrudan set · soluk = dolaylı (bileşik hareketlerden)
+            <br />🟡 az · 🟢 ideal ({TARGET_MIN}-{TARGET_MAX}) · 🟠 yüksek · dikey çizgi = alt eşik
+            <br />Planlama ekranındaki hacim özetiyle <b>aynı hesap</b> kullanılır.
           </div>
         </div>
       )}

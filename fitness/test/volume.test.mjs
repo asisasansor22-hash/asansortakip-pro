@@ -172,6 +172,34 @@ birincil("Lower_Back_Curl", "erektor");
 birincil("Rear_Leg_Raises", "glute");
 
 
+
+// --- Iki ekran ayni hesabi kullanmali ---
+// Planlama (VolumeSummary) kas grubu + dogrudan/dolayli gosteriyordu, Ilerleme
+// ekrani ise BOLGE bazli ve yalniz dogrudan sayiyordu. Ayni hafta icin iki
+// farkli sayi cikiyordu ("Biceps 6+10,5" vs "Kol 12"). Ilerleme artik
+// kaydedilen setleri sahte bir "gun"e cevirip ayni volumeRows'u cagiriyor.
+const kayitliSetler = [
+  { exId: "bench-press" }, { exId: "bench-press" }, { exId: "bench-press" }, { exId: "bench-press" },
+  { exId: "barbell-row" }, { exId: "barbell-row" }, { exId: "barbell-row" },
+  { exId: "biceps-curl" }, { exId: "biceps-curl" }, { exId: "biceps-curl" },
+];
+const sayim = {};
+kayitliSetler.forEach((st) => { sayim[st.exId] = (sayim[st.exId] || 0) + 1; });
+const ilerlemeRows = volumeRows([{ exercises: Object.keys(sayim), sets: sayim }]);
+const planRows = volumeRows([{ exercises: ["bench-press", "barbell-row", "biceps-curl"],
+                              sets: { "bench-press": 4, "barbell-row": 3, "biceps-curl": 3 } }]);
+bad = [];
+planRows.forEach((pr, k) => {
+  const ir = ilerlemeRows[k];
+  if (pr.id !== ir.id || pr.direct !== ir.direct || pr.indirect !== ir.indirect || pr.level !== ir.level)
+    bad.push(pr.id + ": plan " + pr.direct + "+" + pr.indirect + " vs ilerleme " + ir.direct + "+" + ir.indirect);
+});
+ok("Ilerleme ekrani = planlama ekrani (ayni hesap)", bad.length === 0, bad.slice(0, 3).join(" | "));
+// Kaydedilen setlerde de dolayli katki gorunmeli (eskiden hic gorunmuyordu)
+const bicepsRow = ilerlemeRows.find((r) => r.id === "biceps");
+ok("kaydedilen setlerde dolayli katki da raporlaniyor", bicepsRow.indirect > 0,
+   "biceps dolayli=" + bicepsRow.indirect);
+
 // --- Hareket degistirme onerileri ---
 // Kullanici bildirdi: "Pec Deck yerine -> Elmas Sinav". Elmas sinavin birincil
 // kasi bizim kendi verimizde TRICEPS; bir fly'in yerine onerilemez.
