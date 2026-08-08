@@ -477,7 +477,18 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
       <div ref={stepsRef} className="workout-steps" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 2px 2px", width: "100%", minWidth: 0, maxWidth: "100%", flexShrink: 0, boxSizing: "border-box", WebkitOverflowScrolling: "touch" }}>
         {exIds.map((id, k) => {
           const e = getExercise(id);
-          const state = k < i ? "done" : (k === i ? "cur" : "next");
+          // "✓" ARTIK SIRAYA GORE DEGIL, GERCEK ILERLEMEYE GORE.
+          // Eskiden k < i olan her hareket bitmiş sayılıyordu: 4 setlik bir
+          // hareketin 2. setinde ileri atlayınca o hareket "✓" görünüyordu.
+          // Yarım kalanlar artık "2/4" diye kendi ilerlemesini gösteriyor.
+          const yapilan = log.current.filter((l) => l.exId === id).length;
+          const hedef = setsForIdx(k);
+          const bitti = yapilan >= hedef;
+          const state = k === i ? "cur" : (bitti ? "done" : "next");
+          const etiket = k === i ? (k + 1) + ". "
+            : bitti ? "✓ "
+            : yapilan > 0 ? yapilan + "/" + hedef + " · "
+            : (k + 1) + ". ";
           return (
             <div key={id + "-" + k} onClick={() => { if (k !== i) goToExercise(k); }}
               style={{
@@ -485,10 +496,10 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
                 padding: "6px 11px", borderRadius: 999, fontSize: 12, fontWeight: 700,
                 background: state === "cur" ? "var(--accent)" : "var(--card2)",
                 color: state === "cur" ? "#04321f" : (state === "done" ? "var(--muted)" : "var(--text)"),
-                opacity: state === "done" ? 0.6 : 1,
+                opacity: bitti && k !== i ? 0.6 : 1,
                 cursor: k !== i ? "pointer" : "default",
               }}>
-              {state === "done" ? "✓ " : (k + 1) + ". "}{e.name}
+              {etiket}{e.name}
             </div>
           );
         })}
