@@ -201,6 +201,11 @@ export function weeklyVolume(days) {
 // O kural, kova biceps ile triceps'i ayırmadığı için gerekiyordu. Artık ayırıyor:
 // biceps'e yalnız kürekle ulaşmak 20 set kürek gerektirir, yani eşik kendiliğinden
 // doğrudan çalışmayı zorluyor. Geriye yalnızca "hiç doğrudan set yok" uyarısı kalıyor.
+// REGIONS dizisindeki sıra = ekranda görünen bölge sırası.
+const REGION_IDX = {};
+REGIONS.forEach((r, i) => { REGION_IDX[r.id] = i; });
+const REGION_ORDER = (id) => (REGION_IDX[id] != null ? REGION_IDX[id] : 99);
+
 export function volumeRows(days) {
   const { direct, indirect, total } = weeklyVolume(days);
   return MUSCLES.map((m) => {
@@ -218,5 +223,11 @@ export function volumeRows(days) {
       : "ok";
     return { id: m.id, name: m.name, emoji: m.emoji, region: m.region,
              direct: d, indirect: ind, sets, min, directMin: min, level };
-  });
+  })
+  // Bölgeye göre BİTİŞİK sırala (kararlı). Ekranlar "önceki satırın bölgesi
+  // farklıysa başlık bas" mantığını kullanıyor; isteğe bağlı kaslar (Ön Kol,
+  // Boyun) listenin sonunda durduğu için "KOL" ve "OMUZ" başlıkları ikinci kez
+  // basılıyordu. Sıralama kararlı olduğu için bölge içi sıra korunur ve
+  // isteğe bağlı olanlar kendi bölgelerinin sonunda kalır.
+  .sort((a, b) => REGION_ORDER(a.region) - REGION_ORDER(b.region));
 }

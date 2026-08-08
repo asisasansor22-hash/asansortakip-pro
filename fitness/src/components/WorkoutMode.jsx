@@ -636,7 +636,13 @@ export default function WorkoutMode({ program, onExit, onFinish, onPersist, resu
             )}
             <div className="row" style={{ justifyContent: "center", gap: 8, marginTop: 6, width: "100%", maxWidth: 320 }}>
               <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
-              <input className="input" type="text" placeholder="Tekrar" value={reps} onChange={(e) => setReps(e.target.value)} />
+              {/* type="text" KALIYOR: hedef "8-12" ya da "30 sn" olabiliyor ve
+                  number bunları kabul etmez. Ama inputMode="numeric" ekli —
+                  set kaydı uygulamanın EN ÇOK tekrarlanan işlemi ve her sette
+                  tam QWERTY klavye açılması salonda gereksiz sürtünmeydi.
+                  Zaman/aralık gerektiren hareketlerde alan zaten hedefle dolu
+                  geliyor, kullanıcı yalnızca yaptığı sayıyı yazıyor. */}
+              <input className="input" type="text" inputMode="numeric" placeholder="Tekrar" value={reps} onChange={(e) => setReps(e.target.value)} />
             </div>
             <div className="row" style={{ justifyContent: "center", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ color: "var(--muted)", fontSize: 12 }}>RIR</span>

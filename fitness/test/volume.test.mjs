@@ -173,6 +173,22 @@ birincil("Rear_Leg_Raises", "glute");
 
 
 
+
+// Bolge basliklari TEKRAR ETMEMELI. Ekranlar "onceki satirin bolgesi
+// farkliysa baslik bas" mantigini kullaniyor; istege bagli kaslar (On Kol,
+// Boyun) listenin sonunda durdugu icin "KOL" ve "OMUZ" basliklari ikinci kez
+// basiliyordu. volumeRows artik bolgeye gore bitisik siraliyor.
+const satirlar = volumeRows([{ exercises: ["bench-press"], sets: { "bench-press": 3 } }]);
+const gorulen = new Set();
+bad = [];
+satirlar.forEach((r, k) => {
+  if (k > 0 && satirlar[k - 1].region === r.region) return;   // ayni blok devam ediyor
+  if (gorulen.has(r.region)) bad.push(r.region + " (" + r.name + " satirinda tekrar)");
+  gorulen.add(r.region);
+});
+ok("bolge basliklari tekrar etmiyor", bad.length === 0, bad.join(" | "));
+ok("tum kas gruplari listeleniyor", satirlar.length === 16, String(satirlar.length));
+
 // --- Iki ekran ayni hesabi kullanmali ---
 // Planlama (VolumeSummary) kas grubu + dogrudan/dolayli gosteriyordu, Ilerleme
 // ekrani ise BOLGE bazli ve yalniz dogrudan sayiyordu. Ayni hafta icin iki

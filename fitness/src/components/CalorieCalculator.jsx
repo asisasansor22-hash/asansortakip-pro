@@ -50,9 +50,9 @@ export default function CalorieCalculator() {
           <button type="button" className={"seg" + (gender === "female" ? " on" : "")} onClick={() => setGender("female")}>♀ Kadın</button>
         </div>
         <div className="row">
-          <input className="input" type="number" placeholder="Yaş" value={age} onChange={(e) => setAge(e.target.value)} />
-          <input className="input" type="number" placeholder="Boy (cm)" value={height} onChange={(e) => setHeight(e.target.value)} />
-          <input className="input" type="number" placeholder="Kilo (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
+          <input className="input" type="number" inputMode="numeric" placeholder="Yaş" value={age} onChange={(e) => setAge(e.target.value)} />
+          <input className="input" type="number" inputMode="decimal" placeholder="Boy (cm)" value={height} onChange={(e) => setHeight(e.target.value)} />
+          <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={weight} onChange={(e) => setWeight(e.target.value)} />
         </div>
         <select className="input" value={act} onChange={(e) => setAct(+e.target.value)}>
           {ACTIVITY.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
