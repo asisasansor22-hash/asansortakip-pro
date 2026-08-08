@@ -1,6 +1,28 @@
 import React, { useEffect, useState, useRef } from "react";
 import BarcodeScanner from "./BarcodeScanner";
-import { dbGetR, dbSet } from "../firebase";
+import { dbGetR } from "../firebase";
+import { push } from "../utils/sync";
+import { markPending } from "../utils/outbox";
+import { mergeDiary } from "../data/merge";
+
+// Günlük CİHAZDA da tutulur.
+//
+// Eskiden yalnızca bulutta duruyordu ve sonucu şuydu: çevrimdışıyken (ya da
+// bulut okuması başarısızken) günlük BOŞ açılıyor, girilen hiçbir öğün hiçbir
+// yere yazılmıyordu. Uygulamanın geri kalanı çevrimdışı çalışırken —
+// antrenman, program, ölçüm hepsi kurtarılırken — yenen yemek kayboluyordu.
+function lsGet() {
+  try { return JSON.parse(localStorage.getItem("fitbe_diary") || "null"); } catch (e) { return null; }
+}
+function lsSet(d) {
+  try { localStorage.setItem("fitbe_diary", JSON.stringify(d)); } catch (e) {}
+}
+const BOS = { goal: { kcal: 0, protein: 0 }, days: {}, recent: [] };
+const normalize = (d) => ({
+  goal: (d && d.goal) || { kcal: 0, protein: 0 },
+  days: (d && d.days) || {},
+  recent: Array.isArray(d && d.recent) ? d.recent : [],
+});
 
 const z = (n) => String(n).padStart(2, "0");
 const dayKey = (d = new Date()) => d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate());
@@ -31,7 +53,8 @@ function Bar({ val, goal, color }) {
 }
 
 export default function NutritionDiary() {
-  const [diary, setDiary] = useState({ goal: { kcal: 0, protein: 0 }, days: {} });
+  // Cihazdaki kopyayla ANINDA başla: çevrimdışı açılışta bile günlük dolu gelir.
+  const [diary, setDiary] = useState(() => normalize(lsGet() || BOS));
   const [loaded, setLoaded] = useState(false);
   // Bulut okuması BAŞARILI oldu mu? Bu ayrım kritik: okuma başarısızsa state boş
   // kalır, ama eskiden yine de yazılıyordu — eklenen ilk yemek buluttaki TÜM
@@ -58,12 +81,12 @@ export default function NutritionDiary() {
       okRef.current = r.ok;
       setReadOk(r.ok);
       if (r.ok && r.data && typeof r.data === "object") {
-        // recent (son kullanılanlar) de taşınmalı: eskiden düşürülüyordu, bu
-        // yüzden yüklemeden sonraki ilk yazma listeyi buluttan da siliyordu.
-        setDiary({
-          goal: r.data.goal || { kcal: 0, protein: 0 },
-          days: r.data.days || {},
-          recent: Array.isArray(r.data.recent) ? r.data.recent : [],
+        // Bulut yereli EZMEZ, BİRLEŞTİRİR. Çevrimdışıyken eklenen öğünler
+        // bağlantı gelince silinmemeli; aynı şey iki cihaz arasında da geçerli.
+        setDiary((prev) => {
+          const merged = mergeDiary(prev, r.data);
+          lsSet(merged);
+          return merged;
         });
       }
       setLoaded(true);
@@ -75,7 +98,23 @@ export default function NutritionDiary() {
   // eklemelerde bayat-closure yüzünden veri kaybı olmasın).
   // Okuma başarısızsa YAZMA — elimizdeki state buluttaki günlüğü temsil etmiyor.
   function persistFn(updater) {
-    setDiary((prev) => { const next = updater(prev); if (okRef.current) dbSet("diary", next); return next; });
+    setDiary((prev) => {
+      const next = updater(prev);
+      lsSet(next);                       // cihaza HER ZAMAN — çevrimdışı da olsa kaybolmasın
+      if (okRef.current) {
+        // Okuma başarılıydı: elimizdeki state buluttakini temsil ediyor,
+        // doğrudan gönderilebilir. push() başarısız olursa anahtar zaten
+        // "bekliyor" kalır.
+        push("diary", next);
+      } else {
+        // Okuma BAŞARISIZ: doğrudan yazmak buluttaki iyi günlüğü tek günle
+        // ezerdi. Ama veriyi de kaybetmemeliyiz — anahtarı kuyruğa koyuyoruz.
+        // flushOutbox körlemesine yazmaz: önce buluttan okur, mergeDiary ile
+        // BİRLEŞTİRİR, sonra yazar. Yani ezme riski olmadan kurtarma olur.
+        markPending("diary");
+      }
+      return next;
+    });
   }
   const mkItem = (item) => ({
     id: "f_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -145,10 +184,11 @@ export default function NutritionDiary() {
 
       {!readOk && (
         <div className="card" style={{ marginBottom: 12, borderColor: "var(--warn)" }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>⚠️ Günlük yüklenemedi</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>📵 Çevrimdışı — buluttan okunamadı</div>
           <p style={{ color: "var(--muted)", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
-            İnternet bağlantısı kurulamadı. Şu an eklediklerin <b>kaydedilmiyor</b> — mevcut
-            günlüğünün üzerine yazılmasın diye. Bağlantı gelince sayfayı yenile.
+            Eklediklerin <b>bu cihaza kaydediliyor</b> ve bağlantı gelince buluttaki günlükle
+            <b> birleştirilerek</b> gönderilecek. Hiçbir şey kaybolmaz; buluttaki kayıtların da
+            üzerine yazılmaz. Önceki günlerin bu ekranda eksik görünebilir — onlar bulutta duruyor.
           </p>
         </div>
       )}

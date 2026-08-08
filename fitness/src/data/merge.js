@@ -124,3 +124,46 @@ export function mergeFavorites(local, cloud, localWins) {
   if (localWins) return L;
   return C.length ? C : L;
 }
+
+// --- Beslenme günlüğü ---
+// Şekil: { goal: {kcal, protein}, days: { "2026-08-08": {items:[...], water:n} }, recent: [...] }
+//
+// GÜN BAZINDA birleştirilir, gün İÇİNDE öğeler id'ye göre birleşir. Gerekçe:
+// çevrimdışıyken telefondan öğle yemeğini, sonra masaüstünden akşam yemeğini
+// eklersen ikisi de kalmalı. Öğelerin benzersiz id'si var (mkItem), o yüzden
+// birleşim güvenli — aynı öğe iki kez sayılmaz.
+//
+// Su (water): sayıdır, id'si yok; büyük olan seçilir. Su sayacı yalnız artar,
+// dolayısıyla büyük olan "daha yeni"dir. localWins burada kullanılmaz.
+export function mergeDiary(local, cloud) {
+  const L = local && typeof local === "object" ? local : {};
+  const C = cloud && typeof cloud === "object" ? cloud : {};
+  const items = (d) => (Array.isArray(d && d.items) ? d.items : (d && d.items ? Object.values(d.items) : []));
+
+  const days = {};
+  const gunler = new Set([...Object.keys(C.days || {}), ...Object.keys(L.days || {})]);
+  gunler.forEach((g) => {
+    const byId = {};
+    items((C.days || {})[g]).forEach((it) => { if (it && it.id) byId[it.id] = it; });
+    items((L.days || {})[g]).forEach((it) => { if (it && it.id) byId[it.id] = it; });
+    days[g] = {
+      items: Object.values(byId),
+      water: Math.max(Number(((C.days || {})[g] || {}).water) || 0,
+                      Number(((L.days || {})[g] || {}).water) || 0),
+    };
+  });
+
+  // Hedef: yerelde anlamlı bir değer varsa o, yoksa bulut.
+  const gecerli = (x) => x && (Number(x.kcal) > 0 || Number(x.protein) > 0);
+  const goal = gecerli(L.goal) ? L.goal : (gecerli(C.goal) ? C.goal : { kcal: 0, protein: 0 });
+
+  // Son kullanılanlar: yerel önce, buluttan tamamla, ada göre tekilleştir, 20 ile sınırla.
+  const recent = [];
+  const gorulen = new Set();
+  [...(Array.isArray(L.recent) ? L.recent : []), ...(Array.isArray(C.recent) ? C.recent : [])].forEach((r) => {
+    const k = r && r.name;
+    if (!k || gorulen.has(k)) return;
+    gorulen.add(k); recent.push(r);
+  });
+  return { goal, days, recent: recent.slice(0, 20) };
+}

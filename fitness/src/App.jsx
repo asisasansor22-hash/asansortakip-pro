@@ -182,6 +182,16 @@ function normalizeList(list) {
   }));
 }
 
+// Beslenme günlüğü cihazda da tutulur. Eskiden YALNIZCA bulutta duruyordu:
+// çevrimdışıyken günlük boş açılıyor, girilen hiçbir öğün hiçbir yere
+// yazılmıyordu. Antrenman verisi kurtarılırken yenen yemek kayboluyordu.
+function lsGetDiary() {
+  try { return JSON.parse(localStorage.getItem("fitbe_diary") || "null"); } catch (e) { return null; }
+}
+function lsSetDiary(d) {
+  try { localStorage.setItem("fitbe_diary", JSON.stringify(d)); } catch (e) {}
+}
+
 function lsGetAvatar() {
   try { return localStorage.getItem("fitbe_avatar") || null; } catch (e) { return null; }
 }
@@ -284,6 +294,15 @@ export default function App() {
       avatar: avatar || "",
     };
   }, [history, programs, activeId, schedule, progress, favorites, profile, avatar]);
+
+  // Günlük NutritionDiary bileşeninde yaşıyor, App'te değil. Anlık görüntüye
+  // GÖNDERİM ANINDA cihazdaki kopyadan giriyor — bileşen her değişiklikte
+  // localStorage'a yazdığı için bu her zaman güncel ve React state'i
+  // yukarı taşımaya gerek kalmıyor.
+  const snapshotWithDiary = () => {
+    const d = lsGetDiary();
+    return d ? { ...snapshotRef.current, diary: d } : snapshotRef.current;
+  };
   // Antrenman veya "devam et?" penceresi açıkken oto-güncelleme ERTELENİR
   useEffect(() => { workoutBusyRef.current = !!(workout || resumeAsk); }, [workout, resumeAsk]);
 
@@ -414,7 +433,7 @@ export default function App() {
       }
 
       // Açılışta bekleyen yazma varsa (önceki oturum çevrimdışı bitmişse) gönder
-      if (cloudReady.current) flushOutbox(() => snapshotRef.current);
+      if (cloudReady.current) flushOutbox(snapshotWithDiary);
 
       // 3) Bulut okunamadıysa: sessizce arka planda tekrar dene (banner YOK).
       // Eskiden burada "kullanıcı düzenledi mi?" (edited) diye bir ayrım vardı;
@@ -449,7 +468,7 @@ export default function App() {
           if (!sameHistory(mh, h2.data)) push("workouts", mh);
           lbPublish(computeLbStats(mh));
 
-          flushOutbox(() => snapshotRef.current);
+          flushOutbox(snapshotWithDiary);
         };
         retryTimer = setTimeout(retry, 1500);
       }
@@ -635,7 +654,7 @@ export default function App() {
       }
       attempt = 0;
       cloudReady.current = true;
-      flushOutbox(() => snapshotRef.current);
+      flushOutbox(snapshotWithDiary);
     }
 
     const off = onReconnect(probeAndFlush);

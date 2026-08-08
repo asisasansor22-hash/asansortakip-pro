@@ -11,7 +11,7 @@
 
 import { dbGetR, dbSetR } from "../firebase";
 import { markPending, clearPending, pendingKeys } from "./outbox";
-import { mergeHistory, mergePrograms, mergeSchedule, mergeProgress, mergeFavorites } from "../data/merge";
+import { mergeHistory, mergePrograms, mergeSchedule, mergeProgress, mergeFavorites, mergeDiary } from "../data/merge";
 
 // navigator.onLine === false → kesinlikle çevrimdışı, denemeye değmez.
 // DİKKAT: tersi doğru DEĞİL — onLine true iken de erişilemeyebilir
@@ -38,6 +38,7 @@ const MERGERS = {
   favorites: (local, cloud) => mergeFavorites(local, cloud, true),
   schedule: (local, cloud) => mergeSchedule(local, cloud),
   programs: (local, cloud) => mergePrograms(local, cloud),
+  diary: (local, cloud) => mergeDiary(local, cloud),
 };
 
 let flushing = false;
