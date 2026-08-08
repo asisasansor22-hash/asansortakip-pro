@@ -316,6 +316,24 @@ const d0 = ustGunler[0].exercises.filter((id) => dikey.includes(id));
 const d1 = ustGunler[1].exercises.filter((id) => dikey.includes(id));
 ok("iki ust gunde ayni dikey cekis yok", !d0.some((id) => d1.includes(id)), d0.join(",") + " vs " + d1.join(","));
 
+// Yedek (fallback) hareketler SALON planina dusmemeli. diamond-pushup gogus
+// izolasyon havuzundaydi ama birincil kasi triceps ve gogse yalniz yarim set
+// veriyor; rotasyon havuzun derinine indigi icin tam donanimli salon planina
+// vucut agirligi hareketi olarak dusuyordu.
+bad = [];
+plans.forEach(({ key, plan }) => {
+  if (!key.includes("/full/")) return;
+  plan.days.forEach((d) => {
+    if (d.exercises.includes("diamond-pushup")) bad.push(key + "/" + d.name);
+  });
+});
+ok("salon planina yedek vucut agirligi hareketi dusmuyor", bad.length === 0, bad.slice(0, 3).join(" | "));
+// ...ama ekipmansiz modda yedek DEVREDE olmali (yoksa gun 3 harekete duser)
+const bw6 = buildAutoPlan({ days: 6, goal: "kasyap", equip: "bodyweight", emphasis: "denge" });
+ok("ekipmansiz modda yedek devreye giriyor",
+   bw6.days.every((d) => d.exercises.length >= 4),
+   bw6.days.map((d) => d.name + ":" + d.exercises.length).join(" "));
+
 
 // Uretecin kendi hesabi ile ekranin hesabi AYNI olmali. Eskiden autoPlan'in
 // kendi ayri ve uyusmayan dolayli tablosu vardi.

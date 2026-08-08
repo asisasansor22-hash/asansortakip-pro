@@ -27,7 +27,15 @@ export { TARGET_MIN, TARGET_MAX };
 const POOLS = {
   chest:     { region: "gogus", ids: ["bench-press", "dumbbell-press", "machine-chest-press", "sinav", "wide-pushup"] },
   chestUp:   { region: "gogus", ids: ["incline-press", "incline-dumbbell-press", "decline-pushup"] },
-  chestIso:  { region: "gogus", ids: ["cable-crossover", "pec-deck", "dumbbell-fly", "diamond-pushup"] },
+  // ids = GERÇEK izolasyonlar (tek eklemli, göğse TAM set).
+  // fallback = yalnız hiçbiri o ekipman moduna uymuyorsa devreye girer.
+  // diamond-pushup ids'ten çıkarıldı: birincil kası triceps, göğse yalnız
+  // yarım set veriyor — "göğüs izolasyonu" slotunu doldurmuyordu. Rotasyon
+  // havuzun derinine inebildiği için tam donanımlı SALON planına vücut
+  // ağırlığı hareketi olarak düşüyordu. Ekipmansız modda ise gerçekten tek
+  // seçenek, o yüzden yedek olarak duruyor.
+  chestIso:  { region: "gogus", ids: ["cable-crossover", "pec-deck", "dumbbell-fly"],
+               fallback: ["diamond-pushup"] },
   backVert:  { region: "sirt",  ids: ["barfiks", "lat-pulldown", "chin-up", "negative-pullup", "inverted-row"] },
   backHoriz: { region: "sirt",  ids: ["barbell-row", "seated-row", "dumbbell-row", "t-bar-row", "inverted-row"] },
   backLow:   { region: "sirt",  ids: ["deadlift", "romanian-deadlift", "hyperextension", "superman"] },
@@ -80,6 +88,12 @@ function pick(poolKey, mode, usedInDay, rot) {
   const off = rot % (ids.length || 1);
   const arr = ids.slice(off).concat(ids.slice(0, off));
   for (const id of arr) {
+    const ex = getExercise(id);
+    if (ex && accept(ex.equip, mode) && !usedInDay.has(id)) return id;
+  }
+  // Yedek liste: havuzun ASIL seçenekleri bu ekipman modunda yoksa devreye
+  // girer. Rotasyona DAHİL DEĞİL — aksi halde salon planında da seçilebilirdi.
+  for (const id of pool.fallback || []) {
     const ex = getExercise(id);
     if (ex && accept(ex.equip, mode) && !usedInDay.has(id)) return id;
   }
