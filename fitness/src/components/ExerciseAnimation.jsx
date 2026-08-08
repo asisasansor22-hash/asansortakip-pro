@@ -108,6 +108,15 @@ export default function ExerciseAnimation({ type = "idle", size = 180, color = S
   const t = type || "idle";
   const [imgFailed, setImgFailed] = useState(false);
 
+  // Hareket değişince "görsel yüklenemedi" bayrağı SIFIRLANMALI.
+  //
+  // Olmadığında: antrenman modunda bileşen aynı yerde kaldığı için state
+  // korunuyor. Salonda zayıf bağlantıda İLK hareketin fotoğrafı düşerse,
+  // bayrak açık kaldığı için sonraki TÜM hareketler de yedek çizime
+  // düşüyordu — bağlantı düzelse bile. Tek bir başarısız istek, antrenmanın
+  // geri kalanında fotoğrafları kapatıyordu.
+  useEffect(() => { setImgFailed(false); }, [exId]);
+
   // 1) Profesyonel Lottie varsa onu kullan
   const lottie = getLottie(t);
   if (lottie) {
