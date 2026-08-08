@@ -404,6 +404,9 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
   //    birini aynı havuzdaki gerilme varyantıyla değiştir.
   //    Gerekçe: kası gerilmiş boyda yükleyen hareketler, kısa boyda zirve
   //    yapanlara göre daha fazla hipertrofi üretir (stretch-mediated hypertrophy).
+  // Plandaki TÜM günlerde kullanılan id'ler — gerilme değişimi aynı harekete
+  // yakınsamasın diye.
+  const baskaGunde = new Set(built.flatMap((d) => d.slots.map((s) => s.id)));
   built.forEach((day) => {
     const byRegion = {};
     day.slots.forEach((s) => {
@@ -424,14 +427,24 @@ export function buildAutoPlan({ days = 3, goal = "kasyap", equip = "full", empha
         // düşürüp doldurma döngüsünün işini geri alıyordu (budama döngüsündeki
         // hatanın aynısı).
         const lost = Object.keys(musclesOf(s.id)).filter((m) => musclesOf(s.id)[m] >= 1);
-        const alt = ids.find((id) => {
+        const uygun = (id) => {
           const t = tensionOf(id);
           if (!t || t.p !== "uzun" || usedInDay.has(id)) return false;
           if (!accept((getExercise(id) || {}).equip, mode)) return false;
           const gain = musclesOf(id);
           return lost.every((m) => (gain[m] || 0) >= 1);
-        });
-        if (alt) { usedInDay.delete(s.id); s.id = alt; usedInDay.add(alt); break; }
+        };
+        // ÖNCE programın başka gününde geçmeyen bir gerilme varyantı ara.
+        //
+        // Neden: rotasyon A ve B günlerine farklı hareket seçiyor, ama bu
+        // döngü ikisini de havuzun aynı "uzun boy" varyantına çeviriyordu.
+        // Ölçüldü — 4 günlük Üst/Alt planında iki günde birden tekrar eden 6
+        // hareketin ALTISI DA "uzun" etiketliydi (barfiks, preacher curl,
+        // cable yan kaldırış, front squat, asılı bacak kaldırma, calf raise).
+        // Oysa havuzda başka gerilme varyantı var: backVert'te chin-up ve
+        // negative-pullup da "uzun". A/B ayrımının anlamı bu çeşitlilikti.
+        const alt = ids.find((id) => uygun(id) && !baskaGunde.has(id)) || ids.find(uygun);
+        if (alt) { usedInDay.delete(s.id); s.id = alt; usedInDay.add(alt); baskaGunde.add(alt); break; }
       }
     });
   });

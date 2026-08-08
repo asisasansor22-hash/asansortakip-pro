@@ -301,6 +301,21 @@ ok("guc programinda ana mentese zayif varyanta dusmuyor",
 ok("guc programinda bel hacmi esigin uzerinde",
    guc5.volume.total.erektor >= muscleMinFor("erektor"), "erektor=" + guc5.volume.total.erektor);
 
+// A/B gunleri BIRBIRININ KOPYASI olmamali. Gerilme garantisi her gunu havuzun
+// AYNI "uzun boy" varyantina cevirebiliyordu: 4 gunluk Ust/Alt planinda iki
+// gunde birden tekrar eden 6 hareketin ALTISI DA "uzun" etiketliydi.
+// Degisim artik once programin baska gununde gecmeyen bir varyant ariyor.
+const ua = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "denge" });
+const ustGunler = ua.days.filter((d) => /^Üst/.test(d.name));
+const ortak = ustGunler[0].exercises.filter((id) => ustGunler[1].exercises.includes(id));
+ok("Ust A ve Ust B en fazla 3 hareket paylasiyor", ortak.length <= 3, ortak.join(","));
+// Dikey cekiste iki gun ayni hareketi kullanmamali (havuzda barfiks, chin-up,
+// negative-pullup hepsi "uzun" — secenek var)
+const dikey = ["barfiks", "chin-up", "negative-pullup", "lat-pulldown"];
+const d0 = ustGunler[0].exercises.filter((id) => dikey.includes(id));
+const d1 = ustGunler[1].exercises.filter((id) => dikey.includes(id));
+ok("iki ust gunde ayni dikey cekis yok", !d0.some((id) => d1.includes(id)), d0.join(",") + " vs " + d1.join(","));
+
 
 // Uretecin kendi hesabi ile ekranin hesabi AYNI olmali. Eskiden autoPlan'in
 // kendi ayri ve uyusmayan dolayli tablosu vardi.
