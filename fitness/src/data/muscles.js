@@ -16,6 +16,8 @@
 
 import { getExercise, getAlternatives, exercisesByRegion, subOf } from "./exercises";
 import { getMuscles } from "./exerciseMuscles";
+// tension.js saf veridir (hiçbir şey import etmez) — döngü riski yok.
+import { tensionOf } from "./tension";
 
 // region: hangi bölgenin altında gösterileceği (mevcut REGIONS id'leri)
 export const MUSCLES = [
@@ -172,6 +174,23 @@ function deltHead(exId) {
 const DEEP_SQUAT = /^(squat|front-squat|goblet-squat|lunge|bulgarian|pistol-squat|step-up|walking-lunge|reverse-lunge)$/i;
 const SQUAT = /squat|leg-press|lunge|bulgarian|step-up|hack|goblet|pistol|wall-sit/i;
 const HINGE = /deadlift|good-morning|hyperextension|glute-bridge|hip-thrust|nordic|back-extension/i;
+// Diz BÜKÜK kalça ekstansiyonu (hip thrust, glute bridge).
+//
+// Hamstring hem kalçayı açar hem dizi büker. Köprüde diz zaten bükülüdür ve
+// kalça açılırken kas İKİ UÇTAN DA kısalır — buna aktif yetersizlik denir:
+// kas kısalmış boyda yeterli gerilim üretemez. Bu yüzden hip thrust mükemmel
+// bir GLUTE hareketidir ama zayıf bir hamstring hareketidir.
+//
+// Uygulamanın kendi gerilim verisi de bunu doğruluyor: romanian-deadlift ve
+// good-morning "uzun", hip-thrust ve glute-bridge "kisa" etiketli.
+const HIP_BRIDGE = /hip-thrust|glute-bridge/i;
+// Yan kaldırışta trapez skapulayı yukarı döndürür — SABİTLEYİCİ görevi.
+// Upright row'da ise trapez asıl hareketi yapar; ikisi aynı kredi almamalı.
+const LATERAL_RAISE = /lateral-raise|cable-lateral|yan-kaldir|side-lateral/i;
+// Kalça fleksiyonlu karın hareketleri: rektus femoris (quad'ın bir parçası)
+// çalışır ama kısa boyda ve düşük yükle. "Yarım quad seti" saymak, squat'la
+// aynı kefeye koymak olurdu.
+const HIP_FLEX_CORE = /l-sit|v-up|leg-raise|mountain-climber|flutter|hanging-leg|toe-touches|hollow/i;
 const INCLINE = /incline/i;
 const CHINUP = /chin-up|barfiks|pull-up|pullup/i;
 const PRESS = /press|sinav|pushup|push-up|dips|fly|crossover|pec-deck/i;
@@ -219,7 +238,15 @@ function coeffFor(exId, m, isPrimary) {
   // Kalça menteşesi: hamstringi gerçekten yükler (squat'ın tersine).
   // Kalça ekstansiyonu glute'un asıl görevi olduğu için menteşe = DOĞRUDAN glute.
   if (HINGE.test(s) && !isPrimary) {
-    if (m === "hamstring") return 0.7;   // yüksek aktivasyon ama kalça-baskın (kısmen tahmin)
+    if (m === "hamstring") {
+      // Diz bükük köprüler: aktif yetersizlik → çeyrek set.
+      if (HIP_BRIDGE.test(s)) return 0.25;
+      // Diz düz menteşede kas UZUN boyda yükleniyorsa uyaran yüksek
+      // (RDL, good morning). Orta/kısa profilde (klasik deadlift,
+      // hyperextension) hamstring gerilmesi sınırlı → yarım set.
+      const t = tensionOf(s);
+      return t && t.p === "uzun" ? 0.7 : 0.5;
+    }
     if (m === "glute") return 1;
     if (m === "karin") return 0;
     // Menteşede erektörün işi yük altında omurga fleksiyonuna direnmek —
@@ -235,6 +262,12 @@ function coeffFor(exId, m, isPrimary) {
     if (m === "onDeltoid") return INCLINE.test(s) ? 0.6 : 0.5;  // eğimlide pay daha yüksek (tahmin)
     if (m === "yanDeltoid" || m === "arkaDeltoid") return 0;    // preslerde çalışmaz
   }
+
+  // Yan kaldırış → trapez: sabitleyici dozu, çeyrek set.
+  if (LATERAL_RAISE.test(s) && !isPrimary && m === "ustSirt") return 0.25;
+
+  // Kalça fleksiyonlu karın hareketleri → quad: çeyrek set.
+  if (HIP_FLEX_CORE.test(s) && !isPrimary && m === "quad") return 0.25;
 
   // Çekişler → biceps
   if (!isPrimary && m === "biceps") {

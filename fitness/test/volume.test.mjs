@@ -334,6 +334,36 @@ ok("ekipmansiz modda yedek devreye giriyor",
    bw6.days.every((d) => d.exercises.length >= 4),
    bw6.days.map((d) => d.name + ":" + d.exercises.length).join(" "));
 
+// --- Yarim set mi tam set mi: katsayi modeli ---
+// Hedef: bir hareket bir kasi GERCEKTEN calistiriyorsa tam, yalnizca yardimci
+// oluyorsa yarim, ihmal edilebilir duzeydeyse ceyrek sayilmali.
+const kat = (id, m) => musclesOf(id)[m] || 0;
+
+// (1) AKTIF YETERSIZLIK. Hamstring hem kalcayi acar hem dizi buker. Koprude
+// diz zaten bukuk ve kalca acilirken kas IKI UCTAN DA kisalir — kisalmis boyda
+// yeterli gerilim uretemez. Bu yuzden hip thrust mukemmel bir GLUTE hareketi
+// ama zayif bir hamstring hareketidir. Model 0,7 (neredeyse tam set) sayiyordu.
+ok("hip thrust hamstringe CEYREK set sayiyor", kat("hip-thrust", "hamstring") === 0.25, "=" + kat("hip-thrust", "hamstring"));
+ok("glute bridge hamstringe CEYREK set sayiyor", kat("glute-bridge", "hamstring") === 0.25, "=" + kat("glute-bridge", "hamstring"));
+ok("hip thrust glute'a TAM set sayiyor", kat("hip-thrust", "glute") === 1, "=" + kat("hip-thrust", "glute"));
+// Diz DUZ mentese: hamstring uzun boyda yukleniyor → tam set (birincil).
+ok("RDL hamstringe TAM set sayiyor", kat("romanian-deadlift", "hamstring") === 1, "=" + kat("romanian-deadlift", "hamstring"));
+ok("good morning hamstringe TAM set sayiyor", kat("good-morning", "hamstring") === 1, "=" + kat("good-morning", "hamstring"));
+// Klasik deadlift: orta gerilme profili → yarim set (RDL'den az, koprulerden cok).
+ok("klasik deadlift hamstringe YARIM set sayiyor", kat("deadlift", "hamstring") === 0.5, "=" + kat("deadlift", "hamstring"));
+ok("kopru < deadlift < RDL sirasi korunuyor",
+   kat("glute-bridge", "hamstring") < kat("deadlift", "hamstring") && kat("deadlift", "hamstring") < kat("romanian-deadlift", "hamstring"));
+
+// (2) SABITLEYICI DOZU. Yan kaldiriste trapez skapulayi yukari dondurur ama
+// asil hareketi yapmaz; upright row'da ise trapez prime mover.
+ok("yan kaldiris trapeze CEYREK set sayiyor", kat("cable-lateral", "ustSirt") === 0.25, "=" + kat("cable-lateral", "ustSirt"));
+ok("upright row trapeze YARIM set sayiyor", kat("upright-row", "ustSirt") === 0.5, "=" + kat("upright-row", "ustSirt"));
+
+// (3) KALCA FLEKSIYONLU KARIN HAREKETLERI. Rektus femoris calisir ama kisa
+// boyda ve dusuk yukle — squat'la ayni kefeye konamaz.
+ok("L-sit quad'a CEYREK set sayiyor", kat("l-sit", "quad") === 0.25, "=" + kat("l-sit", "quad"));
+ok("squat quad'a TAM set sayiyor", kat("squat", "quad") === 1, "=" + kat("squat", "quad"));
+
 
 // Uretecin kendi hesabi ile ekranin hesabi AYNI olmali. Eskiden autoPlan'in
 // kendi ayri ve uyusmayan dolayli tablosu vardi.
@@ -414,7 +444,12 @@ const vUst = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "
 const vAlt = buildAutoPlan({ days: 4, goal: "kasyap", equip: "full", emphasis: "altvucut" }).volume.total;
 ok("ust vurgu gogus hacmini artiriyor", vUst.gogus > vDenge.gogus, vDenge.gogus + " -> " + vUst.gogus);
 ok("ust vurgu lat hacmini artiriyor", vUst.lat > vDenge.lat, vDenge.lat + " -> " + vUst.lat);
-ok("alt vurgu quad hacmini artiriyor", vAlt.quad > vDenge.quad, vDenge.quad + " -> " + vAlt.quad);
+// NOT: quad karsilastirmasi YAPILMIYOR — dengeli planda quad zaten pratik
+// tavanda (14 set) ve alt vurgu bu kapasiteyi hamstring/glute'a kaydiriyor.
+// Anlamli olcut, focus kaslarinin TOPLAMI.
+const altToplam = vAlt.quad + vAlt.hamstring + vAlt.glute;
+const dengeToplam = vDenge.quad + vDenge.hamstring + vDenge.glute;
+ok("alt vurgu alt vucut toplamini artiriyor", altToplam > dengeToplam, dengeToplam + " -> " + altToplam);
 ok("alt vurgu hamstring hacmini artiriyor", vAlt.hamstring > vDenge.hamstring, vDenge.hamstring + " -> " + vAlt.hamstring);
 
 // Kullanici bildirdi: "ust vucut sectigim halde kollara yuklenmiyor, elle

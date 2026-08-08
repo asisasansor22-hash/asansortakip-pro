@@ -84,14 +84,33 @@ Mekanizma: squat'ta hamstring hem kalça ekstansiyonu (kısalma) hem diz fleksiy
 (uzama) görevini aynı anda üstlenir; net boy değişimi çok azdır (Lombard paradoksu).
 Uzunluk değişmeyen kas büyümez.
 
-### 2.5 Kalça menteşesi (RDL, deadlift) → Hamstring: **0,7**
+### 2.5 Kalça ekstansiyonu → Hamstring: **diz pozisyonuna göre 0,25 / 0,5 / 0,7**
 
-Squat'ın tersine menteşe hareketleri hamstringi gerçekten yükler ve RDL bazı
-çalışmalarda leg curl'den **daha yüksek** hamstring aktivasyonu gösterir.
+Bu, modelin en çok düzeltme gerektiren yeriydi. Başlangıçta TÜM menteşe
+hareketleri hamstringe 0,7 sayıyordu — hip thrust ve glute bridge dahil. Bu
+yanlıştı, çünkü "kalça ekstansiyonu" tek bir uyaran değil.
 
-Ama **bölgesel fark var**: menteşe kalça-baskın (üst hamstring), leg curl diz-baskın
-(alt hamstring). En iyi sonuç ikisini birden yapmakta. Bu yüzden RDL yüksek katsayı
-alır ama leg curl'ün yerini **tam** tutmaz (0,7, 1 değil — bu bir tahmindir).
+**Hamstring iki eklemi birden geçer**: kalçayı açar, dizi büker. Uyaranın
+büyüklüğünü, hareket sırasında kasın hangi BOYDA yüklendiği belirler.
+
+| Hareket | Diz | Hamstring boyu | Katsayı |
+|---|---|---|---|
+| RDL, good morning | **düz** | kalçada uzuyor, dizde uzun kalıyor → **uzun** | 1,0 (zaten birincil) |
+| Klasik deadlift | yarı bükük | orta gerilme | **0,5** |
+| Hip thrust, glute bridge | **bükük** | iki uçtan da kısalıyor | **0,25** |
+
+Köprüde diz zaten bükülüdür; kalça açılırken kas **hem dizde hem kalçada**
+kısalır. Buna **aktif yetersizlik** denir: kas kısalmış boyda yeterli gerilim
+üretemez. Bu yüzden hip thrust mükemmel bir **glute** hareketidir ama zayıf bir
+hamstring hareketidir — glute katsayısı 1,0 kalır, hamstring 0,25'e iner.
+
+Uygulamanın kendi **gerilim (tension) verisi** bu ayrımı zaten kodluyor:
+`romanian-deadlift` ve `good-morning` "uzun", `hip-thrust` ve `glute-bridge`
+"kısa" etiketli. Katsayı artık doğrudan bu veriden okunuyor, yani hareket adına
+göre elle bakım gerektirmiyor.
+
+Bölgesel fark da duruyor: menteşe kalça-baskın (üst hamstring), leg curl
+diz-baskın (alt hamstring); en iyi sonuç ikisini birden yapmakta.
 
 ### 2.6 Squat / menteşe → Glute: **1,0 (DOĞRUDAN)**, makine varyantları 0,5
 
@@ -124,9 +143,10 @@ Yani squat gövdeyi yükler ama yüklediği kas **bel (erektör spina)**, karın
 Uygulama artık erektörü ayrı bir kas grubu olarak tutuyor; squat/deadlift oraya **0,5**
 katkı verir, karına **0** verir.
 
-Not: karın için `REGION_MIN = 6` indirimi bu gerekçeyle konmuştu ("bileşiklerde
-izometrik yük alır"). Gerekçe hatalı olduğu için **indirim kaldırıldı**; karın da
-diğer kaslar gibi 10 set eşiğine tabidir.
+Not: karın için eskiden `REGION_MIN = 6` indirimi vardı, gerekçesi "bileşiklerde
+izometrik yük alır" idi. Gerekçe hatalı olduğu için indirim kaldırıldı. Karın şu an
+`MUSCLE_MIN` içinde **8** ile duruyor — ana kasların 10'undan düşük, çünkü karın için
+10-20 set doz-yanıt verisi yok; bu sayı ölçülmüş değil, **tahmindir**.
 
 ### 2.8 Kavrama → Ön kol: **0**
 
@@ -153,7 +173,12 @@ Varsayılan: birincil kas **1,0**, ikincil kas **0,5**. Aşağıdakiler bilinçl
 | Squat türevleri | Hamstring | 0,15 | Anlamlı hipertrofi üretmiyor |
 | Squat / deadlift | Erektör (bel) | 0,5 | Plank'ın 4 katı aktivasyon |
 | Squat / deadlift | Karın | 0 | Rektus abdominis aktivitesi düşük |
-| Menteşe (RDL/deadlift) | Hamstring | 0,7 | Yüksek aktivasyon; ama kalça-baskın — **kısmen tahmin** |
+| Menteşe, diz düz (RDL/good morning) | Hamstring | 0,7 | Uzun boyda yüklenir (bu hareketlerde zaten birincil) |
+| Klasik deadlift | Hamstring | 0,5 | Orta gerilme profili |
+| Hip thrust / glute bridge | Hamstring | **0,25** | Diz bükük → aktif yetersizlik |
+| Yan kaldırış | Trapez (üst/orta sırt) | **0,25** | Skapulayı döndüren sabitleyici, prime mover değil |
+| Upright row | Trapez (üst/orta sırt) | 0,5 | Trapez asıl hareketi yapıyor |
+| Kalça fleksiyonlu karın (L-sit, v-up, bacak kaldırma) | Quad | **0,25** | Rektus femoris kısa boyda, düşük yükle |
 | Squat / menteşe | Baldır | 0 | Ayak bileğini sabitler, boyu değişmez |
 | Herhangi | Ön kol / boyun | 0 | Kavrama izometrik, hipertrofi uyaranı değil |
 
