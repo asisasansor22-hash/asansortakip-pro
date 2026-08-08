@@ -50,7 +50,7 @@ export default function ReadyPrograms({ onCopy, onCopyDay, profile }) {
       {auto && <AutoPlanner onCopy={onCopy} onClose={() => setAuto(false)} />}
 
       <div className="card" style={{ marginBottom: 14, borderColor: "var(--accent2)" }}>
-        <button onClick={() => setPrinc((v) => !v)} style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left", fontWeight: 700, fontSize: 15 }}>
+        <button onClick={() => setPrinc((v) => !v)} style={{ background: "none", color: "var(--text)", width: "100%", textAlign: "left", fontWeight: 700, fontSize: 15, minHeight: 40, padding: "8px 0" }}>
           🔬 Temel İlkeler (bilimsel) {princ ? "▲" : "▼"}
         </button>
         {princ && (

@@ -218,7 +218,7 @@ export default function NutritionDiary() {
           <div className="row" style={{ gap: 8, marginTop: 12 }}>
             <input className="input" type="number" inputMode="numeric" placeholder="Kalori hedefi" value={gKcal} onChange={(e) => setGKcal(e.target.value)} />
             <input className="input" type="number" inputMode="numeric" placeholder="Protein (g)" value={gProt} onChange={(e) => setGProt(e.target.value)} />
-            <button className="btn-primary" style={{ width: "auto", padding: "0 16px" }} onClick={saveGoal}>Kaydet</button>
+            <button className="btn-primary" style={{ width: "auto", padding: "0 16px", minHeight: 44 }} onClick={saveGoal}>Kaydet</button>
           </div>
         )}
         {!goal.kcal && !editGoal && (
@@ -251,7 +251,7 @@ export default function NutritionDiary() {
         <input className="input" placeholder="Yiyecek adı" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 2 }} />
         <input className="input" type="number" inputMode="numeric" placeholder="kcal" value={kcal} onChange={(e) => setKcal(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
         <input className="input" type="number" inputMode="numeric" placeholder="prot" value={prot} onChange={(e) => setProt(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
-        <button className="btn-primary" style={{ width: "auto", padding: "0 16px" }} onClick={addManual}>Ekle</button>
+        <button className="btn-primary" style={{ width: "auto", padding: "0 16px", minHeight: 44 }} onClick={addManual}>Ekle</button>
       </div>
       {Array.isArray(diary.recent) && diary.recent.length > 0 && (
         <>

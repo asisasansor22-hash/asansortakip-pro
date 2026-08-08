@@ -122,7 +122,8 @@ h1, h2, h3 { margin: 0 0 8px; }
   color: var(--accent2); opacity: .85; margin-top: 1px; line-height: 1.2;
 }
 .splash-word + .brand-tag { font-size: 12px; letter-spacing: 3px; margin-top: 4px; }
-.btn-ghost { background: var(--card2); color: var(--text); padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+.btn-ghost { background: var(--card2); color: var(--text); padding: 8px 12px; border-radius: 10px; font-size: 13px;
+             min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 
 /* alt navigasyon */
 .tabbar {
@@ -167,7 +168,8 @@ h1, h2, h3 { margin: 0 0 8px; }
 .search-input { width: 100%; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--text); font-size: 15px; margin-bottom: 10px; }
 .search-input::placeholder { color: var(--muted); }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
-.chip { flex: 0 0 auto; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 999px; white-space: nowrap; }
+.chip { flex: 0 0 auto; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 999px; white-space: nowrap;
+        min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 .chip.on { background: var(--card2); color: var(--accent); border-color: var(--accent); }
 .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 18px 4px 10px; }
 
@@ -214,7 +216,12 @@ h1, h2, h3 { margin: 0 0 8px; }
 }
 .prog-ex-actions button.on { background: var(--accent2); color: var(--on-accent); }
 .prog-ex-actions button.danger { color: var(--danger); }
-.icon-btn { background: var(--card2); color: var(--text); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 700; }
+/* min-height PARMAK İÇİN: dolgu 6px olunca buton ~27px kalıyordu ve
+   telefonda ıskalanıyordu. Apple 44pt, Material 48dp öneriyor; 36px
+   bir uzlaşma — yoğun satırlarda (modal ✕, kart içi eylemler) düzeni
+   bozmadan isabet oranını belirgin artırıyor. */
+.icon-btn { background: var(--card2); color: var(--text); border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 700;
+            min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn.danger { color: var(--danger); }
 .empty { text-align: center; color: var(--muted); padding: 40px 20px; }
 

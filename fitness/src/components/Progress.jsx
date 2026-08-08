@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { getExercise, REGIONS } from "../data/exercises";
 import { volumeRows, TARGET_MIN, TARGET_MAX } from "../data/volume";
-import { dbGetR, dbSet } from "../firebase";
+import { dbGetR, dbSetR } from "../firebase";
 import DeloadCard from "./DeloadCard";
 import { setCountOf, bestOf, isArchived } from "../data/history";
 
@@ -156,6 +156,7 @@ export default function Progress({ data, history = [], onSave }) {
   // --- Gelişim fotoğrafları (ayrı saklanır: /fitness/users/{uid}/photos) ---
   const [photos, setPhotos] = useState([]);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoErr, setPhotoErr] = useState("");
   const [viewer, setViewer] = useState(null); // tam ekran gösterilen foto
   // Mobil "hayalet tıklama" koruması (kapatınca alttaki foto yeniden açılmasın)
   const closedAt = useRef(0);
@@ -188,26 +189,35 @@ export default function Progress({ data, history = [], onSave }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer]);
 
+  // Fotoğraflar base64 olduğu için cihaz aynası TUTULMUYOR (50 fotoğraf
+  // localStorage kotasını aşar). Bu yüzden yazma başarısız olursa veri
+  // gerçekten kaybolur — sessizce yutmak yerine kullanıcıya SÖYLÜYORUZ.
+  // Eskiden dbSet fire-and-forget çağrılıyordu: fotoğraf ekranda görünüyor
+  // ama bulutta olmuyordu ve kullanıcı bunu ancak başka cihazda fark ediyordu.
   async function onPhoto(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file || !photosOk.current) return;
     setPhotoBusy(true);
+    setPhotoErr("");
     try {
       const src = await resizeImage(file);
       const entry = { id: "ph_" + Date.now().toString(36), t: Date.now(), src };
       const next = [entry, ...photos].slice(0, 50);
-      setPhotos(next);
-      dbSet("photos", next);
-    } catch (err) { /* yoksay */ }
+      const ok = await dbSetR("photos", next);
+      if (ok) setPhotos(next);
+      else setPhotoErr("Fotoğraf kaydedilemedi — bağlantını kontrol edip tekrar dene.");
+    } catch (err) {
+      setPhotoErr("Fotoğraf işlenemedi. Farklı bir görsel dene.");
+    }
     setPhotoBusy(false);
   }
-  function delPhoto(id) {
+  async function delPhoto(id) {
     if (!photosOk.current) return;
     const next = photos.filter((p) => p.id !== id);
-    setPhotos(next);
-    dbSet("photos", next);
-    closeViewer();
+    const ok = await dbSetR("photos", next);
+    if (ok) { setPhotos(next); setPhotoErr(""); closeViewer(); }
+    else setPhotoErr("Fotoğraf silinemedi — bağlantını kontrol edip tekrar dene.");
   }
 
   function addMeasure() {
@@ -388,13 +398,13 @@ export default function Progress({ data, history = [], onSave }) {
       <div className="row" style={{ gap: 8, marginBottom: 6 }}>
         <input className="input" type="number" inputMode="decimal" placeholder="Kilo (kg)" value={kg} onChange={(e) => setKg(e.target.value)} style={{ flex: 1 }} />
         <input className="input" type="date" value={kgDate} onChange={(e) => setKgDate(e.target.value)} style={{ flex: 1 }} />
-        <button className="btn-primary" style={{ width: "auto", padding: "0 18px" }} onClick={addWeight}>Ekle</button>
+        <button className="btn-primary" style={{ width: "auto", padding: "0 18px", minHeight: 44 }} onClick={addWeight}>Ekle</button>
       </div>
       <div className="row" style={{ gap: 8, marginBottom: 6 }}>
         <input className="input" type="number" inputMode="decimal" placeholder="🎯 Hedef kilo (kg)" value={goalInput}
           onChange={(e) => setGoalInput(e.target.value)} style={{ flex: 1 }} />
-        <button className="icon-btn" style={{ padding: "0 14px" }} onClick={saveGoalKg}>Kaydet</button>
-        {goalKg != null && <button className="icon-btn danger" style={{ padding: "0 12px" }} onClick={() => { onSave({ ...data, goalKg: null }); setGoalInput(""); }}>✕</button>}
+        <button className="icon-btn" style={{ padding: "0 14px", minHeight: 44 }} onClick={saveGoalKg}>Kaydet</button>
+        {goalKg != null && <button className="icon-btn danger" style={{ padding: "0 12px", minHeight: 44, minWidth: 44 }} onClick={() => { onSave({ ...data, goalKg: null }); setGoalInput(""); }}>✕</button>}
       </div>
       {weights.length > 0 && (
         <div style={{ marginBottom: 6 }}>
@@ -429,7 +439,7 @@ export default function Progress({ data, history = [], onSave }) {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <input className="input" type="date" value={mDate} onChange={(e) => setMDate(e.target.value)} style={{ flex: 1 }} />
-          <button className="btn-primary" style={{ width: "auto", padding: "0 18px" }} onClick={addMeasure}>Kaydet</button>
+          <button className="btn-primary" style={{ width: "auto", padding: "0 18px", minHeight: 44 }} onClick={addMeasure}>Kaydet</button>
         </div>
       </div>
 
@@ -448,6 +458,9 @@ export default function Progress({ data, history = [], onSave }) {
           {photoBusy ? "Ekleniyor…" : "📷 Fotoğraf Ekle"}
           <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={photoBusy} onChange={onPhoto} />
         </label>
+      )}
+      {photoErr && (
+        <p style={{ color: "var(--attn)", fontSize: 12, marginTop: -4, marginBottom: 10 }}>⚠️ {photoErr}</p>
       )}
       {photos.length === 0 ? (
         <p style={{ color: "var(--muted)", fontSize: 13 }}>Düzenli aralıklarla fotoğraf ekle; zamanla değişimini yan yana görürsün.</p>
